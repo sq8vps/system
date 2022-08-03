@@ -26,7 +26,7 @@ enum Fat_file_type
 	FAT_DIRECTORY,
 };
 
-uint8_t buf[4096] __attribute__ ((aligned(8)));
+uint8_t buf[8192];
 
 error_t Fat_init(Disk_s_t *disk, uint8_t partition)
 {
@@ -35,8 +35,8 @@ error_t Fat_init(Disk_s_t *disk, uint8_t partition)
 	if(disk->partitions[partition].present == 0 || disk->partitions[partition].type != TYPE_FAT32)
 		return FAT_NOT_FAT;
 
-	error_t ret = disk_readPartition(*disk, partition, buf, 0, 1); //read first partition sector
-	if(ret != DISK_OK)
+	error_t ret = Disk_readPartition(*disk, partition, buf, 0, 512); //read first partition sector
+	if(ret != OK)
 		return ret;
 
 
@@ -59,7 +59,7 @@ error_t Fat_init(Disk_s_t *disk, uint8_t partition)
 	fatDisk.initialized = 1;
 }
 
-error_t fat_getNextCluster(Fat32_s_t *fat, uint32_t currentCluster, uint32_t *nextCluster)
+static error_t fat_getNextCluster(Fat32_s_t *fat, uint32_t currentCluster, uint32_t *nextCluster)
 {
 	if(currentCluster < 2)
 		return FAT_INVALID_CLUSTER;
@@ -68,8 +68,8 @@ error_t fat_getNextCluster(Fat32_s_t *fat, uint32_t currentCluster, uint32_t *ne
 	//first we need to calculate in which sector the appropriate entry resides, so sector=floor(cluster_number/entries_in_sector),
 	//that gives sector=floor(cluster_number*4/sector_size)
 	//the byte number in sector is equal to cluster_number mod entries_in_sector
-	error_t ret = disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.firstFatAddr + (currentCluster * 4 / fat->header.bytesPerSector), 1); //read appropriate FAT sector
-	if(ret != DISK_OK)
+	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.firstFatAddr + (currentCluster * 4 / fat->header.bytesPerSector), 512); //read appropriate FAT sector
+	if(ret != OK)
 		return ret;
 
 
@@ -84,13 +84,29 @@ error_t fat_getNextCluster(Fat32_s_t *fat, uint32_t currentCluster, uint32_t *ne
 	else if(*nextCluster & 0xFFFFFFF == 0xFFFFFF7)
 		return FAT_BROKEN_CLUSTER;
 
-	return FAT_OK;
+	return OK;
 }
 
-error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, enum Fat_file_type type, uint32_t *outCluster, uint32_t *outSize)
+static error_t fat_goToFile(Fat32_s_t *fat, uint8_t *path, uint8_t *name)
 {
-	error_t ret = disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.sectorPerCluster); //read cluster
-	if(ret != DISK_OK)
+	int32_t t = strlen(path) - 1;
+	error_t ret = OK;
+	while((path[t] != '/') && (t >= 0)) //look for last separator
+	{
+		t--;
+	}
+	if(t >= 0)
+	{
+		ret = Fat_changeDirN(fat, path, t + 1);
+	}
+	name = path + t + 1;
+	return ret;
+}
+
+static error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, enum Fat_file_type type, uint32_t *outCluster, uint32_t *outSize)
+{
+	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+	if(ret != OK)
 		return ret;
 
 	uint16_t i = 0; //byte iterator
@@ -220,7 +236,7 @@ error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, enum Fat
 				*outSize |= (uint32_t)buf[i + FAT_ENTRY_SHIFT_SIZE + 1] << 8;
 				*outSize |= (uint32_t)buf[i + FAT_ENTRY_SHIFT_SIZE];
 
-				return FAT_OK;
+				return OK;
 			}
 
 		}
@@ -231,10 +247,10 @@ error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, enum Fat
 		if(i >= fat->header.bytesPerCluster) //end of cluster
 		{
 			ret = fat_getNextCluster(fat, cluster, &cluster); //check next cluster
-			if(ret == FAT_OK)
+			if(ret == OK)
 			{
-				ret = disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.sectorPerCluster); //read cluster
-				if(ret != DISK_OK)
+				ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+				if(ret != OK)
 					return ret;
 			}
 			else if(ret == FAT_EOC) //end of chain, file not found in this directory
@@ -259,6 +275,11 @@ error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, enum Fat
 
 error_t Fat_changeDir(Fat32_s_t *fat, uint8_t *path)
 {
+	return Fat_changeDirN(fat, path, strlen(path));
+}
+
+error_t Fat_changeDirN(Fat32_s_t *fat, uint8_t *path, uint16_t pathLen)
+{
 	if(fat->initialized == 0)
 		return FAT_NOT_INITIALIZED;
 
@@ -277,7 +298,7 @@ error_t Fat_changeDir(Fat32_s_t *fat, uint8_t *path)
 	uint8_t fileName[261];
 	uint16_t fileNameIdx = 0;
 
-	for(; idx < strlen(path); idx++)
+	for(; idx < pathLen; idx++)
 	{
 		if((path[idx + 1] == 0) && (path[idx] != '/'))
 			fileName[fileNameIdx++] = path[idx];
@@ -287,7 +308,7 @@ error_t Fat_changeDir(Fat32_s_t *fat, uint8_t *path)
 			fileName[fileNameIdx++] = 0;
 
 			uint32_t fileCluster, fileSize;
-			if(fat_selectFile(fat, clusterNo, fileName, FAT_DIRECTORY, &fileCluster, &fileSize) == FAT_OK)
+			if(fat_selectFile(fat, clusterNo, fileName, FAT_DIRECTORY, &fileCluster, &fileSize) == OK)
 			{
 				fat->currentCluster = fileCluster;
 				clusterNo = fileCluster;
@@ -301,18 +322,18 @@ error_t Fat_changeDir(Fat32_s_t *fat, uint8_t *path)
 		else
 			fileName[fileNameIdx++] = path[idx];
 	}
-	return FAT_OK;
+	return OK;
 }
 
-error_t Fat_getFileSize(Fat32_s_t *fat, uint8_t *name, uint32_t *size)
+error_t Fat_getFileSize(Fat32_s_t *fat, uint8_t *path, uint32_t *size)
 {
 	if(fat->initialized == 0)
 		return FAT_NOT_INITIALIZED;
 
 	uint32_t dummy;
-	if(fat_selectFile(fat, fat->currentCluster, name, FAT_FILE, &dummy, size) == FAT_OK)
+	if(fat_selectFile(fat, fat->currentCluster, path, FAT_FILE, &dummy, size) == OK)
 	{
-		return FAT_OK;
+		return OK;
 	}
 	else
 	{
@@ -320,85 +341,88 @@ error_t Fat_getFileSize(Fat32_s_t *fat, uint8_t *name, uint32_t *size)
 	}
 }
 
-error_t Fat_readWholeFile(Fat32_s_t *fat, uint8_t *name, uint8_t *dest, uint32_t *outSize)
+error_t Fat_readWholeFile(Fat32_s_t *fat, uint8_t *path, uint8_t *dest, uint32_t *outSize)
 {
 	if(fat->initialized == 0)
 		return FAT_NOT_INITIALIZED;
 
-	error_t ret = FAT_OK;
+	error_t ret = OK;
 
 
 	uint32_t cluster;
-	ret = fat_selectFile(fat, fat->currentCluster, name, FAT_FILE, &cluster, outSize); //select (find) file
-	if(ret != FAT_OK)
+	ret = fat_selectFile(fat, fat->currentCluster, path, FAT_FILE, &cluster, outSize); //select (find) file
+	if(ret != OK)
 		return ret;
 
 	uint16_t i = 0;
 	for(; i < (*outSize / fat->header.bytesPerCluster); i++) //loop for whole clusters
 	{
-		ret = disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.sectorPerCluster); //read cluster
-		if(ret != DISK_OK)
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+		if(ret != OK)
 			return ret;
 
 		ret = fat_getNextCluster(fat, cluster, &cluster); //check next cluster
-		if(ret != FAT_OK)
+		if(ret != OK)
 			return ret;
 
 	}
 	if(*outSize % fat->header.bytesPerCluster) //remaining bytes
 	{
-		ret = disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster,
-				(*outSize % fat->header.bytesPerCluster) / fat->header.bytesPerSector + (*outSize % fat->header.bytesPerSector) ? 1 : 0); //read cluster
-		if(ret != DISK_OK)
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, *outSize % fat->header.bytesPerCluster); //read remaining bytes
+		if(ret != OK)
 			return ret;
 	}
 
-	return FAT_OK;
+	return OK;
 }
 
 
-error_t Fat_readFile(Fat32_s_t *fat, uint8_t *name, uint32_t start, uint32_t end, uint8_t *dest)
+error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t end, uint8_t *dest)
 {
 	if(fat->initialized == 0)
 		return FAT_NOT_INITIALIZED;
 
-	if(start > end)
+	if((end > 0) && (start > end))
 		return FAT_INVALID_VAL;
 
-	error_t ret = FAT_OK;
+	error_t ret = OK;
 
 
 	uint32_t cluster, size;
-	ret = fat_selectFile(fat, fat->currentCluster, name, FAT_FILE, &cluster, &size); //select (find) file
-	if(ret != FAT_OK)
+	ret = fat_selectFile(fat, fat->currentCluster, path, FAT_FILE, &cluster, &size); //select (find) file
+	if(ret != OK)
 		return ret;
+
+	if(end == 0)
+		end = size;
 
 	for(uint16_t i = 0; i < (start / fat->header.bytesPerCluster); i++)
 	{
 		ret = fat_getNextCluster(fat, cluster, &cluster); //look for the first needed cluster
-		if(ret != FAT_OK)
+		if(ret != OK)
 			return ret;
 	}
 
 	uint16_t i = 0;
 	for(; i < ((end - start + 1) / fat->header.bytesPerCluster); i++) //loop for whole clusters
 	{
-		ret = disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.sectorPerCluster); //read cluster
-		if(ret != DISK_OK)
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+		if(ret != OK)
 			return ret;
 
 		ret = fat_getNextCluster(fat, cluster, &cluster); //check next cluster
-		if(ret != FAT_OK)
+		if(ret != OK)
 			return ret;
 
 	}
 	if((end - start + 1) % fat->header.bytesPerCluster) //remaining bytes
 	{
-		ret = disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster,
-				((end - start + 1) % fat->header.bytesPerCluster) / fat->header.bytesPerSector + ((end - start + 1) % fat->header.bytesPerSector) ? 1 : 0); //read cluster
-		if(ret != DISK_OK)
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, (end - start + 1) % fat->header.bytesPerCluster); //read remaining bytes
+		if(ret != OK)
 			return ret;
 	}
 
-	return FAT_OK;
+	return OK;
 }
+
+

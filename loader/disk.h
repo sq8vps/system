@@ -20,6 +20,8 @@
 #define DISK_TABLE_ATTR_IDE_AHCI_BIT 1
 #define DISK_TABLE_ATTR_MBR_GPT_BIT 64
 
+#define DISK_BUFFER_SIZE 1048576 //disk buffer size in bytes (1 MiB by default)
+
 enum Partition_type
 {
 	TYPE_EMPTY,
@@ -57,16 +59,17 @@ typedef struct
 } Disk_params_s_t;
 
 /**
- * \brief Initializes PCI/PCI-E, IDE/AHCI controllers and disks
+ * @brief Initialize PCI/PCI-E IDE/AHCI controllers and disks
+ * @attention Paging MUST be enabled
  */
-void disk_init(void);
+error_t Disk_init(void);
 
 /**
  * \brief Adds disk to the list
  * \param *ata IDE or AHCI controller structure
  * \param attr Attributes as specified at the top of this file
  */
-void disk_add(void *ata, uint8_t attr);
+void Disk_add(void *ata, uint8_t attr);
 
 
 /**
@@ -77,7 +80,7 @@ void disk_add(void *ata, uint8_t attr);
  * \param sec Sector count (higher than 0)
  * \return DISK_OK if successful, otherwise the destination buffer must be invalidated
  */
-error_t disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint16_t sec);
+error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t size);
 
 /**
  * \brief Writes sectors to disk
@@ -87,7 +90,7 @@ error_t disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint16_t sec);
  * \param sec Sector count (higher than 0)
  * \return DISK_OK if successful, otherwise the destination sectors must be invalidated
  */
-error_t disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec);
+error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec);
 
 /**
  * \brief Reads sectors from specified partition
@@ -98,13 +101,13 @@ error_t disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec);
  * \param sec Sector count (higher than 0)
  * \return DISK_OK if successful, otherwise the destination buffer must be invalidated
  */
-error_t disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint16_t sec);
+error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint32_t size);
 
 /**
  * \brief Get general disk parameters
  * \param disk diskTable entry
  * \return Filled Disk_params_s_t structure
  */
-Disk_params_s_t disk_getParams(Disk_s_t disk);
+Disk_params_s_t Disk_getParams(Disk_s_t disk);
 
 #endif /* LOADER_DISK_H_ */

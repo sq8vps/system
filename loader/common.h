@@ -57,4 +57,6 @@ uint32_t strlen(const uint8_t *s);
 
 uint8_t strcmp(const uint8_t *s1, const uint8_t *s2);
 
+uint8_t strncmp(const uint8_t *s1, const uint8_t *s2, uint32_t len);
+
 #endif /* KERNEL_COMMON_H_ */

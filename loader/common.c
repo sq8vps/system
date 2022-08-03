@@ -60,6 +60,8 @@ uint32_t strlen(const uint8_t *s)
 	{
 		ret++;
 		s++;
+		if(ret == 0xFFFFFFFF)
+			break;
 	}
 	return ret;
 }
@@ -75,6 +77,22 @@ uint8_t strcmp(const uint8_t *s1, const uint8_t *s2)
 			return 1;
 		s1++;
 		s2++;
+	}
+	return 0;
+}
+
+uint8_t strncmp(const uint8_t *s1, const uint8_t *s2, uint32_t len)
+{
+
+	while(*s1 != 0)
+	{
+		if(*s1 != *s2)
+			return 1;
+		s1++;
+		s2++;
+		if(len == 0)
+			return 0;
+		len--;
 	}
 	return 0;
 }

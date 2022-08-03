@@ -4,7 +4,7 @@
 #include "ata.h"
 #include "defines.h"
 #include "fat.h"
-#include "paging.h"
+#include "mm.h"
 
 static uint64_t prepareKernelMemory(uint32_t kernelSize);
 static void loader_findAddress(uint64_t bytes, uint64_t *addr, uint64_t *size);
@@ -13,7 +13,7 @@ uint8_t loader_bootDrive = 255; //diskTable boot disk entry number
 
 #define MBR_SIGNATURE_OFFSET 440
 
-uint8_t loader_buf[4096] = {0}; //sector buffer
+uint8_t loader_buf[512] = {0}; //sector buffer
 
 uint8_t test_buf[32768] __attribute__ ((aligned(8)));
 
@@ -52,9 +52,15 @@ static void loop(void)
  __attribute__ ((section (".ldr"))) volatile void loaderEntry(void)
 {
 	disp_clear(); //clear screen
+
+	uint32_t pageDirAddr;
+	Mm_init(&pageDirAddr);
+	Mm_enablePaging(pageDirAddr);
+	printf("Paging enabled\n");
+
 	ata_init(); //init ATA
-	disk_init();
-	ata_setAddDiskCallback(&disk_add);
+	Disk_init();
+	ata_setAddDiskCallback(&Disk_add);
 	pci_setAtaEnumCallback(&ata_registerController); //set callback function for ATA controller enumeration
 	pci_scanAll(); //scan PCI buses
 	ata_enableControllers(); //set up ATA controllers
@@ -64,7 +70,7 @@ static void loop(void)
 	{
 		if(diskTable[i].present == 1)
 		{
-			if(disk_read(diskTable[i], loader_buf, 0, 1) == DISK_OK) //read 0th sector to determine disk signature
+			if(Disk_read(diskTable[i], loader_buf, 0, 512) == OK) //read 0th sector to determine disk signature
 			{
 
 				if((*((uint32_t*)(loader_buf + MBR_SIGNATURE_OFFSET)) == *((uint32_t*)DISK_SIG))) //check if the signature matches the signature stored by the 2nd stage bootloader
@@ -73,7 +79,7 @@ static void loop(void)
 				}
 			}
 		}
-		else break; //if this disk was not present, next also can't be
+		else break; //if this disk was not present, the next one also can't be
 	}
 
 	if(loader_bootDrive == 255) //if boot drive was not found (this shouldn't happen if we are already in the bootloader, but whatever)
@@ -89,12 +95,10 @@ static void loop(void)
 
 
 
-	printf("Returned %d\n", (int)Fat_readFile(&fatDisk, "LDR32", 0, 4096, test_buf));
+	//printf("Returned %d\n", (int)Fat_readFile(&fatDisk, "LDR32", 0, 4096, test_buf));
 
-	Paging_construct(0x01000000, KERNEL_VIRTUAL_ADDRESS);
-	Paging_enable();
 
-	printf("Paging enabled\n");
+
 
 
 	loop();
@@ -127,60 +131,6 @@ static void loop(void)
 }*/
 
 
-/**
- * \brief Find the lowest memory region in the extended memory of, at least, a specified size, aligned to PAGING_PAGE_SIZE
- * \param bytes Required size in bytes
- * \param *addr The base address if found, otherwise 0
- * \param *size Size if region found, otherwise 0
- * \attention It uses the memory map provided by the 2nd stage bootloader, starting from physical address MEMORY_MAP
- */
-static void loader_findAddress(uint64_t bytes, uint64_t *addr, uint64_t *size)
-{
-	*addr = 0;
-	*size = 0;
-	uint16_t numOfEntries = *((uint16_t*)MEMORY_MAP);  //the first word contains number of entries
-	if(numOfEntries > MEMORY_MAP_MAX_ENTRY_COUNT)
-		numOfEntries = MEMORY_MAP_MAX_ENTRY_COUNT;
-	for(uint16_t i = 0; i < numOfEntries; i++)
-	{
-		uint64_t base = *((uint64_t*)(MEMORY_MAP + 2 + i * MEMORY_MAP_ENTRY_SIZE)); //next 8 bytes are the base address
-		if(base < EXTENDED_MEMORY_START)
-			continue; //we are interested only in extended memory
-		uint64_t len = *((uint64_t*)(MEMORY_MAP + 10 + i * MEMORY_MAP_ENTRY_SIZE)); //next 8 bytes are the size
-		if(len < bytes)
-			continue; //size is less than required
-		uint64_t attr = *((uint64_t*)(MEMORY_MAP + 18 + i * MEMORY_MAP_ENTRY_SIZE));
-		if((attr & 0x1FFFFFFFF) != 0x100000001)
-			continue; //type field must be equal to 1 and and optional ACPI 3.0 bit must be set
 
-		if(base & (PAGING_PAGE_SIZE - 1)) //if memory address is not aligned to page size
-		{
-			uint16_t shift = PAGING_PAGE_SIZE - (base & (PAGING_PAGE_SIZE - 1)); //calculate required shift to align
-			base += shift;
-			len -= shift;
-
-			if(len < bytes) //check if size is still enough
-				continue;
-
-			if(len & (PAGING_PAGE_SIZE - 1)) //check if size is a multiplicity of the page size
-			{
-				//if not
-				shift = PAGING_PAGE_SIZE - (len & (PAGING_PAGE_SIZE - 1));
-				len -= shift;
-			}
-
-			if(len < bytes) //check if size is still enough
-				continue;
-
-			//otherwise it's ok
-		}
-
-		//if everything went OK
-		*addr = base;
-		*size = len;
-		break;
-	}
-	return;
-}
 
 

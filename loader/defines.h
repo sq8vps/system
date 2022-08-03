@@ -12,21 +12,22 @@
 
 #define LOADER_DATA 0x500 //mmeory address where data from 2nd stage bootloader is stored
 #define DISK_SIG 0x500 //boot disk signature is stored here (4 bytes)
-#define MEMORY_MAP (LOADER_DATA + 64) //memory address where memory map is stored
-#define MEMORY_MAP_ENTRY_SIZE 24 //size of one memory map entry (depends on the 2nd stage bootloader)
-#define MEMORY_MAP_MAX_ENTRY_COUNT 256 //max memory map entries count
 
-#define PAGING_KERNEL_REQUIRED_TABLES 16
-#define PAGING_PAGE_SIZE 4096
 
 
 #define KERNEL_VIRTUAL_ADDRESS 0xE0000000
+#define KERNEL_MEMORY_SIZE 0x1000000
+
+#define DEFAULT_STACK_SIZE 0x100000
+
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 typedef enum
 {
 	OK,
 
-	ATA_OK,
 	ATA_INCORRECT_VAL,
 	ATA_COUNT_LIMIT,
 	ATA_DISK_TOO_SMALL,
@@ -37,7 +38,6 @@ typedef enum
 	ATA_DISK_NOT_PRESENT,
 
 	DISK_NOT_PRESENT,
-	DISK_OK,
 	DISK_NOT_PARTITIONED,
 
 	NOT_IMPLEMENTED,
@@ -45,7 +45,6 @@ typedef enum
 	PARTITION_EMPTY,
 	PARTITION_TOO_SMALL,
 
-	FAT_OK,
 	FAT_INVALID_VAL,
 	FAT_DISK_NOT_PRESENT,
 	FAT_NOT_FAT,
@@ -57,7 +56,13 @@ typedef enum
 
 	ELF_NOT_ELF,
 	ELF_BAD_ARCHITECTURE,
+	ELF_INCOMPATIBLE,
+	ELF_BROKEN,
 
+	MM_NO_MEMORY,
+	MM_NOT_ALIGNED,
+	MM_PAGE_NOT_PRESENT,
+	MM_PAGE_ALREADY_MAPPED,
 
 } error_t;
 

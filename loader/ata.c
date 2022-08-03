@@ -15,13 +15,13 @@ typedef struct
 {
 	uint8_t cmd; //command register
 	uint8_t status; //status register
-	uint64_t *addr; //PRD Table address refister
-} AtaBMR_s_t; //BMR table entry structre
+	uint64_t *addr; //PRD Table address register
+} AtaBMR_s_t; //BMR table entry structure
 
 typedef struct
 {
 	uint16_t size; //byte count register
-	uint8_t *addr; //destination memory address register
+	uint8_t *addr; //destination memory address register - must be a PHYSICAL address
 } AtaPRD_s_t; //PRD entry structure
 
 
@@ -261,7 +261,7 @@ static error_t ata_writeBMRcmd(AtaController_s_t ata, uint8_t chan, uint8_t cmd)
 {
 	if(chan > 1) return ATA_INCORRECT_VAL;
 	port_writeByte(ata.bmrPort + (chan ? ATA_BMR_SECONDARY : ATA_BMR_PRIMARY), cmd);
-	return ATA_OK;
+	return OK;
 }
 
 /**
@@ -274,7 +274,7 @@ static error_t ata_readBMRstatus(AtaController_s_t ata, uint8_t chan, uint8_t *s
 {
 	if(chan > 1) return ATA_INCORRECT_VAL;
 	*sta = port_readByte(ata.bmrPort + (chan ? ATA_BMR_SECONDARY : ATA_BMR_PRIMARY) + ATA_BMR_STA);
-	return ATA_OK;
+	return OK;
 }
 
 /**
@@ -287,7 +287,7 @@ static error_t ata_writeBMRstatus(AtaController_s_t ata, uint8_t chan, uint8_t s
 {
 	if(chan > 1) return ATA_INCORRECT_VAL;
 	port_writeByte(ata.bmrPort + (chan ? ATA_BMR_SECONDARY : ATA_BMR_PRIMARY) + ATA_BMR_STA, sta);
-	return ATA_OK;
+	return OK;
 }
 
 /**
@@ -308,7 +308,7 @@ error_t ata_addPRDentry(AtaPRD_s_t prd, uint8_t prdtable)
 		ata_PRDtable[prdtable][ata_PRDtableEntries[prdtable] - 1] &= 0x7FFFFFFFFFFFFFFF; //if there was a table entry before, clear it's end-of-table bit
 
 	ata_PRDtableEntries[prdtable]++;
-	return ATA_OK;
+	return OK;
 }
 
 /**
@@ -330,10 +330,10 @@ void ata_clearPRDtables(void)
  * \param rw 0 - read from drive, 1 - write to drive
  * \param chan Primary (0) or Secondary (1)
  * \param dev Master (0) or Slave (1)
- * \param *buf Destination/source buffer, must be word aligned
+ * \param *buf Destination/source buffer, must be word aligned - must be a PHYSICAL address
  * \param lba Starting LBA (48-bit)
  * \param sec Sector count (higher than 0)
- * \return ATA_OK if successful, otherwise destination buffer/destination sectors must be invalidated
+ * \return OK if successful, otherwise destination buffer/destination sectors must be invalidated
  */
 error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_t dev, uint8_t *buf, uint64_t lba, uint16_t sec)
 {
@@ -343,17 +343,16 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 	if(sec > ata.disk[chan][dev].sectorCount) return ATA_DISK_TOO_SMALL;
 	if((uint32_t)buf & 1) return ATA_NOT_ALIGNED; //check if buffer is word aligned
 	if(lba & 0xFFFF000000000000) return ATA_INCORRECT_VAL; //LBA address must fit in the lower 48 bits
-	error_t ret = ATA_OK;
+	error_t ret = OK;
 
 	uint32_t bytes = sec * ata.disk[chan][dev].sectorSize; //get number of bytes
 	uint16_t blocks = bytes / 65536; //get number of whole 64KiB blocks (for each PRD entry)
 
 
 
-
-	uint32_t freeSpace = 0xFFFFFFFF - (uint32_t)buf; //check available space to avoid wrapping
-	if(bytes > freeSpace)
-		return ATA_MEMORY_TOO_SMALL;
+//	uint32_t freeSpace = 0xFFFFFFFF - (uint32_t)buf; //check available space to avoid wrapping
+//	if(bytes > freeSpace)
+//		return ATA_MEMORY_TOO_SMALL;
 
 	ata_clearPRDtables(); //clear PRD tables
 	AtaPRD_s_t prd;
@@ -363,14 +362,16 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 		prd.addr = buf + (65536 * i); //next 64KiB block
 		prd.size = 0; //according to specs, 0 means 64KiB
 		ret = ata_addPRDentry(prd, chan);
-		if(ret != ATA_OK) return ret;
+		if(ret != OK)
+			return ret;
 	}
 	if(bytes % 65536) //if there is some rest
 	{
 		prd.addr = buf + (65536 * i); //next 64KiB block
 		prd.size = bytes % 65536;
 		ret = ata_addPRDentry(prd, chan);
-		if(ret != ATA_OK) return ret;
+		if(ret != OK)
+			return ret;
 	}
 	//set up BMRs
 	//DMA reads from/writes to the drive and writes to/reads from memory. That's why for reading data from drive we set the RWCON bit and not for writing.
@@ -431,7 +432,7 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 		return ATA_DMA_ERR;
 	}
 
-	return ATA_OK;
+	return OK;
 }
 
 

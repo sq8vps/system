@@ -1,4 +1,5 @@
 #include "disk.h"
+#include "mm.h"
 
 #define MBR_SIGNATURE 0x1B8
 #define MBR_FIRST_ENTRY 0x1BE
@@ -12,7 +13,10 @@
 #define MBR_ENTRY_LBA_OFFSET 0x08
 #define MBR_ENTRY_SIZE_OFFSET 0x0C
 
-void disk_init(void)
+#define BUFFER_VADDR 0x100000
+uint32_t buffer_pAddr = 0;
+
+error_t Disk_init(void)
 {
 	for(uint16_t i = 0; i < DISK_TABLE_MAX_ENTRIES; i++)
 	{
@@ -27,20 +31,27 @@ void disk_init(void)
 			diskTable[i].partitions[j].type = TYPE_EMPTY;
 		}
 	}
+	error_t ret = Mm_allocateContiguous(DISK_BUFFER_SIZE / MM_PAGE_SIZE, BUFFER_VADDR, MM_PAGE_FLAG_WRITABLE, 65536 / MM_PAGE_SIZE); //allocate disk buffer that is aligned to 64 KiB (ATA requirement)
+	if(ret != OK)
+		return ret;
+
+	return Mm_getPhysAddr(BUFFER_VADDR, &buffer_pAddr);
 }
 
 
-error_t disk_getPartitions(Disk_s_t *disk)
+error_t Disk_getPartitions(Disk_s_t *disk)
 {
 	if(disk->present != 1)
 		return DISK_NOT_PRESENT;
 
 
 
-	uint8_t d[4096];
-	error_t ret = disk_read(*disk, d, 0, 1); //read first sector
-	if(ret != DISK_OK)
+	uint8_t d[512];
+	error_t ret = Disk_read(*disk, d, 0, 512); //read first sector
+	if(ret != OK)
+	{
 		return ret;
+	}
 
 	if(d[MBR_FIRST_ENTRY + MBR_ENTRY_TYPE_OFFSET] == MBR_TYPE_GPTPROT) //GPT protective partition, this disk uses GPT
 	{
@@ -99,10 +110,10 @@ error_t disk_getPartitions(Disk_s_t *disk)
 		}
 	}
 
-	return DISK_OK;
+	return OK;
 }
 
-void disk_add(void *ata, uint8_t attr)
+void Disk_add(void *ata, uint8_t attr)
 {
 	uint16_t i = 0;
 	for(; i < DISK_TABLE_MAX_ENTRIES; i++)
@@ -115,7 +126,7 @@ void disk_add(void *ata, uint8_t attr)
 	diskTable[i].ata = ata;
 	diskTable[i].attr = attr;
 
-	disk_getPartitions(&diskTable[i]);
+	Disk_getPartitions(&diskTable[i]);
 }
 
 
@@ -124,23 +135,33 @@ void disk_add(void *ata, uint8_t attr)
  * \param disk diskTable entry. Disk must be present.
  * \param *buf Destination buffer, must be word aligned
  * \param lba Starting LBA (48-bit)
- * \param sec Sector count (higher than 0)
- * \return ATA_OK if successful, otherwise destination buffer must be invalidated
+ * \param size Byte count
+ * \return OK if successful, otherwise destination buffer must be invalidated
  */
-error_t disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t sec)
+error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t size)
 {
-	error_t ret = 0;
-	if(disk.present != 1) return DISK_NOT_PRESENT;
+	error_t ret = OK;
+	if(disk.present != 1)
+		return DISK_NOT_PRESENT;
 	if(disk.attr & DISK_TABLE_ATTR_IDE_AHCI_BIT) //AHCI controller
 	{
 
 	}
 	else //IDE controller
 	{
-		ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 0, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, dest, lba, sec);
+		uint16_t sec = size / ((AtaController_s_t*)(disk.ata))->disk[(disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0][(disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0].sectorSize; //calculate sector count
+		ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 0, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, (uint8_t*)buffer_pAddr, lba, sec); //read to buffer
 	}
-	if(ret == ATA_OK) return DISK_OK;
-	else return ret;
+	if(ret == OK)
+	{
+		for(; size > 0; size--)
+		{
+			dest[size - 1] = ((uint8_t*)BUFFER_VADDR)[size - 1]; //copy necessary bytes to destination buffer
+		}
+		return OK;
+	}
+
+	return ret;
 }
 
 /**
@@ -149,9 +170,9 @@ error_t disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t sec)
  * \param *src Source buffer, must be word aligned
  * \param lba Starting LBA (48-bit)
  * \param sec Sector count (higher than 0)
- * \return ATA_OK if successful, otherwise destination sectors must be invalidated
+ * \return OK if successful, otherwise destination sectors must be invalidated
  */
-error_t disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec)
+error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec)
 {
 	error_t ret = 0;
 	if(disk.present != 1) return DISK_NOT_PRESENT;
@@ -163,13 +184,15 @@ error_t disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec)
 	{
 		ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 1, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, src, lba, sec);
 	}
-	if(ret == ATA_OK) return DISK_OK;
-	else return ret;
+	if(ret == OK)
+		return OK;
+	else
+		return ret;
 }
 
 
 
-error_t disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint16_t sec)
+error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint32_t size)
 {
 	if(disk.present != 1)
 		return DISK_NOT_PRESENT;
@@ -177,14 +200,14 @@ error_t disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint
 	if(partition >= DISK_TABLE_MAX_PARTITIONS)
 		return PARTITION_EMPTY;
 
-	if(sec > (disk.partitions[partition].size - lba))
-		return PARTITION_TOO_SMALL;
+	//if(sec > (disk.partitions[partition].size - lba))
+	//	return PARTITION_TOO_SMALL;
 
-	return disk_read(disk, dest, disk.partitions[partition].firstLba + lba, sec);
+	return Disk_read(disk, dest, disk.partitions[partition].firstLba + lba, size);
 }
 
 
-Disk_params_s_t disk_getParams(Disk_s_t disk)
+Disk_params_s_t Disk_getParams(Disk_s_t disk)
 {
 	Disk_params_s_t d;
 	d.present = 0;
@@ -201,5 +224,3 @@ Disk_params_s_t disk_getParams(Disk_s_t disk)
 	}
 	return d;
 }
-
-
