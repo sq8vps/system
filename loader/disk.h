@@ -77,20 +77,21 @@ void Disk_add(void *ata, uint8_t attr);
  * \param disk diskTable entry. Disk must be present.
  * \param *buf Destination buffer, must be word aligned
  * \param lba Starting LBA (48-bit)
- * \param sec Sector count (higher than 0)
- * \return DISK_OK if successful, otherwise the destination buffer must be invalidated
+ * \param offset Starting offset in bytes
+ * \param size Byte count
+ * \return OK if successful, otherwise destination buffer must be invalidated
  */
-error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t size);
+error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t offset, uint32_t size);
 
 /**
  * \brief Writes sectors to disk
  * \param disk diskTable entry. Disk must be present.
  * \param *src Source buffer, must be word aligned
  * \param lba Starting LBA (48-bit)
- * \param sec Sector count (higher than 0)
- * \return DISK_OK if successful, otherwise the destination sectors must be invalidated
+ * \param size Byte count
+ * \return OK if successful, otherwise destination sectors must be invalidated
  */
-error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec);
+error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint32_t size);
 
 /**
  * \brief Reads sectors from specified partition
@@ -98,10 +99,11 @@ error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec);
  * \param partition Partition number starting from 0. Partition must be present.
  * \param *buf Destination buffer, must be word aligned
  * \param lba Starting LBA (48-bit) in respect to partition start (LBA 0 is the first sector of the partition)
- * \param sec Sector count (higher than 0)
+ * \param offset Starting offset in bytes
+ * \param size Byte count
  * \return DISK_OK if successful, otherwise the destination buffer must be invalidated
  */
-error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint32_t size);
+error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint32_t offset, uint32_t size);
 
 /**
  * \brief Get general disk parameters

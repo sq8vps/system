@@ -47,7 +47,7 @@ error_t Disk_getPartitions(Disk_s_t *disk)
 
 
 	uint8_t d[512];
-	error_t ret = Disk_read(*disk, d, 0, 512); //read first sector
+	error_t ret = Disk_read(*disk, d, 0, 0, 512); //read first sector
 	if(ret != OK)
 	{
 		return ret;
@@ -135,10 +135,11 @@ void Disk_add(void *ata, uint8_t attr)
  * \param disk diskTable entry. Disk must be present.
  * \param *buf Destination buffer, must be word aligned
  * \param lba Starting LBA (48-bit)
+ * \param offset Starting offset in bytes
  * \param size Byte count
  * \return OK if successful, otherwise destination buffer must be invalidated
  */
-error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t size)
+error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t offset, uint32_t size)
 {
 	error_t ret = OK;
 	if(disk.present != 1)
@@ -149,17 +150,51 @@ error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t size)
 	}
 	else //IDE controller
 	{
-		uint16_t sec = size / ((AtaController_s_t*)(disk.ata))->disk[(disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0][(disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0].sectorSize; //calculate sector count
-		ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 0, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, (uint8_t*)buffer_pAddr, lba, sec); //read to buffer
-	}
-	if(ret == OK)
-	{
-		for(; size > 0; size--)
+		uint16_t sectorSize = ((AtaController_s_t*)(disk.ata))->disk[(disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0][(disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0].sectorSize;
+
+		uint32_t destIdx = 0;
+
+		for(uint16_t i = 0; i < (size / DISK_BUFFER_SIZE); i++)
 		{
-			dest[size - 1] = ((uint8_t*)BUFFER_VADDR)[size - 1]; //copy necessary bytes to destination buffer
+			uint16_t sec = DISK_BUFFER_SIZE / sectorSize; //calculate sector count
+
+			ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 0, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, (uint8_t*)buffer_pAddr, lba, sec); //read to buffer
+
+			lba += sec;
+
+			if(ret == OK)
+			{
+				for(uint32_t k = offset; k < DISK_BUFFER_SIZE; k++)
+				{
+					dest[destIdx++] = ((uint8_t*)BUFFER_VADDR)[k]; //copy necessary bytes to destination buffer
+				}
+			}
+			else
+				return ret;
+
+			offset = 0;
 		}
-		return OK;
+
+		size %= DISK_BUFFER_SIZE;
+
+		if(size)
+		{
+			uint16_t sec = size / sectorSize; //calculate sector count
+			ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 0, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, (uint8_t*)buffer_pAddr, lba, sec +
+					((size % sectorSize) ? 1 : 0)); //read to buffer
+
+			if(ret == OK)
+			{
+				for(uint32_t k = 0; k < size; k++)
+				{
+					dest[destIdx++] = ((uint8_t*)BUFFER_VADDR)[k + offset]; //copy necessary bytes to destination buffer
+				}
+			}
+			else
+				return ret;
+		}
 	}
+
 
 	return ret;
 }
@@ -169,12 +204,14 @@ error_t Disk_read(Disk_s_t disk, uint8_t *dest, uint64_t lba, uint32_t size)
  * \param disk diskTable entry. Disk must be present.
  * \param *src Source buffer, must be word aligned
  * \param lba Starting LBA (48-bit)
- * \param sec Sector count (higher than 0)
+ * \param size Byte count
  * \return OK if successful, otherwise destination sectors must be invalidated
  */
-error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec)
+error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint32_t size)
 {
-	error_t ret = 0;
+	return NOT_IMPLEMENTED;
+
+	error_t ret = OK;
 	if(disk.present != 1) return DISK_NOT_PRESENT;
 	if(disk.attr & DISK_TABLE_ATTR_IDE_AHCI_BIT) //AHCI controller
 	{
@@ -182,17 +219,46 @@ error_t Disk_write(Disk_s_t disk, uint8_t *src, uint64_t lba, uint16_t sec)
 	}
 	else //IDE controller
 	{
-		ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 1, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, src, lba, sec);
+
+		uint32_t srcIdx = 0;
+
+		for(uint16_t i = 0; i < (size / DISK_BUFFER_SIZE); i++)
+		{
+			for(uint32_t k = 0; k < DISK_BUFFER_SIZE; k++)
+			{
+				((uint8_t*)BUFFER_VADDR)[k] = src[srcIdx++]; //copy necessary bytes from source buffer
+			}
+
+			uint16_t sec = DISK_BUFFER_SIZE / ((AtaController_s_t*)(disk.ata))->disk[(disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0][(disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0].sectorSize; //calculate sector count
+
+			ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 1, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, (uint8_t*)buffer_pAddr, lba, sec); //store to disk
+
+			lba += sec;
+
+			if(ret != OK)
+				return ret;
+		}
+
+		if(size % DISK_BUFFER_SIZE)
+		{
+			for(uint32_t k = 0; k < size % DISK_BUFFER_SIZE; k++)
+			{
+				((uint8_t*)BUFFER_VADDR)[k] = src[srcIdx++]; //copy necessary bytes from source buffer
+			}
+
+			ret = ata_IDEreadWrite(*(AtaController_s_t*)(disk.ata), 1, (disk.attr & DISK_TABLE_ATTR_CHAN_BIT) > 0, (disk.attr & DISK_TABLE_ATTR_PRIMSEC_BIT) > 0, (uint8_t*)buffer_pAddr, lba, 1); //store to disk
+
+			if(ret != OK)
+				return ret;
+		}
 	}
-	if(ret == OK)
-		return OK;
-	else
-		return ret;
+
+	return ret;
 }
 
 
 
-error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint32_t size)
+error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint64_t lba, uint32_t offset, uint32_t size)
 {
 	if(disk.present != 1)
 		return DISK_NOT_PRESENT;
@@ -203,7 +269,7 @@ error_t Disk_readPartition(Disk_s_t disk, uint8_t partition, uint8_t *dest, uint
 	//if(sec > (disk.partitions[partition].size - lba))
 	//	return PARTITION_TOO_SMALL;
 
-	return Disk_read(disk, dest, disk.partitions[partition].firstLba + lba, size);
+	return Disk_read(disk, dest, disk.partitions[partition].firstLba + lba, offset, size);
 }
 
 

@@ -5,6 +5,7 @@
 #include "defines.h"
 #include "fat.h"
 #include "mm.h"
+#include "elf.h"
 
 static uint64_t prepareKernelMemory(uint32_t kernelSize);
 static void loader_findAddress(uint64_t bytes, uint64_t *addr, uint64_t *size);
@@ -15,7 +16,7 @@ uint8_t loader_bootDrive = 255; //diskTable boot disk entry number
 
 uint8_t loader_buf[512] = {0}; //sector buffer
 
-uint8_t test_buf[32768] __attribute__ ((aligned(8)));
+extern uint32_t pageUsageTable[];
 
 struct KerMem
 {
@@ -56,7 +57,6 @@ static void loop(void)
 	uint32_t pageDirAddr;
 	Mm_init(&pageDirAddr);
 	Mm_enablePaging(pageDirAddr);
-	printf("Paging enabled\n");
 
 	ata_init(); //init ATA
 	Disk_init();
@@ -70,7 +70,7 @@ static void loop(void)
 	{
 		if(diskTable[i].present == 1)
 		{
-			if(Disk_read(diskTable[i], loader_buf, 0, 512) == OK) //read 0th sector to determine disk signature
+			if(Disk_read(diskTable[i], loader_buf, 0, 0, 512) == OK) //read 0th sector to determine disk signature
 			{
 
 				if((*((uint32_t*)(loader_buf + MBR_SIGNATURE_OFFSET)) == *((uint32_t*)DISK_SIG))) //check if the signature matches the signature stored by the 2nd stage bootloader
@@ -93,10 +93,11 @@ static void loop(void)
 	Fat_init(&(diskTable[loader_bootDrive]), 0);
 	Fat_changeDir(&fatDisk, "/system/");
 
+	uint32_t kernelEntry = 0;
+	Elf_load("KERNEL32.ELF", &kernelEntry);
 
-
-	//printf("Returned %d\n", (int)Fat_readFile(&fatDisk, "LDR32", 0, 4096, test_buf));
-
+	asm volatile("mov eax, %0" : : "d" (pageUsageTable) : );
+	asm volatile("jmp %0" : : "d" (kernelEntry) : );
 
 
 

@@ -348,8 +348,6 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 	uint32_t bytes = sec * ata.disk[chan][dev].sectorSize; //get number of bytes
 	uint16_t blocks = bytes / 65536; //get number of whole 64KiB blocks (for each PRD entry)
 
-
-
 //	uint32_t freeSpace = 0xFFFFFFFF - (uint32_t)buf; //check available space to avoid wrapping
 //	if(bytes > freeSpace)
 //		return ATA_MEMORY_TOO_SMALL;

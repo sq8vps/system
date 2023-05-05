@@ -54,5 +54,5 @@ error_t Fat_changeDirN(Fat32_s_t *fat, uint8_t *path, uint16_t pathLen);
 
 error_t Fat_getFileSize(Fat32_s_t *fat, uint8_t *path, uint32_t *size);
 error_t Fat_readWholeFile(Fat32_s_t *fat, uint8_t *path, uint8_t *dest, uint32_t *outSize);
-error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t end, uint8_t *dest);
+error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t size, uint8_t *dest);
 #endif /* LOADER_FAT_H_ */

@@ -234,9 +234,9 @@ error_t Mm_getPhysAddr(uint32_t vAddress, uint32_t *pAddress)
 error_t Mm_mapPage(uint32_t vAddress, uint32_t pAddress, uint8_t flags)
 {
 	uint32_t *pageDir = (uint32_t*)0xFFFFF000; //page directory is in the last page of the virtual memory
-	uint32_t *pageTable = (uint32_t*)0xFFC00000 + ((vAddress & 0xFFC00000) >> 12); //calculate appropriate page table address
+	uint32_t *pageTable = (uint32_t*)(0xFFC00000 + ((vAddress & 0xFFC00000) >> 10)); //calculate appropriate page table address
 
-	if(pageDir[vAddress >> 22] & 1 == 0) //check if page table is present
+	if((pageDir[vAddress >> 22] & 1) == 0) //check if page table is present
 	{
 		//if not, create one
 		uint32_t fr = mm_findFreeFrame();
@@ -246,6 +246,7 @@ error_t Mm_mapPage(uint32_t vAddress, uint32_t pAddress, uint8_t flags)
 		MARK_PAGE_USED(fr);
 
 		pageDir[vAddress >> 22] = PAGE_IDX_TO_PHYS(fr) | 0x7; //store page directory entry
+		asm volatile("invlpg [%0]" : : "r" (pageTable) : "memory");
 		//now, the table can be accessed
 
 		for(uint16_t i = 0; i < 1024; i++)
@@ -254,8 +255,7 @@ error_t Mm_mapPage(uint32_t vAddress, uint32_t pAddress, uint8_t flags)
 		}
 	}
 
-
-	if(pageTable[(vAddress >> 12) & 0x3FF] & 1 == 0) //check if page is already present
+	if(pageTable[(vAddress >> 12) & 0x3FF] & 1) //check if page is already present
 		return MM_PAGE_ALREADY_MAPPED;
 
 	pageTable[(vAddress >> 12) & 0x3FF] = (pAddress & 0xFFFFF000) | flags | MM_PAGE_FLAG_PRESENT;

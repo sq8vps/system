@@ -1,6 +1,8 @@
 #include "elf.h"
-#include "defines.h"
+
 #include "fat.h"
+#include "mm.h"
+#include "disp.h"
 
 struct Elf32_header
 {
@@ -25,11 +27,22 @@ struct Elf32_header
         uint16_t sectionHeaderNamesIndex;
 } __attribute__ ((packed()));
 
+struct Elf32_prog_head_entry
+{
+	uint32_t type;
+	uint32_t offset;
+	uint32_t vAddr;
+	uint32_t pAddr;
+	uint32_t fileSize;
+	uint32_t memSize;
+	uint32_t flags;
+	uint32_t align;
+} __attribute__ ((packed()));
+
 uint8_t buf[4096] = {0};
 
 
-
-error_t Elf_load(uint8_t *name, uint8_t kernelSpace, uint32_t *entryPoint)
+error_t Elf_load(uint8_t *name, uint32_t *entryPoint)
 {
 	error_t ret = OK;
 	ret = Fat_readFile(&fatDisk, name, 0, 64, buf);
@@ -52,6 +65,38 @@ error_t Elf_load(uint8_t *name, uint8_t kernelSpace, uint32_t *entryPoint)
 	if(h->instrSet != 0x03)
 		return ELF_INCOMPATIBLE;
 
-	entryPoint = (uint32_t*)h->entry;
+	*entryPoint = (h->entry);
 
+	uint16_t progHeadEntSize = h->programHeaderEntrySize;
+	uint16_t progHeadEntCount = h->programHeaderEntryCount;
+
+	ret = Fat_readFile(&fatDisk, name, h->programHeaderPos, progHeadEntSize * progHeadEntCount, buf); //read program header entries
+	if(ret != OK)
+		return ret;
+
+	struct Elf32_prog_head_entry *p;
+	for(uint16_t i = 0; i < progHeadEntCount; i++)
+	{
+		p = (struct Elf32_prog_head_entry *)(buf + i * progHeadEntSize); //get next program header entry
+
+		if(p->type != 0x01) //only PT_LOAD type
+			continue;
+		if(p->memSize == 0) //skip empty segments
+			continue;
+		if(p->fileSize > p->memSize) //file size must not be bigger than memory size
+			return ELF_BROKEN;
+
+		ret = Mm_allocateEx(p->vAddr, p->memSize / MM_PAGE_SIZE + ((p->memSize % MM_PAGE_SIZE) ? 1 : 0), MM_PAGE_FLAG_SUPERVISOR); //allocate page(s)
+		if(ret != OK)
+			return ret;
+
+		ret = Fat_readFile(&fatDisk, name, p->offset, p->fileSize, (uint8_t*)(p->vAddr)); //read segment
+		if(ret != OK)
+			return ret;
+
+		for(uint32_t i = p->fileSize; i < p->memSize; i++) //fill rest with zeros
+			*((uint8_t*)(p->vAddr + i)) = 0;
+	}
+
+	return OK;
 }

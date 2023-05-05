@@ -35,7 +35,7 @@ error_t Fat_init(Disk_s_t *disk, uint8_t partition)
 	if(disk->partitions[partition].present == 0 || disk->partitions[partition].type != TYPE_FAT32)
 		return FAT_NOT_FAT;
 
-	error_t ret = Disk_readPartition(*disk, partition, buf, 0, 512); //read first partition sector
+	error_t ret = Disk_readPartition(*disk, partition, buf, 0, 0, 512); //read first partition sector
 	if(ret != OK)
 		return ret;
 
@@ -57,6 +57,8 @@ error_t Fat_init(Disk_s_t *disk, uint8_t partition)
 	fatDisk.header.bytesPerCluster = fatDisk.header.bytesPerSector * fatDisk.header.sectorPerCluster;
 
 	fatDisk.initialized = 1;
+
+	return OK;
 }
 
 static error_t fat_getNextCluster(Fat32_s_t *fat, uint32_t currentCluster, uint32_t *nextCluster)
@@ -68,7 +70,7 @@ static error_t fat_getNextCluster(Fat32_s_t *fat, uint32_t currentCluster, uint3
 	//first we need to calculate in which sector the appropriate entry resides, so sector=floor(cluster_number/entries_in_sector),
 	//that gives sector=floor(cluster_number*4/sector_size)
 	//the byte number in sector is equal to cluster_number mod entries_in_sector
-	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.firstFatAddr + (currentCluster * 4 / fat->header.bytesPerSector), 512); //read appropriate FAT sector
+	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.firstFatAddr + (currentCluster * 4 / fat->header.bytesPerSector), 0, 512); //read appropriate FAT sector
 	if(ret != OK)
 		return ret;
 
@@ -105,7 +107,7 @@ static error_t fat_goToFile(Fat32_s_t *fat, uint8_t *path, uint8_t *name)
 
 static error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, enum Fat_file_type type, uint32_t *outCluster, uint32_t *outSize)
 {
-	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, 0, fat->header.bytesPerCluster); //read cluster
 	if(ret != OK)
 		return ret;
 
@@ -249,7 +251,7 @@ static error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, e
 			ret = fat_getNextCluster(fat, cluster, &cluster); //check next cluster
 			if(ret == OK)
 			{
-				ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+				ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, 0, fat->header.bytesPerCluster); //read cluster
 				if(ret != OK)
 					return ret;
 			}
@@ -357,7 +359,7 @@ error_t Fat_readWholeFile(Fat32_s_t *fat, uint8_t *path, uint8_t *dest, uint32_t
 	uint16_t i = 0;
 	for(; i < (*outSize / fat->header.bytesPerCluster); i++) //loop for whole clusters
 	{
-		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, 0, fat->header.bytesPerCluster); //read cluster
 		if(ret != OK)
 			return ret;
 
@@ -368,7 +370,7 @@ error_t Fat_readWholeFile(Fat32_s_t *fat, uint8_t *path, uint8_t *dest, uint32_t
 	}
 	if(*outSize % fat->header.bytesPerCluster) //remaining bytes
 	{
-		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, *outSize % fat->header.bytesPerCluster); //read remaining bytes
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, 0, *outSize % fat->header.bytesPerCluster); //read remaining bytes
 		if(ret != OK)
 			return ret;
 	}
@@ -377,36 +379,38 @@ error_t Fat_readWholeFile(Fat32_s_t *fat, uint8_t *path, uint8_t *dest, uint32_t
 }
 
 
-error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t end, uint8_t *dest)
+error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t size, uint8_t *dest)
 {
 	if(fat->initialized == 0)
 		return FAT_NOT_INITIALIZED;
 
-	if((end > 0) && (start > end))
-		return FAT_INVALID_VAL;
+	if(size == 0)
+		return OK;
 
 	error_t ret = OK;
 
 
-	uint32_t cluster, size;
-	ret = fat_selectFile(fat, fat->currentCluster, path, FAT_FILE, &cluster, &size); //select (find) file
+	uint32_t cluster, fileSize;
+	ret = fat_selectFile(fat, fat->currentCluster, path, FAT_FILE, &cluster, &fileSize); //select (find) file
 	if(ret != OK)
 		return ret;
 
-	if(end == 0)
-		end = size;
+	if(size == 0)
+		size = fileSize;
 
 	for(uint16_t i = 0; i < (start / fat->header.bytesPerCluster); i++)
 	{
 		ret = fat_getNextCluster(fat, cluster, &cluster); //look for the first needed cluster
 		if(ret != OK)
 			return ret;
+
+		start -= fat->header.bytesPerCluster;
 	}
 
 	uint16_t i = 0;
-	for(; i < ((end - start + 1) / fat->header.bytesPerCluster); i++) //loop for whole clusters
+	for(; i < (size / fat->header.bytesPerCluster); i++) //loop for whole clusters
 	{
-		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, fat->header.bytesPerCluster); //read cluster
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, start, fat->header.bytesPerCluster); //read cluster
 		if(ret != OK)
 			return ret;
 
@@ -414,10 +418,12 @@ error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t end
 		if(ret != OK)
 			return ret;
 
+		start = 0;
+
 	}
-	if((end - start + 1) % fat->header.bytesPerCluster) //remaining bytes
+	if(size % fat->header.bytesPerCluster) //remaining bytes
 	{
-		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, (end - start + 1) % fat->header.bytesPerCluster); //read remaining bytes
+		ret = Disk_readPartition(*(fat->disk), fat->partition, dest + i * fat->header.bytesPerCluster, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, start, size % fat->header.bytesPerCluster); //read remaining bytes
 		if(ret != OK)
 			return ret;
 	}

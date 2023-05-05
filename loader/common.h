@@ -21,6 +21,7 @@
  */
 void *memcpy(void *to, const void *from, uint64_t num);
 
+
 /**
  * \brief Aligns selected address to the nearest possible page start address (always rounding up)
  * \param[in] addr Address to be aligned

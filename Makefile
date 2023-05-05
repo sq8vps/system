@@ -1,15 +1,10 @@
-all: clean boot others
+all: boot.bin loader.bin
 
-boot: boot.bin loader.bin
-
-boot.bin : asm/boot.asm
-	nasm $^ -f bin -o $@
+boot.bin : asm/boot.asm asm/*.asm
+	nasm $< -f bin -o $@
 	
-loader.bin : asm/loader.asm
-	nasm $^ -f bin -o $@
+loader.bin : asm/loader.asm asm/*.asm
+	nasm $< -f bin -o $@
 
 clean:
 	rm -fr *.bin *.dis *.o *.elf
-	
-others:
-	cd loader && make
