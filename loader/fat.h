@@ -45,7 +45,7 @@ typedef struct
 } Fat32_s_t;
 
 
-Fat32_s_t fatDisk;
+extern Fat32_s_t fatDisk;
 
 error_t Fat_init(Disk_s_t *disk, uint8_t partition);
 

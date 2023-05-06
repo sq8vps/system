@@ -49,7 +49,7 @@ typedef struct
 	} partitions[DISK_TABLE_MAX_PARTITIONS];
 } Disk_s_t;
 
-Disk_s_t diskTable[DISK_TABLE_MAX_ENTRIES]; /**< Disk table */
+extern Disk_s_t diskTable[DISK_TABLE_MAX_ENTRIES]; /** Disk table */
 
 typedef struct
 {

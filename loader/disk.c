@@ -1,6 +1,8 @@
 #include "disk.h"
 #include "mm.h"
 
+Disk_s_t diskTable[DISK_TABLE_MAX_ENTRIES]; /** Disk table */
+
 #define MBR_SIGNATURE 0x1B8
 #define MBR_FIRST_ENTRY 0x1BE
 #define MBR_ENTRY_SIZE 16

@@ -26,15 +26,6 @@ struct KerMem
 	uint64_t *kernelAddr;
 };
 
-/**
- * This is the 32-bit EAEOS bootloader.
- *
- *
- *
- *
- *
- */
-
 static void loop(void)
 {
 	asm("ldrLoop: cli");
@@ -50,7 +41,7 @@ static void loop(void)
  * \warning This function never returns
  */
 
- __attribute__ ((section (".ldr"))) volatile void loaderEntry(void)
+ __attribute__ ((section (".ldr"))) void loaderEntry(void)
 {
 	disp_clear(); //clear screen
 
@@ -94,7 +85,12 @@ static void loop(void)
 	Fat_changeDir(&fatDisk, "/system/");
 
 	uint32_t kernelEntry = 0;
-	Elf_load("KERNEL32.ELF", &kernelEntry);
+	if(Elf_load("KERNEL32.ELF", &kernelEntry) == OK)
+	{
+		printf("Kernel loaded successfully. Entry point at %X\n", kernelEntry);
+		while(1);;
+	}
+
 
 	asm volatile("mov eax, %0" : : "d" (pageUsageTable) : );
 	asm volatile("jmp %0" : : "d" (kernelEntry) : );

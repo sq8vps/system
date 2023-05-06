@@ -6,7 +6,6 @@ C_SOURCES = $(wildcard *.c)
 HEADERS = $(wildcard *.h)
 OBJ = ${C_SOURCES:.c=.o}
 
-
 all: LDR32
 
 %.o : %.c $(HEADERS)
@@ -14,7 +13,7 @@ all: LDR32
 
 LDR32 : ${OBJ}
 	$(LNK) -o $@ -T loader.ld -Ttext 0xA000 $^
-	cp $@ ../output
+	cp $@ ../output/$@
 	
 clean:
 	rm -fr  *.o *.gch LDR32

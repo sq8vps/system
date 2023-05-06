@@ -13,7 +13,6 @@
 ;ecx - adres pierwszego sektora do odczytania
 ;ilosc i poczatkowy adres ograniczony do 32 bitow
 _disk_load:		
-
 	push edx
 	push ax
 	push es
@@ -25,8 +24,6 @@ _disk_load:
 	jnz notAlignedErr
 	
 	mov [diskNumber],al ;zapisujemy numer dysku
-	
-
 
 	disk_loop:
 	
@@ -42,11 +39,10 @@ _disk_load:
 	
 	push edx ;wrzucamy na stos liczbe pozostalych sektorow	
 
-
 	mov dl,[diskNumber] ;w dl ma byc numer dysku
 	mov ah,0x42 ;czytamy sektor
+
 	int 0x13
-	
 
 	pop edx ;i sciagamy liczbe pozostalych sektorow
 	
@@ -65,14 +61,14 @@ _disk_load:
 	xor bx,bx
 	
 	disk_cont:
-	
+
+
 	inc ecx ;kolejny sektor
 	dec edx ;coraz mniej sektorow do odczytania
-	jnz disk_loop  ;jesli nie zostalo zero, to zapetlamy
+	jnz disk_loop  ;jesli nie zostalo zero, to zapetlamy   
 	
 	;mov si,newLineMsg
 	;call _print16
-
 
 	popf
 	pop ecx

@@ -39,7 +39,7 @@ struct Elf32_prog_head_entry
 	uint32_t align;
 } __attribute__ ((packed()));
 
-uint8_t buf[4096] = {0};
+static uint8_t buf[4096] = {0};
 
 
 error_t Elf_load(uint8_t *name, uint32_t *entryPoint)

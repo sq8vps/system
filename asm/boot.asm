@@ -9,7 +9,6 @@
 [bits 16]
 [org 0x7c00]
 _start:
-
 mov [BOOT_DRIVE],dl ;zapisujemy numer dysku rozruchowego, z ktorego uruchiomiony byl bootloader
 
 cli
@@ -57,8 +56,8 @@ hlt
 %include "asm/print16.asm"
 %include "asm/disk.asm"
 
-LOADER_OFFSET equ 0x7E00
-LOADER_SIZE equ 4096
+LOADER_OFFSET equ 0x7E00 ; location to store the loader
+LOADER_SIZE equ 8 ; loader size in 512-byte sectors (rounded up)
 
 
 noLoaderErrorMsg db "Error: EAEOS bootloader not found!",0xd,0xa,"Cannot continue.",0xd,0xa,0

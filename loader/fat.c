@@ -18,7 +18,7 @@
 #define FAT_ENTRY_ATTR_ARCHIVE 0x20
 
 
-
+Fat32_s_t fatDisk;
 
 enum Fat_file_type
 {
@@ -26,7 +26,7 @@ enum Fat_file_type
 	FAT_DIRECTORY,
 };
 
-uint8_t buf[8192];
+static uint8_t buf[8192];
 
 error_t Fat_init(Disk_s_t *disk, uint8_t partition)
 {

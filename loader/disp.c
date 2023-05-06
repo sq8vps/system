@@ -236,7 +236,7 @@ int printf(const char *format, ...)
 			}
 			else if((*(format + 1) == 'x') || (*(format + 1) == 'X')) //lowercase/uppercase hex
 			{
-				uint64_t a = (uint64_t)va_arg(args, int);
+				uint64_t a = (uint64_t)va_arg(args, unsigned int);
 				uint8_t wasNonZero = 0;
 				for(uint8_t i = 0; i < 16; i++) //16 hex characters max (64 bits)
 				{
