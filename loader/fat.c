@@ -398,9 +398,9 @@ error_t Fat_readFile(Fat32_s_t *fat, uint8_t *path, uint32_t start, uint32_t siz
 	if(size == 0)
 		size = fileSize;
 
-	for(uint16_t i = 0; i < (start / fat->header.bytesPerCluster); i++)
+	while(start >= fat->header.bytesPerCluster) //start from appropriate cluster
 	{
-		ret = fat_getNextCluster(fat, cluster, &cluster); //look for the first needed cluster
+		ret = fat_getNextCluster(fat, cluster, &cluster); //look for the next cluster
 		if(ret != OK)
 			return ret;
 

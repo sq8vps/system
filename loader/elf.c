@@ -25,7 +25,7 @@ struct Elf32_header
         uint16_t sectionHeaderEntrySize;
         uint16_t sectionHeaderEntryCount;
         uint16_t sectionHeaderNamesIndex;
-} __attribute__ ((packed()));
+} __attribute__ ((packed));
 
 struct Elf32_prog_head_entry
 {
@@ -37,7 +37,7 @@ struct Elf32_prog_head_entry
 	uint32_t memSize;
 	uint32_t flags;
 	uint32_t align;
-} __attribute__ ((packed()));
+} __attribute__ ((packed));
 
 static uint8_t buf[4096] = {0};
 

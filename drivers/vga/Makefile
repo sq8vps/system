@@ -1,11 +1,11 @@
-NAME = kernel32.elf
+NAME = libvga.elf
 CC = gcc
 LNK = ld
 ASM = nasm
 CC_FLAGS = -I . -mgeneral-regs-only -ffreestanding -m32 -masm=intel
 ASM_FLAGS = -f elf32
-LNK_FLAGS = -m elf_i386 -T kernel.ld
-LNK_STATIC_LIBS = ../drivers/vga/libvga.elf
+LNK_FLAGS = -m elf_i386 -r
+LNK_STATIC_LIBS = ../hal/libhal.elf ../libcommon.elf
 
 CC_SOURCES = $(wildcard *.c)
 CC_HEADERS = $(wildcard *.h)
@@ -24,7 +24,7 @@ all: $(NAME)
 
 $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
-	cp $@ ../output/
+	cp $@ ../../output/drivers
 	
 clean:
 	rm -fr  *.o *.gch $(NAME)

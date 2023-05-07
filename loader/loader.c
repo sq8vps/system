@@ -7,9 +7,6 @@
 #include "mm.h"
 #include "elf.h"
 
-static uint64_t prepareKernelMemory(uint32_t kernelSize);
-static void loader_findAddress(uint64_t bytes, uint64_t *addr, uint64_t *size);
-
 uint8_t loader_bootDrive = 255; //diskTable boot disk entry number
 
 #define MBR_SIGNATURE_OFFSET 440
@@ -41,7 +38,8 @@ static void loop(void)
  * \warning This function never returns
  */
 
- __attribute__ ((section (".ldr"))) void loaderEntry(void)
+ __attribute__ ((section (".ldr"))) 
+ void loaderEntry(void)
 {
 	disp_clear(); //clear screen
 
@@ -85,49 +83,12 @@ static void loop(void)
 	Fat_changeDir(&fatDisk, "/system/");
 
 	uint32_t kernelEntry = 0;
-	if(Elf_load("KERNEL32.ELF", &kernelEntry) == OK)
-	{
-		printf("Kernel loaded successfully. Entry point at %X\n", kernelEntry);
-		while(1);;
-	}
-
+	printf("ELF load: %d\n", (int)Elf_load("KERNEL32.ELF", &kernelEntry));
 
 	asm volatile("mov eax, %0" : : "d" (pageUsageTable) : );
 	asm volatile("jmp %0" : : "d" (kernelEntry) : );
 
-
-
-
 	loop();
 }
-
-
-/*static uint64_t prepareKernelMemory(uint32_t kernelSize)
-{
-	struct KerMem mem;
-	mem.pageTableCount = 1 + MIN_KERNEL_MEMORY / 4096;
-
-	uint64_t *dummy;
-	//MIN_KERNEL_MEMORY stores required memory for kernel itself. Here we also need additional memory for one page directory and ceil(MIN_KERNEL_MEMORY/4 MiB) page tables (each page table can address 4 MiB of physical memory)
-	loader_findAddress(MIN_KERNEL_MEMORY + PAGE_SIZE * (1 + mem.pageTableCount), mem.pageDir, dummy); //find memory region for kernel
-
-	if(*mem.kernelAddr == 0)
-	{
-#if __DEBUG >0
-		printf("\nBoot failed: not enough memory to load kernel\n");
-#endif
-		loop();
-	}
-	else
-	{
-
-	}
- 2
-
-
-}*/
-
-
-
 
 
