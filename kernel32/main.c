@@ -1,17 +1,23 @@
 #include <stdint.h>
-#include "it.h"
+#include "it/it.h"
+#include "mm/mm.h"
+#include "mm/heap.h"
 #include "../drivers/vga/vga.h"
 
-void main(void)
+/**
+ * @brief Parameters passed to the kernel by the bootloader
+*/
+struct KernelEntryArgs
 {
-	uint32_t *pageUsageTable;
-	asm volatile("mov %0, eax" : "=d" (pageUsageTable) : : );
-	
-	disp_clear();
-	printf("Jadro!!!\n");
+	uint32_t kernelPageDir;
+	uint32_t pageUsageTable;
+} __attribute__ ((packed));
+
+void main(struct KernelEntryArgs args)
+{
 	It_init();
-	
-	//asm volatile("int 0x30");
+	Mm_init(args.pageUsageTable, args.kernelPageDir);
+	disp_clear();
 
 	while(1);;
 }

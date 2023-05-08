@@ -86,7 +86,7 @@ error_t Elf_load(uint8_t *name, uint32_t *entryPoint)
 		if(p->fileSize > p->memSize) //file size must not be bigger than memory size
 			return ELF_BROKEN;
 
-		ret = Mm_allocateEx(p->vAddr, p->memSize / MM_PAGE_SIZE + ((p->memSize % MM_PAGE_SIZE) ? 1 : 0), MM_PAGE_FLAG_SUPERVISOR); //allocate page(s)
+		ret = Mm_allocateEx(p->vAddr, p->memSize / MM_PAGE_SIZE + ((p->memSize % MM_PAGE_SIZE) ? 1 : 0), 0); //allocate page(s)
 		if(ret != OK)
 			return ret;
 

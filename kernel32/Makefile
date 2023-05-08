@@ -7,17 +7,17 @@ ASM_FLAGS = -f elf32
 LNK_FLAGS = -m elf_i386 -T kernel.ld
 LNK_STATIC_LIBS = ../drivers/vga/libvga.elf
 
-CC_SOURCES = $(wildcard *.c)
-CC_HEADERS = $(wildcard *.h)
-ASM_SOURCES = $(wildcard *.asm)
-ASM_INCLUDES = $(wildcard *.inc)
+CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c)
+CC_HEADERS = $(wildcard **/*.h) $(wildcard *.h)
+ASM_SOURCES = $(wildcard **/*.asm)
+ASM_INCLUDES = $(wildcard **/*.inc)
 CC_OBJ = ${CC_SOURCES:.c=.o}
 ASM_OBJ = ${ASM_SOURCES:.asm=.o}
 
 all: $(NAME)
 
 %.o : %.c $(CC_HEADERS)
-	$(CC) -c $(CC_FLAGS) $< 
+	$(CC) -c $(CC_FLAGS) -o $@ $< 
 	
 %.o : %.asm $(ASM_INCLUDES)
 	$(ASM) $< -o $@ $(ASM_FLAGS)
@@ -27,4 +27,4 @@ $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	cp $@ ../output/
 	
 clean:
-	rm -fr  *.o *.gch $(NAME)
+	rm -f $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)

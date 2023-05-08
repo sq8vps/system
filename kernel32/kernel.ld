@@ -3,7 +3,8 @@ OUTPUT_ARCH(i386)
 ENTRY(main)
 SECTIONS
 {
-  . = 0xE0000000;
+  /* This is the kernel image location. Specified in documentation. */
+  . = 0xD0000000;
   .text           :
   {
     *(.text .text.*)

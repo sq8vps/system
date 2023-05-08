@@ -1,6 +1,6 @@
 #include "it.h"
-#include "../drivers/vga/vga.h"
-#include "../drivers/hal/hal.h"
+#include "../../drivers/vga/vga.h"
+#include "../../drivers/hal/hal.h"
 
 #define GDT_CODE_SELECTOR 0x08
 
@@ -50,6 +50,7 @@ __attribute__ ((interrupt))
 void defaultIt_h(struct ItFrame *f)
 {
 	printf("Unhandled interrupt! EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->ip, f->cs, f->flags);
+	asm volatile("xchg bx, bx");
 	asm volatile("cli");
 	asm volatile("hlt");
 	while(1);;
@@ -62,6 +63,7 @@ __attribute__ ((interrupt))
 void defaultItEC_h(struct ItFrameEC *f)
 {
 	printf("Unhandled exception! Error code: 0x%X, EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->error, f->ip, f->cs, f->flags);
+	asm volatile("xchg bx, bx");
 	asm volatile("cli");
 	asm volatile("hlt");
 	while(1);;

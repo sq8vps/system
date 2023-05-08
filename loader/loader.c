@@ -30,6 +30,14 @@ static void loop(void)
 	asm("jmp ldrLoop");
 }
 
+/**
+ * @brief Parameters passed to the kernel by the bootloader
+*/
+struct KernelEntryArgs
+{
+	uint32_t kernelPageDir;
+	uint32_t pageUsageTable;
+} __attribute__ ((packed));
 
 
 /**
@@ -84,9 +92,15 @@ static void loop(void)
 
 	uint32_t kernelEntry = 0;
 	printf("ELF load: %d\n", (int)Elf_load("KERNEL32.ELF", &kernelEntry));
+	printf("Page usage table: 0x%X, kernel page directory: 0x%X\n", pageUsageTable, pageDirAddr);
 
-	asm volatile("mov eax, %0" : : "d" (pageUsageTable) : );
-	asm volatile("jmp %0" : : "d" (kernelEntry) : );
+	//fill kernel entry parameters structure
+	struct KernelEntryArgs kernelArgs;
+	kernelArgs.kernelPageDir = pageDirAddr;
+	kernelArgs.pageUsageTable = (uint32_t)&pageUsageTable;
+
+	//call kernel
+	(*((void(*)(struct KernelEntryArgs))kernelEntry))(kernelArgs);
 
 	loop();
 }
