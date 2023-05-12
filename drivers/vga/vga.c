@@ -1,5 +1,5 @@
 #include "vga.h"
-#include "../hal/hal.h"
+#include "../../kernel32/hal/hal.h"
 #include "../common.h"
 
 #define PRINTF_INT_MAX_DIGITS 9

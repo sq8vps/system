@@ -18,7 +18,7 @@
 
 /**
  * @defgroup llMm Low-level memory management routines
- * @ingroup llMm
+ * @ingroup mm
  * @{
 */
 

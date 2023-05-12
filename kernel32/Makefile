@@ -1,11 +1,11 @@
 NAME = kernel32.elf
-CC = gcc
-LNK = ld
+CC = i686-elf-gcc
+LNK = i686-elf-gcc
 ASM = nasm
-CC_FLAGS = -I . -mgeneral-regs-only -ffreestanding -m32 -masm=intel
+CC_FLAGS = -I . -c -ffreestanding -mgeneral-regs-only -masm=intel
 ASM_FLAGS = -f elf32
-LNK_FLAGS = -m elf_i386 -T kernel.ld
-LNK_STATIC_LIBS = ../drivers/vga/libvga.elf
+LNK_FLAGS = -nostdlib -T kernel.ld -ffreestanding -z noexecstack
+LNK_STATIC_LIBS = -lgcc
 
 CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c)
 CC_HEADERS = $(wildcard **/*.h) $(wildcard *.h)
@@ -17,7 +17,7 @@ ASM_OBJ = ${ASM_SOURCES:.asm=.o}
 all: $(NAME)
 
 %.o : %.c $(CC_HEADERS)
-	$(CC) -c $(CC_FLAGS) -o $@ $< 
+	$(CC) $(CC_FLAGS) -o $@ $< 
 	
 %.o : %.asm $(ASM_INCLUDES)
 	$(ASM) $< -o $@ $(ASM_FLAGS)

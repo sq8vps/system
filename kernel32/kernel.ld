@@ -1,6 +1,10 @@
 OUTPUT_FORMAT("elf32-i386")
 OUTPUT_ARCH(i386)
 ENTRY(main)
+__KERNEL_STACK_SIZE = 0x20000; /* 128KiB */
+__KERNEL_PAGE_SIZE = 4096; /* 4096 B*/
+PROVIDE(_KERNEL_STACK_SIZE = __KERNEL_STACK_SIZE);
+PROVIDE(_KERNEL_PAGE_SIZE = __KERNEL_PAGE_SIZE); 
 SECTIONS
 {
   /* This is the kernel image location. Specified in documentation. */
@@ -12,6 +16,7 @@ SECTIONS
   PROVIDE (__etext = .);
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
+  . = ALIGN(__KERNEL_PAGE_SIZE);
   .data           :
   {
     *(.data .data.*)
@@ -21,11 +26,10 @@ SECTIONS
   .bss            :
   {
    *(.bss .bss.*)
-   /* Align here to ensure that the .bss section occupies space up to
-      _end.  Align after .bss to ensure correct alignment even if the
-      .bss section disappears because there are no input sections.
-      FIXME: Why do we need it? When there is no .bss section, we don't
-      pad the .data section.  */
+   . = ALIGN(. != 0 ? 64 / 8 : 1);
+   . += __KERNEL_STACK_SIZE;
+   __KERNEL_STACK_ADDRESS = .;
+   PROVIDE(_KERNEL_STACK_ADDRESS = .);
    . = ALIGN(. != 0 ? 64 / 8 : 1);
   }
   . = ALIGN(64 / 8);

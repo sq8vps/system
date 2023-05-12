@@ -1,8 +1,25 @@
 #ifndef KERNEL32_HEAP_H_
 #define KERNEL32_HEAP_H_
 
+/**
+ * @file heap.h
+ * @brief Heap management module
+ * 
+ * This module provides heap management.
+ * 
+ * @defgroup heap Heap management
+ * @ingroup mm
+*/
+
+
 #include <stdint.h>
 #include "../defines.h"
+
+/**
+ * @defgroup kernelHeap Kernel mode heap management routines
+ * @ingroup heap
+ * @{
+*/
 
 /**
  * @brief Allocate memory on kernel heap
@@ -16,5 +33,9 @@ void *Mm_allocateKernelHeap(uint32_t n);
  * @param ptr Allocated memory address
 */
 void Mm_freeKernelHeap(void *ptr);
+
+/**
+ * @}
+*/
 
 #endif
