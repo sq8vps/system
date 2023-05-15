@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define ELF_KERNEL_PROVIDE_OBJECTS //uncomment to provide kernel non-function object symbols (basically variables)
+
 enum Elf32_e_type
 {
 	ET_NONE = 0,
@@ -243,18 +245,98 @@ struct KernelSymbol
 {
 	uint32_t value;
 	char *name;
-	struct KernelSymbol *next;
 };
 
-struct KernelSymbol *kernelSymbolTable;
+struct KernelSymbol *kernelSymbolTable = NULL;
+uint32_t kernelSymbolCount = 0;
 
-static kError_t elf_getKernelSymbols(const char *path, struct KernelSymbol **symbolTable)
+kError_t Elf_getKernelSymbolTable(const char *path)
 {
 	FILE *f = fopen(path, "rb");
-	void *d = malloc(size);
-	fseek(f, 0L, SEEK_SET);
+	struct Elf32_Ehdr h;
 
-	size_t m = fread(d, 1, size, f);
+	if(sizeof(h) != fread(&h, 1, sizeof(h), f)) //read header
+	{
+		return EXEC_ELF_BROKEN;
+	}
+
+	char *stringTable = NULL;
+	struct Elf32_Sym *symbolTable = NULL;
+
+	uint32_t rawSymbolCount = 0;
+
+	struct Elf32_Shdr s; //section header
+	
+	for(uint16_t i = 0; i < h.e_shnum; i++) //loop for all sections
+	{
+		fseek(f, ((uintptr_t)elf_getSectionHeader(&h, i) - (uintptr_t)&h), SEEK_SET);
+		if(sizeof(s) != fread(&s, 1, sizeof(s), f))
+		{
+			return EXEC_ELF_BROKEN;
+		}
+
+		if(SHT_SYMTAB == s.sh_type) //symbol table header
+		{
+			if(NULL == symbolTable)
+			{
+				symbolTable = malloc(s.sh_size);
+				fseek(f, (uintptr_t)(s.sh_offset), SEEK_SET);
+				if(s.sh_size != fread(symbolTable, 1, s.sh_size, f))
+				{
+					free(symbolTable);
+					if(NULL != stringTable)
+						free(stringTable);
+					return EXEC_ELF_BROKEN;
+				}
+				rawSymbolCount = s.sh_size / s.sh_entsize;
+			}
+		}
+		else if(SHT_STRTAB == s.sh_type) //string table header
+		{
+			if(NULL == stringTable)
+			{
+				stringTable = malloc(s.sh_size);
+				fseek(f, (uintptr_t)(s.sh_offset), SEEK_SET);
+				if(s.sh_size != fread(stringTable, 1, s.sh_size, f))
+				{
+					free(stringTable);
+					if(NULL != symbolTable)
+						free(symbolTable);
+					return EXEC_ELF_BROKEN;
+				}
+			}
+
+		}	
+	}
+	kernelSymbolTable = malloc(sizeof(struct KernelSymbol) * rawSymbolCount);
+	for(uint32_t i = 0; i < rawSymbolCount; i++)
+	{
+		if(ELF32_ST_TYPE(symbolTable[i].st_info) == STT_FUNC
+#ifdef ELF_KERNEL_PROVIDE_OBJECTS
+		|| ELF32_ST_TYPE(symbolTable[i].st_info) == STT_OBJECT
+#endif
+		)
+		{
+			kernelSymbolTable[kernelSymbolCount].value = symbolTable[i].st_value;
+			kernelSymbolTable[kernelSymbolCount].name = (char*)((uintptr_t)stringTable + symbolTable[i].st_name);
+			printf("Got kernel symbol %s = 0x%X\n", kernelSymbolTable[kernelSymbolCount].name, kernelSymbolTable[kernelSymbolCount].value);
+			kernelSymbolCount++;
+		}
+	}
+	free(symbolTable);
+	
+}
+
+static uint32_t elf_getKernelSymbol(const char *name)
+{
+	for(uint32_t i = 0; i < kernelSymbolCount; i++)
+	{
+		if(strcmp(name, kernelSymbolTable[i].name) == 0)
+		{
+			return kernelSymbolTable[i].value;;
+		}
+	}
+	return 0;
 }
 
 /**
@@ -289,7 +371,7 @@ static kError_t elf_getSymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_
 		const char *name = (const char*)h + stringTabHdr->sh_offset + symbol->st_name; //get string for this symbol
 
 		//perform linking with external symbol
-		uint32_t value = 0;
+		uint32_t value = elf_getKernelSymbol(name);
 
 		if(0 == value) //symbol not found
 		{
@@ -304,6 +386,12 @@ static kError_t elf_getSymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_
 				printf("External symbol %s is not a kernel symbol.\nLoad failed.\n", name);
 				return EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL;
 			}
+		}
+		else //external symbol value found
+		{
+			*symbolValue = value;
+			printf("External symbol %s at 0x%X\n", name, value);
+			return OK;
 		}
 	}
 	else if(SHN_ABS == symbol->st_shndx) //absolute symbol not affected by relocation
@@ -325,11 +413,11 @@ static kError_t elf_getSymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_
 	return OK;
 }
 
-kError_t elf_allocateBss(struct Elf32_Ehdr *h)
+static kError_t elf_allocateBss(struct Elf32_Ehdr *h)
 {
 	struct Elf32_Shdr *sectionHdr;
 
-	for(uint16_t i = 0; i < h->e_shnum; i++) //iterate thorugh all sections
+	for(uint16_t i = 0; i < h->e_shnum; i++) //iterate through all sections
 	{
 		sectionHdr = elf_getSectionHeader(h, i); //get header
 
@@ -354,7 +442,7 @@ kError_t elf_allocateBss(struct Elf32_Ehdr *h)
 	return OK;
 }
 
-kError_t elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry)
+static kError_t elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry)
 {
 	 //get target section header, i.e. the section where relocation will be applied
 	struct Elf32_Shdr *targetSectionHdr = elf_getSectionHeader(h, relSectionHdr->sh_info);
@@ -392,7 +480,8 @@ kError_t elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionH
 	return OK;
 }
 
-kError_t elf_processRelocation(struct Elf32_Ehdr *h)
+
+static kError_t elf_performRelocation(struct Elf32_Ehdr *h)
 {
 	kError_t ret = OK;
 	ret = elf_allocateBss(h); //allocate all no-bits sections first
@@ -418,6 +507,7 @@ kError_t elf_processRelocation(struct Elf32_Ehdr *h)
 	}
 	return OK;
 }
+
 
 kError_t Elf_load(char *name, uint32_t *entryPoint)
 {
@@ -458,7 +548,7 @@ kError_t Elf_load(char *name, uint32_t *entryPoint)
 			break;
 
 		case ET_REL:
-			ret = elf_processRelocation(h);
+			ret = elf_performRelocation(h);
 			if(ret != OK)
 				return ret;
 			break;

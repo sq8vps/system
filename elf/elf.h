@@ -19,5 +19,6 @@ typedef enum kError_t
 } kError_t;
 
 kError_t Elf_load(char *name, uint32_t *entryPoint);
+kError_t Elf_getKernelSymbolTable(const char *path);
 
 #endif

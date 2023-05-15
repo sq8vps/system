@@ -2,18 +2,10 @@
 #include "it/it.h"
 #include "mm/mm.h"
 #include "mm/heap.h"
+#include "../cdefines.h"
 //#include "../drivers/vga/vga.h"
 
 extern uint32_t _KERNEL_STACK_ADDRESS; //linker-defined kernel stack address symbol
-
-/**
- * @brief Parameters passed to the kernel by the bootloader
-*/
-struct KernelEntryArgs
-{
-	uint32_t kernelPageDir;
-	uint32_t pageUsageTable;
-} __attribute__ ((packed));
 
  __attribute__ ((noreturn))
 void main(struct KernelEntryArgs args)

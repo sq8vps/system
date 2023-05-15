@@ -6,6 +6,7 @@
 #include "fat.h"
 #include "mm.h"
 #include "elf.h"
+#include "../cdefines.h"
 
 uint8_t loader_bootDrive = 255; //diskTable boot disk entry number
 
@@ -29,16 +30,6 @@ static void loop(void)
 	asm("hlt");
 	asm("jmp ldrLoop");
 }
-
-/**
- * @brief Parameters passed to the kernel by the bootloader
-*/
-struct KernelEntryArgs
-{
-	uint32_t kernelPageDir;
-	uint32_t pageUsageTable;
-} __attribute__ ((packed));
-
 
 /**
  * \brief Bootloader (3rd stage) entry point
@@ -91,13 +82,20 @@ struct KernelEntryArgs
 	Fat_changeDir(&fatDisk, "/system/");
 
 	uint32_t kernelEntry = 0;
-	printf("ELF load: %d\n", (int)Elf_load("KERNEL32.ELF", &kernelEntry));
+	printf("ELF load: %d\n", (int)Elf_loadExec("KERNEL32.ELF", &kernelEntry));
+
+	//Fat_changeDir(&fatDisk, "/system/drivers/");
+	//printf("ELF load: %d\n", (int)Elf_loadRaw("vga.drv", &kernelEntry));
+
 	printf("Page usage table: 0x%X, kernel page directory: 0x%X\n", pageUsageTable, pageDirAddr);
 
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;
 	kernelArgs.kernelPageDir = pageDirAddr;
 	kernelArgs.pageUsageTable = (uint32_t)&pageUsageTable;
+	uintptr_t rawElfTableSize = 0;
+	kernelArgs.rawElfTable = Elf_getRawELFTable(&rawElfTableSize);
+	kernelArgs.rawElfTableSize = rawElfTableSize;
 
 	//call kernel
 	(*((void(*)(struct KernelEntryArgs))kernelEntry))(kernelArgs);
