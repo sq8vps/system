@@ -4,8 +4,8 @@ LNK = i686-elf-gcc
 ASM = nasm
 CC_FLAGS = -I. -c -ffreestanding -mgeneral-regs-only -masm=intel
 ASM_FLAGS = -f elf32
-LNK_FLAGS = -nostdlib -T kernel.ld -ffreestanding -z noexecstack
-LNK_STATIC_LIBS = -lgcc
+LNK_FLAGS = -nostdlib -T kernel.ld -ffreestanding -z noexecstack -L../output/drivers
+LNK_STATIC_LIBS = -lgcc -l:vga.drv
 
 CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c)
 CC_HEADERS = $(wildcard **/*.h) $(wildcard *.h)

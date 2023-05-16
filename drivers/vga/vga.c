@@ -1,6 +1,14 @@
 #include "vga.h"
 #include "../../kernel32/hal/hal.h"
 #include "../common.h"
+#include "../../kernel32/ddk/kdrv_defines.h"
+
+DDK_KDrvMetadata_t KDRV_METADATA = {.name = "Text mode VGA driver", .vendor = "OEM", .class = DDK_KDRVCLASS_SCREEN, .version = "1"};
+
+void KDRV_ENTRY()
+{
+	printf("Sterownik!\n");
+}
 
 #define PRINTF_INT_MAX_DIGITS 9
 

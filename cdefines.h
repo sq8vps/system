@@ -8,9 +8,21 @@
 
 #include <stdint.h>
 
-#define MM_PAGE_SIZE 4096
+#define KERNEL_FILE_NAME "kernel32.elf"
 
-#define KERNEL_RAW_ELF_ENTRY_NAME_SIZE 20
+#define MM_PAGE_SIZE 4096
+#define MM_KERNEL_ADDRESS 0xD0000000
+#define MM_DRIVERS_START_ADDRESS 0xE8000000
+#define MM_DRIVERS_MAX_SIZE 0x10000000
+#define MM_OTHER_START_ADDRESS 0xF8000000
+#define MM_OTHER_MAX_SIZE 0x7C00000
+
+
+#define KERNEL_RAW_ELF_ENTRY_NAME_SIZE 20 //max size of file name in raw ELF file entry
+
+/**
+ * @brief Entry for raw ELF file which is loaded by the bootloader. Used for bootloader->kernel communication
+*/
 struct KernelRawELFEntry
 {
     char name[KERNEL_RAW_ELF_ENTRY_NAME_SIZE];

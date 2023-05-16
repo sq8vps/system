@@ -110,14 +110,14 @@ static error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, e
 	error_t ret = Disk_readPartition(*(fat->disk), fat->partition, buf, fat->header.rootClusterAddr + (cluster - 2) * fat->header.sectorPerCluster, 0, fat->header.bytesPerCluster); //read cluster
 	if(ret != OK)
 		return ret;
-
+	
 	uint16_t i = 0; //byte iterator
 	while(1) //loop for directory entries
 	{
 		if(buf[i] == 0) //first byte is 0, the entry is empty and subsequent entries are assumed to be empty, too
 		{
 #if __DEBUG > 0
-			printf("File/directory \"%s\" does not exist\n", name);
+			printf("File/directory \"%s\" does not exist (empty entry)\n", name);
 #endif
 			return FAT_NOT_FOUND;
 		}
@@ -258,7 +258,7 @@ static error_t fat_selectFile(Fat32_s_t *fat, uint32_t cluster, uint8_t *name, e
 			else if(ret == FAT_EOC) //end of chain, file not found in this directory
 			{
 #if __DEBUG > 0
-				printf("File/directory \"%s\" does not exist\n", name);
+				printf("File/directory \"%s\" does not exist (EOC)\n", name);
 #endif
 				return FAT_NOT_FOUND;
 			}

@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 #include "../defines.h"
+#include "../../cdefines.h"
 
 /**
  * @defgroup llMm Low-level memory management routines
@@ -23,7 +24,6 @@
 */
 
 
-#define MM_PAGE_SIZE 4096 //memory page size in bytes
 #define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
 #define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
 

@@ -1,0 +1,15 @@
+# This file contains a list of ELF files that are loaded by the bootloader before the kernel is called.
+# The format of every entry is as follows:
+# name,type
+# "name" is the file name. Paths are NOT supported currently, but see below
+# "type" is the file type:
+# 	0 - file to be executed - kernel only! Must be located under /system directory. Only the last file of type 0 is executed.
+#	1 - device driver - must be located under /system/drivers directory
+#	2 - other file - must be located under /system directory
+# Executables are loaded to the address specified by the executable
+# Drivers are loaded to the space reserved for device drivers (sequentially)
+# Other files are loaded to the space reserved for other data (sequentially)
+# Every entry must end with a newline, including the last entry.
+kernel32.elf,0
+kernel32.elf,2
+vga.drv,1

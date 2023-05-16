@@ -147,9 +147,14 @@ struct Elf32_Shdr
 	uint32_t sh_entsize;
 } __attribute__ ((packed));
 
-#define KERNEL_RAW_ELF_TABLE_MAX 10
-struct KernelRawELFEntry rawELFTable[KERNEL_RAW_ELF_TABLE_MAX];
-uintptr_t rawELFTableSize = 0;
+/**
+ * The bootloader loads some driver and other files that kernel requires,
+ * e.g. disk and filesystem drivers, as the kernel itself does not include any
+ * All loaded files metadata is stored in this table and passed to the kernel
+*/
+#define KERNEL_RAW_ELF_TABLE_MAX 10 //max number of entries in the table. Probably not too many needed
+struct KernelRawELFEntry rawELFTable[KERNEL_RAW_ELF_TABLE_MAX]; //the table itself
+uintptr_t rawELFTableSize = 0; //number of elements in table
 
 /**
  * @brief Temporary buffer for ELF examination and loading executables
@@ -204,17 +209,16 @@ error_t Elf_loadExec(const uint8_t *name, uint32_t *entryPoint)
 
 	*entryPoint = (h->e_entry); //store entry point
 
-	uint16_t phentsize = h->e_phentsize;
+	uint16_t phentsize = h->e_phentsize; //store program header parameters, as the main ELF header will be overwritten
 	uint16_t phnum = h->e_phnum;
+	uint32_t phoff = h->e_phoff;
 
-	ret = Fat_readFile(&fatDisk, (uint8_t*)name, h->e_phoff, h->e_phentsize * h->e_phnum, buf); //read program header entries
-	if(ret != OK)
-		return ret;
-
-	struct Elf32_Phdr *p;
+	struct Elf32_Phdr *p = (struct Elf32_Phdr *)(buf); //get program header entry pointer
 	for(uint16_t i = 0; i < phnum; i++)
 	{
-		p = (struct Elf32_Phdr *)(buf + i * phentsize); //get next program header entry
+		ret = Fat_readFile(&fatDisk, (uint8_t*)name, phoff + i * phentsize, phentsize, buf); //read program header entry
+		if(OK != ret)
+			return ret;
 
 		if(PT_LOAD != p->p_type) //only PT_LOAD type
 			continue;
@@ -285,7 +289,7 @@ static error_t elf_allocateBss(struct Elf32_Ehdr *h, uintptr_t vaddr, uintptr_t 
 	return OK;
 }
 
-error_t Elf_loadRaw(const char *name, uint32_t vaddr)
+error_t Elf_loadRaw(const char *name, uint32_t *vaddr)
 {
 	if(strlen(name) > KERNEL_RAW_ELF_ENTRY_NAME_SIZE)
 		return ELF_NAME_TOO_LONG;
@@ -323,21 +327,24 @@ error_t Elf_loadRaw(const char *name, uint32_t vaddr)
 		return ret;
 
 	uint32_t requiredPages = size / MM_PAGE_SIZE + ((size % MM_PAGE_SIZE) ? 1 : 0);
-	if(OK != (ret = Mm_allocateEx(vaddr, requiredPages, 0))) //allocate page(s)
+	if(OK != (ret = Mm_allocateEx(*vaddr, requiredPages, 0))) //allocate page(s)
 		return ret;
 
-	if(OK != (ret = Fat_readWholeFile(&fatDisk, (uint8_t*)name, (uint8_t*)(vaddr), &size))) //read file
+	if(OK != (ret = Fat_readWholeFile(&fatDisk, (uint8_t*)name, (uint8_t*)(*vaddr), &size))) //read file
 		return ret;
 	
-	h = (struct Elf32_Ehdr*)(vaddr); //get ELF header again
+	h = (struct Elf32_Ehdr*)(*vaddr); //get ELF header again
 
 	uint32_t allocated = 0;
-	if(OK != (ret = elf_allocateBss(h, vaddr + requiredPages * MM_PAGE_SIZE, &allocated))) //allocate all no-bits/bss sections
+	if(OK != (ret = elf_allocateBss(h, *vaddr + requiredPages * MM_PAGE_SIZE, &allocated))) //allocate all no-bits/bss sections
 		return ret;
 
+	//add file to table
 	rawELFTable[rawELFTableSize].size = (requiredPages * MM_PAGE_SIZE) + allocated;
-	rawELFTable[rawELFTableSize].vaddr = vaddr;
+	rawELFTable[rawELFTableSize].vaddr = *vaddr;
 	memcpy(rawELFTable[rawELFTableSize].name, name, strlen(name));
+	*vaddr += rawELFTable[rawELFTableSize].size; //update virtual address for the next file
+
 	rawELFTableSize++;
 
 	return OK;
@@ -347,4 +354,20 @@ struct KernelRawELFEntry* Elf_getRawELFTable(uintptr_t *tableSize)
 {
 	*tableSize = rawELFTableSize;
 	return rawELFTable;
+}
+
+//address to load the next driver ELF file to
+uintptr_t nextDriverVaddr = MM_DRIVERS_START_ADDRESS;
+
+//address to load the next other ELF file to
+uintptr_t nextOtherVaddr = MM_OTHER_START_ADDRESS;
+
+error_t Elf_loadDriver(const char *name)
+{
+	return Elf_loadRaw(name, &nextDriverVaddr);
+}
+
+error_t Elf_loadOther(const char *name)
+{
+	return Elf_loadRaw(name, &nextOtherVaddr);
 }

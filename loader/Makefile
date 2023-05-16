@@ -1,19 +1,30 @@
-CC = gcc
-LNK = ld
-CFLAGS = -I .
+NAME = LDR32
+CC = i686-elf-gcc
+LNK = i686-elf-gcc
+ASM = nasm
+CC_FLAGS = -I. -c -ffreestanding -mgeneral-regs-only -masm=intel
+ASM_FLAGS = -f elf32
+LNK_FLAGS = -nostdlib -T loader.ld -ffreestanding -z noexecstack
+LNK_STATIC_LIBS = -lgcc
 
-C_SOURCES = $(wildcard *.c)
-HEADERS = $(wildcard *.h)
-OBJ = ${C_SOURCES:.c=.o}
+CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c)
+CC_HEADERS = $(wildcard **/*.h) $(wildcard *.h)
+ASM_SOURCES = $(wildcard **/*.asm) $(wildcard *.asm)
+ASM_INCLUDES = $(wildcard **/*.inc) $(wildcard *.inc)
+CC_OBJ = ${CC_SOURCES:.c=.o}
+ASM_OBJ = ${ASM_SOURCES:.asm=.o}
 
-all: LDR32
+all: $(NAME)
 
-%.o : %.c $(HEADERS)
-	$(CC) -ffreestanding -m32 -masm=intel -fno-pie -c $< $(CFLAGS)
+%.o : %.c $(CC_HEADERS)
+	$(CC) $(CC_FLAGS) -o $@ $< 
+	
+%.o : %.asm $(ASM_INCLUDES)
+	$(ASM) $< -o $@ $(ASM_FLAGS)
 
-LDR32 : ${OBJ}
-	$(LNK) -o $@ -T loader.ld -Ttext 0xA000 $^
-	cp $@ ../output/$@
+$(NAME) : $(CC_OBJ) $(ASM_OBJ)
+	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
+	cp $@ ../output/
 	
 clean:
-	rm -fr  *.o *.gch LDR32
+	rm -f $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)

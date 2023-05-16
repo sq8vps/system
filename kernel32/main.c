@@ -3,7 +3,11 @@
 #include "mm/mm.h"
 #include "mm/heap.h"
 #include "../cdefines.h"
-//#include "../drivers/vga/vga.h"
+#include "exec/exec.h"
+#include "common.h"
+#include "exec/kdrv.h"
+
+#include "../drivers/vga/vga.h"
 
 extern uint32_t _KERNEL_STACK_ADDRESS; //linker-defined kernel stack address symbol
 
@@ -16,8 +20,15 @@ void main(struct KernelEntryArgs args)
 	It_init(); //initialize interrupts and exceptions
 	Mm_init(args.pageUsageTable, args.kernelPageDir); //initialize memory management module
 	
-	//disp_clear();
-
+	disp_clear();
+	
+	for(uint32_t i = 0; i < args.rawElfTableSize; i++)
+	{
+		if(0 == Cm_strcmp(args.rawElfTable[i].name, KERNEL_FILE_NAME))
+			printf("Returned %d\n", (int)Ex_loadKernelSymbols((uintptr_t*)args.rawElfTable[i].vaddr));
+		if(0 == Cm_strcmp(args.rawElfTable[i].name, "vga.drv"))
+			printf("Returned %d\n", (int)Ex_loadPreloadedDriver((uintptr_t*)args.rawElfTable[i].vaddr, args.rawElfTable[i].size));
+	}
 
 	while(1);;
 }

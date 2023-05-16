@@ -3,6 +3,7 @@ OUTPUT_ARCH(i386)
 ENTRY(loaderEntry)
 SECTIONS
 {
+  . = 0xA000;
   .text           :
   {
     *(.ldr)

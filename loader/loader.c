@@ -16,20 +16,27 @@ uint8_t loader_buf[512] = {0}; //sector buffer
 
 extern uint32_t pageUsageTable[];
 
-struct KerMem
+enum FileType
 {
-	uint64_t *pageDir;
-	uint64_t *firstPageTable;
-	uint16_t pageTableCount;
-	uint64_t *kernelAddr;
+	FILE_KERNEL = 0,
+	FILE_DRIVER = 1,
+	FILE_OTHER = 2,
 };
 
-static void loop(void)
+#define FILE_LIST_ENTRY_NAME_SIZE 30
+
+struct FileListEntry
 {
-	asm("ldrLoop: cli");
-	asm("hlt");
-	asm("jmp ldrLoop");
-}
+	char name[FILE_LIST_ENTRY_NAME_SIZE];
+	enum FileType type;
+};
+
+struct FileListEntry fileList[] = 
+{
+	{.name = "kernel32.elf", .type = FILE_KERNEL},
+	{.name = "kernel32.elf", .type = FILE_OTHER},
+	{.name = "vga.drv", .type = FILE_DRIVER},
+};
 
 /**
  * \brief Bootloader (3rd stage) entry point
@@ -60,7 +67,6 @@ static void loop(void)
 		{
 			if(Disk_read(diskTable[i], loader_buf, 0, 0, 512) == OK) //read 0th sector to determine disk signature
 			{
-
 				if((*((uint32_t*)(loader_buf + MBR_SIGNATURE_OFFSET)) == *((uint32_t*)DISK_SIG))) //check if the signature matches the signature stored by the 2nd stage bootloader
 				{
 					loader_bootDrive = i; //if so, store drive number
@@ -73,21 +79,61 @@ static void loop(void)
 	if(loader_bootDrive == 255) //if boot drive was not found (this shouldn't happen if we are already in the bootloader, but whatever)
 	{
 #if __DEBUG > 0
-		printf("\nBoot failed: system drive not found\n");
+		printf("Boot failed: system drive not found\n");
 #endif
-		loop();
+		while(1);;
 	}
 
 	Fat_init(&(diskTable[loader_bootDrive]), 0);
-	Fat_changeDir(&fatDisk, "/system/");
+	
 
 	uint32_t kernelEntry = 0;
-	printf("ELF load: %d\n", (int)Elf_loadExec("KERNEL32.ELF", &kernelEntry));
+	error_t ret = OK;
 
-	//Fat_changeDir(&fatDisk, "/system/drivers/");
-	//printf("ELF load: %d\n", (int)Elf_loadRaw("vga.drv", &kernelEntry));
+	for(uint16_t i = 0; i < (sizeof(fileList) / sizeof(*fileList)); i++)
+	{
+		struct FileListEntry *e = &(fileList[i]); 
+#if __DEBUG > 0
+		printf("Loading %s...\n", e->name);
+#endif
+		if(e->type == FILE_KERNEL)
+		{
+			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/")))
+				break;
+			if(OK != (ret = Elf_loadExec(e->name, &kernelEntry)))
+				break;
+		}
+		else if(e->type == FILE_DRIVER)
+		{
+			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/drivers/")))
+				break;
+			if(OK != (ret = Elf_loadDriver(e->name)))
+				break;
+		}
+		else if(e->type == FILE_OTHER)
+		{
+			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/")))
+				break;
+			if(OK != (ret = Elf_loadOther(e->name)))
+				break;
+		}
+		else
+		{
+#if __DEBUG > 0
+			printf("Unknown file type %d\n", (int)e->type);
+#endif
+			ret = ELF_UNSUPPORTED_TYPE;
+			break;
+		}
+	}
 
-	printf("Page usage table: 0x%X, kernel page directory: 0x%X\n", pageUsageTable, pageDirAddr);
+	if(OK != ret)
+	{
+#if __DEBUG > 0
+		printf("Boot failed: at least one component cannot be loaded\n");
+#endif
+		while(1);;
+	}
 
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;
@@ -100,7 +146,7 @@ static void loop(void)
 	//call kernel
 	(*((void(*)(struct KernelEntryArgs))kernelEntry))(kernelArgs);
 
-	loop();
+	while(1);;
 }
 
 
