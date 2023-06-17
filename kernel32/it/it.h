@@ -13,6 +13,14 @@
 #include <stdbool.h>
 #include "../defines.h"
 
+/**
+ * @brief Attribute to be used with interrupt handlers
+*/
+#define IT_HANDLER_ATTRIBUTES __attribute__ ((interrupt, target("general-regs-only")))
+
+/**
+ * @brief Enum containing exception vectors
+*/
 enum It_exceptionVector
 {
     IT_EXCEPTION_DIVIDE = 0,

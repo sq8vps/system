@@ -1,4 +1,6 @@
 #include "mm.h"
+#include "palloc.h"
+#include "valloc.h"
 
 #define MM_PAGE_DIRECTORY_ADDRESS 0xFFFFF000
 #define MM_FIRST_PAGE_TABLE_ADDRESS 0xFFC00000

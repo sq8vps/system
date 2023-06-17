@@ -4,6 +4,17 @@
 #include <stdint.h>
 
 /**
+ * @brief General RGBA color structure
+*/
+typedef struct
+{
+    float r;
+    float g;
+    float b;
+    float alpha;
+} Cm_RGBA_t;
+
+/**
  * @brief Get string length
  * @param str Input string
  * @return String length (excluding null terminator)
@@ -34,5 +45,20 @@ int Cm_strcmp(const char *s1, const char *s2);
  * @return Destination buffer
 */
 void* Cm_memcpy(void *to, const void *from, uintptr_t n);
+
+/**
+ * @brief Calculate absolute value of an integer
+ * @param x Input integer
+ * @return Absolute value of x
+*/
+uint32_t Cm_abs(int32_t x);
+
+/**
+ * @brief Fill memory with given value
+ * @param *ptr Memory pointer
+ * @param c Filler value
+ * @param num Byte count
+*/
+void* Cm_memset(void *ptr, int c, uintptr_t num);
 
 #endif

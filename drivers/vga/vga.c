@@ -1,13 +1,20 @@
 #include "vga.h"
 #include "../../kernel32/hal/hal.h"
 #include "../common.h"
-#include "../../kernel32/ddk/kdrv_defines.h"
+#include "../../kernel32/ddk/ddk.h"
+#include "../../kernel32/ddk/gddk.h"
 
-DDK_KDrvMetadata_t KDRV_METADATA = {.name = "Text mode VGA driver", .vendor = "OEM", .class = DDK_KDRVCLASS_SCREEN, .version = "1"};
+KDRV_METADATA = {.name = "Text mode VGA driver", .vendor = "OEM", .class = DDK_KDRVCLASS_SCREEN, .version = "1"};
 
-void KDRV_ENTRY()
+KDRV_INDEX_T index = 0;
+
+GDDK_KDrvCallbacks_t functions = {.textModeClear = disp_clear};
+
+KDRV_ENTRY(idx)
 {
-	printf("Sterownik!\n");
+	index = idx;
+	printf("Got driver index %d\n", (int)index);
+	Ex_registerDriverCallbacks(index, &functions);
 }
 
 #define PRINTF_INT_MAX_DIGITS 9

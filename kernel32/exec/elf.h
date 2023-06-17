@@ -1,9 +1,25 @@
 #ifndef LOADER_ELF_H
 #define LOADER_ELF_H
 
+/**
+ * @file elf.h
+ * @brief ELF file definitions and manipulation routines
+ * 
+ * Provides ELF file definitions and manipulation routines
+ * 
+ * 
+*/
+
 #include <stdint.h>
 #include "../defines.h"
 
+/**
+ * @defgroup elf ELF definitions and mainpulation routines
+ * @ingroup exec
+ * @{
+*/
+
+//ELF type
 enum Elf32_e_type
 {
 	ET_NONE = 0,
@@ -13,6 +29,7 @@ enum Elf32_e_type
 	ET_CORE = 4
 };
 
+//ELF machine
 enum Elf32_e_machine
 {
 	EM_NONE = 0,
@@ -26,12 +43,14 @@ enum Elf32_e_machine
 	EM_MIPS_RS4_BE = 10,
 };
 
+//ELF file version
 enum Elf32_e_version
 {
 	EV_NONE = 0,
 	EV_CURRENT = 1,
 };
 
+//ELF magic numbers
 enum Elf32_ei_mag
 {
 	ELFMAG0 = 0x7f,
@@ -40,6 +59,7 @@ enum Elf32_ei_mag
 	ELFMAG3 = 'F',
 };
 
+//ELF class (32/64 bits)
 enum Elf32_ei_class
 {
 	ELFCLASSNONE = 0,
@@ -47,6 +67,7 @@ enum Elf32_ei_class
 	ELFCLASS64 = 2,
 };
 
+//ELF endianess
 enum Elf32_ei_data
 {
 	ELFDATANONE = 0,
@@ -54,6 +75,7 @@ enum Elf32_ei_data
 	ELFDATA2MSB = 2,
 };
 
+//ELF file header
 struct Elf32_Ehdr
 {
         uint8_t ei_mag[4];
@@ -77,6 +99,7 @@ struct Elf32_Ehdr
         uint16_t e_shstrndx;
 } __attribute__ ((packed));
 
+//ELF program header type
 enum Elf32_p_type
 {
 	PT_NULL = 0,
@@ -90,6 +113,7 @@ enum Elf32_p_type
 	PT_HIPROC = 0x7fffffff,
 };
 
+//ELF program header
 struct Elf32_Phdr
 {
 	uint32_t p_type;
@@ -102,6 +126,7 @@ struct Elf32_Phdr
 	uint32_t p_align;
 } __attribute__ ((packed));
 
+//ELF section header type
 enum Elf32_sh_type
 {
 	SHT_NULL = 0,
@@ -122,6 +147,7 @@ enum Elf32_sh_type
 	SHT_HIUSER = 0xffffffff,
 };
 
+//ELF section header flags
 enum Elf32_sh_flags
 {
 	SHF_WRITE = 0x1,
@@ -130,9 +156,11 @@ enum Elf32_sh_flags
 	SHF_MASKPROC = 0xf0000000,
 };
 
+//ELF section header defines
 #define SHN_UNDEF (0)
 #define SHN_ABS (0xfff1)
 
+//ELF section header
 struct Elf32_Shdr
 {
 	uint32_t sh_name;
@@ -147,6 +175,7 @@ struct Elf32_Shdr
 	uint32_t sh_entsize;
 } __attribute__ ((packed));
 
+//ELF symbol entry
 struct Elf32_Sym
 {
 	uint32_t st_name;
@@ -162,6 +191,7 @@ struct Elf32_Sym
 #define ELF32_ST_TYPE(i) ((i) & 0xf)
 #define ELF32_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 
+//ELF symbol flags
 #define STB_LOCAL 0
 #define STB_GLOBAL 1
 #define STB_WEAK 2
@@ -176,12 +206,14 @@ struct Elf32_Sym
 #define STT_LOPROC 13
 #define STT_HIPROC 15
 
+//ELF relocation entry
 struct Elf32_Rel
 {
 	uint32_t r_offset;
 	uint32_t r_info;
 } __attribute__ ((packed));
 
+//ELF relocation with addend entry
 struct Elf32_Rela
 {
 	uint32_t r_offset;
@@ -189,11 +221,12 @@ struct Elf32_Rela
 	int32_t r_addend;
 } __attribute__ ((packed));
 
-
+//ELF relocation helper macros
 #define ELF32_R_SYM(i)	((i) >> 8)
 #define ELF32_R_TYPE(i)	((uint8_t)(i))
 #define ELF32_R_INFO(s, t) (((s) << 8) + (uint8_t)(t))
- 
+
+//ELF relocation types
 enum Elf32_Rel_types {
 	R_386_NONE = 0, //no relocation
 	R_386_32 = 1, //symbol + addend
@@ -256,5 +289,9 @@ kError_t Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSect
  * @param resolver External symbol resolver function
 */
 kError_t Ex_performElf32Relocation(struct Elf32_Ehdr *h, Ex_elfResolver_t resolver);
+
+/**
+ * @}
+*/
 
 #endif

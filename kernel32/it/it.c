@@ -1,6 +1,7 @@
 #include "it.h"
 //#include "../../drivers/vga/vga.h"
 #include "hal/hal.h"
+#include "../common.h"
 
 #define GDT_CODE_SELECTOR 0x08
 
@@ -46,7 +47,7 @@ static struct IdtEntry idt[IDT_ENTRY_COUNT] __attribute__((aligned(8)));
 /**
  * @brief Default ISR for interrupts/exceptions with no error code
 */
-__attribute__ ((interrupt))
+IT_HANDLER_ATTRIBUTES
 void defaultIt_h(struct ItFrame *f)
 {
 	//printf("Unhandled interrupt! EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->ip, f->cs, f->flags);
@@ -59,7 +60,8 @@ void defaultIt_h(struct ItFrame *f)
 /**
  * @brief Default ISR for exceptions with error code
 */
-__attribute__ ((interrupt))
+
+IT_HANDLER_ATTRIBUTES
 void defaultItEC_h(struct ItFrameEC *f)
 {
 	//printf("Unhandled exception! Error code: 0x%X, EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->error, f->ip, f->cs, f->flags);
@@ -95,8 +97,7 @@ kError_t It_setExceptionHandler(enum It_exceptionVector vector, void *isr)
 
 kError_t It_init(void)
 {
-	//TODO: fill IDT with zeros
-	
+	Cm_memset(idt, 0, sizeof(idt));
 	//disable outdated PIC
 	It_disablePIC();
 	//set up all defined exceptions to default handlers

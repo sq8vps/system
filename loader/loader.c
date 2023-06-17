@@ -34,8 +34,8 @@ struct FileListEntry
 struct FileListEntry fileList[] = 
 {
 	{.name = "kernel32.elf", .type = FILE_KERNEL},
-	{.name = "kernel32.elf", .type = FILE_OTHER},
-	{.name = "vga.drv", .type = FILE_DRIVER},
+	// {.name = "kernel32.elf", .type = FILE_OTHER},
+	// {.name = "tmvga.drv", .type = FILE_DRIVER},
 };
 
 /**

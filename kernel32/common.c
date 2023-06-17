@@ -35,3 +35,18 @@ void* Cm_memcpy(void *to, const void *from, uintptr_t n)
     }
     return initial;
 }
+
+uint32_t Cm_abs(int32_t x)
+{
+    return (x > 0) ? x : -x;
+}
+
+void* Cm_memset(void *ptr, int c, uintptr_t num)
+{
+    uint8_t *p = ptr;
+    while(num--)
+    {
+        *p++ = (uint8_t)c;
+    }
+    return ptr;
+}

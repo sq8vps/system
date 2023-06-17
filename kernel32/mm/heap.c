@@ -157,7 +157,7 @@ struct HeapBlockMeta *mm_findPreallocatedHeapBlock(struct HeapBlockMeta **previo
 }
 
 
-void *Mm_allocateKernelHeap(uint32_t n)
+void *Mm_allocateKernelHeap(uintptr_t n)
 {
     if(n == 0)
         return NULL;
@@ -190,7 +190,7 @@ void *Mm_allocateKernelHeap(uint32_t n)
     return (block + 1);
 }
 
-void Mm_freeKernelHeap(void *ptr)
+void Mm_freeKernelHeap(const void *ptr)
 {
     if((uint32_t)ptr < MM_KERNEL_HEAP_START || ((uint32_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - sizeof(struct HeapBlockMeta))))
         return;

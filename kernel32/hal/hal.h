@@ -1,8 +1,6 @@
 #ifndef KERNEL_DRIVER_HAL
 #define KERNEL_DRIVER_HAL
 
-#include <stdint.h>
-
 /**
  * @file hal.h
  * @brief Hardware Abstraction Layer driver
@@ -11,6 +9,8 @@
  * 
  * @defgroup hal Hardware Abstraction Layer driver
 */
+
+#include <stdint.h>
 
 /**
  * @defgroup ioPort IO port manipulation routines

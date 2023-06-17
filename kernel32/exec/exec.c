@@ -16,7 +16,7 @@ struct KernelSymbol *kernelSymbolTable = NULL;
 uint32_t kernelSymbolCount = 0;
 
 
-kError_t Ex_loadKernelSymbols(uintptr_t *kernelImage)
+kError_t Ex_loadKernelSymbols(uintptr_t kernelImage)
 {
     kError_t ret = OK;
 

@@ -13,6 +13,9 @@ typedef enum kError_t
     //OK response
     OK = 0,
 
+    //common errors
+    NULL_POINTER_GIVEN = 1,
+
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number
 
@@ -31,8 +34,12 @@ typedef enum kError_t
     EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL,
     EXEC_MALLOC_FAILED,
     EXEC_UNSUPPORTED_KERNEL_MODE_DRIVER_TYPE,
+    EXEC_BAD_DRIVER_INDEX,
+    EXEC_BAD_DRIVER_CLASS,
 
 
 } kError_t;
+
+
 
 #endif

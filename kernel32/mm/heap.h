@@ -26,13 +26,13 @@
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
 */
-void *Mm_allocateKernelHeap(uint32_t n);
+void *Mm_allocateKernelHeap(uintptr_t n);
 
 /**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
-void Mm_freeKernelHeap(void *ptr);
+void Mm_freeKernelHeap(const void *ptr);
 
 /**
  * @}

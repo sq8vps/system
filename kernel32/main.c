@@ -6,6 +6,7 @@
 #include "exec/exec.h"
 #include "common.h"
 #include "exec/kdrv.h"
+#include "io/display.h"
 
 #include "../drivers/vga/vga.h"
 
@@ -22,13 +23,15 @@ void main(struct KernelEntryArgs args)
 	
 	disp_clear();
 	
-	for(uint32_t i = 0; i < args.rawElfTableSize; i++)
-	{
-		if(0 == Cm_strcmp(args.rawElfTable[i].name, KERNEL_FILE_NAME))
-			printf("Returned %d\n", (int)Ex_loadKernelSymbols((uintptr_t*)args.rawElfTable[i].vaddr));
-		if(0 == Cm_strcmp(args.rawElfTable[i].name, "vga.drv"))
-			printf("Returned %d\n", (int)Ex_loadPreloadedDriver((uintptr_t*)args.rawElfTable[i].vaddr, args.rawElfTable[i].size));
-	}
+	// for(uint32_t i = 0; i < args.rawElfTableSize; i++)
+	// {
+	// 	if(0 == Cm_strcmp(args.rawElfTable[i].name, KERNEL_FILE_NAME))
+	// 		printf("Returned %d\n", (int)Ex_loadKernelSymbols(args.rawElfTable[i].vaddr));
+	// 	if(0 == Cm_strcmp(args.rawElfTable[i].name, "tmvga.drv"))
+	// 		printf("Returned %d\n", (int)Ex_loadPreloadedDriver(args.rawElfTable[i].vaddr, args.rawElfTable[i].size));
+	// }
+
+	printf("OK\n");
 
 	while(1);;
 }

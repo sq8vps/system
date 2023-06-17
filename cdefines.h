@@ -17,7 +17,6 @@
 #define MM_OTHER_START_ADDRESS 0xF8000000
 #define MM_OTHER_MAX_SIZE 0x7C00000
 
-
 #define KERNEL_RAW_ELF_ENTRY_NAME_SIZE 20 //max size of file name in raw ELF file entry
 
 /**
