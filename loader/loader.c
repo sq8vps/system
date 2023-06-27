@@ -14,8 +14,6 @@ uint8_t loader_bootDrive = 255; //diskTable boot disk entry number
 
 uint8_t loader_buf[512] = {0}; //sector buffer
 
-extern uint32_t pageUsageTable[];
-
 enum FileType
 {
 	FILE_KERNEL = 0,
@@ -85,63 +83,66 @@ struct FileListEntry fileList[] =
 	}
 
 	Fat_init(&(diskTable[loader_bootDrive]), 0);
-	
 
-	uint32_t kernelEntry = 0;
-	error_t ret = OK;
+	error_t errorCode = OK;
 
-	for(uint16_t i = 0; i < (sizeof(fileList) / sizeof(*fileList)); i++)
-	{
-		struct FileListEntry *e = &(fileList[i]); 
-#if __DEBUG > 0
-		printf("Loading %s...\n", e->name);
-#endif
-		if(e->type == FILE_KERNEL)
-		{
-			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/")))
-				break;
-			if(OK != (ret = Elf_loadExec(e->name, &kernelEntry)))
-				break;
-		}
-		else if(e->type == FILE_DRIVER)
-		{
-			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/drivers/")))
-				break;
-			if(OK != (ret = Elf_loadDriver(e->name)))
-				break;
-		}
-		else if(e->type == FILE_OTHER)
-		{
-			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/")))
-				break;
-			if(OK != (ret = Elf_loadOther(e->name)))
-				break;
-		}
-		else
-		{
-#if __DEBUG > 0
-			printf("Unknown file type %d\n", (int)e->type);
-#endif
-			ret = ELF_UNSUPPORTED_TYPE;
-			break;
-		}
-	}
-
-	if(OK != ret)
+	if(OK != (errorCode = Fat_changeDir(&fatDisk, "/system/")))
 	{
 #if __DEBUG > 0
-		printf("Boot failed: at least one component cannot be loaded\n");
+		printf("Boot failed: system directory not found. Error code %d.\n", (int)errorCode);
 #endif
 		while(1);;
 	}
 
+	uintptr_t kernelEntry = 0; //kernel entry point address
+	if(OK != (errorCode = Elf_loadExec(KERNEL_FILE_NAME, &kernelEntry)))
+	{
+#if __DEBUG > 0
+		printf("Boot failed: unable to load kernel image. Error code %d.\n", (int)errorCode);
+#endif
+		while(1);;		
+	}
+
+
+// 	error_t ret = OK;
+
+// 	for(uint16_t i = 0; i < (sizeof(fileList) / sizeof(*fileList)); i++)
+// 	{
+// 		struct FileListEntry *e = &(fileList[i]); 
+// #if __DEBUG > 0
+// 		printf("Loading %s...\n", e->name);
+// #endif
+// 		if(e->type == FILE_KERNEL)
+// 		{
+// 			if(OK != (ret = Fat_changeDir(&fatDisk, "/system/")))
+// 				break;
+// 			if(OK != (ret = Elf_loadExec(e->name, &kernelEntry)))
+// 				break;
+// 		}
+// 		else
+// 		{
+// #if __DEBUG > 0
+// 			printf("Unknown file type %d\n", (int)e->type);
+// #endif
+// 			ret = ELF_UNSUPPORTED_TYPE;
+// 			break;
+// 		}
+// 	}
+
+// 	if(OK != ret)
+// 	{
+// #if __DEBUG > 0
+// 		printf("Boot failed: at least one component cannot be loaded\n");
+// #endif
+// 		while(1);;
+// 	}
+
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;
-	kernelArgs.kernelPageDir = pageDirAddr;
-	kernelArgs.pageUsageTable = (uint32_t)&pageUsageTable;
-	uintptr_t rawElfTableSize = 0;
-	kernelArgs.rawElfTable = Elf_getRawELFTable(&rawElfTableSize);
-	kernelArgs.rawElfTableSize = rawElfTableSize;
+	kernelArgs.biosMemoryMap = (struct BIOSMemoryMap_s*)(MM_BIOS_MEMORY_MAP + 2);
+	kernelArgs.biosMemoryMapSize = *((uint16_t*)MM_BIOS_MEMORY_MAP);
+	kernelArgs.initrdAddress = 0;
+	kernelArgs.initrdSize = 0;
 
 	//call kernel
 	(*((void(*)(struct KernelEntryArgs))kernelEntry))(kernelArgs);

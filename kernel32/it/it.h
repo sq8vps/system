@@ -7,6 +7,8 @@
  * 
  * Handles exceptions and interrupts.
  * Support hardware interrupts with APIC and IOAPIC.
+ * 
+ * @defgroup it Interrupt module
 */
 
 #include <stdint.h>
@@ -93,6 +95,13 @@ struct ItFrameECMS
 } __attribute__((packed));
 
 /**
+ * @defgroup itConfig Interrupt module configuration routines
+ * @ingroup it
+ * @{
+*/
+
+
+/**
  * @brief Set up interrupts and assign default handlers to them
  * @return Error code
 */
@@ -105,7 +114,7 @@ kError_t It_init(void);
  * @param kernelModeOnly True for this interrupt to be available ine kernel mode exclusively
  * @return Error code
 */
-kError_t It_setInterruptHandler(uint8_t vector, void *isr, bool kernelModeOnly);
+EXPORT kError_t It_setInterruptHandler(uint8_t vector, void *isr, bool kernelModeOnly);
 
 /**
  * @brief Set up exception (not interrupt) handler
@@ -121,5 +130,10 @@ kError_t It_setExceptionHandler(enum It_exceptionVector vector, void *isr);
  * @return Error code
 */
 kError_t It_disablePIC(void);
+
+/**
+ * @}
+*/
+
 
 #endif

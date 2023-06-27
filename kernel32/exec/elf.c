@@ -1,6 +1,5 @@
 #include "elf.h"
 #include "../../cdefines.h"
-#include "../mm/mm.h"
 #include "../mm/heap.h"
 #include "../common.h"
 

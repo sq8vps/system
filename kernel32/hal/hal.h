@@ -11,6 +11,7 @@
 */
 
 #include <stdint.h>
+#include "../defines.h"
 
 /**
  * @defgroup ioPort IO port manipulation routines
@@ -23,42 +24,42 @@
  * @param port Port number
  * @return Data read
 */
-extern uint8_t Hal_IOPortReadByte(uint16_t port);
+EXPORT uint8_t Hal_IOPortReadByte(uint16_t port);
 
 /**
  * @brief Write byte to IO port
  * @param port Port number
  * @param d Data to write
 */
-extern void Hal_IOPortWriteByte(uint16_t port, uint8_t d);
+EXPORT void Hal_IOPortWriteByte(uint16_t port, uint8_t d);
 
 /**
  * @brief Read word from IO port
  * @param port Port number
  * @return Data read
 */
-extern uint16_t Hal_IOPortReadWord(uint16_t port);
+EXPORT uint16_t Hal_IOPortReadWord(uint16_t port);
 
 /**
  * @brief Write word to IO port
  * @param port Port number
  * @param d Data to write
 */
-extern void Hal_IOPortWriteWord(uint16_t port, uint16_t d);
+EXPORT void Hal_IOPortWriteWord(uint16_t port, uint16_t d);
 
 /**
  * @brief Read double word from IO port
  * @param port Port number
  * @return Data read
 */
-extern uint32_t Hal_IOPortReadDWord(uint16_t port);
+EXPORT uint32_t Hal_IOPortReadDWord(uint16_t port);
 
 /**
  * @brief Write double word to IO port
  * @param port Port number
  * @param d Data to write
 */
-extern void Hal_IOPortWriteDWord(uint16_t port, uint32_t d);
+EXPORT void Hal_IOPortWriteDWord(uint16_t port, uint32_t d);
 
 /**
  * @}

@@ -2,7 +2,7 @@ NAME = kernel32.elf
 CC = i686-elf-gcc
 LNK = i686-elf-gcc
 ASM = nasm
-CC_FLAGS = -I. -I.. -I*/* -c -ffreestanding -masm=intel
+CC_FLAGS = -I. -I.. -I*/* -c -ffreestanding -masm=intel -fvisibility=hidden
 ASM_FLAGS = -f elf32
 LNK_FLAGS = -nostdlib -T kernel.ld -ffreestanding -z noexecstack -L../output/drivers
 LNK_STATIC_LIBS = -lgcc -l:vga.drv

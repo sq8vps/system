@@ -4,6 +4,20 @@
 #include <stdint.h>
 
 /**
+ * @file common.h
+ * @brief Common (independent) kernel functions
+ * 
+ * Provides a set of common kernel mode functions.
+ * 
+ * @defgroup common Common kernel functions
+*/
+
+/**
+ * @ingroup common
+ * @{
+*/
+
+/**
  * @brief General RGBA color structure
 */
 typedef struct
@@ -60,5 +74,10 @@ uint32_t Cm_abs(int32_t x);
  * @param num Byte count
 */
 void* Cm_memset(void *ptr, int c, uintptr_t num);
+
+/**
+ * @}
+*/
+
 
 #endif

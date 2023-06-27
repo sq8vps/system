@@ -1,9 +1,8 @@
 #include "it.h"
-//#include "../../drivers/vga/vga.h"
+#include "../../drivers/vga/vga.h"
 #include "hal/hal.h"
 #include "../common.h"
-
-#define GDT_CODE_SELECTOR 0x08
+#include "../mm/gdt.h"
 
 #define IDT_FLAG_INTERRUPT_GATE 0xE
 #define IDT_FLAG_TRAP_GATE  0xF
@@ -50,7 +49,7 @@ static struct IdtEntry idt[IDT_ENTRY_COUNT] __attribute__((aligned(8)));
 IT_HANDLER_ATTRIBUTES
 void defaultIt_h(struct ItFrame *f)
 {
-	//printf("Unhandled interrupt! EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->ip, f->cs, f->flags);
+	printf("Unhandled interrupt! EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->ip, f->cs, f->flags);
 	// asm volatile("xchg bx, bx");
 	// asm volatile("cli");
 	// asm volatile("hlt");
@@ -64,7 +63,7 @@ void defaultIt_h(struct ItFrame *f)
 IT_HANDLER_ATTRIBUTES
 void defaultItEC_h(struct ItFrameEC *f)
 {
-	//printf("Unhandled exception! Error code: 0x%X, EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->error, f->ip, f->cs, f->flags);
+	printf("Unhandled exception! Error code: 0x%X, EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->error, f->ip, f->cs, f->flags);
 	// asm volatile("xchg bx, bx");
 	// asm volatile("cli");
 	// asm volatile("hlt");
@@ -78,7 +77,7 @@ kError_t It_setInterruptHandler(uint8_t vector, void *isr, bool kernelModeOnly)
 	
 	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
 	idt[vector].isrHigh = (uint32_t)isr >> 16;
-	idt[vector].selector = GDT_CODE_SELECTOR;
+	idt[vector].selector = kernelModeOnly ? GdtGetFlatPrivilegedCodeOffset() : GdtGetFlatUnprivilegedCodeOffset();
 	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT | ((kernelModeOnly == false) ? IDT_FLAG_INTERRUPT_USERMODE : 0);
 	return OK;
 }
@@ -90,7 +89,7 @@ kError_t It_setExceptionHandler(enum It_exceptionVector vector, void *isr)
 	
 	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
 	idt[vector].isrHigh = (uint32_t)isr >> 16;
-	idt[vector].selector = GDT_CODE_SELECTOR;
+	idt[vector].selector = GdtGetFlatPrivilegedCodeOffset();
 	idt[vector].flags = IDT_FLAG_TRAP_GATE | IDT_FLAG_PRESENT;
 	return OK;
 }

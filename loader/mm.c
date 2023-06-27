@@ -10,8 +10,6 @@
  */
 uint32_t pageUsageTable[(2 << 27) / MM_PAGE_SIZE] = {0};
 
-//#define MARK_PAGE_USED(base) (pageUsageTable[(base) / (MM_PAGE_SIZE * 32)] |= (1 << ((base) & 31)))
-//#define MARK_PAGE_FREE(base) (pageUsageTable[(base) / (MM_PAGE_SIZE * 32)] &= ~(1 << ((base) & 31)))
 #define MARK_PAGE_USED(n) (pageUsageTable[(n) >> 5] |= (1 << ((n) & 31)))
 #define MARK_PAGE_FREE(n) (pageUsageTable[(n) >> 5] &= ~(1 << ((n) & 31)))
 
@@ -30,6 +28,7 @@ error_t Mm_init(uint32_t *pageDir)
 		uint64_t base = *((uint64_t*)(MM_BIOS_MEMORY_MAP + 2 + i * MM_BIOS_MEMORY_MAP_ENTRY_SIZE)); //next 8 bytes are the base address
 		uint64_t len = *((uint64_t*)(MM_BIOS_MEMORY_MAP + 10 + i * MM_BIOS_MEMORY_MAP_ENTRY_SIZE)); //next 8 bytes are the size
 		uint64_t attr = *((uint64_t*)(MM_BIOS_MEMORY_MAP + 18 + i * MM_BIOS_MEMORY_MAP_ENTRY_SIZE)); //and attributes
+		
 		if((attr & 0x1FFFFFFFF) != 0x100000001) //type field must be equal to 1 and and optional ACPI 3.0 bit must be set.
 			continue; //if not, this memory region is unavailable
 		if(base < 0x100000) //also skip lower memory (<1 MiB)
@@ -213,12 +212,12 @@ error_t Mm_getPhysAddr(uint32_t vAddress, uint32_t *pAddress)
 {
 	uint32_t *pageDir = (uint32_t*)0xFFFFF000; //page directory is in the last page of the virtual memory
 
-	if(pageDir[vAddress >> 22] & 1 == 0) //check if page table is present
+	if((pageDir[vAddress >> 22] & 1) == 0) //check if page table is present
 		return MM_PAGE_NOT_PRESENT;
 
 	uint32_t *pageTable = (uint32_t*)0xFFC00000 + ((vAddress & 0xFFC00000) >> 12); //calculate appropriate page table address
 
-	if(pageTable[(vAddress >> 12) & 0x3FF] & 1 == 0) //check if page is present
+	if((pageTable[(vAddress >> 12) & 0x3FF] & 1) == 0) //check if page is present
 		return MM_PAGE_NOT_PRESENT;
 
 	*pAddress = (pageTable[(vAddress >> 12) & 0x3FF] & 0xFFFFF000) + (vAddress & 0xFFF);

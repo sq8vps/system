@@ -82,7 +82,7 @@ static struct KDrv_DriverListEntry* ex_getKernelModeDriverEntry(const KDRV_INDEX
 
 static kError_t ex_pushDriverMetadata(const struct KDrv_DriverListEntry *e)
 {
-    struct KDrv_DriverListEntry *m = Mm_allocateKernelHeap(sizeof(struct KDrv_DriverListEntry)); //allocate memory for entry
+    struct KDrv_DriverListEntry *m = MmAllocateKernelHeap(sizeof(struct KDrv_DriverListEntry)); //allocate memory for entry
     if(NULL == m)
         return EXEC_MALLOC_FAILED;
     

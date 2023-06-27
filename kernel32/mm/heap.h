@@ -3,11 +3,10 @@
 
 /**
  * @file heap.h
- * @brief Heap management module
+ * @brief Kernel heap management module
  * 
- * This module provides heap management.
+ * This module provides kernel heap management.
  * 
- * @defgroup heap Heap management
  * @ingroup mm
 */
 
@@ -17,7 +16,7 @@
 
 /**
  * @defgroup kernelHeap Kernel mode heap management routines
- * @ingroup heap
+ * @ingroup mm
  * @{
 */
 
@@ -26,13 +25,13 @@
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
 */
-void *Mm_allocateKernelHeap(uintptr_t n);
+EXPORT void *MmAllocateKernelHeap(uintptr_t n);
 
 /**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
-void Mm_freeKernelHeap(const void *ptr);
+EXPORT void MmFreeKernelHeap(const void *ptr);
 
 /**
  * @}

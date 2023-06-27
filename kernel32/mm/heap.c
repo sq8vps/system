@@ -2,14 +2,17 @@
 #include "../mm/mm.h"
 #include <stdbool.h>
 
-uint32_t kernelHeapTop = MM_KERNEL_HEAP_START; //current kernel heap top
+#define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
+#define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
+
+uintptr_t kernelHeapTop = MM_KERNEL_HEAP_START; //current kernel heap top
 
 /**
  * @brief A heap block metadata (header) structure
 */
 struct HeapBlockMeta
 {
-    uint32_t size; //size of usable block (not including the size of this structure)
+    uintptr_t size; //size of usable block (not including the size of this structure)
     struct HeapBlockMeta *next; //next block in the list
     struct HeapBlockMeta *previous; //previous block in the list
     uint8_t free; //is this block free?
@@ -27,7 +30,7 @@ struct HeapBlockMeta *heapBlockHead = NULL;
  * @param n Count of bytes to allocate
  * @param expand 0 - new block creation mode, 1 - extension mode
 */
-struct HeapBlockMeta *mm_allocateHeapBlock(struct HeapBlockMeta *previous, uint32_t n, bool expand)
+static struct HeapBlockMeta *mmAllocateHeapBlock(struct HeapBlockMeta *previous, uint32_t n, bool expand)
 {
     if(!expand) //new block allocation mode
         n += sizeof(struct HeapBlockMeta); //update required size with metadata block size
@@ -35,13 +38,12 @@ struct HeapBlockMeta *mm_allocateHeapBlock(struct HeapBlockMeta *previous, uint3
     if((MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - kernelHeapTop) < n) //check if there is enough memory on the heap
         return NULL;
     
-    uint32_t pages = n / MM_PAGE_SIZE; //calculate number of required pages
     uint32_t remainder = MM_PAGE_SIZE - (n % MM_PAGE_SIZE); //calculate remainder to the next page boundary
-    pages += (remainder > 0); //update page count if data length is not a multiple of a page size
-    if(Mm_allocateEx(kernelHeapTop, pages, MM_PAGE_FLAG_WRITABLE) != OK) //try to allocate pages and map them to the kernel heap space
-        return NULL;
 
-    struct HeapBlockMeta *block = (void*)kernelHeapTop; //get metadata block pointer
+    if(OK != MmAllocateKernelMemory(kernelHeapTop, n + remainder, MM_PAGE_FLAG_WRITABLE)) //try to allocate pages and map them to kernel heap space
+      return NULL;
+
+    struct HeapBlockMeta *block = (struct HeapBlockMeta*)kernelHeapTop; //get metadata block pointer
     
     if(!expand) //new block allocation mode
     {
@@ -51,7 +53,9 @@ struct HeapBlockMeta *mm_allocateHeapBlock(struct HeapBlockMeta *previous, uint3
         block->previous = previous;
         block->size = n - sizeof(struct HeapBlockMeta);
         if(NULL != previous) //if there was some previous block, update its "next" pointer
+        {
             previous->next = block;
+        }
     }
     else //block expansion mode
     {
@@ -98,23 +102,29 @@ struct HeapBlockMeta *mm_allocateHeapBlock(struct HeapBlockMeta *previous, uint3
  * @param n Count of bytes required
  * @return Block of size n
  * 
+ * 
  * This function takes an existing block of size N and a number n,
  * checks if splitting this block makes sense, resizes exisiting block to n bytes
  * and creates new block header of size N-n-sizeof(header) and adds it to the list.
 */
-struct HeapBlockMeta *mm_splitHeapBlock(struct HeapBlockMeta *block, uint32_t n)
+static struct HeapBlockMeta *mmSplitHeapBlock(struct HeapBlockMeta *block, uint32_t n)
 {
     if(NULL == block)
         return NULL;
 
-    uint32_t remainder = block->size - n; //how much bytes are left after resizing the block
+    if(!block->free)
+        return NULL;
+
+    if(block->size < n)
+        return NULL;
+
+    uint32_t remainder = block->size - n; //how many bytes are left after resizing the block
     if(remainder <= sizeof(struct HeapBlockMeta))
         return block; //only the header and 1 byte would fit, no point in splitting. Return original block
-    
-    block->size = n; //resize exisitng block
-    
+     
     //create new block after the block being resized
-    struct HeapBlockMeta *nextBlock = (struct HeapBlockMeta*)((uint32_t)(block + 1) + n) ;
+    struct HeapBlockMeta *nextBlock = (struct HeapBlockMeta*)((uintptr_t)(block + 1) + n);
+    block->size = n; //resize exisiting block
     nextBlock->free = 1;
     nextBlock->size = remainder - sizeof(struct HeapBlockMeta);
     nextBlock->next = block->next; //update list pointers
@@ -130,7 +140,7 @@ struct HeapBlockMeta *mm_splitHeapBlock(struct HeapBlockMeta *block, uint32_t n)
  * @param n Block size (in bytes)
  * @return Block metadata or NULL if no previously allocated block available
 */
-struct HeapBlockMeta *mm_findPreallocatedHeapBlock(struct HeapBlockMeta **previous, uint32_t n)
+static struct HeapBlockMeta *mmFindPreallocatedHeapBlock(struct HeapBlockMeta **previous, uint32_t n)
 {
     struct HeapBlockMeta *b = heapBlockHead; //start from head
 
@@ -144,7 +154,7 @@ struct HeapBlockMeta *mm_findPreallocatedHeapBlock(struct HeapBlockMeta **previo
             
             if(NULL == b->next) //if block is free and it is the last block, even if it's too small, it can be expanded
             {
-                return mm_allocateHeapBlock(b, n - b->size, 1);
+                return mmAllocateHeapBlock(b, n - b->size, 1);
             }
         }
         //this block is not free, look for next block
@@ -153,11 +163,10 @@ struct HeapBlockMeta *mm_findPreallocatedHeapBlock(struct HeapBlockMeta **previo
         b = b->next; //get next block address
     }
     //there is either a block metadata returned when found or NULL when there is no available block or the list is empty
-    return mm_splitHeapBlock(b, n); //split block if it's too big
+    return mmSplitHeapBlock(b, n); //split block if it's too big
 }
 
-
-void *Mm_allocateKernelHeap(uintptr_t n)
+void *MmAllocateKernelHeap(uintptr_t n)
 {
     if(n == 0)
         return NULL;
@@ -166,8 +175,8 @@ void *Mm_allocateKernelHeap(uintptr_t n)
 
     if(NULL == heapBlockHead) //first call, there was nothing allocated before
     {
-        block = mm_allocateHeapBlock(NULL, n, 0); //allocate new heap block
-        if(NULL == block) //failre
+        block = mmAllocateHeapBlock(NULL, n, 0); //allocate new heap block
+        if(NULL == block)
             return NULL;
         
         heapBlockHead = block; //update head
@@ -175,14 +184,14 @@ void *Mm_allocateKernelHeap(uintptr_t n)
     else //not the first call
     {
         struct HeapBlockMeta *previous = heapBlockHead;
-        block = mm_findPreallocatedHeapBlock(&previous, n); //look if there is any preallocated block available
+        block = mmFindPreallocatedHeapBlock(&previous, n); //look if there is any preallocated block available
         if(block) //found free block?
         {
             block->free = 0;
         }
         else //not found?
         {
-            block = mm_allocateHeapBlock(previous, n, 0);
+            block = mmAllocateHeapBlock(previous, n, 0);
             if(NULL == block) //failure
                 return NULL;
         }
@@ -190,9 +199,11 @@ void *Mm_allocateKernelHeap(uintptr_t n)
     return (block + 1);
 }
 
-void Mm_freeKernelHeap(const void *ptr)
+
+
+void MmFreeKernelHeap(const void *ptr)
 {
-    if((uint32_t)ptr < MM_KERNEL_HEAP_START || ((uint32_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - sizeof(struct HeapBlockMeta))))
+    if((uintptr_t)ptr < MM_KERNEL_HEAP_START || ((uintptr_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - sizeof(struct HeapBlockMeta))))
         return;
 
     struct HeapBlockMeta *block = (struct HeapBlockMeta*)ptr - 1; //get block header
@@ -214,5 +225,6 @@ void Mm_freeKernelHeap(const void *ptr)
         first->next = block; //update (extend) first block
         block->previous = first;
     }
+    first->next = block->next;
     first->size = freed;
 }

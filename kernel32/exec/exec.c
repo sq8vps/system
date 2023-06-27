@@ -56,7 +56,7 @@ kError_t Ex_loadKernelSymbols(uintptr_t kernelImage)
     /**
      * When symbol count is known, allocate memory and get symbols
     */
-	kernelSymbolTable = Mm_allocateKernelHeap(symbolCount * sizeof(struct KernelSymbol)); //allocate
+	kernelSymbolTable = MmAllocateKernelHeap(symbolCount * sizeof(struct KernelSymbol)); //allocate
     if(NULL == kernelSymbolTable) //check if allocation successful
         return EXEC_MALLOC_FAILED;
 
@@ -80,7 +80,7 @@ kError_t Ex_loadKernelSymbols(uintptr_t kernelImage)
                     char *name = (char*)h + strTab->sh_offset + symbol[i].st_name; //get symbol name in string table
 
                     kernelSymbolTable[kernelSymbolCount].value = symbol[i].st_value; //store symbol value
-                    if(NULL == (kernelSymbolTable[kernelSymbolCount].name = Mm_allocateKernelHeap(Cm_strlen(name) + 1))) //allocate memory for symbol name
+                    if(NULL == (kernelSymbolTable[kernelSymbolCount].name = MmAllocateKernelHeap(Cm_strlen(name) + 1))) //allocate memory for symbol name
                         return EXEC_MALLOC_FAILED;
 
 			        Cm_strcpy(kernelSymbolTable[kernelSymbolCount].name, name); //copy symbol name
