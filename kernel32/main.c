@@ -8,13 +8,13 @@
 #include "exec/exec.h"
 #include "common.h"
 #include "exec/kdrv.h"
-#include "io/display.h"
 #include "mm/gdt.h"
 #include "mm/dynmap.h"
 #include "hal/hal.h"
 #include "ke/task.h"
 #include "ke/tss.h"
 #include "ke/sched.h"
+#include "ke/mutex.h"
 
 #include "../drivers/vga/vga.h"
 
@@ -25,6 +25,7 @@ struct KernelEntryArgs kernelArgs; //copy of kernel entry arguments
 //TODO:
 //dealokacja sterty
 
+static KeSpinLock_t bootMutex;
 
 NORETURN void main(struct KernelEntryArgs args)
 {	
@@ -39,7 +40,6 @@ NORETURN void main(struct KernelEntryArgs args)
 	MmGdtApplyFlat();
 	MmInitPhysicalAllocator(&kernelArgs);
 	MmInitVirtualAllocator();
-
 
 	MmInitDynamicMemory(&kernelArgs);
 	disp_init();

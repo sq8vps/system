@@ -1,0 +1,27 @@
+{
+    "files.associations": {
+        "*.cpp": "cpp",
+        "kdrv_common.h": "c",
+        "stdint.h": "c",
+        "kdrv_defines.h": "c",
+        "stdbool.h": "c",
+        "gddk.h": "c",
+        "ddk.h": "c",
+        "screen.h": "c",
+        "common.h": "c",
+        "defines.h": "c",
+        "palloc.h": "c",
+        "stddef.h": "c",
+        "cdefines.h": "c",
+        "vga.h": "c",
+        "dynmap.h": "c",
+        "gdt.h": "c",
+        "hal.h": "c",
+        "assert.h": "c",
+        "cstdio": "c",
+        "mutex": "c",
+        "heap.h": "c",
+        "idle.h": "c"
+    },
+    "cmake.sourceDirectory": "/mnt/c/programy/system/elf"
+}

@@ -1,6 +1,7 @@
 #include "heap.h"
 #include "../mm/mm.h"
 #include <stdbool.h>
+#include "../ke/mutex.h"
 
 #define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
 #define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
@@ -26,6 +27,8 @@ struct HeapBlockMeta
 */
 struct HeapBlockMeta *heapBlockHead = NULL;
 
+static KeSpinLock_t heapAllocatorMutex;
+
 /**
  * @brief Create new or extend exisiting heap block
  * @param previous Previous block pointer
@@ -36,14 +39,22 @@ static struct HeapBlockMeta *mmAllocateHeapBlock(struct HeapBlockMeta *previous,
 {
     if(!expand) //new block allocation mode
         n += META_SIZE; //update required size with metadata block size
+    
+    KeAcquireSpinlockDisableIRQ(&heapAllocatorMutex);
 
     if((MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - kernelHeapTop) < n) //check if there is enough memory on the heap
+    {
+        KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
         return NULL;
+    }
     
     uint32_t remainder = MM_PAGE_SIZE - (n % MM_PAGE_SIZE); //calculate remainder to the next page boundary
 
     if(OK != MmAllocateMemory(kernelHeapTop, n + remainder, MM_PAGE_FLAG_WRITABLE)) //try to allocate pages and map them to kernel heap space
-      return NULL;
+    {
+        KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
+        return NULL;
+    }
 
     struct HeapBlockMeta *block = (struct HeapBlockMeta*)kernelHeapTop; //get metadata block pointer
     
@@ -91,6 +102,8 @@ static struct HeapBlockMeta *mmAllocateHeapBlock(struct HeapBlockMeta *previous,
             nextBlock->previous = previous;
         }
     }
+
+    KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
 
     if(!expand) //new block allocation mode
         return block;
@@ -177,29 +190,41 @@ void *MmAllocateKernelHeap(uintptr_t n)
 
     n = ALIGN_VAL(n, MM_KERNEL_HEAP_ALIGNMENT);
 
+    KeAcquireSpinlockDisableIRQ(&heapAllocatorMutex);
+    
     if(NULL == heapBlockHead) //first call, there was nothing allocated before
     {
         block = mmAllocateHeapBlock(NULL, n, 0); //allocate new heap block
         if(NULL == block)
+        {
+            KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
             return NULL;
+        }
         
         heapBlockHead = block; //update head
     }
     else //not the first call
     {
         struct HeapBlockMeta *previous = heapBlockHead;
+
         block = mmFindPreallocatedHeapBlock(&previous, n); //look if there is any preallocated block available
         if(block) //found free block?
         {
             block->free = 0;
+
         }
         else //not found?
         {
             block = mmAllocateHeapBlock(previous, n, 0);
             if(NULL == block) //failure
+            {
+                KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
                 return NULL;
+            }
         }
+
     }
+    KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
     return (void*)((uintptr_t)block + META_SIZE);
 }
 
@@ -209,6 +234,9 @@ void MmFreeKernelHeap(const void *ptr)
         return;
 
     struct HeapBlockMeta *block = (struct HeapBlockMeta*)((uintptr_t)ptr - META_SIZE); //get block header
+
+    KeAcquireSpinlockDisableIRQ(&heapAllocatorMutex);
+
     block->free = 1; //mark block as free
     
     struct HeapBlockMeta *first = block; //first consecutive free block in the list
@@ -229,4 +257,5 @@ void MmFreeKernelHeap(const void *ptr)
     }
     first->next = block->next;
     first->size = freed;
+    KeReleaseSpinlockEnableIRQ(&heapAllocatorMutex);
 }

@@ -1,0 +1,28 @@
+#include "idle.h"
+#include "task.h"
+#include "sched.h"
+#include "../mm/valloc.h"
+
+NORETURN static void KeIdleWorker(void)
+{
+    while(1)
+    {
+        asm volatile("hlt");
+    }
+}
+
+STATUS KeCreateIdleTask(void)
+{
+    STATUS ret = OK;
+    struct TaskControlBlock *tcb = NULL;
+    if(OK != (ret = KeCreateProcessRaw("Idle task", NULL, PL_KERNEL, KeIdleWorker, &tcb)))
+        return ret;
+    
+    //set lowest possible priority for this task
+    KeChangeTaskMajorPriority(tcb, PRIORITY_LOWEST);
+    KeChangeTaskMinorPriority(tcb, TCB_MINOR_PRIORITY_LIMIT);
+
+    KeChangeTaskState(tcb, TASK_READY_TO_RUN);
+
+    return OK;
+}

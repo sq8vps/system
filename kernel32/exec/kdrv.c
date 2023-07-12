@@ -5,7 +5,6 @@
 #include "../common.h"
 #include <stdbool.h>
 #include "../ddk/gddk.h"
-#include "../io/display.h"
 
 #include "../../drivers/vga/vga.h"
 
@@ -176,7 +175,7 @@ STATUS Ex_registerDriverCallbacks(const KDRV_INDEX_T index, const void *callback
     {
         case DDK_KDRVCLASS_SCREEN: //screen driver class
             printf("Graphics callback\n");
-            Io_displaySetCallbacks(callbacks);
+            //Io_displaySetCallbacks(callbacks);
             break;
         default: //bad driver class
             return EXEC_BAD_DRIVER_CLASS;

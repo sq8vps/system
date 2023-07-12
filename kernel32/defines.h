@@ -108,6 +108,8 @@ typedef enum PrivilegeLevel_t
 */
 #define ALIGN_VAL(val, align) (val + ((val & (align - 1)) ? (align - (val & (align - 1))) : 0))
 
+#define ASM(x) asm volatile(x)
+
 
 #ifdef DEBUG
     #include "../drivers/vga/vga.h"
