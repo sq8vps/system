@@ -13,12 +13,14 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../defines.h"
+#include "defines.h"
+
+#define IT_FIRST_INTERRUPT_VECTOR 32
 
 /**
  * @brief Attribute to be used with interrupt handlers
 */
-#define IT_HANDLER_ATTRIBUTES __attribute__ ((interrupt, target("general-regs-only")))
+#define IT_HANDLER __attribute__ ((interrupt, target("general-regs-only")))
 
 /**
  * @brief Enum containing exception vectors
@@ -105,16 +107,16 @@ struct ItFrameECMS
  * @brief Set up interrupts and assign default handlers to them
  * @return Error code
 */
-kError_t It_init(void);
+STATUS It_init(void);
 
 /**
  * @brief Set up interrupt (not exception) handler
  * @param vector Interrupt vector number (>=32)
  * @param isr Interrupt service routine pointer
- * @param kernelModeOnly True for this interrupt to be available ine kernel mode exclusively
+ * @param cpl Required privilege level to use this interrupt
  * @return Error code
 */
-EXPORT kError_t It_setInterruptHandler(uint8_t vector, void *isr, bool kernelModeOnly);
+EXPORT STATUS It_setInterruptHandler(uint8_t vector, void *isr, PrivilegeLevel_t cpl);
 
 /**
  * @brief Set up exception (not interrupt) handler
@@ -122,14 +124,7 @@ EXPORT kError_t It_setInterruptHandler(uint8_t vector, void *isr, bool kernelMod
  * @param isr Interrupt service routine pointer
  * @return Error code
 */
-kError_t It_setExceptionHandler(enum It_exceptionVector vector, void *isr);
-
-/**
- * @brief Disable (outdated) PIC - APIC and IOAPIC should be used instead
- * @attention This is done on interrupt module initialization
- * @return Error code
-*/
-kError_t It_disablePIC(void);
+STATUS It_setExceptionHandler(enum It_exceptionVector vector, void *isr);
 
 /**
  * @}

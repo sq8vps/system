@@ -4,7 +4,7 @@
 #include "../common.h"
 
 
-// kError_t elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
+// STATUS elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
 // {
 // 	struct Elf32_Phdr *p;
 // 	for(uint16_t i = 0; i < h->e_phnum; i++)
@@ -36,9 +36,9 @@ inline struct Elf32_Shdr* Ex_getElf32SectionHeader(struct Elf32_Ehdr *h, uint16_
 	return &((struct Elf32_Shdr*)((uintptr_t)h + h->e_shoff))[n];
 }
 
-kError_t Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *symbolValue)
+STATUS Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *symbolValue)
 {
-    kError_t ret = OK;
+    STATUS ret = OK;
 
     ret = Ex_verifyElf32Header(h); //verify header
     if(OK != ret)
@@ -87,7 +87,7 @@ kError_t Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_
     return EXEC_ELF_UNDEFINED_SYMBOL;
 }
 
-kError_t Ex_getElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, Ex_elfResolver_t resolver)
+STATUS Ex_getElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, Ex_elfResolver_t resolver)
 {
 	if((SHN_UNDEF == table) || (SHN_UNDEF == index))
 	{
@@ -148,7 +148,7 @@ kError_t Ex_getElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t i
 	return EXEC_ELF_UNDEFINED_SYMBOL;
 }
 
-kError_t Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry, Ex_elfResolver_t resolver)
+STATUS Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry, Ex_elfResolver_t resolver)
 {
 	 //get target section header, i.e. the section where relocation will be applied
 	struct Elf32_Shdr *targetSectionHdr = Ex_getElf32SectionHeader(h, relSectionHdr->sh_info);
@@ -162,7 +162,7 @@ kError_t Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSect
 	if(SHN_UNDEF != ELF32_R_SYM(relEntry->r_info))
 	{
 		//get it's value
-		kError_t ret = Ex_getElf32SymbolValue(h, relSectionHdr->sh_link, ELF32_R_SYM(relEntry->r_info), &value, resolver);
+		STATUS ret = Ex_getElf32SymbolValue(h, relSectionHdr->sh_link, ELF32_R_SYM(relEntry->r_info), &value, resolver);
 		if(OK != ret)
 			return ret; //return on failure
 	}
@@ -186,9 +186,9 @@ kError_t Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSect
 }
 
 
-kError_t Ex_performElf32Relocation(struct Elf32_Ehdr *h, Ex_elfResolver_t resolver)
+STATUS Ex_performElf32Relocation(struct Elf32_Ehdr *h, Ex_elfResolver_t resolver)
 {
-	kError_t ret = OK;
+	STATUS ret = OK;
 	
 	struct Elf32_Shdr *sectionHdr;
 
@@ -210,7 +210,7 @@ kError_t Ex_performElf32Relocation(struct Elf32_Ehdr *h, Ex_elfResolver_t resolv
 	return OK;
 }
 
-kError_t Ex_verifyElf32Header(struct Elf32_Ehdr *h)
+STATUS Ex_verifyElf32Header(struct Elf32_Ehdr *h)
 {
 	if(h->ei_mag[0] != ELFMAG0 || h->ei_mag[1] != ELFMAG1 || h->ei_mag[2] != ELFMAG2 || h->ei_mag[3] != ELFMAG3) //check for magic number
 		return EXEC_ELF_BAD_FORMAT;

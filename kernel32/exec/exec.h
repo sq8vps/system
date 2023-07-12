@@ -13,8 +13,6 @@
 
 #include <stdint.h>
 #include "../defines.h"
-#include "../../cdefines.h"
-#include "elf.h"
 
 /**
  * @defgroup kernelSymbols Kernel symbols manipulation routines
@@ -28,7 +26,7 @@
  * @return Error code
  * @attention Full raw image must be loaded to memory (by the bootloader probably)
 */
-kError_t Ex_loadKernelSymbols(uintptr_t kernelImage);
+STATUS Ex_loadKernelSymbols(uintptr_t kernelImage);
 
 /**
  * @brief Resolve kernel symbol

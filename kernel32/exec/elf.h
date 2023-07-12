@@ -251,7 +251,7 @@ struct Elf32_Shdr* Ex_getElf32SectionHeader(struct Elf32_Ehdr *h, uint16_t n);
  * @param h ELF32 file header
  * @return Error code (OK on successful verification)
 */
-kError_t Ex_verifyElf32Header(struct Elf32_Ehdr *h);
+STATUS Ex_verifyElf32Header(struct Elf32_Ehdr *h);
 
 /**
  * @brief Get ELF32 symbol value by name
@@ -261,7 +261,7 @@ kError_t Ex_verifyElf32Header(struct Elf32_Ehdr *h);
  * @return Error code
  * @attention All symbols must be relocated and linked first
 */
-kError_t Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *symbolValue);
+STATUS Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *symbolValue);
 
 /**
  * @brief Resolve ELF32 symbol value for given symbol table and index
@@ -272,7 +272,7 @@ kError_t Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_
  * @param resolver External symbol resolver function
  * @return Error code
 */
-kError_t Ex_getElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, Ex_elfResolver_t resolver);
+STATUS Ex_getElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, Ex_elfResolver_t resolver);
 
 /**
  * @brief Relocate ELF32 symbol
@@ -281,14 +281,14 @@ kError_t Ex_getElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t i
  * @param relEntry Relocation entry
  * @param resolver External symbol resolver function
 */
-kError_t Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry, Ex_elfResolver_t resolver);
+STATUS Ex_relocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry, Ex_elfResolver_t resolver);
 
 /**
  * @brief Perform full ELF32 symbol relocation
  * @param h ELF file header
  * @param resolver External symbol resolver function
 */
-kError_t Ex_performElf32Relocation(struct Elf32_Ehdr *h, Ex_elfResolver_t resolver);
+STATUS Ex_performElf32Relocation(struct Elf32_Ehdr *h, Ex_elfResolver_t resolver);
 
 /**
  * @}

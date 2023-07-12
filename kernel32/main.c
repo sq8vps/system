@@ -11,32 +11,47 @@
 #include "io/display.h"
 #include "mm/gdt.h"
 #include "mm/dynmap.h"
+#include "hal/hal.h"
+#include "ke/task.h"
+#include "ke/tss.h"
+#include "ke/sched.h"
 
 #include "../drivers/vga/vga.h"
 
-extern uintptr_t _KERNEL_STACK_ADDRESS; //linker-defined kernel stack address symbol
+extern uintptr_t _KERNEL_TEMPORARY_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
 struct KernelEntryArgs kernelArgs; //copy of kernel entry arguments
+
+//TODO:
+//dealokacja sterty
+
 
 NORETURN void main(struct KernelEntryArgs args)
 {	
 	//store kernel arguments locally as the previous stack will be destroyed
 	Cm_memcpy(&kernelArgs, &args, sizeof(args));
+	
+	uintptr_t kernelStackAddress = (uintptr_t)&_KERNEL_TEMPORARY_STACK_ADDRESS; //get temporary stack address
+	asm volatile("mov esp, %0" : : "m" (kernelStackAddress) : ); //set up stack top address in ESP register
+	asm volatile("mov ebp, %0" : : "m" (kernelStackAddress) : ); //set up base address in EBP register
 
+	MmGdtInit();
+	MmGdtApplyFlat();
+	MmInitPhysicalAllocator(&kernelArgs);
+	MmInitVirtualAllocator();
+
+
+	MmInitDynamicMemory(&kernelArgs);
+	disp_init();
 	disp_clear();
 
-	GdtInit();
-	GdtApplyFlat();
+	HalInitInterruptController();
 	It_init(); //initialize interrupts and exceptions
-	MmInitPhysicalAllocator(&kernelArgs);
-	uintptr_t kernelStackAddress = (uintptr_t)&_KERNEL_STACK_ADDRESS; //get stack address
-	asm volatile("mov esp, %0" : : "m" (kernelStackAddress) : ); //set up stack top address in ESP register
-	asm volatile("mov ebp, %0" : : "m" (kernelStackAddress) : ); //set up stack base address in EBP register
-	MmInitVirtualAllocator();
-	MmMapArbitraryKernelMemory(0xB8000, 0xB8000, MM_PAGE_FLAG_WRITABLE);
-	MmMapArbitraryKernelMemory(0xB9000, 0xB9000, MM_PAGE_FLAG_WRITABLE);
-	MmInitDynamicMemory(&kernelArgs);
+
+	KePrepareTSS(0);
+
+	KeSchedulerStart();
 	
-	printf("OK\n");
+	//printf("OK\n");
 	while(1);;
 }

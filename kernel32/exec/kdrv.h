@@ -26,7 +26,7 @@
  * @return Error code
  * @attention Full raw driver image must be preloaded to memory. All no-bits/BSS sections must be allocated before.
 */
-kError_t Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t size);
+STATUS Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t size);
 
 
 /**
@@ -47,7 +47,7 @@ kError_t Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t siz
  * @param callbacks Structure of callbacks
  * @return Error code
 */
-extern kError_t Ex_registerDriverGeneralCallbacks(const KDRV_INDEX_T index, const DDK_KDrvGeneralCallbacks_t *callbacks);
+extern STATUS Ex_registerDriverGeneralCallbacks(const KDRV_INDEX_T index, const DDK_KDrvGeneralCallbacks_t *callbacks);
 
 /**
  * @brief (Un)Register specialized driver callbacks
@@ -56,7 +56,7 @@ extern kError_t Ex_registerDriverGeneralCallbacks(const KDRV_INDEX_T index, cons
  * @return Error code
  * @warning Callback structure is determined by driver class
 */
-extern kError_t Ex_registerDriverCallbacks(const KDRV_INDEX_T index, const void *callbacks);
+extern STATUS Ex_registerDriverCallbacks(const KDRV_INDEX_T index, const void *callbacks);
 
 /**
  * @}

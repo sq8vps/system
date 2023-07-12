@@ -21,21 +21,21 @@
 */
 
 /**
- * @brief Allocate and map kernel memory
+ * @brief Allocate and map memory
  * @param address Address to map the memory to
  * @param size Memory size in bytes
  * @param flags Page flags
  * @return Error code
 */
-kError_t MmAllocateKernelMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags);
+STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags);
 
 /**
- * @brief Unmap and free kernel memory
+ * @brief Unmap and free  memory
  * @param address Address to unmap and free
  * @param size Memory size in bytes
  * @return Error code
 */
-kError_t MmFreeKernelMemory(uintptr_t address, uintptr_t size);
+STATUS MmFreeMemory(uintptr_t address, uintptr_t size);
 
 /**
  * @}

@@ -24,42 +24,61 @@
  * @param port Port number
  * @return Data read
 */
-EXPORT uint8_t Hal_IOPortReadByte(uint16_t port);
+EXPORT uint8_t HalIOPortReadByte(uint16_t port);
 
 /**
  * @brief Write byte to IO port
  * @param port Port number
  * @param d Data to write
 */
-EXPORT void Hal_IOPortWriteByte(uint16_t port, uint8_t d);
+EXPORT void HalIOPortWriteByte(uint16_t port, uint8_t d);
 
 /**
  * @brief Read word from IO port
  * @param port Port number
  * @return Data read
 */
-EXPORT uint16_t Hal_IOPortReadWord(uint16_t port);
+EXPORT uint16_t HalIOPortReadWord(uint16_t port);
 
 /**
  * @brief Write word to IO port
  * @param port Port number
  * @param d Data to write
 */
-EXPORT void Hal_IOPortWriteWord(uint16_t port, uint16_t d);
+EXPORT void HalIOPortWriteWord(uint16_t port, uint16_t d);
 
 /**
  * @brief Read double word from IO port
  * @param port Port number
  * @return Data read
 */
-EXPORT uint32_t Hal_IOPortReadDWord(uint16_t port);
+EXPORT uint32_t HalIOPortReadDWord(uint16_t port);
 
 /**
  * @brief Write double word to IO port
  * @param port Port number
  * @param d Data to write
 */
-EXPORT void Hal_IOPortWriteDWord(uint16_t port, uint32_t d);
+EXPORT void HalIOPortWriteDWord(uint16_t port, uint32_t d);
+
+/**
+ * @brief Initialize interrupt controller
+*/
+void HalInitInterruptController(void);
+
+/**
+ * @brief Enable external interrupt
+ * @param irq Interrupt number
+ * @return Error code
+*/
+STATUS HalEnableInterrupt(uint8_t irq);
+
+/**
+ * @brief Clear external interrupt flag
+ * @param irq Interrupt number
+ * @return Error code
+*/
+STATUS HalClearInterruptFlag(uint8_t irq);
 
 /**
  * @}

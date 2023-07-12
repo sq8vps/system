@@ -5,7 +5,7 @@ ASM = nasm
 CC_FLAGS = -I . -c -ffreestanding -masm=intel
 ASM_FLAGS = -f elf32
 LNK_FLAGS = -nostdlib -r -ffreestanding -z noexecstack -L..
-LNK_STATIC_LIBS = -ldrvcommon -lgcc
+LNK_STATIC_LIBS = -lgcc
 
 CC_SOURCES = $(wildcard *.c)
 CC_HEADERS = $(wildcard *.h)

@@ -1,6 +1,6 @@
 #include "it.h"
 #include "../../drivers/vga/vga.h"
-#include "hal/hal.h"
+#include "../hal/hal.h"
 #include "../common.h"
 #include "../mm/gdt.h"
 
@@ -10,11 +10,7 @@
 #define IDT_FLAG_PRESENT 0x80
 
 #define IDT_ENTRY_COUNT 256
-#define IDT_FIRST_INTERRUPT_VECTOR 32
 
-#define PIC_MASTER_ADDRESS 0x0020
-#define PIC_SLAVE_ADDRESS 0x00A0
-#define PIC_DATA_ADDRESS_SHIFT 1
 
 
 /**
@@ -27,7 +23,7 @@ struct IdtEntry
 	uint8_t unused; //zeros
 	uint8_t flags; //attributes
 	uint16_t isrHigh; //higher word of ISR address
-} __attribute__((packed));
+} PACKED;
 
 /**
  * @brief IDT register
@@ -36,7 +32,7 @@ struct
 {
 	uint16_t limit;
 	uint32_t base;
-} __attribute__((packed)) idtr;
+} PACKED idtr;
 
 /**
  * @brief Interrupt Descriptor Table itself
@@ -46,8 +42,7 @@ static struct IdtEntry idt[IDT_ENTRY_COUNT] __attribute__((aligned(8)));
 /**
  * @brief Default ISR for interrupts/exceptions with no error code
 */
-IT_HANDLER_ATTRIBUTES
-void defaultIt_h(struct ItFrame *f)
+IT_HANDLER void defaultIt_h(struct ItFrame *f)
 {
 	printf("Unhandled interrupt! EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->ip, f->cs, f->flags);
 	// asm volatile("xchg bx, bx");
@@ -59,9 +54,7 @@ void defaultIt_h(struct ItFrame *f)
 /**
  * @brief Default ISR for exceptions with error code
 */
-
-IT_HANDLER_ATTRIBUTES
-void defaultItEC_h(struct ItFrameEC *f)
+IT_HANDLER void defaultItEC_h(struct ItFrameEC *f)
 {
 	printf("Unhandled exception! Error code: 0x%X, EIP: 0x%X, CS: 0x%X, flags: 0x%X\n", f->error, f->ip, f->cs, f->flags);
 	// asm volatile("xchg bx, bx");
@@ -70,35 +63,33 @@ void defaultItEC_h(struct ItFrameEC *f)
 	while(1);;
 }
 
-kError_t It_setInterruptHandler(uint8_t vector, void *isr, bool kernelModeOnly)
+STATUS It_setInterruptHandler(uint8_t vector, void *isr, PrivilegeLevel_t cpl)
 {
-	if(vector < IDT_FIRST_INTERRUPT_VECTOR)
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
 		return IT_BAD_VECTOR;
 	
 	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
 	idt[vector].isrHigh = (uint32_t)isr >> 16;
-	idt[vector].selector = kernelModeOnly ? GdtGetFlatPrivilegedCodeOffset() : GdtGetFlatUnprivilegedCodeOffset();
-	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT | ((kernelModeOnly == false) ? IDT_FLAG_INTERRUPT_USERMODE : 0);
+	idt[vector].selector = MmGdtGetFlatPrivilegedCodeOffset();
+	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT | ((PL_USER == cpl) ? IDT_FLAG_INTERRUPT_USERMODE : 0);
 	return OK;
 }
 
-kError_t It_setExceptionHandler(enum It_exceptionVector vector, void *isr)
+STATUS It_setExceptionHandler(enum It_exceptionVector vector, void *isr)
 {
-	if(vector >= IDT_FIRST_INTERRUPT_VECTOR)
+	if(vector >= IT_FIRST_INTERRUPT_VECTOR)
 		return IT_BAD_VECTOR;
 	
 	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
 	idt[vector].isrHigh = (uint32_t)isr >> 16;
-	idt[vector].selector = GdtGetFlatPrivilegedCodeOffset();
+	idt[vector].selector = MmGdtGetFlatPrivilegedCodeOffset();
 	idt[vector].flags = IDT_FLAG_TRAP_GATE | IDT_FLAG_PRESENT;
 	return OK;
 }
 
-kError_t It_init(void)
+STATUS It_init(void)
 {
 	Cm_memset(idt, 0, sizeof(idt));
-	//disable outdated PIC
-	It_disablePIC();
 	//set up all defined exceptions to default handlers
 	It_setExceptionHandler(IT_EXCEPTION_DIVIDE, defaultIt_h);
 	It_setExceptionHandler(IT_EXCEPTION_DEBUG, defaultIt_h);
@@ -133,16 +124,6 @@ kError_t It_init(void)
 
 	return OK;
 }
-
-kError_t It_disablePIC(void)
-{
-	//disable PICs by masking all interrupts
-	Hal_IOPortWriteByte(PIC_MASTER_ADDRESS + PIC_DATA_ADDRESS_SHIFT, 0xFF);
-	Hal_IOPortWriteByte(PIC_SLAVE_ADDRESS + PIC_DATA_ADDRESS_SHIFT, 0xFF);
-	return OK;
-}
-
-
 
 
 

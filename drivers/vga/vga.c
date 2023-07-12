@@ -1,6 +1,7 @@
 #include "vga.h"
 #include "../../kernel32/hal/hal.h"
-#include "../common.h"
+#include "../../kernel32/mm/dynmap.h"
+#include "../../kernel32/common.h"
 #include "../../kernel32/ddk/ddk.h"
 #include "../../kernel32/ddk/gddk.h"
 
@@ -17,16 +18,25 @@ KDRV_ENTRY(idx)
 	Ex_registerDriverCallbacks(index, &functions);
 }
 
+uint8_t *vmem = NULL;
+
+void disp_init()
+{
+	vmem = MmMapDynamicMemory(0xB8000, 0x2000);
+}
+
 #define PRINTF_INT_MAX_DIGITS 9
 
 uint8_t disp_printChar(uint8_t c, int16_t col, int16_t row, uint8_t type)
 {
+	if(NULL == vmem)
+		return 0;
+
 	if(col >= DISP_MAX_COLS) return 1;
 	if(row >= DISP_MAX_ROWS) return 1;
 
 	if(type == 0) type = DISP_COLOR_DEFAULT;
 
-	uint8_t *vmem = (uint8_t*)DISP_ADDR;
 	uint16_t addr = 0;
 	if(col >= 0 && row >= 0)
 	{
@@ -58,20 +68,20 @@ uint8_t disp_printChar(uint8_t c, int16_t col, int16_t row, uint8_t type)
 
 uint16_t disp_getCursor(void)
 {
-	Hal_IOPortWriteByte(DISP_PORT_CTRL, 14);
+	HalIOPortWriteByte(DISP_PORT_CTRL, 14);
 	uint16_t offset = 0;
-	offset = Hal_IOPortReadByte(DISP_PORT_DATA) << 8;
-	Hal_IOPortWriteByte(DISP_PORT_CTRL, 15);
-	offset |= Hal_IOPortReadByte(DISP_PORT_DATA);
+	offset = HalIOPortReadByte(DISP_PORT_DATA) << 8;
+	HalIOPortWriteByte(DISP_PORT_CTRL, 15);
+	offset |= HalIOPortReadByte(DISP_PORT_DATA);
 	return offset;
 }
 
 void disp_setCursor(uint16_t addr)
 {
-	Hal_IOPortWriteByte(DISP_PORT_CTRL, 14);
-	Hal_IOPortWriteByte(DISP_PORT_DATA, (uint8_t)(addr >> 8));
-	Hal_IOPortWriteByte(DISP_PORT_CTRL, 15);
-	Hal_IOPortWriteByte(DISP_PORT_DATA, (uint8_t)(addr & 0xFF));
+	HalIOPortWriteByte(DISP_PORT_CTRL, 14);
+	HalIOPortWriteByte(DISP_PORT_DATA, (uint8_t)(addr >> 8));
+	HalIOPortWriteByte(DISP_PORT_CTRL, 15);
+	HalIOPortWriteByte(DISP_PORT_DATA, (uint8_t)(addr & 0xFF));
 }
 
 uint8_t disp_printString(uint8_t *str, int16_t col, int16_t row, uint8_t type)
@@ -109,16 +119,18 @@ void disp_clear(void)
 
 uint16_t disp_handleScroll(uint16_t cursor)
 {
+	if(NULL == vmem)
+		return cursor;
 	if(cursor < (DISP_MAX_ROWS * DISP_MAX_COLS))
 	{
 		return cursor;
 	}
 	for(uint8_t i = 1; i < (DISP_MAX_ROWS); i++)
 	{
-		memcpy((uint8_t*)(DISP_ADDR + (DISP_GETADDR(0, i - 1) << 1)), (uint8_t*)(DISP_ADDR + (DISP_GETADDR(0, i) << 1)), DISP_MAX_COLS << 1);
+		Cm_memcpy((uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, i - 1) << 1)), (uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, i) << 1)), DISP_MAX_COLS << 1);
 	}
 
-	uint8_t *last = (uint8_t*)(DISP_ADDR + (DISP_GETADDR(0, DISP_MAX_ROWS - 1) << 1));
+	uint8_t *last = (uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, DISP_MAX_ROWS - 1) << 1));
 	for(uint8_t i = 0; i < DISP_MAX_COLS * 2; i++)
 	{
 		last[i] = 0;
@@ -199,6 +211,16 @@ uint8_t disp_printHex8(uint8_t num, int16_t col, int16_t row, uint8_t type)
 	return 0;
 }
 
+uint32_t pow10(uint32_t i)
+{
+	uint32_t ret = 1;
+	while(i)
+	{
+		ret *= 10;
+		i--;
+	}
+	return ret;
+}
 
 /**
  * \brief Prints formatted input (simplified printf)

@@ -3,6 +3,10 @@
 #include "../mm/heap.h"
 #include "../common.h"
 #include "../../drivers/vga/vga.h"
+#include "../mm/valloc.h"
+#include "../mm/mm.h"
+#include "elf.h"
+
 
 //#define EXEC_PROVIDE_KERNEL_OBJECTS //provide non-function kernel objects to programs linked against kernel
 
@@ -16,9 +20,9 @@ struct KernelSymbol *kernelSymbolTable = NULL;
 uint32_t kernelSymbolCount = 0;
 
 
-kError_t Ex_loadKernelSymbols(uintptr_t kernelImage)
+STATUS Ex_loadKernelSymbols(uintptr_t kernelImage)
 {
-    kError_t ret = OK;
+    STATUS ret = OK;
 
     struct Elf32_Ehdr *h = (struct Elf32_Ehdr*)kernelImage; //get ELF header
 
@@ -103,3 +107,4 @@ uintptr_t Ex_getKernelSymbol(const char *name)
     }
     return 0;
 }
+

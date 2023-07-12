@@ -1,9 +1,9 @@
 #include "mm.h"
 #include "palloc.h"
 
-kError_t MmAllocateKernelMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags)
+STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags)
 {
-    kError_t ret = OK;
+    STATUS ret = OK;
 
     uintptr_t initialAddress = address;
     while(size)
@@ -19,7 +19,7 @@ kError_t MmAllocateKernelMemory(uintptr_t address, uintptr_t size, MmPagingFlags
             goto mmAllocateKernelMemoryFailed;
         }
 
-        if(OK != (ret = MmMapArbitraryKernelMemoryEx(address, pAddress, allocated, flags)))
+        if(OK != (ret = MmMapMemoryEx(address, pAddress, allocated, flags)))
         {
             //mapping failed
             MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE); //free physical page that wasn't mapped
@@ -37,22 +37,22 @@ kError_t MmAllocateKernelMemory(uintptr_t address, uintptr_t size, MmPagingFlags
     //unmap and free previously mapped and allocated pages
     while(address != initialAddress)
     {
-        MmGetPhysicalKernelPageAddress(address, &pAddress);
+        MmGetPhysicalPageAddress(address, &pAddress);
         MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
-        MmUnmapArbitraryKernelMemory(address);
+        MmUnmapMemory(address);
         address -= MM_PAGE_SIZE;
     }
     return ret;
 }
 
-kError_t MmFreeKernelMemory(uintptr_t address, uintptr_t size)
+STATUS MmFreeMemory(uintptr_t address, uintptr_t size)
 {
     while(size)
     {
         uintptr_t pAddress = 0;
-        if(OK == MmGetPhysicalKernelPageAddress(address, &pAddress))
+        if(OK == MmGetPhysicalPageAddress(address, &pAddress))
         {
-            MmUnmapArbitraryKernelMemory(address);
+            MmUnmapMemory(address);
             MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
         }
         address -= MM_PAGE_SIZE;

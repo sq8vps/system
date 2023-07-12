@@ -44,6 +44,15 @@ uint32_t Cm_strlen(const char *str);
 char* Cm_strcpy(char *strTo, const char *strFrom);
 
 /**
+ * @brief Copy at most n bytes of a string
+ * @param strTo Destination string
+ * @param strFrom Source string
+ * @param n Character limit (NULL terminator excluded)
+ * @return Destination string
+*/
+char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n);
+
+/**
  * @brief Compare strings
  * @param s1 1st string
  * @param s2 2nd string

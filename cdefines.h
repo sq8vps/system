@@ -15,8 +15,10 @@
 #define MM_KERNEL_ADDRESS 0xD0000000
 #define MM_DRIVERS_START_ADDRESS 0xE8000000
 #define MM_DRIVERS_MAX_SIZE 0x10000000
-#define MM_OTHER_START_ADDRESS 0xF8000000
-#define MM_OTHER_MAX_SIZE 0x7C00000
+#define MM_DYNAMIC_START_ADDRESS 0xF8000000
+#define MM_DYNAMIC_MAX_SIZE 0x7800000
+#define MM_KERNEL_SPACE_START (MM_KERNEL_ADDRESS)
+#define MM_KERNEL_SPACE_SIZE (MM_MEMORY_SIZE - MM_KERNEL_SPACE_START)
 
 #define MM_BIOS_MEMORY_MAP_MAX_ENTRIES 256
 #define MM_BIOS_MEMORY_MAP_USABLE_REGION_ATTRIBUTES 0x100000001
@@ -50,6 +52,11 @@ struct KernelEntryArgs
     uintptr_t initrdSize; //initial ramdisk size (size of memory allocated for initrd)
 };
 
-
+#if MM_DYNAMIC_START_ADDRESS & (MM_PAGE_SIZE - 1)
+    #error Dynamic kernel memory address must be page aligned
+#endif
+#if MM_DYNAMIC_MAX_SIZE & (MM_PAGE_SIZE - 1)
+    #error Dynamic kernel memory size must be page aligned
+#endif
 
 #endif

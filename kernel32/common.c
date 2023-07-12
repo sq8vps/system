@@ -16,6 +16,21 @@ char* Cm_strcpy(char *strTo, const char *strFrom)
     return initial;
 }
 
+char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n)
+{
+    char *initial = strTo;
+    while(*strTo++ = *strFrom++)
+    {
+        n--;
+        if(n == 0)
+        {
+            *strTo = 0;
+            break;
+        }
+    }
+    return initial;
+}
+
 int Cm_strcmp(const char *s1, const char *s2)
 {
     while(*s1 && (*s1 == *s2))

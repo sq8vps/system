@@ -80,7 +80,7 @@ static struct KDrv_DriverListEntry* ex_getKernelModeDriverEntry(const KDRV_INDEX
     return t;
 }
 
-static kError_t ex_pushDriverMetadata(const struct KDrv_DriverListEntry *e)
+static STATUS ex_pushDriverMetadata(const struct KDrv_DriverListEntry *e)
 {
     struct KDrv_DriverListEntry *m = MmAllocateKernelHeap(sizeof(struct KDrv_DriverListEntry)); //allocate memory for entry
     if(NULL == m)
@@ -102,9 +102,9 @@ static kError_t ex_pushDriverMetadata(const struct KDrv_DriverListEntry *e)
     return OK;
 }
 
-kError_t Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t size)
+STATUS Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t size)
 {
-    kError_t ret = OK;
+    STATUS ret = OK;
 
     struct Elf32_Ehdr *h = (struct Elf32_Ehdr*)driverImage; //get ELF header
 
@@ -150,7 +150,7 @@ kError_t Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t siz
     return OK;
 }
 
-kError_t Ex_registerDriverGeneralCallbacks(const KDRV_INDEX_T index, const DDK_KDrvGeneralCallbacks_t *callbacks)
+STATUS Ex_registerDriverGeneralCallbacks(const KDRV_INDEX_T index, const DDK_KDrvGeneralCallbacks_t *callbacks)
 {
     struct KDrv_DriverListEntry *e = ex_getKernelModeDriverEntry(index);
     if(NULL == e)
@@ -162,7 +162,7 @@ kError_t Ex_registerDriverGeneralCallbacks(const KDRV_INDEX_T index, const DDK_K
     return OK;
 }
 
-kError_t Ex_registerDriverCallbacks(const KDRV_INDEX_T index, const void *callbacks)
+STATUS Ex_registerDriverCallbacks(const KDRV_INDEX_T index, const void *callbacks)
 {
     struct KDrv_DriverListEntry *e = ex_getKernelModeDriverEntry(index);
     if(NULL == e)

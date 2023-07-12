@@ -203,7 +203,7 @@ enum Elf32_Rel_types {
 
 
 
-// kError_t elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
+// STATUS elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
 // {
 // 	struct Elf32_Phdr *p;
 // 	for(uint16_t i = 0; i < h->e_phnum; i++)
@@ -250,7 +250,7 @@ struct KernelSymbol
 struct KernelSymbol *kernelSymbolTable = NULL;
 uint32_t kernelSymbolCount = 0;
 
-kError_t Elf_getKernelSymbolTable(const char *path)
+STATUS Elf_getKernelSymbolTable(const char *path)
 {
 	FILE *f = fopen(path, "rb");
 	struct Elf32_Ehdr h;
@@ -347,7 +347,7 @@ static uint32_t elf_getKernelSymbol(const char *name)
  * @param symbolValue Returned symbol value
  * @return Error code
 */
-static kError_t elf_getSymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uint32_t *symbolValue)
+static STATUS elf_getSymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uint32_t *symbolValue)
 {
 	if((SHN_UNDEF == table) || (SHN_UNDEF == index))
 	{
@@ -413,7 +413,7 @@ static kError_t elf_getSymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_
 	return OK;
 }
 
-static kError_t elf_allocateBss(struct Elf32_Ehdr *h)
+static STATUS elf_allocateBss(struct Elf32_Ehdr *h)
 {
 	struct Elf32_Shdr *sectionHdr;
 
@@ -442,7 +442,7 @@ static kError_t elf_allocateBss(struct Elf32_Ehdr *h)
 	return OK;
 }
 
-static kError_t elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry)
+static STATUS elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry)
 {
 	 //get target section header, i.e. the section where relocation will be applied
 	struct Elf32_Shdr *targetSectionHdr = elf_getSectionHeader(h, relSectionHdr->sh_info);
@@ -456,7 +456,7 @@ static kError_t elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relS
 	if(SHN_UNDEF != ELF32_R_SYM(relEntry->r_info))
 	{
 		//get it's value
-		kError_t ret = elf_getSymbolValue(h, relSectionHdr->sh_link, ELF32_R_SYM(relEntry->r_info), &value);
+		STATUS ret = elf_getSymbolValue(h, relSectionHdr->sh_link, ELF32_R_SYM(relEntry->r_info), &value);
 		if(OK != ret)
 			return ret; //return on failure
 	}
@@ -481,9 +481,9 @@ static kError_t elf_relocateSymbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relS
 }
 
 
-static kError_t elf_performRelocation(struct Elf32_Ehdr *h)
+static STATUS elf_performRelocation(struct Elf32_Ehdr *h)
 {
-	kError_t ret = OK;
+	STATUS ret = OK;
 	ret = elf_allocateBss(h); //allocate all no-bits sections first
 	if(OK != ret) 
 		return ret;
@@ -509,9 +509,9 @@ static kError_t elf_performRelocation(struct Elf32_Ehdr *h)
 }
 
 
-kError_t Elf_load(char *name, uint32_t *entryPoint)
+STATUS Elf_load(char *name, uint32_t *entryPoint)
 {
-	kError_t ret = OK;
+	STATUS ret = OK;
 	FILE *f = fopen(name, "rb");
 	fseek(f, 0L, SEEK_END);
 	uint32_t size = ftell(f);

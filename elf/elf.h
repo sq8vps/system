@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-typedef enum kError_t
+typedef enum STATUS
 {
     OK,
 
@@ -16,9 +16,9 @@ typedef enum kError_t
     EXEC_ELF_UNSUPPORTED_TYPE,
     EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL,
 
-} kError_t;
+} STATUS;
 
-kError_t Elf_load(char *name, uint32_t *entryPoint);
-kError_t Elf_getKernelSymbolTable(const char *path);
+STATUS Elf_load(char *name, uint32_t *entryPoint);
+STATUS Elf_getKernelSymbolTable(const char *path);
 
 #endif

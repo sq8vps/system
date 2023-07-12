@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-#define DISP_ADDR 0xb8000
 #define DISP_PORT_CTRL 0x3D4
 #define DISP_PORT_DATA 0x3D5
 
@@ -17,6 +16,7 @@
 
 #define DISP_GETADDR(c, r) (((((r) * DISP_MAX_COLS) + (c))))
 
+void disp_init();
 
 uint8_t disp_printChar(uint8_t c, int16_t col, int16_t row, uint8_t type);
 
