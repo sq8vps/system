@@ -97,6 +97,12 @@ EXPORT STATUS MmUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
 EXPORT uintptr_t MmCreateProcessPageDirectory(void);
 
 /**
+ * @brief Get current page directory physical address
+ * @return Page directory physical address
+*/
+uintptr_t MmGetPageDirectoryAddress(void);
+
+/**
  * @brief Switch current page directory
  * @param pageDir New page directory physical address
  * @warning Use exclusively when absolutely neccessary

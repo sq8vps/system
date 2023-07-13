@@ -75,8 +75,10 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
     if(0 == pageDir)
         return EXEC_PROCESS_PAGE_DIRECTORY_CREATION_FAILURE;
 
+
     KeAcquireSpinlock(&processCreationMutex); //spinlock to ensure the page directory does not change
     
+    uintptr_t originalPageDir = MmGetPageDirectoryAddress();
     MmSwitchPageDirectory(pageDir); //switch to the new page directory
 
     STATUS ret = OK;
@@ -110,7 +112,7 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
     }
 
 
-    uint32_t *kernelStack = (uint32_t*)KE_KERNEL_STACK_TOP; //get kernel stack
+    uint32_t *stack = (uint32_t*)((*tcb)->esp); //get kernel stack
     //start task in kernel mode initially and allow it to load the process image on its own
     //this requires an appropriate stack layout to perform iret on task switch
     //the stack layout is as follows (top to bottom):
@@ -122,16 +124,14 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
     //there is no ESP and SS, because there is no privilege level switch
 
     //GP registers are zeroed
-    //ebp will be filled later
-    kernelStack[-1] = TCB_EFLAGS_IF | TCB_EFLAGS_RESERVED;
-    kernelStack[-2] = MmGdtGetFlatPrivilegedCodeOffset();
-    kernelStack[-3] = (uintptr_t)entry;
-    kernelStack[-10] = (*tcb)->esp; //set EBP
+    stack[-1] = TCB_EFLAGS_IF | TCB_EFLAGS_RESERVED;
+    stack[-2] = MmGdtGetFlatPrivilegedCodeOffset();
+    stack[-3] = (uintptr_t)entry;
+    stack[-10] = (*tcb)->esp; //set EBP
     (*tcb)->esp -= (10 * sizeof(uint32_t)); //update ESP
 
+    MmSwitchPageDirectory(originalPageDir);
     KeReleaseSpinlock(&processCreationMutex);
-
-    KeChangeTaskState(*tcb, TASK_READY_TO_RUN);
 
     return OK;
 }

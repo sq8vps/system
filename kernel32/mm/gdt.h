@@ -61,7 +61,7 @@ void MmGdtApply(void);
 void MmGdtClear(void);
 
 /**
- * @param Initialize GDT
+ * @brief Initialize GDT
 */
 void MmGdtInit(void);
 

@@ -7,7 +7,7 @@ NORETURN static void KeIdleWorker(void)
 {
     while(1)
     {
-        asm volatile("hlt");
+        ASM("hlt");
     }
 }
 
@@ -22,7 +22,7 @@ STATUS KeCreateIdleTask(void)
     KeChangeTaskMajorPriority(tcb, PRIORITY_LOWEST);
     KeChangeTaskMinorPriority(tcb, TCB_MINOR_PRIORITY_LIMIT);
 
-    KeChangeTaskState(tcb, TASK_READY_TO_RUN);
+    KeEnableTask(tcb);
 
     return OK;
 }
