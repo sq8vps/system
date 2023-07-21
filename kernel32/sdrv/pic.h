@@ -1,8 +1,8 @@
-#ifndef KERNEL32_PIC_H_
-#define KERNEL32_PIC_H_
+#ifndef KERNEL_PIC_H_
+#define KERNEL_PIC_H_
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 #include <stdbool.h>
 
 /**

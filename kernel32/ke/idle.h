@@ -1,8 +1,8 @@
-#ifndef KERNEL32_IDLER_H_
-#define KERNEL32_IDLER_H_
+#ifndef KERNEL_IDLER_H_
+#define KERNEL_IDLER_H_
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @brief Create and register idle task

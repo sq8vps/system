@@ -1,5 +1,5 @@
-#ifndef KERNEL32_SCHED_H_
-#define KERNEL32_SCHED_H_
+#ifndef KERNEL_SCHED_H_
+#define KERNEL_SCHED_H_
 
 #include <stdint.h>
 #include "defines.h"

@@ -1,10 +1,9 @@
 #include "exec.h"
 
-#include "../mm/heap.h"
-#include "../common.h"
-#include "../../drivers/vga/vga.h"
-#include "../mm/valloc.h"
-#include "../mm/mm.h"
+#include "mm/heap.h"
+#include "common.h"
+#include "mm/valloc.h"
+#include "mm/mm.h"
 #include "elf.h"
 
 
@@ -84,10 +83,10 @@ STATUS Ex_loadKernelSymbols(uintptr_t kernelImage)
                     char *name = (char*)h + strTab->sh_offset + symbol[i].st_name; //get symbol name in string table
 
                     kernelSymbolTable[kernelSymbolCount].value = symbol[i].st_value; //store symbol value
-                    if(NULL == (kernelSymbolTable[kernelSymbolCount].name = MmAllocateKernelHeap(Cm_strlen(name) + 1))) //allocate memory for symbol name
+                    if(NULL == (kernelSymbolTable[kernelSymbolCount].name = MmAllocateKernelHeap(CmStrlen(name) + 1))) //allocate memory for symbol name
                         return EXEC_MALLOC_FAILED;
 
-			        Cm_strcpy(kernelSymbolTable[kernelSymbolCount].name, name); //copy symbol name
+			        CmStrcpy(kernelSymbolTable[kernelSymbolCount].name, name); //copy symbol name
 			        kernelSymbolCount++;
                 }
             }
@@ -102,7 +101,7 @@ uintptr_t Ex_getKernelSymbol(const char *name)
     //look for kernel symbol
     for(uint32_t i = 0; i < kernelSymbolCount; i++)
     {
-        if(0 == Cm_strcmp(name, kernelSymbolTable[i].name))
+        if(0 == CmStrcmp(name, kernelSymbolTable[i].name))
             return kernelSymbolTable[i].value;
     }
     return 0;

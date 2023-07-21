@@ -1,5 +1,5 @@
 #include "tss.h"
-#include "../mm/gdt.h"
+#include "mm/gdt.h"
 
 struct TssEntry 
 {

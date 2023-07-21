@@ -21,7 +21,25 @@
         "cstdio": "c",
         "mutex": "c",
         "heap.h": "c",
-        "idle.h": "c"
+        "idle.h": "c",
+        "it.h": "c",
+        "ioapic.h": "c",
+        "vector": "c",
+        "mmio.h": "c",
+        "pit.h": "c",
+        "mp.h": "c",
+        "acpi.h": "c",
+        "lapic.h": "c",
+        "cpuid.h": "c",
+        "pic.h": "c",
+        "cpu.h": "c",
+        "ioport.h": "c",
+        "nmi.h": "c",
+        "panic.h": "c",
+        "fpufaults.h": "c",
+        "mutex.h": "c",
+        "color.h": "c",
+        "kdrv.h": "c"
     },
     "cmake.sourceDirectory": "/mnt/c/programy/system/elf"
 }

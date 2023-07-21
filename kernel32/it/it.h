@@ -1,12 +1,11 @@
-#ifndef KERNEL32_IT_H_
-#define KERNEL32_IT_H_
+#ifndef KERNEL_IT_H_
+#define KERNEL_IT_H_
 
 /**
  * @file it.h
  * @brief Kernel interrupt module
  * 
  * Handles exceptions and interrupts.
- * Support hardware interrupts with APIC and IOAPIC.
  * 
  * @defgroup it Interrupt module
 */
@@ -17,6 +16,11 @@
 
 #define IT_FIRST_INTERRUPT_VECTOR 32
 
+enum ItLegacyVectors
+{
+    IT_LEGACY_PIT_VECTOR = 32,
+};
+
 /**
  * @brief Attribute to be used with interrupt handlers
 */
@@ -25,7 +29,7 @@
 /**
  * @brief Enum containing exception vectors
 */
-enum It_exceptionVector
+enum ItExceptionVector
 {
     IT_EXCEPTION_DIVIDE = 0,
     IT_EXCEPTION_DEBUG = 1,
@@ -33,7 +37,7 @@ enum It_exceptionVector
     IT_EXCEPTION_BREAKPOINT = 3,
     IT_EXCEPTION_OVERFLOW = 4,
     IT_EXCEPTION_BOUND_EXCEEDED = 5,
-    IT_EXCEPTION_IVALID_OPCODE = 6,
+    IT_EXCEPTION_INVALID_OPCODE = 6,
     IT_EXCEPTION_DEVICE_UNAVAILABLE = 7,
     IT_EXCEPTION_DOUBLE_FAULT = 8,
     IT_EXCEPTION_COPROCESSOR_OVERRUN = 9,
@@ -49,6 +53,13 @@ enum It_exceptionVector
     IT_EXCEPTION_VIRTUALIZATION = 20,
     IT_EXCEPTION_CONTROL_PROTECTION = 21,
 };
+
+/**
+ * @defgroup itConfig Interrupt module configuration routines and structures
+ * @ingroup it
+ * @{
+*/
+
 
 /**
  * @brief ISR frame for interrupts and exceptions without an error code with no privilege level change
@@ -96,35 +107,48 @@ struct ItFrameECMS
     uint32_t ss;
 } __attribute__((packed));
 
-/**
- * @defgroup itConfig Interrupt module configuration routines
- * @ingroup it
- * @{
-*/
 
 
 /**
  * @brief Set up interrupts and assign default handlers to them
  * @return Error code
 */
-STATUS It_init(void);
+STATUS ItInit(void);
 
 /**
- * @brief Set up interrupt (not exception) handler
- * @param vector Interrupt vector number (>=32)
+ * @brief Get free interrupt vector number
+ * @return Free vector number or 0 on failure
+*/
+EXPORT uint8_t ItGetFreeVector(void);
+
+/**
+ * @brief Install interrupt handler
+ * @param vector Interrupt vector number
  * @param isr Interrupt service routine pointer
  * @param cpl Required privilege level to use this interrupt
- * @return Error code
+ * @return Status code
 */
-EXPORT STATUS It_setInterruptHandler(uint8_t vector, void *isr, PrivilegeLevel_t cpl);
+EXPORT STATUS ItInstallInterruptHandler(uint8_t vector, void *isr, PrivilegeLevel_t cpl);
 
 /**
- * @brief Set up exception (not interrupt) handler
- * @param vector Exception vector number (<32)
- * @param isr Interrupt service routine pointer
- * @return Error code
+ * @brief Uninstall interrupt handler
+ * @param vector Vector number
+ * @return Status code
 */
-STATUS It_setExceptionHandler(enum It_exceptionVector vector, void *isr);
+EXPORT STATUS ItUninstallInterruptHandler(uint8_t vector);
+
+/**
+ * @brief Check if exeception/interrupt was caused by kernel mode code
+ * @param cs Code segment of failing code (from interrupt frame)
+ * @return True if caused by kernel mode
+*/
+bool ItIsCausedByKernelMode(uint32_t cs);
+
+/**
+ * @brief Perform a hard CPU reset
+ * @warning DO NOT USE. Use KePanic() and KePanicEx() instead.
+*/
+NORETURN void ItHardReset(void);
 
 /**
  * @}

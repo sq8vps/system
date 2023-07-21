@@ -1,5 +1,5 @@
-#ifndef KERNEL32_KDRV_H_
-#define KERNEL32_KDRV_H_
+#ifndef KERNEL_KDRV_H_
+#define KERNEL_KDRV_H_
 
 /**
  * @file kdrv.h
@@ -9,7 +9,7 @@
 */
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 #include "../ddk/ddk.h"
 
 

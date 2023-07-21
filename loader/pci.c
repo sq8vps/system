@@ -62,7 +62,7 @@ static uint16_t pci_configReadWord(Pci_s_t pci, uint8_t offset)
  * \param offset Offset of the byte to be read (in bytes)
  * \return Data read
  */
-static uint8_t pci_configReadByte(Pci_s_t pci, uint8_t offset)
+uint8_t pci_configReadByte(Pci_s_t pci, uint8_t offset)
 {
 	pci.dev &= 0b11111;
 	pci.func &= 0b111;
@@ -190,7 +190,8 @@ void pci_setIdeDecode(Pci_s_t pci, uint8_t primsec, uint16_t state)
 void pci_checkDevice(uint8_t bus, uint8_t dev)
 {
 	Pci_s_t pci = {bus, dev, 0};
-	if(pci_getVendor(pci) == PCI_VENDOR_INVALID) return; //this device doesn't exist
+	if(pci_getVendor(pci) == PCI_VENDOR_INVALID) 
+		return; //this device doesn't exist
 	pci_checkFunction(pci); //the device must have at least 1 function, so check it
 	if(pci_getHeaderType(pci) & PCI_HEADER_MF_BIT) //if the device has the multi-function (MF) bit set, it provides more than 1 function
 	{
@@ -209,6 +210,7 @@ void pci_checkDevice(uint8_t bus, uint8_t dev)
  */
 void pci_scanBus(uint8_t bus)
 {
+	printf("Scanning bus %d\n", (int)bus);
 	for(uint8_t i = 0; i < 32; i++)
 	{
 		pci_checkDevice(bus, i);

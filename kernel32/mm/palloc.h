@@ -1,5 +1,5 @@
-#ifndef KERNEL32_PALLOC_H_
-#define KERNEL32_PALLOC_H_
+#ifndef KERNEL_PALLOC_H_
+#define KERNEL_PALLOC_H_
 
 /**
  * @file palloc.h
@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../cdefines.h"
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @defgroup pMem Physical memory management routines.

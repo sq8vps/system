@@ -1,60 +1,22 @@
 #include "hal.h"
-#include "pic.h"
-#include "../it/it.h"
+#include "cpu.h"
+#include "interrupt.h"
+#include "sdrv/cpuid.h"
 
-uint8_t HalIOPortReadByte(uint16_t port)
-{
-   uint8_t r = 0;
-   asm("in al, dx" : "=a" (r) : "d" (port));
-   return r;
-}
 
-void HalIOPortWriteByte(uint16_t port, uint8_t d)
-{
-    asm("out dx, al" : :"a" (d), "d" (port));
-}
 
-uint16_t HalIOPortReadWord(uint16_t port)
-{
-   uint16_t r = 0;
-   asm("in ax, dx" : "=a" (r) : "d" (port));
-   return r;
-}
 
-void HalIOPortWriteWord(uint16_t port, uint16_t d)
+STATUS HalInit(void)
 {
-    asm("out dx, ax" : : "a" (d), "d" (port));
-}
+    CpuidInit();
 
-uint32_t HalIOPortReadDWord(uint16_t port)
-{
-   uint32_t r = 0;
-   asm("in eax, dx" : "=a" (r) : "d" (port));
-   return r;
-}
-
-void HalIOPortWriteDWord(uint16_t port, uint32_t d)
-{
-    asm("out dx, eax" : :"a" (d), "d" (port));
-}
-
-void HalInitInterruptController(void)
-{
-    PicSetIRQMask(0xFFFF); //mask all interrupts
-    PicRemap(IT_FIRST_INTERRUPT_VECTOR, IT_FIRST_INTERRUPT_VECTOR + 8); //remap PIC interrupts to start at 0x20 (32)
-}
-
-STATUS HalEnableInterrupt(uint8_t irq)
-{
-    if(irq < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
+    STATUS ret = OK;
+    if(OK != (ret = HalInitCpu()))
+        return ret;
     
-    return PicEnableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
+    if(OK != (ret = HalInitInterruptController()))
+        return ret;
+
+    return OK;
 }
 
-STATUS HalClearInterruptFlag(uint8_t irq)
-{
-    if(irq < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
-    return PicSendEOI(irq - IT_FIRST_INTERRUPT_VECTOR);
-}

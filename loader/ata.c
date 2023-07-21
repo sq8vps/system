@@ -157,14 +157,16 @@ void ata_detectDrives(void)
 				else //if these bit are not as expected, the sector size equals 512
 				{
 					sectorSize = 512;
-					for(uint16_t k = 107; k < 118; k++)
+					for(uint16_t k = 107; k < 119; k++)
 						port_readWord(port); //drop returned data
 				}
 
-				if(sectorSize == 0 || (sectorSize > 0xFFFF)) err = 1; //sector size of 0 is an error. Also we don't want to work with sectors larger than 65535 bytes
-
+				
 				for(uint16_t k = 119; k < 256; k++)
 					port_readWord(port); //drop returned data
+
+				if(sectorSize == 0 || (sectorSize > 0xFFFF)) err = 1; //sector size of 0 is an error. Also we don't want to work with sectors larger than 65535 bytes
+
 
 
 				if(err) continue;
@@ -206,8 +208,8 @@ void ata_enableControllers(void)
 		ata_controllerList[i].usable = 1; //if so, it's usable
 
 		pci_setBAR(ata_controllerList[i].pci, 4, (uint32_t)(ata_controllerList[i].bmrPort & 0xFFF0));
-		AtaBMR_s_t pri = {0, 0, (uint64_t*)&(ata_PRDtable[0])};
-		AtaBMR_s_t sec = {0, 0, (uint64_t*)&(ata_PRDtable[1])};
+		AtaBMR_s_t pri = {0, 0, ata_PRDtable[0]};
+		AtaBMR_s_t sec = {0, 0, ata_PRDtable[1]};
 		ata_writeBMR(ata_controllerList[i], pri, sec);
 
 		pci_setIdeCommand(ata_controllerList[i].pci, 0b101); //enable bus master and i/o space
@@ -374,11 +376,11 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 	//set up BMRs
 	//DMA reads from/writes to the drive and writes to/reads from memory. That's why for reading data from drive we set the RWCON bit and not for writing.
 	//additionally clear status bits only for selected channel
-	AtaBMR_s_t priBMR = {rw ? 0 : ATA_BMR_CMD_RWCON_BIT, chan ? 0 : (ATA_BMR_STA_ERR_BIT | ATA_BMR_STA_INT_BIT), (uint64_t*)&(ata_PRDtable[0])};
-	AtaBMR_s_t secBMR = {rw ? 0 : ATA_BMR_CMD_RWCON_BIT, chan ? (ATA_BMR_STA_ERR_BIT | ATA_BMR_STA_INT_BIT) : 0, (uint64_t*)&(ata_PRDtable[1])};
+	AtaBMR_s_t priBMR = {rw ? 0 : ATA_BMR_CMD_RWCON_BIT, chan ? 0 : (ATA_BMR_STA_ERR_BIT | ATA_BMR_STA_INT_BIT), (ata_PRDtable[0])};
+	AtaBMR_s_t secBMR = {rw ? 0 : ATA_BMR_CMD_RWCON_BIT, chan ? (ATA_BMR_STA_ERR_BIT | ATA_BMR_STA_INT_BIT) : 0, (ata_PRDtable[1])};
 	ata_writeBMR(ata, priBMR, secBMR);
 
-	port_writeByte(ata.cmdPort[chan] + ATA_CMD_PORT_DEV, ATA_CMD_DEV_LBA_BIT); //set LBA bit
+	port_writeByte(ata.cmdPort[chan] + ATA_CMD_PORT_DEV, ATA_CMD_DEV_LBA_BIT | ((chan > 0) << 6) | 0xA0); //set LBA bit
 	ata_sleep();
 	//LBA (low, mid, high) and sector count drive registers work as FIFOs
 	//first we write the higher bytes, and then lower, to the same register
@@ -405,12 +407,15 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 
 
 
-	uint8_t sta = 0;
+	uint8_t sta = 0, dsta = 0;
 	while(1)
 	{
 		ata_readBMRstatus(ata, chan, &sta);
+		dsta = port_readByte(ata.cmdPort[chan] + ATA_CMD_PORT_CMD_STA);
+		printf("%d\n", dsta);
 		if(sta & ATA_BMR_STA_INT_BIT) break; //wait for an interrupt
 		if(sta & ATA_BMR_STA_ERR_BIT) break; //if an error occurred
+		
 	}
 
 	ata_writeBMRcmd(ata, chan, 0); //clear command register

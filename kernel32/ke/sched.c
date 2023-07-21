@@ -1,14 +1,19 @@
 #include "sched.h"
 #include <stdbool.h>
-#include "../it/it.h"
 #include "panic.h"
 #include "idle.h"
-#include "../common.h"
-#include "../hal/hal.h"
+#include "common.h"
+#include "hal/hal.h"
+#include "hal/interrupt.h"
 #include "mutex.h"
+#include "it/it.h"
 
-static uint32_t postponeCounter = 0; //count of scheduler task switch postponement events
-//static bool postponedTaskPending = false; //is there a postponed task switch to perform?
+#define KE_SCHEDULER_TIME_SLICE 10 //milliseconds
+
+uint32_t KeSchedPostponeCounter = 0; //count of scheduler task switch postponement events
+bool KeSchedTaskSwitchPending = false; //is there a task switch to perform?
+
+static uint8_t schedulerTimerVector = 0;
 
 #ifdef SMP
     volatile struct TaskControlBlock *currentTask[MAX_CPU_COUNT];
@@ -23,9 +28,8 @@ extern void KeSchedulerISR(struct ItFrame *f);
 
 void KeSchedulerISRClearFlag()
 {
-    HalClearInterruptFlag(32);
+    HalClearInterruptFlag(schedulerTimerVector);
 }
-
 
 static KeSpinLock_t queueAttachMutex;
 
@@ -85,13 +89,6 @@ static KeSpinLock_t schedulerMutex;
 
 void KeSchedule(void)
 {
-    if(postponeCounter) //is scheduler operation postponed?
-    {
-        //postponedTaskPending = true; //mark that the scheduler was invoked
-        //extend time slice
-        return; //return for now
-    }
-
     KeAcquireSpinlockDisableIRQ(&schedulerMutex);
 
     //update next task in queue
@@ -130,42 +127,50 @@ void KeSchedule(void)
         }
     }
     //should never reach this point
-    KePanic(KE_NO_EXECUTABLE_TASK);
+    KePanic(NO_EXECUTABLE_TASK);
 }
 
 void KeSchedulerIncrementPostponeCounter(void)
 {
-    asm volatile("lock inc %0" : "=m" (postponeCounter) : );
+    ASM("lock inc %0" : "=m" (KeSchedPostponeCounter) : );
 }
 
 void KeSchedulerDecrementPostponeCounter(void)
 {
-    if(0 == postponeCounter) //nothing to decrement
+    if(0 == KeSchedPostponeCounter)
         return;
 
-    asm volatile("lock dec %0" : "=m" (postponeCounter) : );
-    // asm volatile("jnz .stillPostponed");
-    // if(postponedTaskPending) //counter is 0 and there is a postponed task switch?
-    // {
-    //     postponedTaskPending = false;
-    //     //invoke scheduler now
-    //     KeSchedule();
-    // }
-    // asm volatile(".stillPostponed:");
+    ASM("lock dec %0" : "=m" (KeSchedPostponeCounter) : );
+    ASM("jnz .stillPostponed");
+    if(KeSchedTaskSwitchPending) //counter is 0 and there is a postponed task switch?
+    {
+        KeSchedTaskSwitchPending = false;
+        HalRestartSystemTimer();
+        KeTaskYield();
+    }
+    ASM(".stillPostponed:");
 }
 
 
 void KeSchedulerStart(void)
 {
-    Cm_memset(readyToRun, 0, sizeof(readyToRun));
+    CmMemset(readyToRun, 0, sizeof(readyToRun));
     terminated = NULL;
     
     STATUS ret = OK;
     //create idle task
     if(OK != (ret = KeCreateIdleTask()))
-        KePanicEx(KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0, 0);
+        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
 
-    It_setInterruptHandler(32, KeSchedulerISR, PL_KERNEL);
+    if(IT_METHOD_APIC == HalGetInterruptHandlingMethod())
+        schedulerTimerVector = ItGetFreeVector();
+    else
+        schedulerTimerVector = IT_LEGACY_PIT_VECTOR;
+    
+    if(0 == schedulerTimerVector)
+        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, IT_NO_FREE_VECTORS, 0, 0);
+
+    ItInstallInterruptHandler(schedulerTimerVector, KeSchedulerISR, PL_KERNEL);
 
     //create kernel initialization task
     uintptr_t cr3;
@@ -174,7 +179,7 @@ void KeSchedulerStart(void)
     //there will be filled at the first task context store event
     struct TaskControlBlock *tcb = KePrepareTCB(0, 0, cr3, PL_KERNEL, "KernelInit", NULL);
     if(NULL == tcb)
-        KePanic(KE_SCHEDULER_INITIALIZATION_FAILURE);
+        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, KE_TCB_PREPARATION_FAILURE, 0, 0);
     
     KeChangeTaskMajorPriority(tcb, TCB_DEFAULT_MAJOR_PRIORITY);
     KeChangeTaskMinorPriority(tcb, TCB_DEFAULT_MINOR_PRIORITY);
@@ -182,7 +187,8 @@ void KeSchedulerStart(void)
 
     currentTask = tcb;
 
-	HalEnableInterrupt(32);
+    HalInitSystemTimer(KE_SCHEDULER_TIME_SLICE, schedulerTimerVector);
+	HalEnableIRQ(schedulerTimerVector);
 }
 
 

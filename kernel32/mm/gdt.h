@@ -1,5 +1,5 @@
-#ifndef KERNEL32_GDT_H_
-#define KERNEL32_GDT_H_
+#ifndef KERNEL_GDT_H_
+#define KERNEL_GDT_H_
 
 /**
  * @file gdt.h
@@ -12,7 +12,7 @@
 */
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @defgroup gdt Global Descriptor Table manipulation routines

@@ -1,5 +1,5 @@
-#ifndef KERNEL32_VALLOC_H_
-#define KERNEL32_VALLOC_H_
+#ifndef KERNEL_VALLOC_H_
+#define KERNEL_VALLOC_H_
 
 /**
  * @file valloc.h
@@ -13,7 +13,7 @@
 */
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 #include "../../cdefines.h"
 
 /**
@@ -39,7 +39,7 @@ typedef uint16_t MmPagingFlags_t;
 /**
  * @brief Initialize virtual allocator
 */
-STATUS MmInitVirtualAllocator(void);
+void MmInitVirtualAllocator(void);
 
 /**
  * @brief Get current process physical address corresponding to the virtual address

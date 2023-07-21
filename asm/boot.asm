@@ -1,66 +1,65 @@
 ;---------------------------------------
-;To jest najprostszy bootloader do MBR dysku
-;W zasadzie laduje tylko nastepny stopien bootloadera
-;z pierwszego sektora dysku
-;(C) Piotr Wilkon 2020
+; 1st stage bootloader located in MBR
+; for BIOS-compatiable systems.
+; Basically it sets up some stuff, locates the 1,5 stage bootloader in MBR gap
+; and loads it.
 ;---------------------------------------
 
 
 [bits 16]
 [org 0x7c00]
 _start:
-mov [BOOT_DRIVE],dl ;zapisujemy numer dysku rozruchowego, z ktorego uruchiomiony byl bootloader
+mov [BOOT_DRIVE],dl ;store boot drive number
 
 cli
-;rejestry segmentowe na prawidlowy adres
 mov ax,0x0
 mov ds,ax
 mov es,ax
 mov fs,ax
 mov gs,ax
 
-;ustawiamy stos na 7FFFF
+;set stack to 0x7FFFF, there should be quite much space there
 mov ax,0x7000
 mov ss,ax
 mov sp,0xFFFF
 
-mov bx,LOADER_OFFSET ;odczytujemy loader z dysku do tego adresu
-mov edx,LOADER_SIZE ;jego wielkosc
+mov bx,BOOTLOADER_OFFSET ;destination address
+mov edx,BOOTLOADER_SIZE ;bootloader size in sectors
 mov ax,0
 mov es,ax
 mov al,[BOOT_DRIVE]
-mov ecx,1
-call _disk_load
+mov ecx,1 ;start from LBA1, that is the MBR gap
+call DiskLoad
 
-;sprawdzamy czy jest prawidlowy bootloader, ktory oznaczaja magiczne wartosci 0x9e, 0x5f
-mov ax,[LOADER_OFFSET + 2]
-cmp ax,0x5f9e
-jne noLoaderError
+mov ax,[BOOTLOADER_OFFSET + 2] ;check for magic number
+cmp ax,BOOTLOADER_MAGIC
+jne .noLoaderError
 
 xor ax,ax
-mov al,[BOOT_DRIVE] ;!!!! keep drive number in al
+mov al,[BOOT_DRIVE] ;store drive number in AL for 1,5 stage bootloader
 
-jmp LOADER_OFFSET ;idziemy do loadera
+jmp BOOTLOADER_OFFSET ;jump to the bootloader
 
 cli
 hlt
+jmp $
 
-noLoaderError:
+.noLoaderError:
 
 mov si,noLoaderErrorMsg
-call _print16
+call Print16
+
 cli
 hlt
+jmp $
 
 
 %include "asm/print16.asm"
 %include "asm/disk.asm"
-
-LOADER_OFFSET equ 0x7E00 ; location to store the loader
-LOADER_SIZE equ 8 ; loader size in 512-byte sectors (rounded up)
+%include "asm/common.asm"
 
 
-noLoaderErrorMsg db "Error: EAEOS bootloader not found!",0xd,0xa,"Cannot continue.",0xd,0xa,0
-times 439-($-$$) db 0 ;wypelniamy reszte pliku 0
+noLoaderErrorMsg db "Boot failed. Bootloader not found.",0xd,0xa,0
+times 439-($-$$) db 0 ;fill with zeros
 BOOT_DRIVE db 0
 

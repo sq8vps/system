@@ -84,6 +84,8 @@ typedef struct
 	uint8_t func; /**< Function number **/
 } Pci_s_t;
 
+uint8_t pci_configReadByte(Pci_s_t pci, uint8_t offset);
+
 /**
  * \brief Writes data to selected BARx register
  * \param pci PCI structure

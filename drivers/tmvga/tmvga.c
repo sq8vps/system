@@ -26,7 +26,7 @@ static void handleScroll(uint32_t *col, uint32_t *row)
 
 	for(uint32_t i = 1; i < (DISP_MAX_ROWS); i++)
 	{
-		Cm_memcpy(getAddr(0, i - 1), getAddr(0, i), DISP_MAX_COLS * 2);
+		CmMemcpy(getAddr(0, i - 1), getAddr(0, i), DISP_MAX_COLS * 2);
 	}
 
 	uint8_t *last = getAddr(0, DISP_MAX_ROWS - 1);
@@ -77,9 +77,9 @@ uint32_t decodeColor(Cm_RGBA_t in)
 	for(uint8_t i = 0; i < (sizeof(VGA16colorTable) / sizeof(*VGA16colorTable)); i++)
 	{
 		uint32_t distance = 0;
-		distance = Cm_abs((int16_t)VGA16colorTable[i].r - (int16_t)r)
-				+ Cm_abs((int16_t)VGA16colorTable[i].g - (int16_t)g)
-				+ Cm_abs((int16_t)VGA16colorTable[i].b - (int16_t)b);
+		distance = CmAbs((int16_t)VGA16colorTable[i].r - (int16_t)r)
+				+ CmAbs((int16_t)VGA16colorTable[i].g - (int16_t)g)
+				+ CmAbs((int16_t)VGA16colorTable[i].b - (int16_t)b);
 		if(distance < smallestDistance)
 		{
 			smallestDistance = distance;

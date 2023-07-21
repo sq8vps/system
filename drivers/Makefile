@@ -2,7 +2,7 @@ NAME = libdrvcommon.a
 CC = i686-elf-gcc
 LNK = i686-elf-gcc
 ASM = nasm
-CC_FLAGS = -I . -c -ffreestanding -masm=intel
+CC_FLAGS = -I. -I.. -I../kernel32 -c -ffreestanding -masm=intel
 ASM_FLAGS = -f elf32
 LNK_FLAGS = -nostdlib -r -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc

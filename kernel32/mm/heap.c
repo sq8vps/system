@@ -1,7 +1,7 @@
 #include "heap.h"
-#include "../mm/mm.h"
+#include "mm/mm.h"
 #include <stdbool.h>
-#include "../ke/mutex.h"
+#include "ke/mutex.h"
 
 #define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
 #define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
@@ -20,7 +20,7 @@ struct HeapBlockMeta
     struct HeapBlockMeta *previous; //previous block in the list
     uint8_t free; //is this block free?
 };
-#define META_SIZE ALIGN_VAL(sizeof(struct HeapBlockMeta), MM_KERNEL_HEAP_ALIGNMENT)
+#define META_SIZE ALIGN_UP(sizeof(struct HeapBlockMeta), MM_KERNEL_HEAP_ALIGNMENT)
 
 /**
  * @brief Block metadata linked list head
@@ -188,7 +188,7 @@ void *MmAllocateKernelHeap(uintptr_t n)
     
     struct HeapBlockMeta *block;
 
-    n = ALIGN_VAL(n, MM_KERNEL_HEAP_ALIGNMENT);
+    n = ALIGN_UP(n, MM_KERNEL_HEAP_ALIGNMENT);
 
     KeAcquireSpinlockDisableIRQ(&heapAllocatorMutex);
     

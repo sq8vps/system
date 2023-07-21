@@ -1,5 +1,5 @@
 #include "gdt.h"
-#include "../common.h"
+#include "common.h"
 
 #define GDT_MAX_ENTRIES (4 + MAX_CPU_COUNT)
 
@@ -28,7 +28,7 @@ void MmGdtApply(void)
 
 void MmGdtClear(void)
 {
-    Cm_memset(gdt, 0, sizeof(gdt)); //clear all entries
+    CmMemset(gdt, 0, sizeof(gdt)); //clear all entries
 }
 
 void MmGdtInit(void)

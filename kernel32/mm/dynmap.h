@@ -1,5 +1,5 @@
-#ifndef KERNEL32_DYNMAP_H_
-#define KERNEL32_DYNMAP_H_
+#ifndef KERNEL_DYNMAP_H_
+#define KERNEL_DYNMAP_H_
 
 /**
  * @file dynmap.h
@@ -13,7 +13,8 @@
 
 #include <stdint.h>
 #include "../../cdefines.h"
-#include "../defines.h"
+#include "defines.h"
+#include "valloc.h"
 
 /**
  * @defgroup dynmap Dynamically mapped kernel memory routines
@@ -25,9 +26,10 @@
  * @brief Map dynamic kernel memory
  * @param pAddress Physical address
  * @param n Byte count
+ * @param flags Flags to apply to mapped memory (present and writable flags are always added)
  * @return Pointer to mapped virtual memory
 */
-EXPORT void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n);
+EXPORT void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags);
 
 /**
  * @brief Unmap dynamic kernel memory

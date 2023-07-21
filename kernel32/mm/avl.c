@@ -1,6 +1,6 @@
 #include "avl.h"
 #include <stdbool.h>
-#include "../defines.h"
+#include "defines.h"
 #include "../../cdefines.h"
 #include "heap.h"
 

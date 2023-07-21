@@ -1,5 +1,5 @@
-#ifndef KERNEL32_MUTEX_H_
-#define KERNEL32_MUTEX_H_
+#ifndef KERNEL_MUTEX_H_
+#define KERNEL_MUTEX_H_
 
 #include <stdint.h>
 #include "defines.h"

@@ -1,24 +1,25 @@
 ;------------------------------------------------
-;2nd stage EAEOS bootloader
-;Reads 3rd stage bootloader from FAT32 parition using BIOS (real mode),
+;1.5 stage bootloader
+;Reads 2nd stage bootloader from FAT32 parition using BIOS (real mode),
 ;detects available memory regions, sets up flat GDT, A20 line,
-;starts protected mode and jumps to the 3rd stage (32-bit) bootloader
+;starts protected mode and jumps to the 2nd stage (32-bit) bootloader
 ;
 ; IMPORTANT NOTES:
 ; 1. AL is expeteced to contain BIOS boot drive number (at the beginning).
 ; 2. MBR partition table must reside at 0x7C00+446 (MBR sector loaded by BIOS)
-; 3. 3rd stage bootloader expects memory region entries to reside at MEMDET_DATA
+; 3. 2nd stage bootloader expects memory region entries to reside at MEMDET_DATA
 ;------------------------------------------------
 
+%include "asm/common.asm"
+
 [bits 16]
-[org 0x7E00]
+[org BOOTLOADER_OFFSET]
 
-_loaderEntry: jmp _loaderStart ;to musi lezec na poczatku pliku. Robimy skok do wlasciwego wejscia do loadera
+LoaderEntry: jmp LoaderStart ;to musi lezec na poczatku pliku. Robimy skok do wlasciwego wejscia do loadera
 
-db 0x9E ;to musi miec nasz loader, zeby byl rozpoznany. Takie magiczne wartosci
-db 0x5F
+dw BOOTLOADER_MAGIC ;magic number
 
-_loaderStart:
+LoaderStart:
 	mov [BOOT_DRIVE],al ;save boot drive number
 
 	mov al,[0x7c00+440] ;store disk signature for bootloader
@@ -103,7 +104,7 @@ _loaderStart:
 
 loaderNoBoot:
 	mov si,noSystemMsg
-	call _print16
+	call Print16
 	cli
 	hlt
 
@@ -113,6 +114,7 @@ loaderNoBoot:
 %include "asm/gdt.asm"
 %include "asm/a20.asm"
 %include "asm/memDet.asm"
+
 
 BOOT_DRIVE db 0
 cpu64bit db 0 ;czy procesor jest 64-bitowy

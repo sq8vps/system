@@ -1,10 +1,10 @@
 #include "valloc.h"
 #include "palloc.h"
 #include <stddef.h>
-#include "../common.h"
+#include "common.h"
 #include "dynmap.h"
-#include "../ke/panic.h"
-#include "../ke/mutex.h"
+#include "ke/panic.h"
+#include "ke/mutex.h"
 
 // These are virtual addresses of current page directory and page tables
 // They come from the self-referencing page directory trick
@@ -129,13 +129,13 @@ STATUS MmUnmapMemory(uintptr_t vAddress)
 	if((pageDir[vAddress >> 22] & MM_PAGE_FLAG_PRESENT) == 0) //page table not present?
 	{
 		//this is not mapped
-		KePanicEx(MM_ALREADY_UNMAPPED, vAddress, 0, 0, 0);
+		KePanicEx(PAGE_FAULT, MM_ALREADY_UNMAPPED, vAddress, 0, 0);
 	}
 
 	if(0 == (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & MM_PAGE_FLAG_PRESENT))
 	{
 		//this memory is already unmapped
-		KePanicEx(MM_ALREADY_UNMAPPED, vAddress, 0, 0, 0);
+		KePanicEx(PAGE_FAULT, MM_ALREADY_UNMAPPED, vAddress, 0, 0);
 	}
 
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (MmPageTableEntry_t)0; //clear entry
@@ -162,7 +162,7 @@ STATUS MmUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 	return OK;
 }
 
-STATUS MmInitVirtualAllocator(void)
+void MmInitVirtualAllocator(void)
 {
 	//iterate through the kernel space mapping
 	for(uintptr_t i = (MM_KERNEL_ADDRESS >> 22); i < (MM_MEMORY_SIZE >> 22); i++)
@@ -183,13 +183,11 @@ STATUS MmInitVirtualAllocator(void)
 		asm volatile("invlpg [%0]" : : "r" ((uintptr_t)(&PAGETABLE(i, 0))) : "memory"); //invalidate old entry in TLB
 
 		//clear page table
-		Cm_memset(&PAGETABLE(i, 0), 0, MM_PAGE_TABLE_ENTRY_COUNT * sizeof(MmPageTableEntry_t));
+		CmMemset(&PAGETABLE(i, 0), 0, MM_PAGE_TABLE_ENTRY_COUNT * sizeof(MmPageTableEntry_t));
 	}
 
 	//clear all entries below kernel space
-	Cm_memset(pageDir, 0, (MM_KERNEL_ADDRESS >> 22) * sizeof(MmPageDirectoryEntry_t));
-
-	return OK;
+	CmMemset(pageDir, 0, (MM_KERNEL_ADDRESS >> 22) * sizeof(MmPageDirectoryEntry_t));
 }
 
 uintptr_t MmGetPageDirectoryAddress(void)
@@ -213,7 +211,7 @@ uintptr_t MmCreateProcessPageDirectory(void)
 	if(0 == newPageDirAddress)
 		return 0;
 	
-	MmPageDirectoryEntry_t *newPageDir = MmMapDynamicMemory(newPageDirAddress, MM_PAGE_DIRECTORY_SIZE);
+	MmPageDirectoryEntry_t *newPageDir = MmMapDynamicMemory(newPageDirAddress, MM_PAGE_DIRECTORY_SIZE, 0);
 
 	if(NULL == newPageDir)
 	{
@@ -221,10 +219,10 @@ uintptr_t MmCreateProcessPageDirectory(void)
 		return 0;
 	}
 
-	Cm_memset(newPageDir, 0, MM_PAGE_DIRECTORY_SIZE);
+	CmMemset(newPageDir, 0, MM_PAGE_DIRECTORY_SIZE);
 
 	//copy entries for kernel space
-	Cm_memcpy(&newPageDir[MM_KERNEL_SPACE_START >> 22], 
+	CmMemcpy(&newPageDir[MM_KERNEL_SPACE_START >> 22], 
 		&pageDir[MM_KERNEL_SPACE_START >> 22], 
 		((MM_KERNEL_SPACE_SIZE >> 22) - 1) * sizeof(MmPageDirectoryEntry_t));
 	

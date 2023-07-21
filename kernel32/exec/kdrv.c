@@ -1,12 +1,10 @@
 #include "kdrv.h"
 #include "exec.h"
 #include "elf.h"
-#include "../mm/heap.h"
-#include "../common.h"
+#include "mm/heap.h"
+#include "common.h"
 #include <stdbool.h>
 #include "../ddk/gddk.h"
-
-#include "../../drivers/vga/vga.h"
 
 /**
  * @brief Union for structures of callback for any driver type
@@ -85,7 +83,7 @@ static STATUS ex_pushDriverMetadata(const struct KDrv_DriverListEntry *e)
     if(NULL == m)
         return EXEC_MALLOC_FAILED;
     
-    Cm_memcpy(m, e, sizeof(*m)); //copy entry
+    CmMemcpy(m, e, sizeof(*m)); //copy entry
 
     m->next = NULL; //just to be sure
 
@@ -119,12 +117,12 @@ STATUS Ex_loadPreloadedDriver(const uintptr_t driverImage, const uintptr_t size)
         return ret;
 
     uintptr_t entry = 0;
-    ret = Ex_getElf32SymbolValueByName(h, EXPAND_AND_STRINGIFY(KDRV_ENTRY_NAME), &entry); //get entry point location
+    ret = Ex_getElf32SymbolValueByName(h, STRINGIFY(KDRV_ENTRY_NAME), &entry); //get entry point location
     if(OK != ret)
         return ret;
     
     uintptr_t meta = 0;
-    ret = Ex_getElf32SymbolValueByName(h, EXPAND_AND_STRINGIFY(KDRV_METADATA_NAME), &meta); //get metadata location
+    ret = Ex_getElf32SymbolValueByName(h, STRINGIFY(KDRV_METADATA_NAME), &meta); //get metadata location
     if(OK != ret)
         return ret;
 
@@ -167,14 +165,12 @@ STATUS Ex_registerDriverCallbacks(const KDRV_INDEX_T index, const void *callback
     if(NULL == e)
         return EXEC_BAD_DRIVER_INDEX;
 
-    printf("Registering callbacks\n");
     
     e->specializedCallbacks = (KDrv_Callbacks_t*)callbacks; //store callback structure
 
     switch(e->meta->class) //select class
     {
         case DDK_KDRVCLASS_SCREEN: //screen driver class
-            printf("Graphics callback\n");
             //Io_displaySetCallbacks(callbacks);
             break;
         default: //bad driver class

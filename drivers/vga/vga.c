@@ -1,5 +1,5 @@
 #include "vga.h"
-#include "../../kernel32/hal/hal.h"
+#include "../../kernel32/hal/ioport.h"
 #include "../../kernel32/mm/dynmap.h"
 #include "../../kernel32/common.h"
 #include "../../kernel32/ddk/ddk.h"
@@ -22,7 +22,7 @@ uint8_t *vmem = NULL;
 
 void disp_init()
 {
-	vmem = MmMapDynamicMemory(0xB8000, 0x2000);
+	vmem = MmMapDynamicMemory(0xB8000, 0x2000, 0);
 }
 
 #define PRINTF_INT_MAX_DIGITS 9
@@ -68,20 +68,20 @@ uint8_t disp_printChar(uint8_t c, int16_t col, int16_t row, uint8_t type)
 
 uint16_t disp_getCursor(void)
 {
-	HalIOPortWriteByte(DISP_PORT_CTRL, 14);
+	PortIoWriteByte(DISP_PORT_CTRL, 14);
 	uint16_t offset = 0;
-	offset = HalIOPortReadByte(DISP_PORT_DATA) << 8;
-	HalIOPortWriteByte(DISP_PORT_CTRL, 15);
-	offset |= HalIOPortReadByte(DISP_PORT_DATA);
+	offset = PortIoReadByte(DISP_PORT_DATA) << 8;
+	PortIoWriteByte(DISP_PORT_CTRL, 15);
+	offset |= PortIoReadByte(DISP_PORT_DATA);
 	return offset;
 }
 
 void disp_setCursor(uint16_t addr)
 {
-	HalIOPortWriteByte(DISP_PORT_CTRL, 14);
-	HalIOPortWriteByte(DISP_PORT_DATA, (uint8_t)(addr >> 8));
-	HalIOPortWriteByte(DISP_PORT_CTRL, 15);
-	HalIOPortWriteByte(DISP_PORT_DATA, (uint8_t)(addr & 0xFF));
+	PortIoWriteByte(DISP_PORT_CTRL, 14);
+	PortIoWriteByte(DISP_PORT_DATA, (uint8_t)(addr >> 8));
+	PortIoWriteByte(DISP_PORT_CTRL, 15);
+	PortIoWriteByte(DISP_PORT_DATA, (uint8_t)(addr & 0xFF));
 }
 
 uint8_t disp_printString(uint8_t *str, int16_t col, int16_t row, uint8_t type)
@@ -127,7 +127,7 @@ uint16_t disp_handleScroll(uint16_t cursor)
 	}
 	for(uint8_t i = 1; i < (DISP_MAX_ROWS); i++)
 	{
-		Cm_memcpy((uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, i - 1) << 1)), (uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, i) << 1)), DISP_MAX_COLS << 1);
+		CmMemcpy((uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, i - 1) << 1)), (uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, i) << 1)), DISP_MAX_COLS << 1);
 	}
 
 	uint8_t *last = (uint8_t*)((uintptr_t)vmem + (DISP_GETADDR(0, DISP_MAX_ROWS - 1) << 1));

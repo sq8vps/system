@@ -1,11 +1,11 @@
 #include "task.h"
-#include "../mm/heap.h"
-#include "../it/it.h"
-#include "../common.h"
-#include "../hal/hal.h"
-#include "../mm/gdt.h"
-#include "../mm/valloc.h"
-#include "../mm/mm.h"
+#include "mm/heap.h"
+#include "it/it.h"
+#include "common.h"
+#include "hal/hal.h"
+#include "mm/gdt.h"
+#include "mm/valloc.h"
+#include "mm/mm.h"
 #include "sched.h"
 #include "mutex.h"
 
@@ -22,7 +22,7 @@ struct TaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, ui
     if(NULL == tcb)
         return NULL;
     
-    Cm_memset((void*)tcb, 0, sizeof(*tcb)); //clear block
+    CmMemset((void*)tcb, 0, sizeof(*tcb)); //clear block
 
     tcb->cr3 = pageDir;
     tcb->esp = stack;
@@ -46,16 +46,16 @@ struct TaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, ui
     tcb->previous = NULL;
 
     CmStrncpy(tcb->name, name, TCB_MAX_NAME_LENGTH);
-    if((NULL != path) && (Cm_strlen(path) > 1))
+    if((NULL != path) && (CmStrlen(path) > 1))
     {
-        if(NULL == (tcb->path = MmAllocateKernelHeap(Cm_strlen(path) + 1)))
+        if(NULL == (tcb->path = MmAllocateKernelHeap(CmStrlen(path) + 1)))
         {
             MmFreeKernelHeap(tcb);
             return NULL;
         }
         
 
-        Cm_strcpy(tcb->path, path);
+        CmStrcpy(tcb->path, path);
     }
 
     return tcb;
@@ -90,7 +90,7 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
             MM_PAGE_FLAG_WRITABLE | MM_PAGE_FLAG_USER)))
             return ret;
 
-        Cm_memset((void*)(KE_PROCESS_STACK_TOP - KE_PROCESS_INITIAL_STACK_SIZE), 0, KE_PROCESS_INITIAL_STACK_SIZE);
+        CmMemset((void*)(KE_PROCESS_STACK_TOP - KE_PROCESS_INITIAL_STACK_SIZE), 0, KE_PROCESS_INITIAL_STACK_SIZE);
     }
 
     //allocate kernel stack
@@ -99,7 +99,7 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
         return ret;
     }
 
-    Cm_memset((void*)(KE_KERNEL_STACK_TOP - KE_KERNEL_INITIAL_STACK_SIZE), 0, KE_KERNEL_INITIAL_STACK_SIZE);
+    CmMemset((void*)(KE_KERNEL_STACK_TOP - KE_KERNEL_INITIAL_STACK_SIZE), 0, KE_KERNEL_INITIAL_STACK_SIZE);
 
     *tcb = KePrepareTCB(KE_KERNEL_STACK_TOP, (PL_KERNEL == pl) ? KE_KERNEL_STACK_TOP : KE_PROCESS_STACK_TOP, pageDir, pl, name, path);
     if(NULL == *tcb)

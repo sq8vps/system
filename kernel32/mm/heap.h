@@ -1,5 +1,5 @@
-#ifndef KERNEL32_HEAP_H_
-#define KERNEL32_HEAP_H_
+#ifndef KERNEL_HEAP_H_
+#define KERNEL_HEAP_H_
 
 /**
  * @file heap.h
@@ -12,7 +12,7 @@
 
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @defgroup kernelHeap Kernel mode heap management routines

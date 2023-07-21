@@ -78,7 +78,7 @@ typedef enum
 #define __DEBUG 2
 
 #if ((__DEBUG > 2) || (__DEBUG < 0))
-#error "Debug level must be equal 0, 1 or 2"
+#error "Debug level must be equal to 0, 1 or 2"
 #endif
 
 #if MIN_KERNEL_MEMORY % 4096

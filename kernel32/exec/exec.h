@@ -1,5 +1,5 @@
-#ifndef KERNEL32_EXEC_H_
-#define KERNEL32_EXEC_H
+#ifndef KERNEL_EXEC_H_
+#define KERNEL_EXEC_H
 
 /**
  * @file exec.h
@@ -12,7 +12,7 @@
 */
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @defgroup kernelSymbols Kernel symbols manipulation routines

@@ -120,7 +120,7 @@ _detectMemory:
 
 .dmFail:
 	mov si,dmError
-	call _print16
+	call Print16
 
 	cli
 	hlt
@@ -185,47 +185,47 @@ _findMemoryRegion:
 
 
 
-;shows available memory regions as addrLo addrHi sizeLo sizeHi<cr><lf>addrLo addrHi ...
-;ES:SI - memory map buffer
-;BP - number of entries
-_showDetectedMemory:
-	pushf
-	push bp
-	push edx
-	push es
-	push di
+; ;shows available memory regions as addrLo addrHi sizeLo sizeHi<cr><lf>addrLo addrHi ...
+; ;ES:SI - memory map buffer
+; ;BP - number of entries
+; _showDetectedMemory:
+; 	pushf
+; 	push bp
+; 	push edx
+; 	push es
+; 	push di
 
-.pDMloop:
-	mov edx,[es:di]
-	call _print16hex
-	mov si,dmSpace
-	call _print16
-	mov edx,[es:di+4]
-	call _print16hex
-	mov si,dmSpace
-	call _print16
-	mov edx,[es:di+8]
-	call _print16hex
-	mov si,dmSpace
-	call _print16
-	mov edx,[es:di+12]
-	call _print16hex
-	mov ax,0
-	mov ds,ax
-	mov si,dmNewLine
-	call _print16
+; .pDMloop:
+; 	mov edx,[es:di]
+; 	call Print16hex
+; 	mov si,dmSpace
+; 	call Print16
+; 	mov edx,[es:di+4]
+; 	call Print16hex
+; 	mov si,dmSpace
+; 	call Print16
+; 	mov edx,[es:di+8]
+; 	call Print16hex
+; 	mov si,dmSpace
+; 	call Print16
+; 	mov edx,[es:di+12]
+; 	call Print16hex
+; 	mov ax,0
+; 	mov ds,ax
+; 	mov si,dmNewLine
+; 	call Print16
 
-	add di,24
-	dec bp
-	or bp,bp
-	jnz .pDMloop
+; 	add di,24
+; 	dec bp
+; 	or bp,bp
+; 	jnz .pDMloop
 
-pop di
-pop es
-pop edx
-pop bp
-popf
-ret
+; pop di
+; pop es
+; pop edx
+; pop bp
+; popf
+; ret
 
 
 dmNewLine db 0x0d,0x0a,0

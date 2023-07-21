@@ -11,7 +11,7 @@
 */
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @defgroup elf ELF definitions and mainpulation routines

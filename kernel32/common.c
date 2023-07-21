@@ -1,6 +1,8 @@
 #include "common.h"
+#include "defines.h"
+#include <stdarg.h>
 
-uint32_t Cm_strlen(const char *str)
+uint32_t CmStrlen(const char *str)
 {
     char *s = (char*)str;
     while(*s)
@@ -9,7 +11,7 @@ uint32_t Cm_strlen(const char *str)
     return (uintptr_t)s - (uintptr_t)str;
 }
 
-char* Cm_strcpy(char *strTo, const char *strFrom)
+char* CmStrcpy(char *strTo, const char *strFrom)
 {
     char *initial = strTo;
     while(*strTo++ = *strFrom++);
@@ -31,7 +33,7 @@ char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n)
     return initial;
 }
 
-int Cm_strcmp(const char *s1, const char *s2)
+int CmStrcmp(const char *s1, const char *s2)
 {
     while(*s1 && (*s1 == *s2))
     {
@@ -41,27 +43,45 @@ int Cm_strcmp(const char *s1, const char *s2)
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
 
-void* Cm_memcpy(void *to, const void *from, uintptr_t n)
+int CmStrncmp(const char *s1, const char *s2, int n)
 {
-    void *initial = to;
-    while(n--)
+    while (n && *s1 && (*s1 == *s2))
     {
-        *((uint8_t*)to++) = *((uint8_t*)from++);
+        s1++;
+        s2++;
+        n--;
     }
-    return initial;
+    if(0 == n)
+        return 0;
+    
+
+    return *(unsigned char*)s1 - *(unsigned char*)s2;
 }
 
-uint32_t Cm_abs(int32_t x)
+void* CmMemcpy(void *to, const void *from, uintptr_t n)
+{
+    uint8_t *cto = (uint8_t*)to;
+    const uint8_t *cfrom =  (const uint8_t*)from;
+    while(n)
+    {
+        *(cto++) = *(cfrom++);
+        --n;
+    }
+    return to;
+}
+
+uint32_t CmAbs(int32_t x)
 {
     return (x > 0) ? x : -x;
 }
 
-void* Cm_memset(void *ptr, int c, uintptr_t num)
+void* CmMemset(void *ptr, int c, uintptr_t num)
 {
     uint8_t *p = ptr;
-    while(num--)
+    while(num)
     {
         *p++ = (uint8_t)c;
+        num--;
     }
     return ptr;
 }

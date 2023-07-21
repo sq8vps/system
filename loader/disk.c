@@ -75,8 +75,6 @@ error_t Disk_getPartitions(Disk_s_t *disk)
 	}
 
 
-
-
 	for(uint8_t i = 0; i < 4; i++)
 	{
 		uint8_t *partHeader = &(d[MBR_FIRST_ENTRY + i * MBR_ENTRY_SIZE]);

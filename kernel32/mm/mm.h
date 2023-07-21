@@ -1,5 +1,5 @@
-#ifndef KERNEL32_MM_H_
-#define KERNEL32_MM_H_
+#ifndef KERNEL_MM_H_
+#define KERNEL_MM_H_
 
 /**
  * @file mm.h
@@ -11,7 +11,7 @@
 */
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 #include "valloc.h"
 
 /**

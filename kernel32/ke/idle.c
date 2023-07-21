@@ -1,7 +1,7 @@
 #include "idle.h"
 #include "task.h"
 #include "sched.h"
-#include "../mm/valloc.h"
+#include "mm/valloc.h"
 
 NORETURN static void KeIdleWorker(void)
 {

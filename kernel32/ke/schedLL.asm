@@ -14,9 +14,21 @@ extern KeUpdateTSS
 ;This function is a wrapper that cleans appropriate interrupt flag
 extern KeSchedulerISRClearFlag
 
+;uint32_t KeSchedPostponeCounter;
+extern KeSchedPostponeCounter
+;bool KeSchedTaskSwitchPending
+extern KeSchedTaskSwitchPending
+
 ;void KeSchedulerISR(struct ItFrame *f)
 global KeSchedulerISR
 KeSchedulerISR:
+    test DWORD [KeSchedPostponeCounter],0xFFFFFFFF ;check if task switches are postponed
+    jz .continueScheduling 
+    ;if so, mark task switch is pending and return to previous task
+    lock mov BYTE [KeSchedTaskSwitchPending],1
+    iret
+
+    .continueScheduling:
 
     ;store task context immediately
     call KeStoreTaskContext

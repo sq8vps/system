@@ -24,7 +24,7 @@
 
 
 
-#define ATA_BMR_PORT_BASE 0xD000
+#define ATA_BMR_PORT_BASE 0xC040
 #define ATA_BMR_PRIMARY 0
 #define ATA_BMR_SECONDARY 8
 #define ATA_BMR_CMD 0

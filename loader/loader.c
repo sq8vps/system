@@ -45,6 +45,7 @@ struct FileListEntry fileList[] =
  __attribute__ ((section (".ldr"))) 
  void loaderEntry(void)
 {
+	asm volatile("cli");
 	disp_clear(); //clear screen
 
 	uint32_t pageDirAddr;

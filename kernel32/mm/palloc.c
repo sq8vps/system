@@ -1,7 +1,7 @@
 #include "palloc.h"
 #include "common.h"
 #include "valloc.h"
-#include "../ke/mutex.h"
+#include "ke/mutex.h"
 
 #define MM_BUDDY_SMALLEST MM_PAGE_SIZE //smallest buddy block size
 #define MM_BUDDY_COUNT 8 //numer of buddies, MM_BUDDY_SMALLEST<<(N-1) will be the biggest block size
@@ -286,7 +286,7 @@ void MmFreePhysicalMemory(uintptr_t address, uintptr_t n)
 void MmInitPhysicalAllocator(struct KernelEntryArgs *kernelArgs)
 {
     //clear buddies
-    Cm_memset(buddy, 0, sizeof(buddy));
+    CmMemset(buddy, 0, sizeof(buddy));
     //iterate through the existing page tables and check which page frames are really used
     uintptr_t vAddress = 0, pAddress = 0;
     while(1)

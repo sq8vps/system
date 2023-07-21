@@ -1,5 +1,5 @@
-#ifndef KERNEL32_AVL_H_
-#define KERNEL32_AVL_H_
+#ifndef KERNEL_AVL_H_
+#define KERNEL_AVL_H_
 
 /**
  * @file avl.h

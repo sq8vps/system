@@ -17,7 +17,7 @@ _fatInit:
 	xor bx,bx
 	mov es,bx
 	mov bx,FAT_TEMP ;tymczasowy adres na dane. Powinno tam byc 30KiB wolnego
-	call _disk_load ;czytamy naglowek fat
+	call DiskLoad ;czytamy naglowek fat
 
 	mov bx,WORD [FAT_TEMP+11] ;czytamy ile jest bajtow na sektor. Akecptujemy tylko 512
 	cmp bx,512
@@ -615,7 +615,7 @@ fatCheckNextCluster:
 	mov es,bx
 	mov bx,FAT_TEMP
 	mov edx,1
-	call _disk_load
+	call DiskLoad
 
 	pop ebx ;sciagamy numer klastra
 	shl ebx,2 ;mnozenie razy 4, bo jeden wpis zajmuje 4 bajty
@@ -663,7 +663,7 @@ fatReadCluster:
 	mov es,bx
 	mov bx,FAT_CLUSTER
 	mov al,[fatDiskNumber]
-	call _disk_load ;czytamy klastry
+	call DiskLoad ;czytamy klastry
 
 	xor dh,dh
 	jmp fatReadOk

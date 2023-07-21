@@ -1,8 +1,8 @@
-#ifndef KERNEL32_TSS_H_
-#define KERNEL32_TSS_H_
+#ifndef KERNEL_TSS_H_
+#define KERNEL_TSS_H_
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 STATUS KePrepareTSS(uint16_t cpu);
 

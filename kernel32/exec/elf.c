@@ -1,7 +1,7 @@
 #include "elf.h"
 #include "../../cdefines.h"
-#include "../mm/heap.h"
-#include "../common.h"
+#include "mm/heap.h"
+#include "common.h"
 
 
 // STATUS elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
@@ -59,7 +59,7 @@ STATUS Ex_getElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t 
 		        if(ELF32_ST_TYPE(symbol[i].st_info) == STT_FUNC || ELF32_ST_TYPE(symbol[i].st_info) == STT_OBJECT)
                 {
                     struct Elf32_Shdr *strTab = Ex_getElf32SectionHeader(h, s->sh_link); //get string table header
-                    if(0 != Cm_strcmp((char*)h + strTab->sh_offset + symbol[i].st_name, name)) //compare names
+                    if(0 != CmStrcmp((char*)h + strTab->sh_offset + symbol[i].st_name, name)) //compare names
 						continue;
 
 					if(SHN_UNDEF == symbol[i].st_shndx) //symbol is undefined

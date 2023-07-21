@@ -1,6 +1,6 @@
 OUTPUT_FORMAT("elf32-i386")
 OUTPUT_ARCH(i386)
-ENTRY(main)
+ENTRY(KeEntry)
 /* 
 Below is the temporary kernel stack size that will be used only at the initialization stage.
 Appropriate kernel CPU stack will be used after the first task switch.

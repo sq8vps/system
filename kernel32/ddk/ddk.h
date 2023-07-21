@@ -1,5 +1,5 @@
-#ifndef KERNEL32_DDK_H_
-#define KERNEL32_DDK_H_
+#ifndef KERNEL_DDK_H_
+#define KERNEL_DDK_H_
 
 /**
  * @file ddk.h
@@ -19,8 +19,8 @@
 */
 
 #include "kdrv_defines.h"
-#include "../exec/kdrv.h"
-#include "../mm/heap.h"
+#include "exec/kdrv.h"
+#include "mm/heap.h"
 
 /**
  * @}

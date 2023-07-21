@@ -1,5 +1,5 @@
-#ifndef KERNEL32_GDDK_H_
-#define KERNEL32_GDDK_H_
+#ifndef KERNEL_GDDK_H_
+#define KERNEL_GDDK_H_
 
 /**
  * @file gddk.h
@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 #include "ddk.h"
-#include "../common.h"
+#include "common.h"
 
 
 /**

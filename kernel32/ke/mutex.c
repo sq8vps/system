@@ -75,7 +75,7 @@ void KeReleaseSpinlock(KeSpinLock_t *spinlock)
     asm volatile("lock btr WORD [%0],0" : "=m" (lock) : ); //check if bit was clear previously
     asm volatile("jc .release");
     //if so, the lock was never acquired
-    asm volatile("push %0" : : "r" (KE_UNACQUIRED_MUTEX_RELEASED));
+    asm volatile("push %0" : : "r" (UNACQUIRED_MUTEX_RELEASED));
     asm volatile("call KePanic");
     asm volatile(".release:");
 #endif
@@ -89,7 +89,7 @@ void KeReleaseSpinlockEnableIRQ(KeSpinLock_t *spinlock)
     asm volatile("lock btr WORD [%0],0" : "=m" (lock) : ); //check if bit was clear previously
     asm volatile("jc .IRQrelease");
     //if so, the lock was never acquired
-    asm volatile("push %0" : : "r" (KE_UNACQUIRED_MUTEX_RELEASED));
+    asm volatile("push %0" : : "r" (UNACQUIRED_MUTEX_RELEASED));
     asm volatile("call KePanic");
     asm volatile(".IRQrelease:");
 #endif

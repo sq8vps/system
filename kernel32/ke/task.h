@@ -1,8 +1,8 @@
-#ifndef KERNEL32_TASK_H_
-#define KERNEL32_TASK_H_
+#ifndef KERNEL_TASK_H_
+#define KERNEL_TASK_H_
 
 #include <stdint.h>
-#include "../defines.h"
+#include "defines.h"
 
 /**
  * @brief Task states
