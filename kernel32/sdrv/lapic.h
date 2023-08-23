@@ -10,7 +10,7 @@
  * @brief Send End Of Interrupt using APIC
  * @return Status code
 */
-STATUS ApicSendEOI(void);
+INTERNAL STATUS ApicSendEOI(void);
 
 /**
  * @brief Set NMI input
@@ -18,48 +18,65 @@ STATUS ApicSendEOI(void);
  * @param mpflags MP-compliant interrupt flags
  * @return Status code
 */
-// STATUS ApicSetNMI(uint8_t lint, uint16_t mpflags);
+//INTERNAL STATUS ApicSetNMI(uint8_t lint, uint16_t mpflags);
 
 /**
  * @brief Initialize APIC on Application Processor
  * @return Status code
  * @brief Bootstrap processor's APIC must be initialized first
 */
-STATUS ApicInitAP(void);
+INTERNAL STATUS ApicInitAP(void);
 
 /**
  * @brief Initialize APIC on Bootstrap Processor
  * @param address Local APIC physical address
  * @return Status code
 */
-STATUS ApicInitBSP(uintptr_t address);
+INTERNAL STATUS ApicInitBSP(uintptr_t address);
 
 /**
  * @brief Enable local or I/O APIC IRQ
  * @param vector Vector (IRQ) number
  * @return Status code
 */
-STATUS ApicEnableIRQ(uint8_t vector);
+INTERNAL STATUS ApicEnableIRQ(uint8_t vector);
 
 /**
  * @brief Disable local or I/O APIC IRQ
  * @param vector Vector (IRQ) number
  * @return Status code
 */
-STATUS ApicDisableIRQ(uint8_t vector);
+INTERNAL STATUS ApicDisableIRQ(uint8_t vector);
 
 /**
- * @brief Initialize system timer
- * @param interval Timer interval in milliseconds
+ * @brief Configure system timer
  * @param vector Interrupt vector number
- * @attention Interrupt must be enabled with HalEnableIRQ() or ApicEnableIRQ()
+ * @attention Interrupt must be enabled and timer deadline must be set
 */
-STATUS ApicInitSystemTimer(uint32_t interval, uint8_t vector);
-
+INTERNAL STATUS ApicConfigureSystemTimer(uint8_t vector);
 
 /**
- * @brief Restart system counter (start couting again)
+ * @brief Start one-shot system timer
+ * @param time Time to next IRQ in microseconds
 */
-void ApicRestartSystemTimer(void);
+INTERNAL void ApicStartSystemTimer(uint64_t time);
+
+/**
+ * @brief Get APIC timestamp in nanoseconds
+ * @return Timestamp in nanoseconds
+*/
+INTERNAL uint64_t ApicGetTimestamp(void);
+
+/**
+ * @brief Get APIC timestamp in microseconds
+ * @return Timestamp in microseconds
+*/
+INTERNAL uint64_t ApicGetTimestampMicros(void);
+
+/**
+ * @brief Get APIC timestamp in milliseconds
+ * @return Timestamp in milliseconds
+*/
+INTERNAL uint64_t ApicGetTimestampMillis(void);
 
 #endif

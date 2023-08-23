@@ -1,5 +1,5 @@
 #include "it.h"
-#include "ke/mutex.h"
+#include "ke/core/mutex.h"
 #include "hal/hal.h"
 #include "common.h"
 #include "mm/gdt.h"
@@ -12,6 +12,7 @@
 #include "handlers/dfault.h"
 #include "handlers/gp.h"
 #include "handlers/pagefault.h"
+#include "wrappers.h"
 
 #define IDT_FLAG_INTERRUPT_GATE 0xE
 #define IDT_FLAG_TRAP_GATE  0xF
@@ -54,16 +55,16 @@ static uint32_t irqUsageBitmap[IDT_ENTRY_COUNT / 32];
 /**
  * @brief Default ISR for interrupts
 */
-IT_HANDLER void defaultIsr(struct ItFrame *f)
+void defaultIsr(void *context)
 {
 
 }
 
-static KeSpinLock_t getFreeVectorMutex;
+static KeSpinlock getFreeVectorMutex = KeSpinlockInitializer;
 
 uint8_t ItGetFreeVector(void)
 {
-	KeAcquireSpinlockDisableIRQ(&getFreeVectorMutex);
+	KeAcquireSpinlock(&getFreeVectorMutex);
 	for(uint8_t i = 1; i < sizeof(irqUsageBitmap); i++)
 	{
 		for(uint8_t k = 0; k < 32; k++)
@@ -71,23 +72,52 @@ uint8_t ItGetFreeVector(void)
 			if(0 == (irqUsageBitmap[i] & ((uint32_t)1 << k)))
 			{
 				irqUsageBitmap[i] |= ((uint32_t)1 << k);
-				KeReleaseSpinlockEnableIRQ(&getFreeVectorMutex);
+				KeReleaseSpinlock(&getFreeVectorMutex);
 				return (i * 32) + k;
 			}
 		} 	
 	}
-	KeReleaseSpinlockEnableIRQ(&getFreeVectorMutex);
+	KeReleaseSpinlock(&getFreeVectorMutex);
 	return 0;
 }
 
-STATUS ItInstallInterruptHandler(uint8_t vector, void *isr, PrivilegeLevel_t cpl)
+STATUS ItInstallInterruptHandler(uint8_t vector, void (*isr)(void*), void *context, PrivilegeLevel_t cpl)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
 		return IT_NO_FREE_VECTORS;
+	if(PL_USER == cpl)
+		idt[vector].flags |= IDT_FLAG_INTERRUPT_USERMODE;
+	else
+		idt[vector].flags &= ~IDT_FLAG_INTERRUPT_USERMODE;
+	vector -= IT_FIRST_INTERRUPT_VECTOR;
+	itHandlerDescriptorTable[vector].callback = isr;
+	itHandlerDescriptorTable[vector].context = context;
+	irqUsageBitmap[vector / 32] |= ((uint32_t)1 << (vector % 32));
+	return OK;
+}
+
+STATUS ItInstallDirectInterruptHandler(uint8_t vector, void (*isr)(struct ItFrame*), PrivilegeLevel_t cpl)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return IT_NO_FREE_VECTORS;
+	if(PL_USER == cpl)
+		idt[vector].flags |= IDT_FLAG_INTERRUPT_USERMODE;
+	else
+		idt[vector].flags &= ~IDT_FLAG_INTERRUPT_USERMODE;
 	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
 	idt[vector].isrHigh = (uint32_t)isr >> 16;
+	irqUsageBitmap[vector / 32] |= ((uint32_t)1 << (vector % 32));
+	return OK;
+}
+
+static STATUS insertIdtEntry(uint8_t vector, void *wrapper)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return IT_NO_FREE_VECTORS;
+	idt[vector].isrLow = (uint32_t)wrapper & 0xFFFF;
+	idt[vector].isrHigh = (uint32_t)wrapper >> 16;
 	idt[vector].selector = MmGdtGetFlatPrivilegedCodeOffset(); //interrupt are always processed in kernel mode
-	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT | ((PL_USER == cpl) ? IDT_FLAG_INTERRUPT_USERMODE : 0);
+	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT;
 	return OK;
 }
 
@@ -97,7 +127,7 @@ STATUS ItUninstallInterruptHandler(uint8_t vector)
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
 		return IT_BAD_VECTOR;
 	
-	ItInstallInterruptHandler(vector, defaultIsr, PL_KERNEL);
+	ItInstallInterruptHandler(vector, defaultIsr, NULL, PL_KERNEL);
 
 	irqUsageBitmap[vector / 32] &= ~((uint32_t)1 << (vector % 32));
 	
@@ -119,6 +149,11 @@ static STATUS ItInstallExceptionHandler(enum ItExceptionVector vector, void *isr
 STATUS ItInit(void)
 {
 	CmMemset(idt, 0, sizeof(idt));
+	for(uint16_t i = 0; i < sizeof(itHandlerDescriptorTable) / sizeof(*itHandlerDescriptorTable); i++)
+	{
+		itHandlerDescriptorTable[i].context = NULL;
+		itHandlerDescriptorTable[i].callback = defaultIsr;
+	}
 	//set up all defined exceptions to default handlers
 	ItInstallExceptionHandler(IT_EXCEPTION_DIVIDE, ItDivisionByZeroHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_DEBUG, ItDebugHandler);
@@ -134,7 +169,7 @@ STATUS ItInit(void)
 	ItInstallExceptionHandler(IT_EXCEPTION_SEGMENT_NOT_PRESENT, ItUnexpectedFaultHandlerEC); 
 	ItInstallExceptionHandler(IT_EXCEPTION_STACK_FAULT, ItUnexpectedFaultHandlerEC);
 	ItInstallExceptionHandler(IT_EXCEPTION_GENERAL_PROTECTION, ItGeneralProtectionHandler);
-	ItInstallExceptionHandler(IT_EXCEPTION_PAGE_FAULT, ItPAgeFaultHandler);
+	ItInstallExceptionHandler(IT_EXCEPTION_PAGE_FAULT, ItPageFaultHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_FPU_ERROR, ItUnexpectedFaultHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_ALIGNMENT_CHECK, ItUnexpectedFaultHandlerEC);
 	ItInstallExceptionHandler(IT_EXCEPTION_MACHINE_CHECK, ItMachineCheckHandler);
@@ -147,7 +182,7 @@ STATUS ItInit(void)
 	//install dummy handlers for all non-exception interrupts
 	for(uint16_t i = IT_FIRST_INTERRUPT_VECTOR; i < IDT_ENTRY_COUNT; i++)
 	{
-		ItInstallInterruptHandler(i, defaultIsr, PL_KERNEL);
+		insertIdtEntry(i, itWrappers[i - IT_FIRST_INTERRUPT_VECTOR]);
 	}
 
 	//fill IDT register with IDT address and size

@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+ 
+/**
+ * In general this driver is not used for anything else but to disable PIC.
+ * PIC is extremely old and this OS requires at least the Local APIC to run.
+*/
 
 /**
  * @brief Send End Of Interrupt for given IRQ to PIC

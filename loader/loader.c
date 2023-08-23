@@ -6,6 +6,7 @@
 #include "fat.h"
 #include "mm.h"
 #include "elf.h"
+#include "initrd.h"
 #include "../cdefines.h"
 
 uint8_t loader_bootDrive = 255; //diskTable boot disk entry number
@@ -137,13 +138,33 @@ struct FileListEntry fileList[] =
 // #endif
 // 		while(1);;
 // 	}
+	if(OK != InitrdInit(MM_DYNAMIC_START_ADDRESS))
+	{
+#if __DEBUG > 0
+		printf("Initrd creation failure.\n");
+#endif
+		while(1);;	
+	}
+
+	uint32_t kernelImageSize;
+	if(OK != (Fat_getFileSize(&fatDisk, KERNEL_FILE_NAME, &kernelImageSize)))
+	{
+#if __DEBUG > 0
+		printf("Kernel image not found.\n");
+#endif
+		while(1);;	
+	}
+	printf("Image size is 0x%X\n", kernelImageSize);
+	uintptr_t kernelImageAddress = InitrdPrepareSpaceForFile(KERNEL_FILE_NAME, kernelImageSize);
+	printf("Space for image at 0x%X\n", kernelImageAddress);
+	Fat_readWholeFile(&fatDisk, KERNEL_FILE_NAME, (uint8_t*)kernelImageAddress, &kernelImageSize);
 
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;
 	kernelArgs.biosMemoryMap = (struct BIOSMemoryMap_s*)(MM_BIOS_MEMORY_MAP + 2);
 	kernelArgs.biosMemoryMapSize = *((uint16_t*)MM_BIOS_MEMORY_MAP);
-	kernelArgs.initrdAddress = 0;
-	kernelArgs.initrdSize = 0;
+	kernelArgs.initrdAddress = MM_DYNAMIC_START_ADDRESS;
+	kernelArgs.initrdSize = InitrdGetSize();
 
 	//call kernel
 	(*((void(*)(struct KernelEntryArgs))kernelEntry))(kernelArgs);

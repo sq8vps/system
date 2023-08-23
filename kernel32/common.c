@@ -14,14 +14,15 @@ uint32_t CmStrlen(const char *str)
 char* CmStrcpy(char *strTo, const char *strFrom)
 {
     char *initial = strTo;
-    while(*strTo++ = *strFrom++);
+    while(0 != (*strTo++ = *strFrom++))
+        ;
     return initial;
 }
 
 char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n)
 {
     char *initial = strTo;
-    while(*strTo++ = *strFrom++)
+    while(0 != (*strTo++ = *strFrom++))
     {
         n--;
         if(n == 0)

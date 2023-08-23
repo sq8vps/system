@@ -1,7 +1,7 @@
 #include "palloc.h"
 #include "common.h"
 #include "valloc.h"
-#include "ke/mutex.h"
+#include "ke/core/mutex.h"
 
 #define MM_BUDDY_SMALLEST MM_PAGE_SIZE //smallest buddy block size
 #define MM_BUDDY_COUNT 8 //numer of buddies, MM_BUDDY_SMALLEST<<(N-1) will be the biggest block size
@@ -122,7 +122,7 @@ static void markAsUsed(uintptr_t index, uintptr_t count)
     }
 }
 
-static KeSpinLock_t blockAllocationMutex;
+static KeSpinlock blockAllocationMutex = KeSpinlockInitializer;
 
 /**
  * @brief Allocate best-fitting block
@@ -132,14 +132,14 @@ static KeSpinLock_t blockAllocationMutex;
 */
 static bool allocateBlock(uint8_t order, uintptr_t *index)
 {
-    KeAcquireSpinlockDisableIRQ(&blockAllocationMutex);
+    KeAcquireSpinlock(&blockAllocationMutex);
     if(0 != findBlock(order, index))
     {
         markAsUsed(*index, 1 << order);
-        KeReleaseSpinlockEnableIRQ(&blockAllocationMutex);
+        KeReleaseSpinlock(&blockAllocationMutex);
         return true;
     }
-    KeReleaseSpinlockEnableIRQ(&blockAllocationMutex);
+    KeReleaseSpinlock(&blockAllocationMutex);
     return false;
 }
 
@@ -185,7 +185,7 @@ uintptr_t MmAllocatePhysicalMemory(uintptr_t n, uintptr_t *address)
     return actualSize;
 }
 
-static KeSpinLock_t contiguousAllocationMutex;
+static KeSpinlock contiguousAllocationMutex = KeSpinlockInitializer;
 
 uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, uintptr_t align)
 {
@@ -195,7 +195,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
 	uintptr_t firstBlock = 0;
     uintptr_t freeBlocks = 0;
 
-    KeAcquireSpinlockDisableIRQ(&contiguousAllocationMutex);
+    KeAcquireSpinlock(&contiguousAllocationMutex);
 
 	for(uintptr_t i = 0; i < MM_BUDDY_ENTRIES; i++)
 	{
@@ -223,7 +223,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
                             
                             markAsUsed(firstBlock, blocks);
 							*address = firstBlock * MM_BUDDY_SMALLEST;
-                            KeReleaseSpinlockEnableIRQ(&contiguousAllocationMutex);
+                            KeReleaseSpinlock(&contiguousAllocationMutex);
                             return blocks * MM_BUDDY_SMALLEST;
 						}
 
@@ -237,7 +237,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
 						if(i == MM_BUDDY_ENTRIES) //end of buddy reached, allocation failed
                         {
                             *address = 0;
-                            KeReleaseSpinlockEnableIRQ(&contiguousAllocationMutex);
+                            KeReleaseSpinlock(&contiguousAllocationMutex);
 							return 0;
                         }
 					}
@@ -246,11 +246,11 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
 		}
 	}
     *address = 0;
-    KeReleaseSpinlockEnableIRQ(&contiguousAllocationMutex);
+    KeReleaseSpinlock(&contiguousAllocationMutex);
 	return 0;
 }
 
-static KeSpinLock_t freeBlockMutex;
+static KeSpinlock freeBlockMutex = KeSpinlockInitializer;
 
 /**
  * @brief Free memory block and collect higher order free blocks
@@ -258,7 +258,7 @@ static KeSpinLock_t freeBlockMutex;
 */
 static void freeBlock(uintptr_t index)
 {
-    KeAcquireSpinlockDisableIRQ(&freeBlockMutex);
+    KeAcquireSpinlock(&freeBlockMutex);
     for(uintptr_t i = 0; i < MM_BUDDY_COUNT; i++)
     {
         BUDDY(i, index) &= ~BUDDY_BIT(i, index);
@@ -266,7 +266,7 @@ static void freeBlock(uintptr_t index)
         if(BUDDY(i, blockBuddy) & BUDDY_BIT(i, blockBuddy))
             return;
     }
-    KeReleaseSpinlockEnableIRQ(&freeBlockMutex);
+    KeReleaseSpinlock(&freeBlockMutex);
 } 
 
 void MmFreePhysicalMemory(uintptr_t address, uintptr_t n)

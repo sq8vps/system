@@ -214,7 +214,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     
     struct AcpiRXsdt *rxsdt = MmMapDynamicMemory(rsdtPhysical, sizeof(struct AcpiRXsdt), 0);
     if(NULL == rxsdt)
-        RETURN(MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE);
+        RETURN(OUT_OF_RESOURCES);
     
     uint8_t entrySize = (0 == CmStrncmp(rxsdt->signature, "XSDT", 4)) ? 8 : 4;
     uint32_t entryCount = (rxsdt->length - sizeof(struct AcpiRXsdt)) / entrySize;
@@ -224,7 +224,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 
     rxsdt = MmMapDynamicMemory(rsdtPhysical, rxsdtLength, 0);
     if(NULL == rxsdt)
-        RETURN(MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE);
+        RETURN(OUT_OF_RESOURCES);
 
     if(!verifyChecksum(rxsdt, rxsdtLength))
     {
@@ -239,7 +239,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         if(NULL == madt)
         {
             MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-            RETURN(MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE);
+            RETURN(OUT_OF_RESOURCES);
         }
         if(0 != CmStrncmp(madt->signature, "APIC", 4))
         {
@@ -252,7 +252,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         if(NULL == madt)
         {
             MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-            RETURN(MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE);
+            RETURN(OUT_OF_RESOURCES);
         }
 
         if(!verifyChecksum(madt, madtSize))

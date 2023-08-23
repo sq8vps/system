@@ -17,18 +17,19 @@ void PitInit(void);
 void PitSetInterval(uint32_t interval);
 
 /**
- * @brief Prepare PIT (channel 2) for time measurement
- * @param time PIT interval in microseconds
+ * @brief Prepare PIT (channel 2) in single shot mode
+ * @param time Time in microseconds
 */
 void PitOneShotInit(uint32_t time);
 
 /**
- * @brief Start PIT measurement (blocking!)
- * @param *currentCounter External counter pointer
- * @param *initialCounter External initial counter value pointer
- * @param initial Initial counter value
- * @return Difference between current and initial counter value
+ * @brief Start PIT one-shot timer
 */
-uint32_t PitOneShotMeasure(uint32_t *counter, uint32_t *initialCounter,uint32_t initial);
+void PitOneShotStart(void);
+
+/**
+ * @brief Wait for one-shot timer end
+*/
+void PitOneShotWait(void);
 
 #endif

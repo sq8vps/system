@@ -1,6 +1,6 @@
 #include "pic.h"
 #include "hal/ioport.h"
-#include "ke/mutex.h"
+#include "ke/core/mutex.h"
 
 #define PIC_MASTER_CMD_PORT 0x0020
 #define PIC_MASTER_DATA_PORT 0x0021
@@ -15,7 +15,9 @@
 #define PIC_ICW1_FLAG_INIT 0x10	//constant bit set to 1
 #define PIC_ICW4_FLAG_8086 0x01 //8086 mode
 
-static KeSpinLock_t eoiMutex, remapMutex, disableMutex, enableMutex, setMaskMutex, getISRMutex, getIRRMutex;
+static KeSpinlock eoiMutex  = KeSpinlockInitializer, remapMutex = KeSpinlockInitializer,
+ disableMutex = KeSpinlockInitializer, enableMutex = KeSpinlockInitializer, 
+ setMaskMutex = KeSpinlockInitializer, getISRMutex = KeSpinlockInitializer, getIRRMutex = KeSpinlockInitializer;
 
 STATUS PicSendEOI(uint8_t irq)
 {
@@ -34,7 +36,7 @@ STATUS PicSendEOI(uint8_t irq)
 
 void PicRemap(uint8_t masterOffset, uint8_t slaveOffset)
 {
-    KeAcquireSpinlockDisableIRQ(&remapMutex);
+    KeAcquireSpinlock(&remapMutex);
 
     uint8_t mMask = PortIoReadByte(PIC_MASTER_DATA_PORT);
     uint8_t sMask = PortIoReadByte(PIC_SLAVE_DATA_PORT);
@@ -51,7 +53,7 @@ void PicRemap(uint8_t masterOffset, uint8_t slaveOffset)
     PortIoWriteByte(PIC_MASTER_DATA_PORT, mMask);
     PortIoWriteByte(PIC_SLAVE_DATA_PORT, sMask);
 
-    KeReleaseSpinlockEnableIRQ(&remapMutex);
+    KeReleaseSpinlock(&remapMutex);
 }
 
 STATUS PicDisableIRQ(uint8_t irq)
@@ -59,7 +61,7 @@ STATUS PicDisableIRQ(uint8_t irq)
     if(irq > 15)
         return IT_BAD_VECTOR;
 
-    KeAcquireSpinlockDisableIRQ(&disableMutex);
+    KeAcquireSpinlock(&disableMutex);
 
     if(irq < 8)
     {
@@ -70,7 +72,7 @@ STATUS PicDisableIRQ(uint8_t irq)
         PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) | (1 << (irq - 8)));
     }
 
-    KeReleaseSpinlockEnableIRQ(&disableMutex);
+    KeReleaseSpinlock(&disableMutex);
     return OK;
 }
 
@@ -79,7 +81,7 @@ STATUS PicEnableIRQ(uint8_t irq)
     if(irq > 15)
         return IT_BAD_VECTOR;
 
-    KeAcquireSpinlockDisableIRQ(&enableMutex);
+    KeAcquireSpinlock(&enableMutex);
     if(irq < 8)
     {
         PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) & ~(1 << irq));
@@ -88,7 +90,7 @@ STATUS PicEnableIRQ(uint8_t irq)
     {
         PortIoWriteByte(PIC_SLAVE_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) & ~(1 << (irq - 8)));
     }
-    KeReleaseSpinlockEnableIRQ(&enableMutex);
+    KeReleaseSpinlock(&enableMutex);
     return OK;
 }
 

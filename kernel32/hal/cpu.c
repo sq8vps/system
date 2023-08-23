@@ -1,6 +1,6 @@
 #include "cpu.h"
 #include "sdrv/mp.h"
-#include "sdrv/cpuid.h"
+#include "sdrv/dcpuid.h"
 #include "sdrv/lapic.h"
 #include "sdrv/acpi.h"
 

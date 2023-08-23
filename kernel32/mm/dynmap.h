@@ -12,7 +12,7 @@
 
 
 #include <stdint.h>
-#include "../../cdefines.h"
+#include "../cdefines.h"
 #include "defines.h"
 #include "valloc.h"
 
@@ -22,6 +22,7 @@
  * @{
 */
 
+EXPORT
 /**
  * @brief Map dynamic kernel memory
  * @param pAddress Physical address
@@ -29,14 +30,15 @@
  * @param flags Flags to apply to mapped memory (present and writable flags are always added)
  * @return Pointer to mapped virtual memory
 */
-EXPORT void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags);
+EXTERN void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags);
 
+EXPORT
 /**
  * @brief Unmap dynamic kernel memory
  * @param *ptr Memory pointer (from MmMapDynamicMemory)
  * @param n Byte count
 */
-EXPORT void MmUnmapDynamicMemory(void *ptr, uintptr_t n);
+EXTERN void MmUnmapDynamicMemory(void *ptr, uintptr_t n);
 
 /**
  * @brief Initialize dynamic kernel memory module

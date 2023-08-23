@@ -27,21 +27,44 @@ void PitSetInterval(uint32_t interval)
     PortIoWriteByte(PIT_CH0_PORT, val >> 8);
 }
 
+//one-shot mode terminal counter value
+static uint16_t oneShotValue = 0;
+
 void PitOneShotInit(uint32_t time)
 {
-    uint32_t val = (((uint64_t)time) * ((uint64_t)PIT_CLOCK_FREQUENCY)) / ((uint64_t)1000000);
-    PortIoWriteByte(PIT_GATE_PORT, (PortIoReadByte(PIT_GATE_PORT) & 0xFD) | 1);
+    oneShotValue = (((uint64_t)time) * ((uint64_t)PIT_CLOCK_FREQUENCY)) / ((uint64_t)1000000);
     PortIoWriteByte(PIT_CMD_PORT, 0xB2); //channel 2, single shot mode
-    PortIoWriteByte(PIT_CH2_PORT, val & 0xFF);
-    PortIoWriteByte(PIT_CH2_PORT, val >> 8);
+    PortIoWriteByte(PIT_CH2_PORT, oneShotValue & 0xFF);
+    PortIoReadByte(PIT_GATE_PORT); //delay
+    PortIoWriteByte(PIT_CH2_PORT, oneShotValue >> 8);
 }
 
-uint32_t PitOneShotMeasure(uint32_t *currentCounter, uint32_t *initialCounter, uint32_t initial)
+void PitOneShotStart(void)
 {
+    //pulse gate low (produce rising edge)
     uint8_t gate = PortIoReadByte(PIT_GATE_PORT) & 0xFE;
     PortIoWriteByte(PIT_GATE_PORT, gate);
+    PortIoReadByte(PIT_GATE_PORT); //delay
     PortIoWriteByte(PIT_GATE_PORT, gate | 1);
-    *initialCounter = initial;
-    while(0 == (PortIoReadByte(PIT_GATE_PORT) & 0x20));;
-    return initial - (*currentCounter);
+    //wait for the counter to start counting
+    //that is wait until the counter is different than initial value
+    //it would be best to use timer output at port 0x61, though e.g. Qemu does not have this output connected
+    uint16_t v;
+    do
+    {
+        v = PortIoReadByte(PIT_CH2_PORT);
+        v |= (((uint16_t)PortIoReadByte(PIT_CH2_PORT)) << 8);
+    }
+    while(v == oneShotValue);
+}
+
+void PitOneShotWait(void)
+{
+    //wait for the counter to reach terminal value
+    uint16_t v = 0;
+    while(v < oneShotValue)
+    {
+        v = PortIoReadByte(PIT_CH2_PORT);
+        v |= (((uint16_t)PortIoReadByte(PIT_CH2_PORT)) << 8);
+    }
 }

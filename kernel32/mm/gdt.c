@@ -60,6 +60,7 @@ STATUS MmGdtAddCPUEntry(uint16_t cpu, struct GdtEntry *entry)
         return MM_GDT_ENTRY_LIMIT_EXCEEDED;
 
     gdt[GDT_CPU0_ENTRY + cpu] = *entry;
+    return OK;
 }
 
 uint32_t MmGdtGetFlatPrivilegedCodeOffset(void)

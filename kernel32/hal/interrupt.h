@@ -18,27 +18,40 @@
 
 /**
  * @addtogroup halIt
+ * @{
 */
 
 enum HalInterruptMethod
 {
     IT_METHOD_NONE,
-    IT_METHOD_PIC,
+    //IT_METHOD_PIC,
     IT_METHOD_APIC,
 };
 
+EXPORT
+/**
+ * @brief External interrupt polarity
+*/
 enum HalInterruptPolarity
 {
     IT_POLARITY_ACTIVE_LOW,
     IT_POLARITY_ACTIVE_HIGH,
 };
 
+EXPORT
+/**
+ * @brief External interrupt trigger mode
+*/
 enum HalInterruptTrigger
 {
     IT_TRIGGER_EDGE,
     IT_TRIGGER_LEVEL,
 };
 
+EXPORT
+/**
+ * @brief External interrupt mode
+*/
 enum HalInterruptMode
 {
     IT_MODE_FIXED,
@@ -52,42 +65,45 @@ enum HalInterruptMode
 /**
  * @brief Initialize interrupt controller
 */
-STATUS HalInitInterruptController(void);
+INTERNAL STATUS HalInitInterruptController(void);
 
+EXPORT
 /**
  * @brief Enable external interrupt
  * @param irq Interrupt vector
  * @return Error code
 */
-EXPORT STATUS HalEnableIRQ(uint8_t irq);
+EXTERN STATUS HalEnableIRQ(uint8_t irq);
 
+EXPORT
 /**
  * @brief Disable external interrupt
  * @param irq Interrupt vector
  * @return Error code
 */
-EXPORT STATUS HalDisableIRQ(uint8_t irq);
+EXTERN STATUS HalDisableIRQ(uint8_t irq);
 
+EXPORT
 /**
  * @brief Clear external interrupt flag
  * @param irq Interrupt vector
  * @return Error code
 */
-EXPORT STATUS HalClearInterruptFlag(uint8_t irq);
+EXTERN STATUS HalClearInterruptFlag(uint8_t irq);
 
 /**
  * @brief Initialize system (shcheduler) timer
- * @param interval Interval in milliseconds
  * @param irq Interrupt vector number
  * @return Status code
 */
-STATUS HalInitSystemTimer(uint32_t interval, uint8_t irq);
+INTERNAL STATUS HalConfigureSystemTimer(uint8_t irq);
 
 /**
- * @brief Restart system timer (start couting again)
+ * @brief Start one-shot system timer
+ * @param time Time in microseconds
  * @return Status code
 */
-STATUS HalRestartSystemTimer();
+INTERNAL STATUS HalStartSystemTimer(uint64_t time);
 
 /**
  * @brief Get interrupt handling method

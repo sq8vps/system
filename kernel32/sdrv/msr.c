@@ -1,5 +1,5 @@
 #include "msr.h"
-#include "cpuid.h"
+#include "dcpuid.h"
 
 static bool msrAvailable = false;
 

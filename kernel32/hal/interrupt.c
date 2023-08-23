@@ -3,10 +3,10 @@
 #include "sdrv/lapic.h"
 #include "sdrv/ioapic.h"
 #include "cpu.h"
-#include "sdrv/cpuid.h"
+#include "sdrv/dcpuid.h"
 #include "sdrv/pit.h"
 #include "it/it.h"
-#include "ke/panic.h"
+#include "ke/core/panic.h"
 
 static enum HalInterruptMethod interruptMethod = IT_METHOD_NONE;
 
@@ -30,10 +30,15 @@ STATUS HalInitInterruptController(void)
             }
         }
     }
-    else //APIC unavailable, fallback to PIC
+    else //APIC unavailable
     {
-        PRINT("Legacy PIC controller used\n");
-        interruptMethod = IT_METHOD_PIC;
+        PRINT("Cannot continue: APIC is not available on this PC\n");
+        while(1)
+        {
+            ASM("cli");
+            ASM("hlt");
+        }
+        return IT_NO_CONTROLLER_CONFIGURED;
     }
 
     return OK;
@@ -44,12 +49,12 @@ STATUS HalEnableIRQ(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
     
-    if(IT_METHOD_APIC == interruptMethod)
+    // if(IT_METHOD_APIC == interruptMethod)
         return ApicEnableIRQ(irq);
-    else if(IT_METHOD_PIC == interruptMethod)
-        return PicEnableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
+    // else if(IT_METHOD_PIC == interruptMethod)
+    //     return PicEnableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
 
-    return IT_NO_CONTROLLER_CONFIGURED;
+    // return IT_NO_CONTROLLER_CONFIGURED;
 }
 
 STATUS HalDisableIRQ(uint8_t irq)
@@ -57,12 +62,12 @@ STATUS HalDisableIRQ(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
     
-    if(IT_METHOD_APIC == interruptMethod)
+    // if(IT_METHOD_APIC == interruptMethod)
         return ApicDisableIRQ(irq);
-    else if(IT_METHOD_PIC == interruptMethod)
-        return PicDisableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
+    // else if(IT_METHOD_PIC == interruptMethod)
+    //     return PicDisableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
 
-    return IT_NO_CONTROLLER_CONFIGURED;  
+    // return IT_NO_CONTROLLER_CONFIGURED;  
 }
 
 STATUS HalClearInterruptFlag(uint8_t irq)
@@ -70,40 +75,40 @@ STATUS HalClearInterruptFlag(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
 
-    if(IT_METHOD_APIC == interruptMethod)
+    // if(IT_METHOD_APIC == interruptMethod)
         return ApicSendEOI();
-    else if(IT_METHOD_PIC == interruptMethod)
-        return PicSendEOI(irq - IT_FIRST_INTERRUPT_VECTOR);
+    // else if(IT_METHOD_PIC == interruptMethod)
+    //     return PicSendEOI(irq - IT_FIRST_INTERRUPT_VECTOR);
 
-    return IT_NO_CONTROLLER_CONFIGURED;
+    // return IT_NO_CONTROLLER_CONFIGURED;
 }
 
-STATUS HalInitSystemTimer(uint32_t interval, uint8_t irq)
+STATUS HalConfigureSystemTimer(uint8_t irq)
 {   
     if(IT_METHOD_APIC == interruptMethod)
     {
-        return ApicInitSystemTimer(interval, irq);
+        return ApicConfigureSystemTimer(irq);
     }
-    else if(IT_METHOD_PIC == interruptMethod)
-    {
-        PitSetInterval(interval);
-        return OK;
-    }
+    // else if(IT_METHOD_PIC == interruptMethod)
+    // {
+    //     PitSetInterval(interval);
+    //     return OK;
+    // }
 
     return IT_NO_CONTROLLER_CONFIGURED;
 }
 
-STATUS HalRestartSystemTimer()
+STATUS HalStartSystemTimer(uint64_t time)
 {
     if(IT_METHOD_APIC == interruptMethod)
     {
-        ApicRestartSystemTimer();
+        ApicStartSystemTimer(time);
         return OK;
     }
-    else if(IT_METHOD_PIC == interruptMethod)
-    {
-        return OK; //no way to restart PIT
-    }
+    // else if(IT_METHOD_PIC == interruptMethod)
+    // {
+    //     return OK; //no way to restart PIT
+    // }
 
     return IT_NO_CONTROLLER_CONFIGURED;
 }

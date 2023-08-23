@@ -39,7 +39,21 @@
         "fpufaults.h": "c",
         "mutex.h": "c",
         "color.h": "c",
-        "kdrv.h": "c"
+        "kdrv.h": "c",
+        "vfs.h": "c",
+        "numbers": "c",
+        "stdarg.h": "c",
+        "dev.h": "c",
+        "interrupt.h": "c",
+        "fs.h": "c",
+        "task.h": "c",
+        "export.h": "c",
+        "initrd.h": "c",
+        "load.h": "c",
+        "sched.h": "c",
+        "mm.h": "c",
+        "tsc.h": "c",
+        "tss.h": "c"
     },
     "cmake.sourceDirectory": "/mnt/c/programy/system/elf"
 }

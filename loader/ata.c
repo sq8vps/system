@@ -412,7 +412,6 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 	{
 		ata_readBMRstatus(ata, chan, &sta);
 		dsta = port_readByte(ata.cmdPort[chan] + ATA_CMD_PORT_CMD_STA);
-		printf("%d\n", dsta);
 		if(sta & ATA_BMR_STA_INT_BIT) break; //wait for an interrupt
 		if(sta & ATA_BMR_STA_ERR_BIT) break; //if an error occurred
 		

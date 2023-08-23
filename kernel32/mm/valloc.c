@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include "common.h"
 #include "dynmap.h"
-#include "ke/panic.h"
-#include "ke/mutex.h"
+#include "ke/core/panic.h"
+#include "ke/core/mutex.h"
 
 // These are virtual addresses of current page directory and page tables
 // They come from the self-referencing page directory trick
@@ -52,6 +52,17 @@ static uintptr_t allocatePageTable(void)
 	return address;
 }
 
+STATUS MmGetPageFlags(uintptr_t vAddress, MmPagingFlags_t *flags)
+{
+	if(0 == (pageDir[vAddress >> 22] & MM_PAGE_FLAG_PRESENT)) //check if page table is present
+	{
+		*flags = 0;
+		return MM_PAGE_NOT_PRESENT;
+	}
+
+	*flags = PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & 0xFFF;
+	return OK;
+}
 
 STATUS MmGetPhysicalPageAddress(uintptr_t vAddress, uintptr_t *pAddress)
 {
@@ -65,12 +76,12 @@ STATUS MmGetPhysicalPageAddress(uintptr_t vAddress, uintptr_t *pAddress)
 	return OK;
 }
 
-static KeSpinLock_t pageTableCreationMutex;
+static KeSpinlock pageTableCreationMutex = KeSpinlockInitializer;
 
 STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags)
 {
 	//make sure that no other function will try to create a page table for the same page directory entry
-	KeAcquireSpinlockDisableIRQ(&pageTableCreationMutex); 
+	KeAcquireSpinlock(&pageTableCreationMutex); 
 	if((pageDir[vAddress >> 22] & MM_PAGE_FLAG_PRESENT) == 0) //check if page table is present
 	{
 		//if not, create one
@@ -78,6 +89,7 @@ STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags
 		if(MM_PAGE_TABLE_SIZE != MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &pageTableAddr))
 		{
 			MmFreePhysicalMemory(pageTableAddr, MM_PAGE_TABLE_SIZE);
+			KeReleaseSpinlock(&pageTableCreationMutex);
 			return MM_NO_MEMORY;
 		}
 
@@ -92,7 +104,7 @@ STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags
 
 		//from now on the page table can be accessed using pageTable[]
 	}
-	KeReleaseSpinlockEnableIRQ(&pageTableCreationMutex);
+	KeReleaseSpinlock(&pageTableCreationMutex);
 
 	if(PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & MM_PAGE_FLAG_PRESENT) //check if page is already present
 		return MM_ALREADY_MAPPED;
@@ -107,6 +119,7 @@ STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags
 STATUS MmMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmPagingFlags_t flags)
 {
 	STATUS ret = OK;
+	size = ALIGN_UP(size, MM_PAGE_SIZE);
 	while(size)
 	{
 		if(OK != (ret = MmMapMemory(vAddress, pAddress, flags)))
@@ -115,10 +128,7 @@ STATUS MmMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmP
 		vAddress += MM_PAGE_SIZE;
 		pAddress += MM_PAGE_SIZE;
 
-		if(MM_PAGE_SIZE < size)
-			size -= MM_PAGE_SIZE;
-		else
-			size = 0;
+		size -= MM_PAGE_SIZE;
 	}
 	
 	return OK;
@@ -147,17 +157,14 @@ STATUS MmUnmapMemory(uintptr_t vAddress)
 
 STATUS MmUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 {
-	STATUS ret = OK;
+	size = ALIGN_UP(size, MM_PAGE_SIZE);
 	while(size)
 	{
 		MmUnmapMemory(vAddress);
 		
 		vAddress += MM_PAGE_SIZE;
 
-		if(size > MM_PAGE_SIZE)
-			size -= MM_PAGE_SIZE;
-		else
-			size = 0;
+		size -= MM_PAGE_SIZE;
 	}
 	return OK;
 }
@@ -201,7 +208,7 @@ void MmSwitchPageDirectory(uintptr_t pageDir)
 {
 	uintptr_t oldPageDir;
 	asm volatile("mov eax,cr3" : "=a" (oldPageDir) : );
-	if(oldPageDir != pageDir) //avoid TLB flush when the address is the same
+	if(oldPageDir != pageDir) //avoid TLB flush when both addresses are the same
 		asm volatile("mov cr3,eax" : : "a" (pageDir) :);
 }
 

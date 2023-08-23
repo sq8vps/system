@@ -3,21 +3,23 @@
 
 #include <stdint.h>
 #include "it/it.h"
-#include "ke/panic.h"
+#include "ke/core/panic.h"
 #include "defines.h"
 
-IT_HANDLER void ItPAgeFaultHandler(struct ItFrameEC *f)
+INTERNAL IT_HANDLER void ItPageFaultHandler(struct ItFrameEC *f)
 {
+    uintptr_t cr2;
+    ASM("mov %0,cr2" : "=r" (cr2) : );
     if(ItIsCausedByKernelMode(f->cs))
     {
         //find module
-        KePanicFromInterruptEx(NULL, f->ip, PAGE_FAULT, f->error, 0, 0, 0);
+        KePanicFromInterruptEx(NULL, f->ip, PAGE_FAULT, cr2, f->error, 0, 0);
         while(1);
     }
     else
     {
         //TODO: implement this
-        KePanicFromInterrupt(NULL, f->ip, PAGE_FAULT);
+        KePanicFromInterruptEx(NULL, f->ip, PAGE_FAULT, cr2, f->error, 0, 0);
         while(1);
     }
 }

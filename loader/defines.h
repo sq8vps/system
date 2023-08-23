@@ -71,6 +71,20 @@ typedef enum
 
 } error_t;
 
+/**
+ * @brief Align value up
+ * @param val Value to be aligned
+ * @param align Alignment value
+*/
+#define ALIGN_UP(val, align) (val + ((val & (align - 1)) ? (align - (val & (align - 1))) : 0))
+
+/**
+ * @brief Align value down
+ * @param val Value to be aligned
+ * @param align Alignment value
+*/
+#define ALIGN_DOWN(val, align) ((val - ((val & (align - 1)) ? (val & (align - 1)) : 0)))
+
 //debug level (amount of messages shown)
 //0 - quiet (no messages)
 //1 - user-friendly messages (standard)
@@ -84,5 +98,6 @@ typedef enum
 #if MIN_KERNEL_MEMORY % 4096
 #error "Minimum kernel memory size must be page (4096 bytes) aligned"
 #endif
+
 
 #endif /* LOADER_DEFINES_H_ */

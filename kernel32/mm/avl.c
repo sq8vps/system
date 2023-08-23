@@ -1,7 +1,7 @@
 #include "avl.h"
 #include <stdbool.h>
 #include "defines.h"
-#include "../../cdefines.h"
+#include "../cdefines.h"
 #include "heap.h"
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -95,7 +95,6 @@ struct MmAvlNode* MmAvlInsert(struct MmAvlNode **addressRoot, struct MmAvlNode *
 {
     if(0 == size)
         return NULL;
-    
     struct MmAvlNode* addressNode = MmAllocateKernelHeap(sizeof(struct MmAvlNode));
     struct MmAvlNode* sizeNode = MmAllocateKernelHeap(sizeof(struct MmAvlNode));
     

@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 #include "it/it.h"
-#include "ke/panic.h"
+#include "ke/core/panic.h"
 #include "defines.h"
 
-IT_HANDLER void ItNmiHandler(struct ItFrame *f)
+INTERNAL IT_HANDLER void ItNmiHandler(struct ItFrame *f)
 {
     KePanicFromInterrupt(NULL, f->ip, NON_MASKABLE_INTERRUPT);
     while(1);

@@ -210,7 +210,6 @@ void pci_checkDevice(uint8_t bus, uint8_t dev)
  */
 void pci_scanBus(uint8_t bus)
 {
-	printf("Scanning bus %d\n", (int)bus);
 	for(uint8_t i = 0; i < 32; i++)
 	{
 		pci_checkDevice(bus, i);

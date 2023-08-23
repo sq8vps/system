@@ -188,7 +188,7 @@ static STATUS readConfigurationTableHeader()
     
     struct MpConfigurationTableHeader *confHeader = MmMapDynamicMemory(cth, MM_PAGE_SIZE, 0);
     if(NULL == confHeader)
-        return MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE;
+        return OUT_OF_RESOURCES;
 
     //validate signature
     if(0 != CmStrncmp(confHeader->signature, 

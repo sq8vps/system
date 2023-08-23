@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "../../cdefines.h"
+#include "../cdefines.h"
 
 /**
  * @defgroup vMem Virtual memory module
@@ -22,10 +22,12 @@
  * @{
 */
 
+EXPORT
 typedef uint32_t MmPageDirectoryEntry_t;
 typedef uint32_t MmPageTableEntry_t;
 typedef uint16_t MmPagingFlags_t;
 
+EXPORT
 /**
  * @brief Flags for page directories and page table entries
 */
@@ -41,14 +43,25 @@ typedef uint16_t MmPagingFlags_t;
 */
 void MmInitVirtualAllocator(void);
 
+EXPORT
+/**
+ * @brief Get page table entry flags
+ * @param vAddress Input virtual address
+ * @param *flags Output flags
+ * @return Status code
+*/
+EXTERN STATUS MmGetPageFlags(uintptr_t vAddress, MmPagingFlags_t *flags);
+
+EXPORT
 /**
  * @brief Get current process physical address corresponding to the virtual address
  * @param vAddress Input virtual address
  * @param *pAddress Output physical address
  * @return Error code
  */
-EXPORT STATUS MmGetPhysicalPageAddress(uintptr_t vAddress, uintptr_t *pAddress);
+EXTERN STATUS MmGetPhysicalPageAddress(uintptr_t vAddress, uintptr_t *pAddress);
 
+EXPORT
 /**
  * @brief Map current process memory
  * @param vAddress Address to map the memory to
@@ -57,8 +70,9 @@ EXPORT STATUS MmGetPhysicalPageAddress(uintptr_t vAddress, uintptr_t *pAddress);
  * @return Error code
  * @attention This function does not allocate physical memory.
 */
-EXPORT STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags);
+EXTERN STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags);
 
+EXPORT
 /**
  * @brief Map multiple pages of current process memory
  * @param vAddress Address to map the memory to
@@ -68,16 +82,18 @@ EXPORT STATUS MmMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_
  * @return Error code
  * @attention This function does not allocate physical memory.
 */
-EXPORT STATUS MmMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmPagingFlags_t flags);
+EXTERN STATUS MmMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmPagingFlags_t flags);
 
+EXPORT
 /**
  * @brief Unmap current process memory
  * @param vAddress Address to map the memory to
  * @return Error code
  * @attention This function does not free physical memory.
 */
-EXPORT STATUS MmUnmapMemory(uintptr_t vAddress);
+EXTERN STATUS MmUnmapMemory(uintptr_t vAddress);
 
+EXPORT
 /**
  * @brief Unmap multiple pages of current process memory
  * @param vAddress Address to unmap
@@ -85,16 +101,16 @@ EXPORT STATUS MmUnmapMemory(uintptr_t vAddress);
  * @return Error code
  * @attention This function does not free physical memory
 */
-EXPORT STATUS MmUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
+EXTERN STATUS MmUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
 
+EXPORT
 /**
  * @brief Create and prepare page directory for a process
- * @return Page directory physical address or 0 on failure
- * 
  * 
  * This function copies page directory kernel space mappings.
+ * @return Page directory physical address or 0 on failure
 */
-EXPORT uintptr_t MmCreateProcessPageDirectory(void);
+EXTERN uintptr_t MmCreateProcessPageDirectory(void);
 
 /**
  * @brief Get current page directory physical address

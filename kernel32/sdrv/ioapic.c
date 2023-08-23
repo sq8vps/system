@@ -62,7 +62,7 @@ static uint32_t read(struct IOAPIC *ioapic, uint8_t reg)
 static uint64_t read64(struct IOAPIC *ioapic, uint8_t reg)
 {
     uint64_t ret = read(ioapic, reg + 1);
-    ret <= 32;
+    ret <<= 32;
     ret |= read(ioapic, reg);
     return ret;
 }
@@ -82,7 +82,7 @@ STATUS ApicIoInit(void)
 
     uint32_t *mmio = MmMapMmIo(lowestAddress, (highestAddress - lowestAddress + 32));
     if(NULL == mmio)
-        return MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE;
+        return OUT_OF_RESOURCES;
 
     for(uint16_t i = 0; i < ApicIoEntryCount; i++)
     {

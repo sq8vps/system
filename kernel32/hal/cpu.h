@@ -20,6 +20,7 @@
  * @{
 */
 
+EXPORT
 enum HalCpuConfigMethod
 {
     CPU_METHOD_NONE,
@@ -34,20 +35,20 @@ struct HalCpuConfig
     uint8_t boot : 1;
 };
 
-extern struct HalCpuConfig HalCpuConfigTable[MAX_CPU_COUNT];
-extern uint8_t HalCpuCount;
+INTERNAL extern struct HalCpuConfig HalCpuConfigTable[MAX_CPU_COUNT];
+INTERNAL extern uint8_t HalCpuCount;
 
 /**
  * @brief Initialize CPU configuratzions (SMP, APIC etc.)
  * @return Status code
 */
-STATUS HalInitCpu(void);
+INTERNAL STATUS HalInitCpu(void);
 
 /**
  * @brief Get Local APIC physicall address
  * @return LAPIC physical address or 0 if not available
 */
-uint32_t HalGetLapicAddress(void);
+INTERNAL uint32_t HalGetLapicAddress(void);
 
 #ifdef DEBUG
 void HalListCpu(void);

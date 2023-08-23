@@ -1,10 +1,12 @@
 #include "lapic.h"
-#include "cpuid.h"
+#include "dcpuid.h"
 #include "hal/cpu.h"
 #include "mm/mmio.h"
 #include "it/it.h"
 #include "ioapic.h"
 #include "pit.h"
+#include "msr.h"
+#include "tsc.h"
 
 enum ApicTimerDivider
 {
@@ -52,6 +54,7 @@ enum ApicTimerDivider
 #define LAPIC_POLARITY_ACTIVE_HIGH (0 << 13)
 #define LAPIC_TIMER_PERIODIC_FLAG (1 << 17)
 #define LAPIC_TIMER_ONE_SHOT_FLAG (0 << 17)
+#define LAPIC_TIMER_TSC_DEADLINE_FLAG (2 << 17)
 
 #define LAPIC_VECTOR_MASK 0xFF
 
@@ -61,11 +64,16 @@ enum ApicTimerDivider
 static uint8_t *lapic = NULL;
 
 #define LAPIC_DEFAULT_TIMER_DIVIDER APIC_TIMER_DIVIDE_16
-static uint64_t busFrequency; //calculated bus frequency  
+static uint64_t frequency; //calculated clock frequency  
 
+static uint64_t counter = 0;
+
+/**
+ * @brief A convenience macro for 32-bit Local APIC register access
+*/
 #define LAPIC(register) (*(uint32_t volatile*)(lapic + register))
 
-IT_HANDLER static void spuriousInterruptHandler(struct ItFrame *f)
+static void spuriousInterruptHandler(void *context)
 {
 
 }
@@ -125,28 +133,30 @@ STATUS ApicInitBSP(uintptr_t address)
 
     lapic = MmMapMmIo(address, MM_PAGE_SIZE);
     if(NULL == lapic)
-        return MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE;
+        return OUT_OF_RESOURCES;
 
     STATUS ret = OK;
     if(OK != (ret = ApicInitAP()))
     {
         MmUnmapMmIo(lapic, MM_PAGE_SIZE);
+        lapic = NULL;
         return ret;
     }
 
-    if(OK != (ret = ItInstallInterruptHandler(LAPIC_SPURIOUS_INTERRUPT_IRQ, spuriousInterruptHandler, PL_KERNEL)))
+    if(OK != (ret = ItInstallInterruptHandler(LAPIC_SPURIOUS_INTERRUPT_IRQ, spuriousInterruptHandler, (void*)LAPIC_SPURIOUS_INTERRUPT_IRQ, PL_KERNEL)))
     {
         MmUnmapMmIo(lapic, MM_PAGE_SIZE);
+        lapic = NULL;
         return ret;
     }
 
     LAPIC(LAPIC_TIMER_DIVIDER_OFFSET) = LAPIC_DEFAULT_TIMER_DIVIDER & 0b1011;
     PitOneShotInit(10000); //10000us=10ms
-    busFrequency = (uint64_t)16 * (uint64_t)100 *
-        (uint64_t)PitOneShotMeasure(
-            (uint32_t*)(lapic + LAPIC_TIMER_CURRENT_COUNT_OFFSET), 
-            (uint32_t*)(lapic + LAPIC_TIMER_INITIAL_COUNT_OFFSET), 
-            0xFFFFFFFF);
+    PitOneShotStart();
+    LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = 0xFFFFFFFF;
+    PitOneShotWait();
+    uint32_t value = LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
+    frequency = ((uint64_t)100) * ((uint64_t)(0xFFFFFFFF - value));
     
     return OK;
 }
@@ -225,24 +235,53 @@ STATUS ApicDisableIRQ(uint8_t vector)
     return APIC_LAPIC_NOT_AVAILABLE;
 }
 
-STATUS ApicInitSystemTimer(uint32_t interval, uint8_t vector)
+STATUS ApicConfigureSystemTimer(uint8_t vector)
 {
     if(vector < IT_FIRST_INTERRUPT_VECTOR)  
         return IT_BAD_VECTOR;
     
     if(lapic)
     {
-        LAPIC(LAPIC_TIMER_DIVIDER_OFFSET) = APIC_TIMER_DIVIDE_16 & 0x0b1011;
-        LAPIC(LAPIC_LVT_TIMER_OFFSET) = LAPIC_TIMER_PERIODIC_FLAG | LAPIC_LOCAL_MASK | vector;
-        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = (((uint64_t)interval) * ((uint64_t)busFrequency)) / ((uint64_t)16 * (uint64_t)1000);
+        LAPIC(LAPIC_TIMER_DIVIDER_OFFSET) = LAPIC_DEFAULT_TIMER_DIVIDER & 0b1011;
+        LAPIC(LAPIC_LVT_TIMER_OFFSET) = vector;
+        if(CpuidCheckIfTscAvailable() && CpuidCheckIfTscInvariant() && CpuidCheckIfTscDeadlineAvailable())
+            LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_TSC_DEADLINE_FLAG;
+        else
+            LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_ONE_SHOT_FLAG;
+        
         return OK;
     }
 
     return APIC_LAPIC_NOT_AVAILABLE;   
 }
 
-void ApicRestartSystemTimer(void)
+void ApicStartSystemTimer(uint64_t time)
 {
-    uint32_t val = LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET);
-    LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = val;
+    if(LAPIC(LAPIC_LVT_TIMER_OFFSET) & LAPIC_TIMER_TSC_DEADLINE_FLAG)
+    {
+        HalMsrSet(MSR_IA32_TSC_DEADLINE, TscCalculateRaw(time * (uint64_t)1000) + TscGetRaw());
+    }
+    else
+    {
+        counter += ((uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET));
+        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = time * frequency / (uint64_t)1000000;
+    }
+}
+
+uint64_t ApicGetTimestamp(void)
+{
+    return ((uint64_t)1000000000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
+}
+
+uint64_t ApicGetTimestampMicros(void)
+{
+    return ((uint64_t)1000000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
+}
+
+uint64_t ApicGetTimestampMillis(void)
+{
+    return ((uint64_t)1000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
 }

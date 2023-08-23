@@ -3,21 +3,21 @@
 
 #include <stdint.h>
 #include "it/it.h"
-#include "ke/panic.h"
+#include "ke/core/panic.h"
 #include "defines.h"
 
-IT_HANDLER void ItGeneralProtectionHandler(struct ItFrameEC *f)
+INTERNAL IT_HANDLER void ItGeneralProtectionHandler(struct ItFrameEC *f)
 {
     if(ItIsCausedByKernelMode(f->cs))
     {
         //find module
-        KePanicFromInterrupt(NULL, f->ip, GENERAL_PROTECTION_FAULT);
+        KePanicFromInterruptEx(NULL, f->ip, GENERAL_PROTECTION_FAULT, f->error, 0, 0, 0);
         while(1);
     }
     else
     {
         //terminate task and switch to another task
-        KePanicFromInterrupt(NULL, f->ip, GENERAL_PROTECTION_FAULT);
+        KePanicFromInterruptEx(NULL, f->ip, GENERAL_PROTECTION_FAULT, f->error, 0, 0, 0);
         while(1);
     }
 }

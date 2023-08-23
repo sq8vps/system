@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../cdefines.h"
+#include "../cdefines.h"
 #include "defines.h"
 
 /**
@@ -24,11 +24,6 @@
 
 /**
  * @brief Allocate ONE physical memory block (best fit)
- * @param n Byte count
- * @param *address Allocated physical memory address
- * @return Number of bytes actually allocated. 0 when memory is full.
- * @warning This is a very low level utility and should not be used by anything but the memory allocator
- * 
  * 
  * This function allocates exactly ONE memory block. The number of requested bytes and actually allocated bytes differs when
  * the biggest available block is too small. In such scenario that smaller block -is- allocated anyway 
@@ -36,9 +31,14 @@
  * This also happens when the requested size is bigger than the biggest block size, even if
  * there are more contiguous block (there is just no higher order block).
  * Of course when there is not a single lowest order block available nothing is allocated and 0 is returned.
+ * @param n Byte count
+ * @param *address Allocated physical memory address
+ * @return Number of bytes actually allocated. 0 when memory is full.
+ * @warning This is a very low level utility and should not be used by anything but the memory allocator
 */
 uintptr_t MmAllocatePhysicalMemory(uintptr_t n, uintptr_t *address);
 
+EXPORT
 /**
  * @brief Allocate contiguous physical memory
  * @param n Byte Count
@@ -47,15 +47,16 @@ uintptr_t MmAllocatePhysicalMemory(uintptr_t n, uintptr_t *address);
  * @return Number of bytes actually allocated. 0 when no contiguous block of size n was found.
  * @warning This function is slow and should not be used when not needed.
 */
-EXPORT uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, uintptr_t align);
+EXTERN uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, uintptr_t align);
 
+EXPORT
 /**
  * @brief Free physical memory
  * @param address Starting address
  * @param n Byte count. Freeing 0 bytes has no effect
  * @warning It is a caller's responsibility to free non-contiguous memory fragment by fragment
 */
-EXPORT void MmFreePhysicalMemory(uintptr_t address, uintptr_t n);
+EXTERN void MmFreePhysicalMemory(uintptr_t address, uintptr_t n);
 
 /**
  * @brief Initialize physical memory allocator

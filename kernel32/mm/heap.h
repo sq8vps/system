@@ -20,18 +20,20 @@
  * @{
 */
 
+EXPORT
 /**
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
 */
-EXPORT void *MmAllocateKernelHeap(uintptr_t n);
+EXTERN void *MmAllocateKernelHeap(uintptr_t n);
 
+EXPORT
 /**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
-EXPORT void MmFreeKernelHeap(const void *ptr);
+EXTERN void MmFreeKernelHeap(const void *ptr);
 
 /**
  * @}

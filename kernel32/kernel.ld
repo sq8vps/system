@@ -5,8 +5,8 @@ ENTRY(KeEntry)
 Below is the temporary kernel stack size that will be used only at the initialization stage.
 Appropriate kernel CPU stack will be used after the first task switch.
 */
-__KERNEL_TEMPORARY_STACK_SIZE = 4096; /* 4096 B */
-__KERNEL_PAGE_SIZE = 4096; /* 4096 B*/
+__KERNEL_INITIAL_STACK_SIZE = 4096; /* 4096 B */
+__KERNEL_PAGE_SIZE = 4096; /* 4096 B */
 PROVIDE(_KERNEL_PAGE_SIZE = __KERNEL_PAGE_SIZE); 
 SECTIONS
 {
@@ -30,9 +30,9 @@ SECTIONS
   {
    *(.bss .bss.*)
    . = ALIGN(. != 0 ? 64 / 8 : 1);
-   . += __KERNEL_TEMPORARY_STACK_SIZE;
-   __KERNEL_TEMPORARY_STACK_ADDRESS = .;
-   PROVIDE(_KERNEL_TEMPORARY_STACK_ADDRESS = .);
+   . += __KERNEL_INITIAL_STACK_SIZE;
+   __KERNEL_INITIAL_STACK_ADDRESS = .;
+   PROVIDE(_KERNEL_INITIAL_STACK_ADDRESS = .);
    . = ALIGN(. != 0 ? 64 / 8 : 1);
   }
   . = ALIGN(64 / 8);

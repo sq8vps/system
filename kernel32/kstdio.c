@@ -1,5 +1,5 @@
 #include "common.h"
-#include "bootvga/bootvga.h"
+#include "sdrv/bootvga/bootvga.h"
 #include <stdbool.h>
 #include <stdarg.h>
 
@@ -96,6 +96,8 @@ int CmPrintf(const char *format, ...)
                     written++;
                     break;
                 default:
+                    BootVgaPrintChar('?');
+                    written++;
                     break;
             }
 			format++;

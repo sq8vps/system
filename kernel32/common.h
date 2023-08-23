@@ -2,6 +2,7 @@
 #define KERNEL_COMMON_H_
 
 #include <stdint.h>
+#include "defines.h"
 
 /**
  * @file common.h
@@ -17,34 +18,24 @@
  * @{
 */
 
-/**
- * @brief General RGBA color structure
-*/
-typedef struct
-{
-    float r;
-    float g;
-    float b;
-    float alpha;
-} Cm_RGBA_t;
-
-
-
+EXPORT
 /**
  * @brief Get string length
  * @param str Input string
  * @return String length (excluding null terminator)
 */
-uint32_t CmStrlen(const char *str);
+EXTERN uint32_t CmStrlen(const char *str);
 
+EXPORT
 /**
  * @brief Copy string
  * @param strTo Destination string
  * @param strFrom Source string
  * @return Destination string
 */
-char* CmStrcpy(char *strTo, const char *strFrom);
+EXTERN char* CmStrcpy(char *strTo, const char *strFrom);
 
+EXPORT
 /**
  * @brief Copy at most n bytes of a string
  * @param strTo Destination string
@@ -52,16 +43,18 @@ char* CmStrcpy(char *strTo, const char *strFrom);
  * @param n Character limit (NULL terminator excluded)
  * @return Destination string
 */
-char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n);
+EXTERN char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n);
 
+EXPORT
 /**
  * @brief Compare strings
  * @param s1 1st string
  * @param s2 2nd string
  * @return 0 if identical
 */
-int CmStrcmp(const char *s1, const char *s2);
+EXTERN int CmStrcmp(const char *s1, const char *s2);
 
+EXPORT
 /**
  * @brief Compare strings up to a given length
  * @param s1 1st string
@@ -69,8 +62,9 @@ int CmStrcmp(const char *s1, const char *s2);
  * @param n Length limit
  * @return 0 if identical
 */
-int CmStrncmp(const char *s1, const char *s2, int n);
+EXTERN int CmStrncmp(const char *s1, const char *s2, int n);
 
+EXPORT
 /**
  * @brief Copy memory
  * @param to Destination buffer
@@ -78,25 +72,27 @@ int CmStrncmp(const char *s1, const char *s2, int n);
  * @param n Number of bytes to copy
  * @return Destination buffer
 */
-void* CmMemcpy(void *to, const void *from, uintptr_t n);
+EXTERN void* CmMemcpy(void *to, const void *from, uintptr_t n);
 
+EXPORT
 /**
  * @brief Calculate absolute value of an integer
  * @param x Input integer
  * @return Absolute value of x
 */
-uint32_t CmAbs(int32_t x);
+EXTERN uint32_t CmAbs(int32_t x);
 
+EXPORT
 /**
  * @brief Fill memory with given value
  * @param *ptr Memory pointer
  * @param c Filler value
  * @param num Byte count
 */
-void* CmMemset(void *ptr, int c, uintptr_t num);
+EXTERN void* CmMemset(void *ptr, int c, uintptr_t num);
 
-
-int CmPrintf(const char *format, ...);
+EXPORT
+EXTERN int CmPrintf(const char *format, ...);
 
 /**
  * @}

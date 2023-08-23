@@ -1,8 +1,8 @@
 #include "dynmap.h"
 #include "avl.h"
 #include "heap.h"
-#include "ke/panic.h"
-#include "ke/mutex.h"
+#include "ke/core/panic.h"
+#include "ke/core/mutex.h"
 
 #define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (MM_PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
@@ -10,18 +10,18 @@ struct MmAvlNode *dynamicMemoryTree[2] = {NULL, NULL};
 #define MM_DYNAMIC_ADDRESS_TREE dynamicMemoryTree[0]
 #define MM_DYNAMIC_SIZE_TREE dynamicMemoryTree[1]
 
-static KeSpinLock_t dynamicAllocatorMutex;
+static KeSpinlock dynamicAllocatorMutex = KeSpinlockInitializer;
 
 void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
 {
     n = ALIGN_UP(n, MM_PAGE_SIZE);
     
-    KeAcquireSpinlockDisableIRQ(&dynamicAllocatorMutex);
+    KeAcquireSpinlock(&dynamicAllocatorMutex);
 
     struct MmAvlNode *region = MmAvlFindFreeMemory(MM_DYNAMIC_SIZE_TREE, n);
     if(NULL == region) //no fitting region available
     {
-        KeReleaseSpinlockEnableIRQ(&dynamicAllocatorMutex);
+        KeReleaseSpinlock(&dynamicAllocatorMutex);
         ERROR("no dynamic memory region found\n");
         return NULL;
     }
@@ -32,7 +32,7 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
     STATUS ret = OK;
     if(OK != (ret = MmMapMemoryEx(vAddress, ALIGN_DOWN(pAddress, MM_PAGE_SIZE), n, MM_PAGE_FLAG_WRITABLE | flags)))
     {
-        KeReleaseSpinlockEnableIRQ(&dynamicAllocatorMutex);
+        KeReleaseSpinlock(&dynamicAllocatorMutex);
         ERROR("memory mapping failed, error 0x%X\n", (uintptr_t)ret);
         return NULL;
     }
@@ -45,13 +45,13 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
     {
         if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, vAddress + n, remainingSize))
         {
-            KeReleaseSpinlockEnableIRQ(&dynamicAllocatorMutex);
+            KeReleaseSpinlock(&dynamicAllocatorMutex);
             ERROR("AVL tree insertion failed\n");
             return NULL;
         }
             //TODO: this should be handled somehow
     }
-    KeReleaseSpinlockEnableIRQ(&dynamicAllocatorMutex);
+    KeReleaseSpinlock(&dynamicAllocatorMutex);
     return (void*)(vAddress + (pAddress % MM_PAGE_SIZE));
 }
 
@@ -62,7 +62,7 @@ void MmUnmapDynamicMemory(void *ptr, uintptr_t n)
 
     MmUnmapMemoryEx((uintptr_t)ptr, n);
 
-    KeAcquireSpinlockDisableIRQ(&dynamicAllocatorMutex);
+    KeAcquireSpinlock(&dynamicAllocatorMutex);
 
     //check if there is an adjacent free region with higher address
     struct MmAvlNode *node = MmAvlFindMemoryByAddress(MM_DYNAMIC_ADDRESS_TREE, (uintptr_t)ptr + n);
@@ -82,7 +82,7 @@ void MmUnmapDynamicMemory(void *ptr, uintptr_t n)
 
     //TODO: should be handled somehow if NULL returned
     MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, (uintptr_t)ptr, n);
-    KeReleaseSpinlockEnableIRQ(&dynamicAllocatorMutex);
+    KeReleaseSpinlock(&dynamicAllocatorMutex);
 }
 
 void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
@@ -95,23 +95,38 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
         
         if(kernelArgs->initrdAddress & (MM_PAGE_SIZE - 1)) //address not aligned
             KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, MM_UNALIGNED_MEMORY, 0, 0);
-        
-        if(MM_DYNAMIC_START_ADDRESS < kernelArgs->initrdAddress)
-        {
-            if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, 
-            MM_DYNAMIC_START_ADDRESS, kernelArgs->initrdAddress - MM_DYNAMIC_START_ADDRESS))
-                KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, MM_HEAP_ALLOCATION_FAILURE, 0, 0);
+
+
+        if(MM_DYNAMIC_START_ADDRESS <= kernelArgs->initrdAddress)
+        {   
+            uintptr_t dummy;
+            for(uint32_t i = 0; i < (kernelArgs->initrdSize / MM_PAGE_SIZE + ((kernelArgs->initrdSize % MM_PAGE_SIZE) > 0)); i++)
+            {
+                //check if pages are actually mapped
+                if(OK != MmGetPhysicalPageAddress(kernelArgs->initrdAddress + (i * MM_PAGE_SIZE), &dummy))
+                    KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 1, 0, 0);
+            }
+
+            if(kernelArgs->initrdAddress - MM_DYNAMIC_START_ADDRESS)
+            {
+                if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, 
+                MM_DYNAMIC_START_ADDRESS, kernelArgs->initrdAddress - MM_DYNAMIC_START_ADDRESS))
+                    KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
+            }
         }
         else if(MM_DYNAMIC_START_ADDRESS > kernelArgs->initrdAddress)
-            KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 0, 0, 0);
+            KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 2, 0, 0);
     }
     else
         kernelArgs->initrdAddress = MM_DYNAMIC_START_ADDRESS;
     
-    if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, 
-    kernelArgs->initrdAddress + kernelArgs->initrdSize, 
-    MM_DYNAMIC_MAX_SIZE - (kernelArgs->initrdAddress + kernelArgs->initrdSize - MM_DYNAMIC_START_ADDRESS)))
-        KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, MM_HEAP_ALLOCATION_FAILURE, 0, 0);
+    uintptr_t remaining = MM_DYNAMIC_MAX_SIZE - (kernelArgs->initrdAddress + kernelArgs->initrdSize - MM_DYNAMIC_START_ADDRESS);
+    if(remaining)
+    {
+        if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, 
+            kernelArgs->initrdAddress + kernelArgs->initrdSize, remaining))
+                KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
+    }
 }
 
 

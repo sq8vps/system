@@ -25,7 +25,7 @@
  * 
  * Initializes whole Hardware Abstraction Layer. Reads system tables and sets up all core peripherals.
 */
-STATUS HalInit(void);
+INTERNAL STATUS HalInit(void);
 
 /**
  * @}
