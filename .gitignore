@@ -54,3 +54,4 @@ Mkfile.old
 dkms.conf
 os-image.img
 elf/
+__pycache__/

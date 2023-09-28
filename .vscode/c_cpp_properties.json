@@ -4,6 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "kernel32",
+                ".",
+                "api"
             ],
             "defines": [
                 "${default}"

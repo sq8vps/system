@@ -107,6 +107,7 @@ NORETURN static void KeInit(void)
 
 	CmPrintf("Load kernel symbols %d\n", ExLoadKernelSymbols("/initrd/kernel32.elf"));
 	CmPrintf("KePanicEx is at 0x%X\n", ExGetKernelSymbol("KePanicEx"));
+
 	KeSchedulerStart();
 
 	struct KeTaskControlBlock *t1, *t2;

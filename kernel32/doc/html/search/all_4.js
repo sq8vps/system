@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['elf_20definitions_20and_20mainpulation_20routines_0',['ELF definitions and mainpulation routines',['../group__elf.html',1,'']]],
+  ['elf_2eh_1',['elf.h',['../elf_8h.html',1,'']]],
+  ['elf32_5fehdr_2',['Elf32_Ehdr',['../struct_elf32___ehdr.html',1,'']]],
+  ['elf32_5fphdr_3',['Elf32_Phdr',['../struct_elf32___phdr.html',1,'']]],
+  ['elf32_5frel_4',['Elf32_Rel',['../struct_elf32___rel.html',1,'']]],
+  ['elf32_5frela_5',['Elf32_Rela',['../struct_elf32___rela.html',1,'']]],
+  ['elf32_5fshdr_6',['Elf32_Shdr',['../struct_elf32___shdr.html',1,'']]],
+  ['elf32_5fsym_7',['Elf32_Sym',['../struct_elf32___sym.html',1,'']]],
+  ['exdriverobject_8',['ExDriverObject',['../struct_ex_driver_object.html',1,'']]],
+  ['exec_2eh_9',['exec.h',['../exec_8h.html',1,'']]],
+  ['executable_20and_20driver_20module_10',['Executable and driver module',['../group__exec.html',1,'']]],
+  ['exelfresolver_5ft_11',['ExElfResolver_t',['../group__elf.html#ga8e7343528dcc92b0a3b9593c4ffb54fc',1,'elf.h']]],
+  ['exgetelf32sectionheader_12',['ExGetElf32SectionHeader',['../group__elf.html#ga6024d93d968cc2f344d5f5dc995cc4ad',1,'elf.h']]],
+  ['exgetelf32symbolvalue_13',['ExGetElf32SymbolValue',['../group__elf.html#ga3418dffed1317ae5fe56be4ccf83b8c6',1,'elf.h']]],
+  ['exgetelf32symbolvaluebyname_14',['ExGetElf32SymbolValueByName',['../group__elf.html#ga712d96e6e977984d650e2670ed074a14',1,'elf.h']]],
+  ['exgetkernelsymbol_15',['ExGetKernelSymbol',['../group__kernel_symbols.html#gafdb82c6164702549e08ab325e085a99b',1,'exec.h']]],
+  ['exloadkerneldriversfordevice_16',['ExLoadKernelDriversForDevice',['../group__kdrv_load.html#ga99a38ca257a7cad4d027725aa16584e6',1,'kdrv.h']]],
+  ['exloadkernelsymbols_17',['ExLoadKernelSymbols',['../group__kernel_symbols.html#gab141e835d74baa19b71d2fa457452e8c',1,'exec.h']]],
+  ['exloadpreloadeddriver_18',['ExLoadPreloadedDriver',['../group__kdrv_load.html#ga6bff593b982dcb0d267796c2cedc994b',1,'kdrv.h']]],
+  ['experformelf32relocation_19',['ExPerformElf32Relocation',['../group__elf.html#ga0d8c47e582e599b905df5cbb517bd3eb',1,'elf.h']]],
+  ['exrelocateelf32symbol_20',['ExRelocateElf32Symbol',['../group__elf.html#ga239ddc09034338e21c4d7db3fb732849',1,'elf.h']]],
+  ['exverifyelf32header_21',['ExVerifyElf32Header',['../group__elf.html#ga36248a3fe4d83f579e85bbf2531e2004',1,'elf.h']]]
+];

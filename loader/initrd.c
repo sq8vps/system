@@ -29,7 +29,7 @@ uintptr_t InitrdPrepareSpaceForFile(char *name, uintptr_t size)
     if(strlen(name) > INITRD_MAX_FILE_NAME_LENGTH)
         return 0;
 
-    struct InitrdFileHeader *file = NULL;
+    struct InitrdFileHeader *file = (struct InitrdFileHeader*)((uintptr_t)header + sizeof(*header));
 
     if(0 == header->firstFileOffset)
     {

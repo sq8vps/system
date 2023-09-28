@@ -86,3 +86,77 @@ void* CmMemset(void *ptr, int c, uintptr_t num)
     }
     return ptr;
 }
+
+int CmMemcmp(const void *s1, const void *s2, uintptr_t n)
+{
+    register const unsigned char *str1 = (const unsigned char*)s1;
+    register const unsigned char *str2 = (const unsigned char*)s2;
+
+    while (n-- > 0)
+    {
+        if (*str1++ != *str2++)
+        return str1[-1] < str2[-1] ? -1 : 1;
+    }
+    return 0;
+}
+
+int CmIsprint(int c)
+{
+	return ((unsigned int)c - 0x20) < 0x5f;
+}
+
+char *CmStrcat(char *dst, const char *src)
+{
+    char* ptr = dst + CmStrlen(dst);
+ 
+    while (*src != '\0') 
+    {
+        *ptr++ = *src++;
+    }
+ 
+    *ptr = '\0';
+
+    return dst;
+}
+
+char CmIsxdigit(int c)
+{
+    if ((c >= (int)'0' && c <= (int)'9') ||
+         (c >= (int)'a' && c <= (int)'f') ||
+         (c >= (int)'A' && c <= (int)'F'))
+        return 1;
+
+    return 0;
+}
+
+char CmIsdigit(int c)
+{
+    if ((c >= (int)'0' && c <= (int)'9'))
+        return 1;
+
+    return 0;
+}
+
+int CmIsspace(int c)
+{
+	if(c == (int)'\t' || c == (int)'\n' || c == (int)'\v' || c == (int)'\f' || c == (int)'\r' || c == (int)' ')
+        return 1;
+    
+    return 0;
+}
+
+int CmTolower(int c)
+{
+    if((c >= (int)'A') && (c <= (int)'Z'))
+        return c + 32;
+    
+    return c;
+}
+
+int CmToupper(int c)
+{
+    if((c >= (int)'a') && (c <= (int)'z'))
+        return c - 32;
+    
+    return c;
+}

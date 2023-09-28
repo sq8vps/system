@@ -1,6 +1,7 @@
 NAME = kernel32.elf
 CC = i686-elf-gcc
 LNK = i686-elf-gcc
+AR = i686-elf-ar
 ASM = nasm
 CC_FLAGS = -I. -I.. -c -ffreestanding -masm=intel -D DEBUG -Wall
 ASM_FLAGS = -f elf32 -D DEBUG
@@ -28,3 +29,4 @@ $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	
 clean:
 	rm -f $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)
+

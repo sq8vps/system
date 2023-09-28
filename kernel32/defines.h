@@ -27,11 +27,6 @@
 #define EXPORT
 
 /**
- * @brief Mark all following lines up to the next blank line as "typedef to be exported"
-*/
-#define EXPORT
-
-/**
  * @brief Mark function/variable to be externed on exporting
 */
 #define EXTERN
@@ -102,6 +97,7 @@ typedef enum
     EXEC_BAD_DRIVER_INDEX,
     EXEC_BAD_DRIVER_CLASS,
     EXEC_PROCESS_PAGE_DIRECTORY_CREATION_FAILURE,
+    EXEC_DRIVER_INIT_FAILED,
 
     KE_TSS_ENTRY_LIMIT_EXCEEDED = 0x00004000,
     KE_SCHEDULER_INITIALIZATION_FAILURE,

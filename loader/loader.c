@@ -37,6 +37,30 @@ struct FileListEntry fileList[] =
 	// {.name = "tmvga.drv", .type = FILE_DRIVER},
 };
 
+static error_t loadToInitrd(char *name)
+{
+	printf("Loading %s... ", name);
+	uint32_t size;
+	if(OK != (Fat_getFileSize(&fatDisk, name, &size)))
+	{
+#if __DEBUG > 0
+		printf("Failure\n");
+#endif
+		while(1);;	
+	}
+	uintptr_t address = InitrdPrepareSpaceForFile(name, size);
+	printf("Load 0x%X bytes to 0x%X... ", size, address);
+	if(OK != (Fat_readWholeFile(&fatDisk, name, (uint8_t*)address, &size)))
+	{
+#if __DEBUG > 0
+		printf("Failure\n");
+#endif
+		while(1);;	
+	}
+	printf("OK\n");
+	return OK;
+}
+
 /**
  * \brief Bootloader (3rd stage) entry point
  * \attention This function MUST be kept at the strict beginning of the binary file
@@ -146,18 +170,8 @@ struct FileListEntry fileList[] =
 		while(1);;	
 	}
 
-	uint32_t kernelImageSize;
-	if(OK != (Fat_getFileSize(&fatDisk, KERNEL_FILE_NAME, &kernelImageSize)))
-	{
-#if __DEBUG > 0
-		printf("Kernel image not found.\n");
-#endif
-		while(1);;	
-	}
-	printf("Image size is 0x%X\n", kernelImageSize);
-	uintptr_t kernelImageAddress = InitrdPrepareSpaceForFile(KERNEL_FILE_NAME, kernelImageSize);
-	printf("Space for image at 0x%X\n", kernelImageAddress);
-	Fat_readWholeFile(&fatDisk, KERNEL_FILE_NAME, (uint8_t*)kernelImageAddress, &kernelImageSize);
+	loadToInitrd(KERNEL_FILE_NAME);
+	loadToInitrd("acpi.drv");
 
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;

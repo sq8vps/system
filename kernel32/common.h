@@ -92,6 +92,73 @@ EXPORT
 EXTERN void* CmMemset(void *ptr, int c, uintptr_t num);
 
 EXPORT
+/**
+ * @brief Compare memory
+ * @param *s1 1st memory region
+ * @param *s2 2nd memory region
+ * @param n Number of bytes to compare
+ * @return 0 if equal
+*/
+EXTERN int CmMemcmp(const void *s1, const void *s2, uintptr_t n);
+
+EXPORT
+/**
+ * @brief Check if character is printable
+ * @param c Character to check
+ * @return 1 if printable, 0 otherwise
+*/
+EXTERN int CmIsprint(int c);
+
+EXPORT
+/**
+ * @brief Concatenate strings
+ * @param *dst Destination string
+ * @param *src String to be concatenated
+ * @return Destination string
+*/
+EXTERN char *CmStrcat(char *dst, const char *src);
+
+EXPORT
+/**
+ * @brief Check if given character is a hexadecimal character
+ * @param c Input character
+ * @return 1 if is a hexadecimal character, 0 if not
+*/
+EXTERN char CmIsxdigit(int c);
+
+EXPORT
+/**
+ * @brief Check if given character is a digit
+ * @param c Input character
+ * @return 1 if is a digit, 0 if not
+*/
+EXTERN char CmIsdigit(int c);
+
+EXPORT
+/**
+ * @brief Check if given character is a whitespace
+ * @param c Input character
+ * @return 1 if is a whitespace character, 0 if not
+*/
+EXTERN int CmIsspace(int c);
+
+EXPORT
+/**
+ * @brief Convert character to lowercase
+ * @param c Input character
+ * @return Given character converted to lowercase
+*/
+EXTERN int CmTolower(int c);
+
+EXPORT
+/**
+ * @brief Convert character to uppercase
+ * @param c Input character
+ * @return Given character converted to uppercase
+*/
+EXTERN int CmToupper(int c);
+
+EXPORT
 EXTERN int CmPrintf(const char *format, ...);
 
 /**
