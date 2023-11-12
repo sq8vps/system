@@ -9,6 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
+#include <stdbool.h>
 /**
  * @brief External interrupt polarity
 */
@@ -39,6 +40,32 @@ enum HalInterruptMode
     IT_MODE_INIT,
     IT_MODE_EXTINT,
 };
+
+/**
+ * @brief Register external IRQ
+ * @param input Global interrupt source number
+ * @param vector Interrupt vector number
+ * @param mode Interrupt delivery mode
+ * @param polarity Input polarity
+ * @param trigger Interrupt trigger
+ * @return Status code
+*/
+extern STATUS HalRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
+                        enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger);
+
+/**
+ * @brief Unregister external IRQ
+ * @param input Global interrupt source number
+ * @return Status code
+*/
+extern STATUS HalUnregisterIRQ(uint32_t input);
+
+/**
+ * @brief Get vector number associated with given interrupt source
+ * @param input Global interrupt source number
+ * @return Associated vector number or 0 on failure
+*/
+extern uint8_t HalGetAssociatedVector(uint32_t input);
 
 /**
  * @brief Enable external interrupt

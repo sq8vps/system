@@ -70,6 +70,24 @@ bool CpuidCheckIfTscDeadlineAvailable(void);
 bool CpuidCheckIfTscInvariant(void);
 
 /**
+ * @brief Check if FPU (x87) instructions are available
+ * @return True if available, false if not
+*/
+bool CpuidCheckIfFpuAvailable(void);
+
+/**
+ * @brief Check if MMX instructions are available
+ * @return True if available, false if not
+*/
+bool CpuidCheckIfMmxAvailable(void);
+
+/**
+ * @brief Check if SSE instructions are available
+ * @return True if available, false if not
+*/
+bool CpuidCheckIfSseAvailable(void);
+
+/**
  * @}
 */
 

@@ -25,6 +25,7 @@ struct ExDriverObject
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
+    char *fileName;
     char *name;
     char *vendor;
     char *version;
@@ -37,6 +38,13 @@ struct ExDriverObject
     struct ExDriverObject *next;
     struct ExDriverObject *previous;
 };
+
+/**
+ * @brief Find driver by memory address (e.g. for debugging)
+ * @param address Memory address
+ * @return Matched driver object or NULL if no matching object was found
+*/
+extern struct ExDriverObject *ExFindDriverByAddress(uintptr_t address);
 
 
 #ifdef __cplusplus

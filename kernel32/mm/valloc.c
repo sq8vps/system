@@ -200,16 +200,16 @@ void MmInitVirtualAllocator(void)
 uintptr_t MmGetPageDirectoryAddress(void)
 {
 	uintptr_t pageDir;
-	ASM("mov eax,cr3" : "=a" (pageDir) : );
+	ASM("mov eax,cr3" : "=a" (pageDir) : : );
 	return pageDir;
 }
 
 void MmSwitchPageDirectory(uintptr_t pageDir)
 {
 	uintptr_t oldPageDir;
-	asm volatile("mov eax,cr3" : "=a" (oldPageDir) : );
+	asm volatile("mov eax,cr3" : "=a" (oldPageDir) : : );
 	if(oldPageDir != pageDir) //avoid TLB flush when both addresses are the same
-		asm volatile("mov cr3,eax" : : "a" (pageDir) :);
+		asm volatile("mov cr3,eax" : : "a" (pageDir) : );
 }
 
 uintptr_t MmCreateProcessPageDirectory(void)

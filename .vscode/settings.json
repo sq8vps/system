@@ -9,6 +9,15 @@
         "time.h": "c",
         "defines.h": "c",
         "stdint.h": "c",
-        "elf.h": "c"
+        "elf.h": "c",
+        "syslog.h": "c",
+        "task.h": "c",
+        "msr.h": "c",
+        "bootvga.h": "c",
+        "print.h": "c",
+        "stdio.h": "c",
+        "acenv.h": "c",
+        "fs.h": "c",
+        "stdbool.h": "c"
     }
 }

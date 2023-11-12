@@ -325,7 +325,6 @@ AcpiEvInstallSciHandler (
 
     ACPI_FUNCTION_TRACE (EvInstallSciHandler);
 
-
     Status = AcpiOsInstallInterruptHandler ((UINT32) AcpiGbl_FADT.SciInterrupt,
         AcpiEvSciXruptHandler, AcpiGbl_GpeXruptListHead);
     return_ACPI_STATUS (Status);

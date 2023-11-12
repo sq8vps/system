@@ -428,18 +428,29 @@ static void handleScroll(uint16_t objectHeight)
 	currentY -= objectHeight;
 }
 
-void BootVgaPrintStringXY(uint16_t x, uint16_t y, char *s)
+void BootVgaPrintStringNXY(uint16_t x, uint16_t y, char *s, uint32_t size)
 {
 	if(NULL == vmem)
 		return;
 
 	currentX = x;
 	currentY = y;
-	while(*s)
+	while(*s && size)
 	{
 		BootVgaPrintChar(*s);
 		s++;
+		size--;
 	}
+}
+
+void BootVgaPrintStringXY(uint16_t x, uint16_t y, char *s)
+{
+	BootVgaPrintStringNXY(x, y, s, 0xFFFFFFFF);
+}
+
+void BootVgaPrintStringN(char *s, uint32_t size)
+{
+	BootVgaPrintStringNXY(currentX, currentY, s, size);
 }
 
 void BootVgaPrintString(char *s)

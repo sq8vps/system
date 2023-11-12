@@ -885,6 +885,7 @@ AcpiTbSetupFadtRegisters (
     {
         Source64 = ACPI_ADD_PTR (ACPI_GENERIC_ADDRESS, &AcpiGbl_FADT,
             FadtPmInfoTable[i].Source);
+        
 
         if (Source64->Address)
         {

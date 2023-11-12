@@ -4,11 +4,6 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
- 
-/**
- * In general this driver is not used for anything else but to disable PIC.
- * PIC is extremely old and this OS requires at least the Local APIC to run.
-*/
 
 /**
  * @brief Send End Of Interrupt for given IRQ to PIC
@@ -57,21 +52,10 @@ uint16_t PicGetISR(void);
 uint16_t PicGetIRR(void);
 
 /**
- * @brief Check if IRQ7 was spurious
- * @return 1 if spurious, 0 if not
- * @attention When 1 is returned, the interrupt is false and should not be processed
- * @warning Use only in IRQ7 handler
+ * @brief Check if interrupt is spurious
+ * @return True if spurious, false if not
 */
-bool PicCheckSpuriousIRQ7(void);
-
-/**
- * @brief Check if IRQ15 was spurious
- * @return 1 if spurious, 0 if not
- * @attention When 1 is returned, the interrupt is false and should not be processed
- * @warning Use only in IRQ15 handler
-*/
-bool PicCheckSpuriousIRQ15(void);
-
+bool PicIsIrqSpurious(void);
 
 
 #endif

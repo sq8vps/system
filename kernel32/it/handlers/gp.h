@@ -6,18 +6,17 @@
 #include "ke/core/panic.h"
 #include "defines.h"
 
-INTERNAL IT_HANDLER void ItGeneralProtectionHandler(struct ItFrameEC *f)
+INTERNAL IT_HANDLER void ItGeneralProtectionHandler(struct ItFrame *f, uint32_t error)
 {
     if(ItIsCausedByKernelMode(f->cs))
     {
-        //find module
-        KePanicFromInterruptEx(NULL, f->ip, GENERAL_PROTECTION_FAULT, f->error, 0, 0, 0);
+        KePanicIPEx(f->ip, GENERAL_PROTECTION_FAULT, error, 0, 0, 0);
         while(1);
     }
     else
     {
-        //terminate task and switch to another task
-        KePanicFromInterruptEx(NULL, f->ip, GENERAL_PROTECTION_FAULT, f->error, 0, 0, 0);
+        //TODO: terminate task and switch to another task
+        KePanicIPEx(f->ip, GENERAL_PROTECTION_FAULT, error, 0, 0, 0);
         while(1);
     }
 }

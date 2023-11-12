@@ -2,6 +2,7 @@
 #include "ke/sched/sched.h"
 #include "panic.h"
 #include "hal/time.h"
+#include "it/it.h"
 
 //list of tasks waiting for mutex or semaphore
 //this list is sorted by earliest deadline first
@@ -17,7 +18,7 @@ void KeAcquireSpinlock(KeSpinlock *spinlock)
     ASM("pop eax");
     ASM("and eax,0x200"); //store only the IF bit state
     ASM("mov %0,eax" : "=m" (spinlock->eflags) : : "eax", "memory");
-    ASM("cli");
+    ItDisableInterrupts();
     if(spinlock->lock)
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 1;
@@ -26,7 +27,7 @@ void KeAcquireSpinlock(KeSpinlock *spinlock)
     uint16_t *lock = &(spinlock->lock);
     uint32_t *eflags = &(spinlock->eflags);
     asm volatile("pushfd"); //store flags
-    asm volatile("cli");
+    ItDisableInterrupts();
     asm volatile("lock bts WORD [%0],0" : "=m" (lock) : ); //store bit 0 value in CF and set bit 0 (atomic)
     asm volatile("jnc .IRQacquired"); //if bit 0 was clear previously then the lock is acquired
 
@@ -37,7 +38,7 @@ void KeAcquireSpinlock(KeSpinlock *spinlock)
     asm volatile("bt WORD [%0],0" : : "m" (lock)); //check if bit is set
     asm volatile("jc .IRQretry"); //if so, wait for the bit to be clear
 
-    asm volatile("cli");
+    ItDisableInterrupts();
     asm volatile("lock bts WORD [%0],0" : "=m" (lock) : ); //store bit 0 value in CF and set bit 0 (atomic)
     asm volatile("jc .IRQretry"); //if bit 0 was set previously then retry
 

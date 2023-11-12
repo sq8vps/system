@@ -14,8 +14,6 @@
 uint32_t KeSchedPostponeCounter = 0; //count of scheduler task switch postponement events
 bool KeSchedTaskSwitchPending = false; //is there a task switch to perform?
 
-static uint8_t schedulerTimerVector = 0; //scheduler (system) timer interrupt vector number
-
 struct KeSchedulerQueue
 {
     struct KeTaskControlBlock *head;
@@ -35,7 +33,7 @@ extern void KeSchedulerISR(struct ItFrame *f);
 
 void KeSchedulerISRClearFlag()
 {
-    HalClearInterruptFlag(schedulerTimerVector);
+    HalClearInterruptFlag(IT_SYSTEM_TIMER_VECTOR);
 }
 
 static KeSpinlock queueMutex = KeSpinlockInitializer;
@@ -178,15 +176,7 @@ void KeSchedulerStart(void)
     if(OK != (ret = KeCreateIdleTask()))
         KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
 
-    if(IT_METHOD_APIC == HalGetInterruptHandlingMethod())
-        schedulerTimerVector = ItGetFreeVector();
-    else
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, IT_NO_CONTROLLER_CONFIGURED, 0, 0);
-    
-    if(0 == schedulerTimerVector)
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, IT_NO_FREE_VECTORS, 0, 0);
-
-    ItInstallDirectInterruptHandler(schedulerTimerVector, KeSchedulerISR, PL_KERNEL);
+    ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, (ItHandler)KeSchedulerISR, NULL, PL_KERNEL);
 
     //create kernel initialization task
     uintptr_t cr3;
@@ -203,9 +193,12 @@ void KeSchedulerStart(void)
 
     currentTask = tcb;
 
-    HalConfigureSystemTimer(schedulerTimerVector);
+    HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
-	HalEnableIRQ(schedulerTimerVector);
+	HalEnableIRQ(IT_SYSTEM_TIMER_VECTOR);
+
+    while(NULL == KeGetCurrentTask())
+        ;
 }
 
 

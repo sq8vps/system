@@ -21,7 +21,8 @@ STATUS InitrdInit(uintptr_t address)
         return OUT_OF_RESOURCES;
 
     device->type = IO_VFS_DISK;
-    device->flags = IO_VFS_FLAG_INITRD_ENTRY | IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
+    device->majorType = IO_VFS_FS_INITRD;
+    device->flags = IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
     
     STATUS ret = OK; 
     if(OK != (ret = IoVfsInsertNodeByPath(device, "/dev/")))

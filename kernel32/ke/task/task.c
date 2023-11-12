@@ -18,6 +18,8 @@
 #define KE_PROCESS_INITIAL_STACK_SIZE 4096
 #define KE_PROCESS_MAX_STACK_SIZE 65536
 
+static uint32_t nextSequentialTid = 1;
+
 struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, uintptr_t pageDir, PrivilegeLevel_t pl, const char *name, const char *path)
 {
     struct KeTaskControlBlock *tcb = MmAllocateKernelHeap(sizeof(struct KeTaskControlBlock));
@@ -59,12 +61,14 @@ struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, 
         CmStrcpy(tcb->path, path);
     }
 
+    tcb->tid = nextSequentialTid++;
+
     return tcb;
 }
 
 NORETURN static void KeCleanupAfterReturn(void)
 {
-    CmPrintf("Process %s returned\n", KeGetCurrentTask()->name);
+    PRINT("Process %s returned\n", KeGetCurrentTask()->name);
     while(1)
         ;
 }
@@ -136,6 +140,8 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
     stack[-5] = (uintptr_t)entry;
     stack[-12] = (*tcb)->esp; //set EBP
     (*tcb)->esp -= (12 * sizeof(uint32_t)); //update ESP
+
+    (*tcb)->pid = (*tcb)->tid;
 
 KeCreateProcessRawExit:
     MmSwitchPageDirectory(originalPageDir);

@@ -46,8 +46,6 @@ enum ApicTimerDivider
 #define LAPIC_TIMER_CURRENT_COUNT_OFFSET 0x390
 #define LAPIC_TIMER_DIVIDER_OFFSET 0x3E0
 
-#define LAPIC_SPURIOUS_INTERRUPT_IRQ 255
-
 #define LAPIC_LOCAL_MASK (1 << 16)
 #define LAPIC_MODE_NMI (4 << 8)
 #define LAPIC_POLARITY_ACTIVE_LOW (1 << 13)
@@ -73,9 +71,9 @@ static uint64_t counter = 0;
 */
 #define LAPIC(register) (*(uint32_t volatile*)(lapic + register))
 
-static void spuriousInterruptHandler(void *context)
+static STATUS spuriousInterruptHandler(uint8_t vector, void *context)
 {
-
+    return OK;
 }
 
 STATUS ApicSendEOI(void)
@@ -103,12 +101,6 @@ STATUS ApicSendEOI(void)
 //     return OK;
 // }
 
-void ApicUpdateTaskPriority(uint8_t priority)
-{
-    if(NULL != lapic)
-        LAPIC(LAPIC_TPR_OFFSET) = priority & 0xF;
-}
-
 STATUS ApicInitAP(void)
 {
     if(NULL == lapic)
@@ -121,7 +113,7 @@ STATUS ApicInitAP(void)
     LAPIC(LAPIC_DESTINATION_FORMAT_OFFSET) = 0xFFFFFFFF;
     LAPIC(LAPIC_LOGICAL_DESTINATION_OFFSET) = 0x01000000;
 
-    LAPIC(LAPIC_SPURIOUS_INTERRUPT_OFFSET) = 0x100 | LAPIC_SPURIOUS_INTERRUPT_IRQ;
+    LAPIC(LAPIC_SPURIOUS_INTERRUPT_OFFSET) = 0x100 | IT_LAPIC_SPURIOUS_VECTOR;
 
     return OK;
 }
@@ -143,7 +135,7 @@ STATUS ApicInitBSP(uintptr_t address)
         return ret;
     }
 
-    if(OK != (ret = ItInstallInterruptHandler(LAPIC_SPURIOUS_INTERRUPT_IRQ, spuriousInterruptHandler, (void*)LAPIC_SPURIOUS_INTERRUPT_IRQ, PL_KERNEL)))
+    if(OK != (ret = ItInstallInterruptHandler(IT_LAPIC_SPURIOUS_VECTOR, &spuriousInterruptHandler, NULL, PL_KERNEL)))
     {
         MmUnmapMmIo(lapic, MM_PAGE_SIZE);
         lapic = NULL;
@@ -187,12 +179,12 @@ STATUS ApicEnableIRQ(uint8_t vector)
                 LAPIC(LAPIC_LVT_THERMAL_SENSOR_OFFSET) &= ~(LAPIC_LOCAL_MASK);
             else
             {
-                RETURN(IT_NOT_REGISTERED);
+                return IT_NOT_REGISTERED;
             }
 
             return OK;
         }
-        RETURN(IT_NOT_REGISTERED);
+        return OK;
     }
 
     return APIC_LAPIC_NOT_AVAILABLE;
@@ -224,12 +216,12 @@ STATUS ApicDisableIRQ(uint8_t vector)
                 LAPIC(LAPIC_LVT_THERMAL_SENSOR_OFFSET) |= (LAPIC_LOCAL_MASK);
             else
             {
-                RETURN(IT_NOT_REGISTERED);
+                return IT_NOT_REGISTERED;
             }
 
             return OK;
         }
-        RETURN(IT_NOT_REGISTERED);
+        return IT_NOT_REGISTERED;
     }
 
     return APIC_LAPIC_NOT_AVAILABLE;
@@ -284,4 +276,21 @@ uint64_t ApicGetTimestampMillis(void)
 {
     return ((uint64_t)1000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
         - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
+}
+
+STATUS ApicSetTaskPriority(uint8_t priority)
+{
+    if(NULL == lapic)
+        return APIC_LAPIC_NOT_AVAILABLE;
+    
+    LAPIC(LAPIC_TPR_OFFSET) = (priority & 0xF) << 4;
+    return OK;
+}
+
+uint8_t ApicGetTaskPriority(void)
+{
+    if(NULL == lapic)
+        return 0;
+    
+    return (LAPIC(LAPIC_TPR_OFFSET) >> 4) & 0xFF;
 }

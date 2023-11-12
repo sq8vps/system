@@ -1,6 +1,7 @@
 #include "it.h"
 #include "ke/core/mutex.h"
 #include "hal/hal.h"
+#include "hal/interrupt.h"
 #include "common.h"
 #include "mm/gdt.h"
 #include "handlers/nmi.h"
@@ -55,19 +56,36 @@ static uint32_t irqUsageBitmap[IDT_ENTRY_COUNT / 32];
 /**
  * @brief Default ISR for interrupts
 */
-void defaultIsr(void *context)
+STATUS defaultIsr(uint8_t vector, void *context)
 {
-
+	HalClearInterruptFlag(vector);
+	return OK;
 }
 
 static KeSpinlock getFreeVectorMutex = KeSpinlockInitializer;
 
-uint8_t ItGetFreeVector(void)
+uint8_t ItGetFreeVector(uint8_t requested)
 {
-	KeAcquireSpinlock(&getFreeVectorMutex);
-	for(uint8_t i = 1; i < sizeof(irqUsageBitmap); i++)
+	if(IT_METHOD_PIC == HalGetInterruptHandlingMethod())
 	{
-		for(uint8_t k = 0; k < 32; k++)
+		if(requested >= 16)
+			return 0;
+		
+		KeAcquireSpinlock(&getFreeVectorMutex);
+		requested += HAL_PIC_REMAP_VECTOR;
+		if(0 == (irqUsageBitmap[1] & ((uint32_t)1 << requested)))
+		{
+			irqUsageBitmap[1] |= ((uint32_t)1 << requested);
+			KeReleaseSpinlock(&getFreeVectorMutex);
+			return requested;
+		}
+		return 0;
+	}
+	KeAcquireSpinlock(&getFreeVectorMutex);
+	uint8_t k = IT_IRQ_VECTOR_BASE % 32;
+	for(uint8_t i = (IT_IRQ_VECTOR_BASE / 32); i < sizeof(irqUsageBitmap); i++)
+	{
+		for(; k < 32; k++)
 		{
 			if(0 == (irqUsageBitmap[i] & ((uint32_t)1 << k)))
 			{
@@ -75,16 +93,25 @@ uint8_t ItGetFreeVector(void)
 				KeReleaseSpinlock(&getFreeVectorMutex);
 				return (i * 32) + k;
 			}
-		} 	
+		}
+		k = 0;
 	}
 	KeReleaseSpinlock(&getFreeVectorMutex);
 	return 0;
 }
 
-STATUS ItInstallInterruptHandler(uint8_t vector, void (*isr)(void*), void *context, PrivilegeLevel_t cpl)
+STATUS ItReleaseVector(uint8_t vector)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_NO_FREE_VECTORS;
+		return IT_BAD_VECTOR;
+	irqUsageBitmap[vector / 32] &= ~((uint32_t)1 << (vector % 32));
+	return OK;
+}
+
+STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context, PrivilegeLevel_t cpl)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return IT_BAD_VECTOR;
 	if(PL_USER == cpl)
 		idt[vector].flags |= IDT_FLAG_INTERRUPT_USERMODE;
 	else
@@ -92,20 +119,6 @@ STATUS ItInstallInterruptHandler(uint8_t vector, void (*isr)(void*), void *conte
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	itHandlerDescriptorTable[vector].callback = isr;
 	itHandlerDescriptorTable[vector].context = context;
-	irqUsageBitmap[vector / 32] |= ((uint32_t)1 << (vector % 32));
-	return OK;
-}
-
-STATUS ItInstallDirectInterruptHandler(uint8_t vector, void (*isr)(struct ItFrame*), PrivilegeLevel_t cpl)
-{
-	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_NO_FREE_VECTORS;
-	if(PL_USER == cpl)
-		idt[vector].flags |= IDT_FLAG_INTERRUPT_USERMODE;
-	else
-		idt[vector].flags &= ~IDT_FLAG_INTERRUPT_USERMODE;
-	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
-	idt[vector].isrHigh = (uint32_t)isr >> 16;
 	irqUsageBitmap[vector / 32] |= ((uint32_t)1 << (vector % 32));
 	return OK;
 }
@@ -153,6 +166,7 @@ STATUS ItInit(void)
 	{
 		itHandlerDescriptorTable[i].context = NULL;
 		itHandlerDescriptorTable[i].callback = defaultIsr;
+		itHandlerDescriptorTable[i].spinlock.lock = 0;
 	}
 	//set up all defined exceptions to default handlers
 	ItInstallExceptionHandler(IT_EXCEPTION_DIVIDE, ItDivisionByZeroHandler);
@@ -162,7 +176,7 @@ STATUS ItInit(void)
 	ItInstallExceptionHandler(IT_EXCEPTION_OVERFLOW, ItOverflowHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_BOUND_EXCEEDED, ItBoundExceededHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_INVALID_OPCODE, ItInvalidOpcodeHandler);
-	ItInstallExceptionHandler(IT_EXCEPTION_DEVICE_UNAVAILABLE, ItFpuUnavailableHandler);
+	ItInstallExceptionHandler(IT_EXCEPTION_DEVICE_UNAVAILABLE, ItUnexpectedFaultHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_DOUBLE_FAULT, ItDoubleFaultHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_COPROCESSOR_OVERRUN, ItUnexpectedFaultHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_INVALID_TSS, ItUnexpectedFaultHandlerEC);
@@ -191,7 +205,7 @@ STATUS ItInit(void)
 	//load IDT register address
 	ASM("lidt %0" : : "m" (idtr));
 	//enable interrupts
-	ASM("sti");
+	ItEnableInterrupts();
 
 	return OK;
 }
@@ -205,9 +219,18 @@ NORETURN void ItHardReset(void)
 {
 	idtr.limit = 0;
 	ASM("lidt %0" : : "m" (idtr));
-	ASM("sti");
+	ItEnableInterrupts();
 	ASM("int 0");
 	while(1)
 		;
 }
 
+void ItDisableInterrupts(void)
+{
+	ASM("cli");
+}
+
+void ItEnableInterrupts(void)
+{
+	ASM("sti");
+}

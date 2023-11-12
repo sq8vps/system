@@ -24,7 +24,7 @@ STATUS IoMountVolume(char *device, char *mountPointName)
     struct IoVfsNode *dev = IoVfsGetNode(device);
     if(NULL == dev)
     {
-        ERROR("Device %s not found\n", device);
+        PRINT("Device %s not found\n", device);
         return IO_FILE_NOT_FOUND;
     }
     

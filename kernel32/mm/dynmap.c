@@ -22,7 +22,6 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
     if(NULL == region) //no fitting region available
     {
         KeReleaseSpinlock(&dynamicAllocatorMutex);
-        ERROR("no dynamic memory region found\n");
         return NULL;
     }
     //else region is available
@@ -33,7 +32,6 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
     if(OK != (ret = MmMapMemoryEx(vAddress, ALIGN_DOWN(pAddress, MM_PAGE_SIZE), n, MM_PAGE_FLAG_WRITABLE | flags)))
     {
         KeReleaseSpinlock(&dynamicAllocatorMutex);
-        ERROR("memory mapping failed, error 0x%X\n", (uintptr_t)ret);
         return NULL;
     }
     //delete old nodes
@@ -46,7 +44,6 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
         if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, vAddress + n, remainingSize))
         {
             KeReleaseSpinlock(&dynamicAllocatorMutex);
-            ERROR("AVL tree insertion failed\n");
             return NULL;
         }
             //TODO: this should be handled somehow

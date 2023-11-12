@@ -9,6 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
+#include <stdarg.h>
 /**
  * @brief Get string length
  * @param str Input string
@@ -64,7 +65,7 @@ extern void* CmMemcpy(void *to, const void *from, uintptr_t n);
  * @param x Input integer
  * @return Absolute value of x
 */
-extern uint32_t CmAbs(int32_t x);
+extern uint64_t CmAbs(int64_t x);
 
 /**
  * @brief Fill memory with given value
@@ -133,8 +134,48 @@ extern int CmTolower(int c);
 */
 extern int CmToupper(int c);
 
-extern int CmPrintf(const char *format, ...);
+/**
+ * @brief Calculate natural power of 10
+ * @param x Exponent
+ * @return 10^x
+*/
+extern uint64_t CmPow10(uint16_t x);
 
+/**
+ * @brief Extract file name from path
+ * @param *path Input path
+ * @return Pointer to the first character of file name
+*/
+extern char *CmGetFileName(char *path);
+
+#ifdef DEBUG
+    #include "io/disp/print.h"
+    /**
+     * @brief Print message to currently available console
+     * @param ... printf-like argument list
+     * @return Count of character written
+     * @note This is an alias of \a IoPrintDebug()
+     * @note This function is automatically excluded in non-debug build
+     * @attention This function should not be used except for
+     * early boot stage messaging and debugging
+    */
+    #define PRINT(...) IoPrintDebug(__VA_ARGS__)
+    /**
+     * @brief Print error message (file name + line numer + additional data) to currently available console
+     * @param ... printf-like argument list
+     * @return Count of character written
+     * @note This is an alias of \a IoPrintDebug() but automatically adding file name and line number
+     * @note This function is automatically excluded in non-debug build
+     * @attention This function should not be used except for
+     * early boot stage messaging and debugging
+    */
+    #define ERROR(...) IoPrintDebug(__FILE__ ":" STRINGIFY(__LINE__) ": " __VA_ARGS__)
+#else
+    #define PRINT(...)
+    #define ERROR(...)
+#endif
+
+#include "io/disp/print.h"
 
 #ifdef __cplusplus
 }

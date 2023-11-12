@@ -10,15 +10,12 @@ INTERNAL IT_HANDLER void ItInvalidOpcodeHandler(struct ItFrame *f)
 {
     if(ItIsCausedByKernelMode(f->cs))
     {
-        //find module
-        KePanicFromInterrupt(NULL, f->ip, INVALID_OPCODE);
-        while(1);
+        KePanicIP(f->ip, INVALID_OPCODE);
     }
     else
     {
-        //terminate task and switch to another task
-        KePanicFromInterrupt(NULL, f->ip, INVALID_OPCODE);
-        while(1);
+        //TODO: terminate task and switch to another task
+        KePanicIP(f->ip, INVALID_OPCODE);
     }
 }
 

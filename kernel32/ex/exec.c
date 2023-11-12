@@ -22,7 +22,7 @@ STATUS ExCreateProcess(char *name, char *path, PrivilegeLevel_t pl, struct KeTas
     return KeEnableTask(*tcb);
 }
 
-STATUS ExGetExecutableRequiredBssSize(const char *name, uint64_t *size)
+STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
 {
     struct IoFileHandle *f;
     uint64_t actualSize;
@@ -30,7 +30,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uint64_t *size)
 
     *size = 0;
 
-    if(OK != (ret = IoOpenKernelFile(name, IO_FILE_READ | IO_FILE_BINARY, 0, &f)))
+    if(OK != (ret = IoOpenKernelFile((char*)name, IO_FILE_READ | IO_FILE_BINARY, 0, &f)))
     {
         return ret;
     }
@@ -42,7 +42,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uint64_t *size)
         return OUT_OF_RESOURCES;
     }
 
-    if((OK != (ret = IoReadKernelFile(f, buf, sizeof(struct Elf32_Ehdr), 0, &actualSize)) || (actualSize != sizeof(struct Elf32_Ehdr))))
+    if((OK != (ret = IoReadKernelFile(f, buf, sizeof(struct Elf32_Ehdr), 0, &actualSize)) || (actualSize != (uint64_t)sizeof(struct Elf32_Ehdr))))
     {
         MmFreeKernelHeap(buf);
         IoCloseKernelFile(f);
@@ -60,7 +60,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uint64_t *size)
     }
 
     uint32_t sectionHeaderEntryCount = h->e_shnum;
-    uint32_t sectionHeaderSize = h->e_shnum * h->e_shentsize;
+    uint64_t sectionHeaderSize = h->e_shnum * h->e_shentsize;
     uint32_t sectionHeaderOffset = h->e_shoff;
 
     MmFreeKernelHeap(buf);
@@ -71,7 +71,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uint64_t *size)
         return OUT_OF_RESOURCES;
     }
 
-    if((OK != (ret = IoReadKernelFile(f, buf, sectionHeaderSize, 0, &actualSize)) || (actualSize != sectionHeaderSize)))
+    if((OK != (ret = IoReadKernelFile(f, buf, sectionHeaderSize, sectionHeaderOffset, &actualSize)) || (actualSize != sectionHeaderSize)))
     {
         MmFreeKernelHeap(buf);
         IoCloseKernelFile(f);
@@ -111,7 +111,7 @@ STATUS ExPrepareExecutableBss(void *fileStart, void *bss)
     struct Elf32_Shdr *s;
 	for(uint16_t i = 0; i < h->e_shnum; i++)
 	{
-        s = ExGetElf32SectionHeader(h, 0);
+        s = ExGetElf32SectionHeader(h, i);
 		if(SHT_NOBITS != s->sh_type)
 			continue;
 		

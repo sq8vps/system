@@ -351,6 +351,8 @@ AcpiUtInitGlobals (
     AcpiGbl_RootNodeStruct.Peer         = NULL;
     AcpiGbl_RootNodeStruct.Object       = NULL;
 
+    AcpiGbl_RootTableList.CurrentTableCount = 0;
+
 
 #ifdef ACPI_DISASSEMBLER
     AcpiGbl_ExternalList                = NULL;

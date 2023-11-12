@@ -1,6 +1,7 @@
 #include "ioapic.h"
 #include "mm/mmio.h"
 #include "it/it.h"
+#include "common.h"
 
 struct ApicIoEntry ApicIoEntryTable[MAX_IOAPIC_COUNT];
 uint8_t ApicIoEntryCount = 0;
@@ -22,20 +23,21 @@ struct IOAPIC
     uint32_t *mmio;
     uint8_t id;
     uint8_t inputs;
+    uint32_t irqBase;
 } static ioApicDevice[MAX_IOAPIC_COUNT]; //table of I/O APIC chips
 static uint8_t ioApicDeviceCount = 0; //number of I/O APIC chips
 
 struct
 {
     struct IOAPIC *ioApic;
-    uint8_t input;
+    uint32_t input;
 } static ioApicIrqLUT[256]; //look-up table to speed up getting IOAPIC structure and input number for given IRQ
 
-static struct IOAPIC* findIoApic(uint8_t id)
+static struct IOAPIC* findIoApic(uint32_t input)
 {
     for(uint8_t i = 0; i < ioApicDeviceCount; i++)
     {
-        if(ioApicDevice[i].id == id)
+        if((ioApicDevice[i].irqBase < input) && ((ioApicDevice[i].irqBase + ioApicDevice[i].inputs) >= input))
             return &ioApicDevice[i];
     }
     return NULL;
@@ -69,6 +71,11 @@ static uint64_t read64(struct IOAPIC *ioapic, uint8_t reg)
 
 STATUS ApicIoInit(void)
 {
+    if(0 == ApicIoEntryCount)
+        return APIC_IOAPIC_NOT_AVAILABLE;
+
+    CmMemset(ioApicIrqLUT, 0, sizeof(ioApicIrqLUT));
+
     uintptr_t lowestAddress = 0xFFFFFFFF;
     uintptr_t highestAddress = 0;
     //find lowest and highest physical address first
@@ -89,29 +96,42 @@ STATUS ApicIoInit(void)
         ioApicDevice[ioApicDeviceCount].mmio = (uint32_t*)(((uintptr_t)mmio) + (ApicIoEntryTable[i].address - lowestAddress));
         ioApicDevice[ioApicDeviceCount].inputs = (read(&ioApicDevice[ioApicDeviceCount], IOAPIC_REG_IOAPICVER) >> 16) & 0x7F;
         ioApicDevice[ioApicDeviceCount].id = ApicIoEntryTable[i].id;
+        ioApicDevice[ioApicDeviceCount].irqBase = ApicIoEntryTable[i].irqBase;
         ioApicDeviceCount++;
     }
 
     return OK;
 }
 
-STATUS ApicIoRegisterIRQ(uint8_t id, uint8_t input, uint8_t vector, enum HalInterruptMode mode,
+uint8_t ApicIoGetAssociatedVector(uint32_t input)
+{    
+    input = HalResolveIrqMapping(input);
+    for(uint16_t i = 0; i < 256; i++)
+    {
+        if(ioApicIrqLUT[i].input == input)
+            return i;
+    }
+    return 0;
+}
+
+STATUS ApicIoRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
                         enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger)
 {
-    struct IOAPIC *ioApic = findIoApic(id);
+    input = HalResolveIrqMapping(input);
+    struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
-        RETURN(APIC_IOAPIC_NOT_AVAILABLE);
+        return APIC_IOAPIC_NOT_AVAILABLE;
     
-    if(id >= ioApic->inputs)
-        RETURN(APIC_IOAPIC_BAD_INPUT_NUMBER);
+    if(input >= ioApic->inputs)
+        return APIC_IOAPIC_BAD_INPUT_NUMBER;
 
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
-        RETURN(IT_BAD_VECTOR);
+        return IT_BAD_VECTOR;
     
-    if(read64(ioApic, IOAPIC_REG_IOREDTBL(input)) & IOAPIC_IOREDTBL_VECTOR_MASK)
-        RETURN(IT_ALREADY_REGISTERED);
+    if(NULL != ioApicIrqLUT[ApicIoGetAssociatedVector(input)].ioApic)
+        return IT_ALREADY_REGISTERED;
     
-    write64(ioApic, IOAPIC_REG_IOREDTBL(input), 
+    write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), 
         ((uint32_t)vector) | (((uint32_t)mode) << 8) | (((uint32_t)polarity) << 13) | (((uint32_t)trigger) << 15) | IOAPIC_IOREDTBL_MASK);
 
     ioApicIrqLUT[vector].input = input;
@@ -120,24 +140,56 @@ STATUS ApicIoRegisterIRQ(uint8_t id, uint8_t input, uint8_t vector, enum HalInte
     return OK;
 }
 
+STATUS ApicIoUnregisterIRQ(uint32_t input)
+{
+    input = HalResolveIrqMapping(input);
+    struct IOAPIC *ioApic = findIoApic(input);
+    if(NULL == ioApic)
+        return APIC_IOAPIC_NOT_AVAILABLE;
+    
+    if(input >= ioApic->inputs)
+        return APIC_IOAPIC_BAD_INPUT_NUMBER;
+
+    uint8_t vector = ApicIoGetAssociatedVector(input);
+    if(NULL == ioApicIrqLUT[vector].ioApic)
+        return OK;
+    
+    write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), IT_FIRST_INTERRUPT_VECTOR | IOAPIC_IOREDTBL_MASK);
+
+    ioApicIrqLUT[vector].input = 0;
+    ioApicIrqLUT[vector].ioApic = NULL;
+
+    return OK;
+}
+
+
+
 STATUS ApicIoEnableIRQ(uint8_t vector)
 {
-    if(NULL == ioApicIrqLUT[vector].ioApic)
-        RETURN(IT_NOT_REGISTERED);
+    struct IOAPIC *ioapic = ioApicIrqLUT[vector].ioApic;
+    if(NULL == ioapic)
+        return IT_NOT_REGISTERED;
     
-    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input),
-            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input) & ~(IOAPIC_IOREDTBL_MASK)));
+    if(ioApicIrqLUT[vector].input < ioapic->irqBase)
+        return IT_BAD_VECTOR;
+    
+    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase),
+            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase) & ~(IOAPIC_IOREDTBL_MASK)));
     
     return OK;
 }
 
 STATUS ApicIoDisableIRQ(uint8_t vector)
 {
-    if(NULL == ioApicIrqLUT[vector].ioApic)
-        RETURN(IT_NOT_REGISTERED);
+    struct IOAPIC *ioapic = ioApicIrqLUT[vector].ioApic;
+    if(NULL == ioapic)
+        return IT_NOT_REGISTERED;
     
-    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input),
-            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input) | IOAPIC_IOREDTBL_MASK));
+    if(ioApicIrqLUT[vector].input < ioapic->irqBase)
+        return IT_BAD_VECTOR;
+    
+    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase),
+            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase) | IOAPIC_IOREDTBL_MASK));
     
     return OK;
 }

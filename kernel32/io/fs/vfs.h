@@ -19,10 +19,22 @@ enum IoVfsEntryType
     IO_VFS_UNKNOWN = 0, //unknown type, for entries not initialized properly that should be ommited
     IO_VFS_DISK, //disk (block device)
     IO_VFS_DEVICE, //device other than disk that provides the IoDeviceObject structure
-    /* Files that are physically present on a disk */
     IO_VFS_DIRECTORY,
     IO_VFS_FILE,
     IO_VFS_LINK, //symbolic link, might exist physically or not
+};
+
+/**
+ * @brief Major VFS filesystem type
+*/
+enum IoVfsMajorType
+{
+    IO_VFS_FS_UNKNOWN = 0, //unknown major filesystem, entry should be ommited
+    IO_VFS_FS_PHYSICAL, //filesystem corresponding to a physical filesystem 
+    IO_VFS_FS_VIRTUAL,  //virtual FS that can be modified only by the kernel
+                        //and does not require any special/separate handling
+    IO_VFS_FS_TASKFS, //"/task" virtual filesystem
+    IO_VFS_FS_INITRD, //initial ramdisk filesystem
 };
 
 /**
@@ -37,6 +49,7 @@ struct IoVfsNode
     Time_t lastUse; /**< Last node use timestamp */
     uint32_t referenceCount; /**< Count of references to this object, including symlinks */
 
+    enum IoVfsMajorType majorType; /**< Major VFS filesystem type this node belongs to */
     struct IoDeviceObject *device; /**< Associated device */
     struct IoVfsNode *linkDestination; /**< Symbolic link destination */
     uint64_t referenceValue; /**< Reference value for the driver (LBA, inode number etc.) */
@@ -115,6 +128,18 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node);
  * @return Status code
 */
 STATUS IoVfsRead(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+
+/**
+ * @brief Write to given file
+ * @param *node VFS node containing the file
+ * @param flags File operation flags
+ * @param *buffer Source buffer
+ * @param size Count of bytes to write
+ * @param offset Offset into the file in bytes
+ * @param *actualSize Count of bytes actually written
+ * @return Status code
+*/
+STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
 /**
  * @brief Create VFS node with given name

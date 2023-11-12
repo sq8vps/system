@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 #include "defines.h"
+#include <stdbool.h>
 
 /**
  * @addtogroup halIt
@@ -24,7 +25,7 @@
 enum HalInterruptMethod
 {
     IT_METHOD_NONE,
-    //IT_METHOD_PIC,
+    IT_METHOD_PIC,
     IT_METHOD_APIC,
 };
 
@@ -62,10 +63,63 @@ enum HalInterruptMode
     IT_MODE_EXTINT,
 };
 
+
+#define HAL_PIC_REMAP_VECTOR IT_IRQ_VECTOR_BASE
+
+/**
+ * @brief Resolve IRQ to global interrupt mapping
+ * @param irq IRQ from device
+ * @return Resolved IRQ after remapping (if applicable)
+*/
+INTERNAL uint32_t HalResolveIrqMapping(uint32_t irq);
+
+/**
+ * @brief Set dual-PIC presence state
+ * @param state Dual-PIC presence state
+*/
+INTERNAL void HalSetDualPicPresence(bool state);
+
+/**
+ * @brief Add ISA remap entry when I/O APIC is used
+ * @param isaIrq Original ISA IRQ
+ * @param globalIrq Global IRQ
+ * @return Status code
+*/
+INTERNAL STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t globalIrq);
+
 /**
  * @brief Initialize interrupt controller
 */
 INTERNAL STATUS HalInitInterruptController(void);
+
+EXPORT
+/**
+ * @brief Register external IRQ
+ * @param input Global interrupt source number
+ * @param vector Interrupt vector number
+ * @param mode Interrupt delivery mode
+ * @param polarity Input polarity
+ * @param trigger Interrupt trigger
+ * @return Status code
+*/
+EXTERN STATUS HalRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
+                        enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger);
+
+EXPORT
+/**
+ * @brief Unregister external IRQ
+ * @param input Global interrupt source number
+ * @return Status code
+*/
+EXTERN STATUS HalUnregisterIRQ(uint32_t input);
+
+EXPORT
+/**
+ * @brief Get vector number associated with given interrupt source
+ * @param input Global interrupt source number
+ * @return Associated vector number or 0 on failure
+*/
+EXTERN uint8_t HalGetAssociatedVector(uint32_t input);
 
 EXPORT
 /**
@@ -106,10 +160,32 @@ INTERNAL STATUS HalConfigureSystemTimer(uint8_t irq);
 INTERNAL STATUS HalStartSystemTimer(uint64_t time);
 
 /**
+ * @brief Check if generated interrupt is spurious and should not be processed
+ * @return True if spurious, false if not
+*/
+INTERNAL bool HalIsInterruptSpurious(void);
+
+/**
  * @brief Get interrupt handling method
  * @return Interrupt handling method
 */
 enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
+
+#define HAL_TASK_PRIORITY_PASSIVE 0
+#define HAL_TASK_PRIORITY_DPC 2
+
+/**
+ * @brief Set current task priority
+ * @param priority New task priority (0-15)
+ * @return Status code
+*/
+INTERNAL STATUS HalSetTaskPriority(uint8_t priority);
+
+/**
+ * @brief Get current task priority
+ * @return Current task priority (0-15)
+*/
+INTERNAL uint8_t HalGetTaskPriority(void);
 
 /**
  * @}

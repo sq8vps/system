@@ -1,8 +1,11 @@
 #include "kernel.h"
 #include "acpica/include/acpi.h"
 
+static struct IoSyslogHandle *logHandle = NULL;
+
 ACPI_STATUS AcpiOsInitialize(void)
 {
+    logHandle = IoOpenSyslog(DRIVER_NAME);
     return AE_OK;
 }
 
@@ -244,6 +247,7 @@ ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
 ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
 {
     *OutHandle = MmAllocateKernelHeap(sizeof(KeSpinlock));
+    (*OutHandle)->lock = 0;
     if(NULL == *OutHandle)
         return AE_NO_MEMORY;
 
@@ -268,44 +272,42 @@ void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
 
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context)
 {
-    STATUS ret = ItInstallInterruptHandler(InterruptLevel, (void(*)(void*))Handler, Context, PL_KERNEL);
-    switch(ret)
+    uint8_t vector = ItGetFreeVector(InterruptLevel);
+    if(0 == vector)
+        return AE_ALREADY_EXISTS;
+    
+    STATUS ret;
+    if(OK != (ret = HalRegisterIRQ(InterruptLevel, vector, IT_MODE_FIXED, IT_POLARITY_ACTIVE_LOW, IT_TRIGGER_LEVEL)))
     {
-        case OK:
-            return AE_OK;
-            break;
-        case IT_BAD_VECTOR:
-            return AE_BAD_PARAMETER;
-            break;
-        case IT_ALREADY_REGISTERED:
-            return AE_ALREADY_EXISTS;
-            break;
-        default:
-            return AE_BAD_PARAMETER;
-            break;
+        ItReleaseVector(vector);
+        return AE_BAD_PARAMETER;
     }
-    return AE_BAD_PARAMETER;
+    if(OK != (ret = ItInstallInterruptHandler(vector, (uint32_t(*)(void*))Handler, Context, PL_KERNEL)))
+    {
+        HalUnregisterIRQ(InterruptLevel);
+        ItReleaseVector(vector);
+        return AE_BAD_PARAMETER;
+    }
+    if(OK != (ret = HalEnableIRQ(vector)))
+    {
+        HalUnregisterIRQ(InterruptLevel);
+        ItUninstallInterruptHandler(vector);
+        ItReleaseVector(vector);
+        return AE_BAD_PARAMETER; 
+    }
+    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER Handler)
 {
-    STATUS ret = ItUninstallInterruptHandler(InterruptNumber);
-    switch(ret)
-    {
-        case OK:
-            return AE_OK;
-            break;
-        case IT_BAD_VECTOR:
-            return AE_BAD_PARAMETER;
-            break;
-        case IT_NOT_REGISTERED:
-            return AE_NOT_EXIST;
-            break;
-        default:
-            return AE_BAD_PARAMETER;
-            break;
-    }
-    return AE_BAD_PARAMETER;
+    uint8_t vector = HalGetAssociatedVector(InterruptNumber);
+    if(0 == vector)
+        return AE_BAD_PARAMETER;
+    
+    HalDisableIRQ(vector);
+    HalUnregisterIRQ(InterruptNumber);
+    ItUninstallInterruptHandler(vector);
+    return AE_OK;
 }
 
 /* 
@@ -317,7 +319,9 @@ ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT3
 {
     uint64_t *mem = MmMapMmIo(Address, MM_PAGE_SIZE);
     if(NULL == mem)
+    {
         return AE_NO_MEMORY;
+    }
     
     switch(Width)
     {
@@ -346,7 +350,9 @@ ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT3
 {
     uint64_t *mem = MmMapMmIo(Address, MM_PAGE_SIZE);
     if(NULL == mem)
+    {
         return AE_NO_MEMORY;
+    }
     
     switch(Width)
     {
@@ -435,14 +441,20 @@ ACPI_STATUS AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
     return AE_OK;
 }
 
+ACPI_PRINTF_LIKE(1)
 void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char *Format, ...)
 {
-
+    va_list Args;
+    va_start(Args, Format);
+    if(NULL != logHandle)
+        IoWriteSyslogV(logHandle, SYSLOG_INFO, Format, Args);
+    va_end(Args);
 }
 
 void AcpiOsVprintf(const char *Format, va_list Args)
 {
-
+    if(NULL != logHandle)
+        IoWriteSyslogV(logHandle, SYSLOG_INFO, Format, Args);
 }
 
 void AcpiOsRedirectOutput(void *Destination)
@@ -457,6 +469,11 @@ ACPI_STATUS AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT
 }
 
 ACPI_STATUS AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 Value, UINT32 Width)
+{
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsEnterSleep(UINT8 SleepState, UINT32 RegaValue, UINT32 RegbValue)
 {
     return AE_OK;
 }

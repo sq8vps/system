@@ -268,6 +268,41 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size
     return read(handle, buffer, size, offset, actualSize);
 }
 
+static STATUS write(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+{
+    ASSERT(buffer && actualSize);
+
+    if(NULL == handle)
+        return IO_FILE_NOT_FOUND;
+    
+    return IoVfsWrite(handle->type.fileHandle.node, handle->type.fileHandle.flags, buffer, size, offset, actualSize);
+}
+
+STATUS IoWriteFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+{
+    ASSERT(task && buffer && actualSize);
+    if(task->parent)
+        task = task->parent;
+    
+    struct IoFileHandle *h = task->files.fileList;
+    while(h)
+    {
+        if(h->type.fileHandle.id == handle)
+            break;
+        h = h->next;
+    }
+    if(NULL == h)
+        return IO_FILE_NOT_FOUND;
+    
+    return write(h, buffer, size, offset, actualSize);
+}
+
+STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+{
+    ASSERT(buffer && actualSize);
+    return write(handle, buffer, size, offset, actualSize);
+}
+
 STATUS IoFsInit(void)
 {
     return OK;

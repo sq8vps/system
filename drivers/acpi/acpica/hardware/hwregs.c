@@ -690,7 +690,6 @@ AcpiHwRegisterRead (
 
     ACPI_FUNCTION_TRACE (HwRegisterRead);
 
-
     switch (RegisterId)
     {
     case ACPI_REGISTER_PM1_STATUS:           /* PM1 A/B: 16-bit access each */
@@ -927,6 +926,7 @@ AcpiHwReadMultiple (
     Status = AcpiHwRead (&Value64, RegisterA);
     if (ACPI_FAILURE (Status))
     {
+        ACPI_ERROR((AE_INFO, "Register A read failed"));
         return (Status);
     }
     ValueA = (UINT32) Value64;
@@ -938,6 +938,7 @@ AcpiHwReadMultiple (
         Status = AcpiHwRead (&Value64, RegisterB);
         if (ACPI_FAILURE (Status))
         {
+            ACPI_ERROR((AE_INFO, "Register B read failed"));
             return (Status);
         }
         ValueB = (UINT32) Value64;

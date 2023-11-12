@@ -71,7 +71,7 @@ void* CmMemcpy(void *to, const void *from, uintptr_t n)
     return to;
 }
 
-uint32_t CmAbs(int32_t x)
+uint64_t CmAbs(int64_t x)
 {
     return (x > 0) ? x : -x;
 }
@@ -159,4 +159,34 @@ int CmToupper(int c)
         return c - 32;
     
     return c;
+}
+
+char *CmGetFileName(char *path)
+{
+    uint32_t size = CmStrlen(path);
+    if(0 == size)
+        return path;
+
+    if('/' == path[size - 1])
+    {
+        path[size - 1] = '\0';
+        size--;
+    }
+    while(size > 0)
+    {
+        if('/' == path[size - 1])
+            break;
+        size--;
+    }
+    return &path[size];
+}
+
+uint64_t CmPow10(uint16_t x)
+{
+    uint64_t y = 1;
+    while(x--)
+    {
+        y *= 10;
+    }
+    return y;
 }

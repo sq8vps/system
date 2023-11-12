@@ -8,8 +8,6 @@
 #define IO_VFS_MAX_SYMLINK_DEPTH 40
 
 static struct IoVfsNode root; //filesystem root
-static struct IoVfsNode dev; //filesystem /dev abstract directory for devices 
-static struct IoVfsNode stdDevices[3]; //std* virtual devices (stdin, stdout, stderr) under /dev/
 
 static inline void clearNode(struct IoVfsNode *node)
 {
@@ -22,7 +20,7 @@ struct IoVfsNode* IoVfsCreateNode(char *name)
     if(NULL == node)
         return NULL;
     
-    CmMemset(node, 0, sizeof(*node));
+    clearNode(node);
 
     if(NULL == (node->name = MmAllocateKernelHeap(CmStrlen(name) + 1)))
     {
@@ -51,44 +49,25 @@ static STATUS purgeCache(struct IoVfsNode *node)
 STATUS IoVfsInit(void)
 {
     clearNode(&root);
-    clearNode(&dev);
-    clearNode(&stdDevices[0]);
-    clearNode(&stdDevices[1]);
-    clearNode(&stdDevices[2]);
 
-    //prepare root
+    //prepare root node
     root.name = "";
     root.type = IO_VFS_DIRECTORY;
-    root.child = &dev;
+    root.child = NULL;
     root.flags = IO_VFS_FLAG_PERSISTENT;
+    root.majorType = IO_VFS_FS_VIRTUAL;
 
     //prepare dev subdirectory
-    dev.name = "dev";
-    dev.type = IO_VFS_DIRECTORY;
-    dev.parent = &root;
-    dev.flags = IO_VFS_FLAG_PERSISTENT;
-    dev.child = &stdDevices[0];
-
-    stdDevices[0].name = "stdin";
-    stdDevices[0].type = IO_VFS_DEVICE;
-    stdDevices[0].parent = &dev;
-    stdDevices[0].flags = IO_VFS_FLAG_PERSISTENT;
-    stdDevices[0].previous = NULL;
-    stdDevices[0].next = &stdDevices[1];
-
-    stdDevices[1].name = "stdout";
-    stdDevices[1].type = IO_VFS_DEVICE;
-    stdDevices[1].parent = &dev;
-    stdDevices[1].flags = IO_VFS_FLAG_PERSISTENT;
-    stdDevices[1].previous = &stdDevices[0];
-    stdDevices[1].next = &stdDevices[2];
-
-    stdDevices[2].name = "stderr";
-    stdDevices[2].type = IO_VFS_DEVICE;
-    stdDevices[2].parent = &dev;
-    stdDevices[2].flags = IO_VFS_FLAG_PERSISTENT;
-    stdDevices[2].previous = &stdDevices[1];
-    stdDevices[2].next = NULL;
+    struct IoVfsNode *dev = IoVfsCreateNode("dev");
+    if(NULL == dev)
+        return OUT_OF_RESOURCES;
+    
+    dev->flags = IO_VFS_FLAG_PERSISTENT;
+    dev->type = IO_VFS_DIRECTORY;
+    dev->majorType = IO_VFS_FS_VIRTUAL;
+    
+    if(dev != IoVfsInsertNode(dev, &root))
+        return IO_VFS_INITIALIZATION_FAILED;
 
     return OK;
 }
@@ -155,24 +134,29 @@ static inline struct IoVfsNode* resolveElement(struct IoVfsNode *target, char *t
         if(NULL == parent)
             return NULL;
         
-        if(parent->flags & IO_VFS_FLAG_INITRD_ENTRY)
+        uint64_t size = 0;
+        uint64_t ref = 0; 
+        switch(parent->majorType)
         {
-            uint64_t size = 0;
-            uint64_t ref = InitrdGetFileReference(targetName, &size);
-            if(0 != ref)
-            {
-                struct IoVfsNode *newNode = IoVfsCreateNode(targetName);
-                if(NULL == newNode)
-                    return NULL;
+            case IO_VFS_FS_INITRD:
+                ref = InitrdGetFileReference(targetName, &size);
+                if(0 != ref)
+                {
+                    struct IoVfsNode *newNode = IoVfsCreateNode(targetName);
+                    if(NULL == newNode)
+                        return NULL;
 
-                newNode->referenceValue = ref;
-                newNode->flags = IO_VFS_FLAG_INITRD_ENTRY | IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
-                newNode->type = IO_VFS_FILE;
-                newNode->size = size;
-                return IoVfsInsertNode(newNode, parent);
-            }
-            else
-                return NULL;
+                    newNode->referenceValue = ref;
+                    newNode->flags = IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
+                    newNode->majorType = IO_VFS_FS_INITRD;
+                    newNode->type = IO_VFS_FILE;
+                    newNode->size = size;
+                    return IoVfsInsertNode(newNode, parent);
+                }
+                break;
+            case IO_VFS_FS_TASKFS:
+                
+                break;
         }
 
         return NULL;
@@ -185,7 +169,6 @@ struct IoVfsNode* IoVfsGetNode(char *path)
 {
     ASSERT(path);
     uint32_t limit = IO_VFS_MAX_PATH_LENGTH;
-    //TODO: include current working directory
     struct IoVfsNode *node = &root;
     char *element = NULL;
     if(0 == *path)
@@ -333,21 +316,36 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer
     }
     if(IO_VFS_FILE == node->type)
     {
-        /* File operations on initial ramdisk are handled differently.
-        The initrd driver is a static (standard compiled-in) driver 
-        that does not provide standard driver interface 
-        Initrd flag implies no caching and no writing.
-        */
-        if(node->flags & IO_VFS_FLAG_INITRD_ENTRY)
+
+        switch(node->majorType)
         {
-            *actualSize = InitrdReadFile(node->referenceValue, buffer, size, offset);
-            return OK;
+            /* File operations on initial ramdisk are handled differently.
+            The initrd driver is a static (standard compiled-in) driver 
+            that does not provide standard driver interface 
+            Initrd flag implies no caching and no writing.
+            */
+            case IO_VFS_FS_INITRD:
+                *actualSize = InitrdReadFile(node->referenceValue, buffer, size, offset);
+                return OK;
         }
     }
     else if(IO_VFS_DEVICE == node->type)
     {
         *actualSize = 0;
         return NOT_IMPLEMENTED;
+    }
+
+    *actualSize = 0;
+    return IO_BAD_FILE_TYPE;
+}
+
+STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+{
+    ASSERT(node && buffer && actualSize);
+    if(0 == size)
+    {
+        *actualSize = 0;
+        return OK;
     }
 
     *actualSize = 0;

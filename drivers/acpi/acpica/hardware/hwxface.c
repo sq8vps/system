@@ -426,6 +426,7 @@ AcpiWriteBitRegister (
             &RegisterValue);
         if (ACPI_FAILURE (Status))
         {
+            ACPI_ERROR ((AE_INFO, "PM1E, PM1C or PM2C read failed"));
             goto UnlockAndExit;
         }
 

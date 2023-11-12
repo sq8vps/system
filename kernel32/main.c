@@ -27,6 +27,8 @@
 #include "ke/task/task.h"
 #include "ke/sched/sched.h"
 #include "ke/sched/sleep.h"
+#include "sdrv/fpu.h"
+#include "sdrv/sse.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
@@ -43,7 +45,7 @@ void task1(void *c)
 	while(1)
 	{
 		KeAcquireSemaphore(&sem);
-		CmPrintf("1");
+		PRINT("1");
 		KePutTaskToSleep(KeGetCurrentTask(), MS_TO_NS(3000));
 		KeReleaseSemaphore(&sem);
 	}
@@ -55,17 +57,18 @@ void task2(void *c)
 	{
 		if(true == KeAcquireSemaphoreWithTimeout(&sem, MS_TO_NS(780)))
 		{
-			CmPrintf("2");
+			PRINT("2");
 			KeReleaseSemaphore(&sem);
 		}
 		else
-			CmPrintf("0");
+			PRINT("0");
 		// KeAcquireMutex(&s);
 		// CmPrintf("2");
 		// KeReleaseMutex(&s);
 		KeTaskYield();
 	}
 }
+
 
 NORETURN static void KeInit(void)
 {	
@@ -86,7 +89,8 @@ NORETURN static void KeInit(void)
 	KePrepareTSS(0);
 
 	ItInit(); //initialize interrupts and exceptions
-	HalListCpu();
+	FpuInitialize();
+	SseInitialize();
 	IoVfsInit();
 	IoFsInit();
 	
@@ -105,14 +109,28 @@ NORETURN static void KeInit(void)
 			;
 	}
 
-	CmPrintf("Load kernel symbols %d\n", ExLoadKernelSymbols("/initrd/kernel32.elf"));
-	CmPrintf("KePanicEx is at 0x%X\n", ExGetKernelSymbol("KePanicEx"));
+	if(OK != ExLoadKernelSymbols("/initrd/kernel32.elf"))
+	{
+		PRINT("Kernel symbol loading failed. Unable to boot.\n");
+		while(1)
+			;
+	}
 
 	KeSchedulerStart();
 
+	while(NULL == KeGetCurrentTask()) //wait for the scheduler to start
+		;
+
+	// struct ExDriverObject *drv;
+	// ExLoadKernelDriver("/initrd/acpi.drv", &drv);
+	// if(NULL != drv)
+	// {
+	// 	drv->init(drv);
+	// }
+
 	struct KeTaskControlBlock *t1, *t2;
-	CmPrintf("Process creation %d\n", (int)KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1));
-	CmPrintf("Process creation %d\n", (int)KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2));
+	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
+	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
 	KeEnableTask(t1);
 	KeEnableTask(t2);
 

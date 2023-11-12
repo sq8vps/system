@@ -4,25 +4,32 @@
 #include <stdint.h>
 #include "defines.h"
 #include "it.h"
+#include "ke/core/mutex.h"
+#include "hal/interrupt.h"
 
 /**
  * @brief Interrupt handler descriptor for internal use
- * @warning Must be kept in sync with structure in itWrappers.asm
 */
 struct ItHandlerDescriptor
 {
-    void (*callback)(void *context);
+    ItHandler callback;
     void *context;
-} PACKED;
+    KeSpinlock spinlock;
+};
 
 #define IT_HANDLER_COUNT 224
 
 #define IT_ISR_WRAPPER_NAME(n) ItIsrWrapper##n
-
+//TODO: interrupts should be enabled in ISR
 #define IT_ISR_WRAPPER(n)                                                           \
     IT_HANDLER static void IT_ISR_WRAPPER_NAME(n)(struct ItFrame *f)              \
-    {                                                                               \
-        itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].callback(itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].context);  \
+    {                                                                             \
+        if(HalIsInterruptSpurious())                                                \
+            return;                                                                    \
+        KeAcquireSpinlock(&itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].spinlock); \
+        itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].callback(n, itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].context);  \
+        HalClearInterruptFlag(n); \
+        KeReleaseSpinlock(&itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].spinlock); \
     }; \
 
 static struct ItHandlerDescriptor itHandlerDescriptorTable[IT_HANDLER_COUNT];

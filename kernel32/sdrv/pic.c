@@ -15,129 +15,144 @@
 #define PIC_ICW1_FLAG_INIT 0x10	//constant bit set to 1
 #define PIC_ICW4_FLAG_8086 0x01 //8086 mode
 
-static KeSpinlock eoiMutex  = KeSpinlockInitializer, remapMutex = KeSpinlockInitializer,
- disableMutex = KeSpinlockInitializer, enableMutex = KeSpinlockInitializer, 
- setMaskMutex = KeSpinlockInitializer, getISRMutex = KeSpinlockInitializer, getIRRMutex = KeSpinlockInitializer;
+static uint8_t irqOffset[2] = {0, 0};
+
+#define IS_MASTER_IRQ(x) (((x) >= irqOffset[0]) && ((x) <= (irqOffset[0] + 7)))
+#define IS_SLAVE_IRQ(x) (((x) >= irqOffset[1]) && ((x) <= (irqOffset[1] + 7)))
+#define CHECK_VECTOR(x) (IS_MASTER_IRQ(x) || IS_SLAVE_IRQ(x))
+
+static KeSpinlock masterMutex = KeSpinlockInitializer, slaveMutex = KeSpinlockInitializer;
 
 STATUS PicSendEOI(uint8_t irq)
 {
-    if(irq > 15)
+    if(!CHECK_VECTOR(irq))
         return IT_BAD_VECTOR;
     
-    KeAcquireSpinlock(&eoiMutex);
-
-    if(irq >= 8)
+    if(IS_SLAVE_IRQ(irq))
+    {
+        KeAcquireSpinlock(&slaveMutex);
         PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_EOI);
+        KeReleaseSpinlock(&slaveMutex);
+    }
 
+    KeAcquireSpinlock(&masterMutex);
     PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_EOI);
-    KeReleaseSpinlock(&eoiMutex);
+    KeReleaseSpinlock(&masterMutex);
     return OK;
 }
 
-void PicRemap(uint8_t masterOffset, uint8_t slaveOffset)
+void PicRemap(uint8_t masterirqOffset, uint8_t slaveirqOffset)
 {
-    KeAcquireSpinlock(&remapMutex);
-
+    KeAcquireSpinlock(&masterMutex);
     uint8_t mMask = PortIoReadByte(PIC_MASTER_DATA_PORT);
-    uint8_t sMask = PortIoReadByte(PIC_SLAVE_DATA_PORT);
-
     PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
-    PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
-    PortIoWriteByte(PIC_MASTER_DATA_PORT, masterOffset);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, slaveOffset);
+    PortIoWriteByte(PIC_MASTER_DATA_PORT, masterirqOffset);
     PortIoWriteByte(PIC_MASTER_DATA_PORT, 4);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, 2);
     PortIoWriteByte(PIC_MASTER_DATA_PORT, PIC_ICW4_FLAG_8086);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, PIC_ICW4_FLAG_8086);
-    
     PortIoWriteByte(PIC_MASTER_DATA_PORT, mMask);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, sMask);
+    KeReleaseSpinlock(&masterMutex);
 
-    KeReleaseSpinlock(&remapMutex);
+    KeAcquireSpinlock(&slaveMutex);
+    uint8_t sMask = PortIoReadByte(PIC_SLAVE_DATA_PORT);
+    PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
+    PortIoWriteByte(PIC_SLAVE_DATA_PORT, slaveirqOffset);
+    PortIoWriteByte(PIC_SLAVE_DATA_PORT, 2);
+    PortIoWriteByte(PIC_SLAVE_DATA_PORT, PIC_ICW4_FLAG_8086);
+    PortIoWriteByte(PIC_SLAVE_DATA_PORT, sMask);
+    KeReleaseSpinlock(&slaveMutex);
+
+    irqOffset[0] = masterirqOffset;
+    irqOffset[1] = slaveirqOffset;
 }
 
 STATUS PicDisableIRQ(uint8_t irq)
 {
-    if(irq > 15)
+    if(!CHECK_VECTOR(irq))
         return IT_BAD_VECTOR;
 
-    KeAcquireSpinlock(&disableMutex);
-
-    if(irq < 8)
+    if(IS_MASTER_IRQ(irq))
     {
-        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) | (1 << irq));
+        KeAcquireSpinlock(&masterMutex);
+        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) | (1 << (irq - irqOffset[0])));
+        KeReleaseSpinlock(&masterMutex);
     }
     else
     {
-        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) | (1 << (irq - 8)));
+        KeAcquireSpinlock(&slaveMutex);
+        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) | (1 << (irq - irqOffset[1])));
+        KeReleaseSpinlock(&slaveMutex);
     }
 
-    KeReleaseSpinlock(&disableMutex);
     return OK;
 }
 
 STATUS PicEnableIRQ(uint8_t irq)
 {
-    if(irq > 15)
+    if(!CHECK_VECTOR(irq))
         return IT_BAD_VECTOR;
 
-    KeAcquireSpinlock(&enableMutex);
-    if(irq < 8)
+    if(IS_MASTER_IRQ(irq))
     {
-        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) & ~(1 << irq));
+        KeAcquireSpinlock(&masterMutex);
+        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) & ~(1 << (irq - irqOffset[0])));
+        KeReleaseSpinlock(&masterMutex);
     }
     else
     {
-        PortIoWriteByte(PIC_SLAVE_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) & ~(1 << (irq - 8)));
+        KeAcquireSpinlock(&slaveMutex);
+        PortIoWriteByte(PIC_SLAVE_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) & ~(1 << (irq - irqOffset[1])));
+        KeReleaseSpinlock(&slaveMutex);
     }
-    KeReleaseSpinlock(&enableMutex);
     return OK;
 }
 
 void PicSetIRQMask(uint16_t mask)
 {
-    KeAcquireSpinlock(&setMaskMutex);
+    KeAcquireSpinlock(&masterMutex);
+    KeAcquireSpinlock(&slaveMutex);
     PortIoWriteByte(PIC_MASTER_DATA_PORT, mask & 0xFF);
     PortIoWriteByte(PIC_SLAVE_DATA_PORT, (mask >> 8) & 0xFF);
-    KeReleaseSpinlock(&setMaskMutex);
+    KeReleaseSpinlock(&slaveMutex);
+    KeReleaseSpinlock(&masterMutex);
 }
 
 uint16_t PicGetISR(void)
 {
-    KeAcquireSpinlock(&getISRMutex);
+    KeAcquireSpinlock(&masterMutex);
     PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_READ_ISR);
     uint8_t t = PortIoReadByte(PIC_MASTER_CMD_PORT);
+    KeReleaseSpinlock(&masterMutex);
+    KeAcquireSpinlock(&slaveMutex);
     PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_READ_ISR);
-    uint16_t ret = ((uint16_t)(PortIoReadByte(PIC_MASTER_CMD_PORT)) << 8) | (uint16_t)t;
-    KeReleaseSpinlock(&getISRMutex);
+    uint16_t ret = ((uint16_t)(PortIoReadByte(PIC_SLAVE_CMD_PORT)) << 8) | (uint16_t)t;
+    KeReleaseSpinlock(&slaveMutex);
     return ret;
 }
 
 uint16_t PicGetIRR(void)
 {
-    KeAcquireSpinlock(&getIRRMutex);
+    KeAcquireSpinlock(&masterMutex);
     PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_READ_IRR);
     uint8_t t = PortIoReadByte(PIC_MASTER_CMD_PORT);
+    KeReleaseSpinlock(&masterMutex);
+    KeAcquireSpinlock(&slaveMutex);
     PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_READ_IRR);
-    uint16_t ret = ((uint16_t)(PortIoReadByte(PIC_MASTER_CMD_PORT)) << 8) | (uint16_t)t;
-    KeReleaseSpinlock(&getIRRMutex);
+    uint16_t ret = ((uint16_t)(PortIoReadByte(PIC_SLAVE_CMD_PORT)) << 8) | (uint16_t)t;
+    KeReleaseSpinlock(&slaveMutex);
     return ret;
 }
 
-bool PicCheckSpuriousIRQ7(void)
+bool PicIsIrqSpurious(void)
 {
-    if(PicGetISR() & 0x08) //check if interrupt was real
+    uint16_t isr = PicGetISR();
+    //a real interrupt results in setting a bit in the ISR register
+    //check if there is any bit set. Omit bit 2 (bit 2 of master PIC), where slave PIC output is connected
+    //if bit 2 is set, but no bit is set in slave PIC ISR, then the interrupt is spurious
+    if(isr & 0xFB)
         return false;
     
-    return true;
-}
+    if(isr & 0x04) //spurious interrupt occured on slave PIC, so master PIC must be acknowledged
+        PicSendEOI(0x04);
 
-bool PicCheckSpuriousIRQ15(void)
-{
-    if(PicGetISR() & 0x80) //check if interrupt was real
-        return false;
-    
-    //not real?
-    PicSendEOI(0); //send EOI to master PIC (any interrupt between 0 and 7)
     return true;
 }

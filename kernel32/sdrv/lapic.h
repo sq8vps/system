@@ -79,4 +79,17 @@ INTERNAL uint64_t ApicGetTimestampMicros(void);
 */
 INTERNAL uint64_t ApicGetTimestampMillis(void);
 
+/**
+ * @brief Set current task priority in TPR register
+ * @param priority New task priority (0-15)
+ * @return Status code
+*/
+INTERNAL STATUS ApicSetTaskPriority(uint8_t priority);
+
+/**
+ * @brief Get current task priority from TPR register
+ * @return Current task priority (0-15)
+*/
+INTERNAL uint8_t ApicGetTaskPriority(void);
+
 #endif

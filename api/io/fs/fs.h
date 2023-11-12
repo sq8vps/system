@@ -89,6 +89,18 @@ extern STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flag
 extern STATUS IoCloseKernelFile(struct IoFileHandle *handle);
 
 /**
+ * @brief Read file
+ * @param *task Task Control Block
+ * @param handle File handle
+ * @param *buffer Destination buffer
+ * @param size Count of bytes to read (max size)
+ * @param offset Offset into the file in bytes
+ * @param *actualSize Count of bytes actually read
+ * @return Status code
+*/
+extern STATUS IoReadFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+
+/**
  * @brief Read file in kernel mode (globally)
  * @param *handle File handle
  * @param *buffer Destination buffer
@@ -98,6 +110,29 @@ extern STATUS IoCloseKernelFile(struct IoFileHandle *handle);
  * @return Status code
 */
 extern STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+
+/**
+ * @brief Write file
+ * @param *task Task Control Block
+ * @param handle File handle
+ * @param *buffer Source buffer
+ * @param size Count of bytes to write
+ * @param offset Offset into the file in bytes
+ * @param *actualSize Count of bytes actually written
+ * @return Status code
+*/
+extern STATUS IoWriteFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+
+/**
+ * @brief Write file in kernel mode (globally)
+ * @param *handle File handle
+ * @param *buffer Source buffer
+ * @param size Count of bytes to write
+ * @param offset Offset into the file in bytes
+ * @param *actualSize Count of bytes actually written
+ * @return Status code
+*/
+extern STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
 /**
  * @brief Check if file exists

@@ -70,6 +70,26 @@ enum {
 
 static bool cpuidAvailable = false, cpuidExtendedAvailable = false;
 
+static uint32_t readEdx(uint32_t page)
+{
+    if(!cpuidAvailable)
+        return 0;
+    uintptr_t dummy;
+    uintptr_t reg;
+    __cpuid(page, dummy, dummy, dummy, reg);
+    return reg;
+}
+
+static uint32_t readEcx(uint32_t page)
+{
+    if(!cpuidAvailable)
+        return 0;
+    uintptr_t dummy;
+    uintptr_t reg;
+    __cpuid(page, dummy, dummy, reg, dummy);
+    return reg;
+}
+
 bool CpuidInit(void)
 {
     return CpuidCheckIfAvailable();
@@ -99,50 +119,44 @@ void CpuidGetVendorString(char *dst)
 
 bool CpuidCheckIfApicAvailable(void)
 {
-    if(!cpuidAvailable)
-        return false;
-    uintptr_t dummy;
-    uintptr_t reg;
-    __cpuid(1, dummy, dummy, dummy, reg);
-    return (reg & CPUID_FEATURE_EDX_APIC) > 0;
+    return (readEdx(1) & CPUID_FEATURE_EDX_APIC) > 0;
 }
 
 bool CpuidCheckIfTscAvailable(void)
 {
-    if(!cpuidAvailable)
-        return false;
-    uintptr_t dummy;
-    uintptr_t reg;
-    __cpuid(1, dummy, dummy, dummy, reg);
-    return (reg & CPUID_FEATURE_EDX_TSC) > 0;
+    return (readEdx(1) & CPUID_FEATURE_EDX_TSC) > 0;
 }
 
 bool CpuidCheckIfTscDeadlineAvailable(void)
 {
-    if(!cpuidAvailable)
-        return false;
-    uintptr_t dummy;
-    uintptr_t reg;
-    __cpuid(1, dummy, dummy, reg, dummy);
-    return (reg & CPUID_FEATURE_ECX_TSC) > 0;
+    return (readEcx(1) & CPUID_FEATURE_ECX_TSC) > 0;
 }
 
 bool CpuidCheckIfTscInvariant(void)
 {
     if(!cpuidExtendedAvailable)
         return false;
-    uintptr_t dummy;
-    uintptr_t reg;
-    __cpuid(0x80000007, dummy, dummy, dummy, reg);
-    return (reg & CPUID_EXFEATURE_EDX_TSC_INVARIANT) > 0; 
+
+    return (readEdx(0x80000007) & CPUID_EXFEATURE_EDX_TSC_INVARIANT) > 0; 
 }
 
 bool CpuidCheckIfMsrAvailable(void)
 {
-    if(!cpuidAvailable)
-        return false;
-    uintptr_t dummy;
-    uintptr_t reg;
-    __cpuid(1, dummy, dummy, dummy, reg);
-    return (reg & CPUID_FEATURE_EDX_MSR) > 0;
+    return (readEdx(1) & CPUID_FEATURE_EDX_MSR) > 0;
+}
+
+bool CpuidCheckIfFpuAvailable(void)
+{
+    return (readEdx(1) & CPUID_FEATURE_EDX_FPU) > 0; 
+}
+
+bool CpuidCheckIfMmxAvailable(void)
+{
+    return (readEdx(1) & CPUID_FEATURE_EDX_MMX) > 0; 
+}
+
+bool CpuidCheckIfSseAvailable(void)
+{
+    uint32_t reg = readEdx(1);
+    return (reg & CPUID_FEATURE_EDX_SSE) && (reg & CPUID_FEATURE_EDX_FXSR); 
 }

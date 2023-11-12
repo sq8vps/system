@@ -69,6 +69,8 @@ struct KeTaskControlBlock
     uint16_t fs; //task extra segment register
     uint16_t gs; //task extra segment register
 
+    void *mathState;
+
     uintptr_t stackSize; //memory currently allocated for process stack
     uintptr_t heapTop;
     uintptr_t heapSize;

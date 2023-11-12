@@ -6,17 +6,9 @@
 #include "ke/core/panic.h"
 #include "defines.h"
 
-INTERNAL IT_HANDLER void ItFpuUnavailableHandler(struct ItFrame *f)
-{
-    //TODO: implement FPU handling
-    BP();
-    while(1);
-}
-
 INTERNAL IT_HANDLER void ItSimdFpuHandler(struct ItFrame *f)
 {
     //TODO: implement FPU handling
-    BP();
     while(1);
 }
 

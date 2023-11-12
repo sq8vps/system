@@ -1,5 +1,7 @@
 #include "panic.h"
-#include "common.h"
+#include "sdrv/bootvga/bootvga.h"
+#include "ex/kdrv.h"
+#include "it/it.h"
 
 #define PANIC_STRING(code) [code] = STRINGIFY(code)
 
@@ -18,38 +20,72 @@ static const char *panicStrings[] =
     PANIC_STRING(PAGE_FAULT),
     PANIC_STRING(MACHINE_CHECK_FAULT),
     PANIC_STRING(UNEXPECTED_FAULT),
+    PANIC_STRING(ACPI_FATAL_ERROR),
 };
 
-void KePanicInternal(uintptr_t ip, uintptr_t code)
+static void printHex(uintptr_t x)
 {
-    ASM("cli");
-    CmPrintf("KERNEL PANIC! Error %s (0x%X) at EIP 0x%X\n", panicStrings[code], code, ip);
-    while(1);
+    BootVgaPrintString("0x");
+    uint8_t pos = (sizeof(uintptr_t) * 8) - 4;
+    for(uint8_t i = 0; i < (sizeof(uintptr_t) * 2); i++)
+    {
+        uint8_t val = (x >> pos) & 0xF;
+        if(val < 10)
+            BootVgaPrintChar(val + '0');
+        else
+            BootVgaPrintChar(val - 10 + 'A');
+        pos -= 4;
+    }
 }
 
-void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+static void printPanic(uintptr_t ip, uintptr_t code)
 {
-    ASM("cli");
-    CmPrintf("KERNEL PANIC! Error %s (0x%X) at EIP 0x%X, additional info 0x%X, 0x%X, 0x%X, 0x%X\n", panicStrings[code], code, ip, arg1, arg2, arg3, arg4);
-    while(1);
+    BootVgaPrintString("KERNEL PANIC!\n\n\n");
+    BootVgaPrintString((char*)panicStrings[code]);
+    BootVgaPrintString(" (");
+    printHex(code);
+    BootVgaPrintString(")\n\nModule: ");
+    struct ExDriverObject *t = ExFindDriverByAddress(ip);
+    if(NULL != t)
+        BootVgaPrintString(t->name);
+    else
+        BootVgaPrintChar('?');
+
+    BootVgaPrintString(" (IP: ");
+    printHex(ip);
+    BootVgaPrintString(")\n\n");
 }
 
-NORETURN void KePanicFromInterrupt(char *moduleName, uintptr_t ip, uintptr_t code)
+NORETURN void KePanicInternal(uintptr_t ip, uintptr_t code)
 {
-    ASM("cli");
-    CmPrintf("KERNEL PANIC! Error %s (0x%X) at EIP 0x%X", panicStrings[code], code, ip);
-    if(moduleName)
-        CmPrintf(" in module %s", moduleName);
-    CmPrintf("\n");
-    while(1);
+    ItDisableInterrupts();
+    printPanic(ip, code);
+    while(1)
+        ;
 }
 
-NORETURN void KePanicFromInterruptEx(char *moduleName, uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+NORETURN void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
-    ASM("cli");
-    CmPrintf("KERNEL PANIC! Error %s (0x%X) at EIP 0x%X, additional info 0x%X, 0x%X, 0x%X, 0x%X", panicStrings[code], code, ip, arg1, arg2, arg3, arg4);
-    if(moduleName)
-        CmPrintf(" in module %s", moduleName);
-    CmPrintf("\n");
-    while(1);
+    ItDisableInterrupts();
+    printPanic(ip, code);
+    BootVgaPrintString("Additional informations: ");
+    printHex(arg1);
+    BootVgaPrintString(", ");
+    printHex(arg2);
+    BootVgaPrintString(", ");
+    printHex(arg3);
+    BootVgaPrintString(", ");
+    printHex(arg4);
+    while(1)
+        ;
+}
+
+NORETURN void KePanicIP(uintptr_t ip, uintptr_t code)
+{
+    KePanicInternal(ip, code);
+}
+
+NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+{
+    KePanicExInternal(ip, code, arg1, arg2, arg3, arg4);
 }

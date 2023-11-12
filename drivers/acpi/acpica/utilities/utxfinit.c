@@ -330,6 +330,7 @@ AcpiEnableSubsystem (
         Status = AcpiEvInitializeEvents ();
         if (ACPI_FAILURE (Status))
         {
+            ACPI_WARNING ((AE_INFO, "Could not initialize ACPI Event handling"));
             return_ACPI_STATUS (Status);
         }
     }
@@ -346,6 +347,7 @@ AcpiEnableSubsystem (
         Status = AcpiEvInstallXruptHandlers ();
         if (ACPI_FAILURE (Status))
         {
+            ACPI_WARNING ((AE_INFO, "Could not install SCI handler and Global Lock"));
             return_ACPI_STATUS (Status);
         }
     }

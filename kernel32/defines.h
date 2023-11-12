@@ -62,11 +62,18 @@ typedef enum
     //OK response
     OK = 0,
 
+    //general non-error responses
+    INTERRUPT_NOT_HANDLED,
+    INTERRUPT_FINISHED,
+    INTERRUPT_DEFERRED,
+
     //common errors
-    NULL_POINTER_GIVEN = 1,
+    NULL_POINTER_GIVEN = 0x100,
     NOT_IMPLEMENTED,
     OUT_OF_RESOURCES,
     DEVICE_NOT_AVAILABLE,
+    SYSTEM_INCOMPATIBLE,
+    BAD_PARAMETER,
 
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number
@@ -117,6 +124,7 @@ typedef enum
     IO_FILE_IN_USE,
     IO_FILE_READ_ONLY,
     IO_READ_INCOMPLETE,
+    IO_VFS_INITIALIZATION_FAILED,
 
     MP_FLOATING_POINTER_TABLE_NOT_FOUND = 0x01000000,
     MP_CONFIGURATION_TABLE_NOT_FOUND,
@@ -200,20 +208,6 @@ EXPORT
  * @brief Macro for inline assembly
 */
 #define ASM asm volatile
-
-
-#ifdef DEBUG
-    #include "common.h"
-    #define PRINT(...) {CmPrintf(__VA_ARGS__);}
-    #define ERROR(...) {CmPrintf(__FILE__ ":" STRINGIFY(__LINE__) ": " __VA_ARGS__);}
-    #define BP() {asm volatile("xchg bx,bx");}
-    #define RETURN(val) {ERROR("returned 0x%X\n", (unsigned int)val); return val;}
-#else
-    #define PRINT(...)
-    #define ERROR(...)
-    #define BP()
-    #define RETURN(val) {return val;}
-#endif
 
 EXPORT
 /**

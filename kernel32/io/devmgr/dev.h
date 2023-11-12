@@ -5,8 +5,7 @@
 #include "defines.h"
 #include "ex/kdrv.h"
 
-typedef uint32_t IoFlags;
-typedef uint8_t IoIrpCode;
+typedef uint32_t IoDeviceFlags;
 #define IO_DEVICE_FLAG_INITIALIZED 0x1
 #define IO_DEVICE_FLAG_INITIALIZATION_FAILURE 0x2
 #define IO_DEVICE_FLAG_PERSISTENT 0x80000000
@@ -26,23 +25,36 @@ enum IoDeviceType
     IO_DEVICE_TYPE_FS, //filesystem (EXT, FAT...)
 };
 
+enum IoRpCode
+{
+    IO_RP_UNKNOWN = 0,
+    //common requests
+    IO_RP_READ, //read
+    IO_RP_WRITE, //write
+    IO_RP_IOCTL, //arbitrary i/o control
+    //PnP requests
+    IO_RP_START_DEVICE = 0x1000,
+    
+    IO_RP_ENUMERATE,
+};
+
 struct IoDeviceSubObject;
-struct IoDriverIrp;
+struct IoDriverRp;
 
-typedef STATUS (*IoCompletionCallback)(struct IoDeviceSubObject *device, struct IoDriverIrp *irp, void *context);
+typedef STATUS (*IoCompletionCallback)(struct IoDeviceSubObject *device, struct IoDriverRp *rp, void *context);
 
-struct IoDriverIrp
+struct IoDriverRp
 {
     struct IoDeviceSubObject *deviceObject;
-    IoIrpCode code;
-    IoFlags flags;
+    enum IoRpCode code;
+    IoDeviceFlags flags;
     void *buffer;
     uint64_t size;
     STATUS status;
     union
     {
         
-    } data;
+    } payload;
     IoCompletionCallback completionCallback;
     void *completionContext;
 };
@@ -51,9 +63,11 @@ struct IoDeviceObject
 {
     char *deviceId;
     char *name;
-    IoFlags flags;
+    IoDeviceFlags flags;
     struct IoDeviceSubObject *baseDevice;
     struct IoDeviceObject *parent;
+    struct IoDeviceObject *child;
+    struct IoDeviceObject *next, *previous;
 };
 
 struct IoDeviceSubObject
@@ -65,7 +79,7 @@ struct IoDeviceSubObject
     struct IoDeviceSubObject *attachedDevice;
     struct IoDriverIrp *currentIrp;
     uint32_t referenceCount;
-    IoFlags flags;
+    IoDeviceFlags flags;
     void *privateData;
     struct IoDeviceObject *mainDeviceObject;
 };
@@ -84,7 +98,7 @@ STATUS IoCreateSubDevice(
     struct ExDriverObject *driver, 
     uint32_t privateSize, 
     enum IoDeviceType type, 
-    IoFlags flags, 
+    IoDeviceFlags flags, 
     struct IoDeviceSubObject **device);
 
 /**

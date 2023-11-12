@@ -46,6 +46,7 @@ STATUS init(struct ExDriverObject *driverObject)
     if(AE_OK != initializeAcpi())
         return EXEC_DRIVER_INIT_FAILED;
     
+    
     return OK;
 } 
 

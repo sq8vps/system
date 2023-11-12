@@ -7,13 +7,47 @@
 #include "sdrv/pit.h"
 #include "it/it.h"
 #include "ke/core/panic.h"
+#include "common.h"
+#include "io/disp/print.h"
 
 static enum HalInterruptMethod interruptMethod = IT_METHOD_NONE;
 
+#define HAL_ISA_INTERRUPT_COUNT 16
+
+static bool dualPicPresent = false;
+static uint32_t isaRemapTable[HAL_ISA_INTERRUPT_COUNT];
+
+void HalSetDualPicPresence(bool state)
+{
+    dualPicPresent = state;
+}
+
+STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t globalIrq)
+{
+    if(isaIrq >= HAL_ISA_INTERRUPT_COUNT)
+        return IT_BAD_VECTOR;
+    
+    isaRemapTable[isaIrq] = globalIrq;
+    return OK;
+}
+
+uint32_t HalResolveIrqMapping(uint32_t irq)
+{
+    if(irq < HAL_ISA_INTERRUPT_COUNT)
+        return isaRemapTable[irq];
+    
+    return irq;
+}
+
 STATUS HalInitInterruptController(void)
 {
+    for(uint8_t i = 0; i < HAL_ISA_INTERRUPT_COUNT; i++)
+    {
+        isaRemapTable[i] = i;
+    }
+
     PicSetIRQMask(0xFFFF); //mask all PIC interrupts
-    PicRemap(IT_FIRST_INTERRUPT_VECTOR, IT_FIRST_INTERRUPT_VECTOR + 8); //remap PIC interrupts to start at 0x20 (32)
+    PicRemap(HAL_PIC_REMAP_VECTOR, HAL_PIC_REMAP_VECTOR + 8);
 
     if(CpuidCheckIfApicAvailable()) //APIC available?
     {
@@ -24,24 +58,59 @@ STATUS HalInitInterruptController(void)
             {
                 if(OK == ApicIoInit())
                 {
-                    PRINT("APIC controller used\n");
-                    interruptMethod = IT_METHOD_APIC; //APIC is used on successful initialization
+                    interruptMethod = IT_METHOD_APIC;
+                    return OK;
                 }
+                else if(dualPicPresent)
+                {
+                    interruptMethod = IT_METHOD_PIC;
+                    return OK;
+                }
+                else
+                    PRINT("No I/O APIC nor dual-PIC is available\n");  
             }
+            else
+                PRINT("Bootstrap CPU initialization failed\n");
         }
+        else
+            PRINT("LAPIC address seems to be zero\n");
     }
-    else //APIC unavailable
+    IoPrint("Cannot continue: Local APIC is not available on this PC. Boot failed.\n");
+    while(1)
     {
-        PRINT("Cannot continue: APIC is not available on this PC\n");
-        while(1)
-        {
-            ASM("cli");
-            ASM("hlt");
-        }
-        return IT_NO_CONTROLLER_CONFIGURED;
+        ItDisableInterrupts();
     }
+}
 
-    return OK;
+STATUS HalRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
+                        enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger)
+{
+    if(IT_METHOD_APIC == interruptMethod)
+        return ApicIoRegisterIRQ(input, vector, mode, polarity, trigger);
+    else if(IT_METHOD_PIC == interruptMethod)
+        return OK;
+
+    return IT_NO_CONTROLLER_CONFIGURED;
+}
+
+STATUS HalUnregisterIRQ(uint32_t input)
+{
+    if(IT_METHOD_APIC == interruptMethod)
+        return ApicIoUnregisterIRQ(input);
+    else if(IT_METHOD_PIC == interruptMethod)
+        return OK;
+
+    return IT_NO_CONTROLLER_CONFIGURED;
+}
+
+uint8_t HalGetAssociatedVector(uint32_t input)
+{
+    if(IT_METHOD_APIC == interruptMethod)
+        return ApicIoGetAssociatedVector(input);
+    else if(IT_METHOD_PIC == interruptMethod)
+        return input + HAL_PIC_REMAP_VECTOR;
+    
+    return 0;
 }
 
 STATUS HalEnableIRQ(uint8_t irq)
@@ -49,12 +118,12 @@ STATUS HalEnableIRQ(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
     
-    // if(IT_METHOD_APIC == interruptMethod)
+    if(IT_METHOD_APIC == interruptMethod)
         return ApicEnableIRQ(irq);
-    // else if(IT_METHOD_PIC == interruptMethod)
-    //     return PicEnableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
+    else if(IT_METHOD_PIC == interruptMethod)
+        return PicEnableIRQ(irq);
 
-    // return IT_NO_CONTROLLER_CONFIGURED;
+    return IT_NO_CONTROLLER_CONFIGURED;
 }
 
 STATUS HalDisableIRQ(uint8_t irq)
@@ -62,12 +131,12 @@ STATUS HalDisableIRQ(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
     
-    // if(IT_METHOD_APIC == interruptMethod)
+    if(IT_METHOD_APIC == interruptMethod)
         return ApicDisableIRQ(irq);
-    // else if(IT_METHOD_PIC == interruptMethod)
-    //     return PicDisableIRQ(irq - IT_FIRST_INTERRUPT_VECTOR);
+    else if(IT_METHOD_PIC == interruptMethod)
+        return PicDisableIRQ(irq);
 
-    // return IT_NO_CONTROLLER_CONFIGURED;  
+    return IT_NO_CONTROLLER_CONFIGURED;  
 }
 
 STATUS HalClearInterruptFlag(uint8_t irq)
@@ -75,45 +144,54 @@ STATUS HalClearInterruptFlag(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
 
-    // if(IT_METHOD_APIC == interruptMethod)
+    if(IT_METHOD_APIC == interruptMethod)
         return ApicSendEOI();
-    // else if(IT_METHOD_PIC == interruptMethod)
-    //     return PicSendEOI(irq - IT_FIRST_INTERRUPT_VECTOR);
+    else if(IT_METHOD_PIC == interruptMethod)
+        return PicSendEOI(irq);
 
-    // return IT_NO_CONTROLLER_CONFIGURED;
+    return IT_NO_CONTROLLER_CONFIGURED;
 }
 
 STATUS HalConfigureSystemTimer(uint8_t irq)
 {   
-    if(IT_METHOD_APIC == interruptMethod)
+    if(IT_METHOD_NONE != interruptMethod)
     {
         return ApicConfigureSystemTimer(irq);
     }
-    // else if(IT_METHOD_PIC == interruptMethod)
-    // {
-    //     PitSetInterval(interval);
-    //     return OK;
-    // }
 
     return IT_NO_CONTROLLER_CONFIGURED;
 }
 
 STATUS HalStartSystemTimer(uint64_t time)
 {
-    if(IT_METHOD_APIC == interruptMethod)
+    if(IT_METHOD_NONE != interruptMethod)
     {
         ApicStartSystemTimer(time);
         return OK;
     }
-    // else if(IT_METHOD_PIC == interruptMethod)
-    // {
-    //     return OK; //no way to restart PIT
-    // }
 
     return IT_NO_CONTROLLER_CONFIGURED;
+}
+
+bool HalIsInterruptSpurious(void)
+{
+    if(IT_METHOD_APIC == interruptMethod)
+        return false;
+    else
+        return PicIsIrqSpurious();
 }
 
 enum HalInterruptMethod HalGetInterruptHandlingMethod(void)
 {
     return interruptMethod;
+}
+
+STATUS HalSetTaskPriority(uint8_t priority)
+{
+    return ApicSetTaskPriority(priority);
+}
+
+uint8_t HalGetTaskPriority(void)
+{
+    return ApicGetTaskPriority();
 }

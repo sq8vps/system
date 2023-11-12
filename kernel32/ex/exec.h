@@ -20,7 +20,7 @@
  * @param *size Output size
  * @return Status code
 */
-INTERNAL STATUS ExGetExecutableRequiredBssSize(const char *name, uint64_t *size);
+INTERNAL STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size);
 
 /**
  * @brief Prepare BSS/no-bits sections and update executable header

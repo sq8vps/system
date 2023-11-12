@@ -86,7 +86,17 @@ struct AcpiIoApicEntry
     uint8_t ioApicId;
     uint8_t reserved;
     uint32_t ioApicAddress;
-    uint32_t globalIRQ;
+    uint32_t irqBase;
+} PACKED;
+
+struct AcpiIrqOverrideEntry
+{
+    uint8_t type;
+    uint8_t length;
+    uint8_t bus;
+    uint8_t source;
+    uint32_t globalIrq;
+    uint16_t flags;
 } PACKED;
 
 static bool verifyChecksum(const void *data, uint32_t size)
@@ -177,13 +187,19 @@ static void readEntries(struct AcpiMadt *hdr)
         switch(*((uint8_t*)entry))
         {
             case ACPI_MADT_ENTRY_LAPIC:
-                if(HalCpuCount >= MAX_CPU_COUNT)
-                    break;
                 struct AcpiLapicEntry *cpu = (struct AcpiLapicEntry*)entry;
-                if(0 == (cpu->flags & (ACPI_LAPIC_ENTRY_FLAG_ENABLED | ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE)))
+                if(HalCpuCount >= MAX_CPU_COUNT)
+                {
+                    entry = (uint8_t*)entry + cpu->length;
                     break;
+                }
+                if(0 == (cpu->flags & (ACPI_LAPIC_ENTRY_FLAG_ENABLED | ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE)))
+                {
+                    entry = (uint8_t*)entry + cpu->length;
+                    break;
+                }
+                PRINT("CPU with APIC ID = 0x%X\n", cpu->lapicId);
                 HalCpuConfigTable[HalCpuCount].apicId = cpu->lapicId;
-
                 HalCpuConfigTable[HalCpuCount].boot = (cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ENABLED) > 0;
                 HalCpuConfigTable[HalCpuCount].usable = ((cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ENABLED) > 0) 
                                                         | ((cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE) > 0);
@@ -191,13 +207,23 @@ static void readEntries(struct AcpiMadt *hdr)
                 entry = (uint8_t*)entry + cpu->length;
                 break;
             case ACPI_MADT_ENTRY_IOAPIC:
-                if(ApicIoEntryCount >= MAX_IOAPIC_COUNT)
-                    break;
                 struct AcpiIoApicEntry *ioapic = (struct AcpiIoApicEntry*)entry;
+                if(ApicIoEntryCount >= MAX_IOAPIC_COUNT)
+                {
+                    entry = (uint8_t*)entry + ioapic->length;
+                    break;
+                }
+                PRINT("I/O APIC with ID = 0x%X\n", ioapic->ioApicId);
                 ApicIoEntryTable[ApicIoEntryCount].id = ioapic->ioApicId;
                 ApicIoEntryTable[ApicIoEntryCount].address = ioapic->ioApicAddress;
+                ApicIoEntryTable[ApicIoEntryCount].irqBase = ioapic->irqBase;
                 ApicIoEntryCount++;
                 entry = (uint8_t*)entry + ioapic->length;
+                break;
+            case ACPI_MADT_ENTRY_INTERRUPT_SOURCE:
+                struct AcpiIrqOverrideEntry *irq = (struct AcpiIrqOverrideEntry*)entry;
+                HalAddIsaRemapEntry(irq->source, irq->globalIrq);
+                entry = (uint8_t*)entry + irq->length;
                 break;
             default:
                 entry = (uint8_t*)entry + ((uint8_t*)entry)[1];
@@ -210,11 +236,11 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 {
     uintptr_t rsdtPhysical = getRXSDTAddress();
     if(0 == rsdtPhysical)
-        RETURN(ACPI_RSDT_NOT_FOUND);
+        return ACPI_RSDT_NOT_FOUND;
     
     struct AcpiRXsdt *rxsdt = MmMapDynamicMemory(rsdtPhysical, sizeof(struct AcpiRXsdt), 0);
     if(NULL == rxsdt)
-        RETURN(OUT_OF_RESOURCES);
+        return OUT_OF_RESOURCES;
     
     uint8_t entrySize = (0 == CmStrncmp(rxsdt->signature, "XSDT", 4)) ? 8 : 4;
     uint32_t entryCount = (rxsdt->length - sizeof(struct AcpiRXsdt)) / entrySize;
@@ -224,12 +250,12 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 
     rxsdt = MmMapDynamicMemory(rsdtPhysical, rxsdtLength, 0);
     if(NULL == rxsdt)
-        RETURN(OUT_OF_RESOURCES);
+        return OUT_OF_RESOURCES;
 
     if(!verifyChecksum(rxsdt, rxsdtLength))
     {
         MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-        RETURN(ACPI_CHECKSUM_VALIDATION_FAILED);
+        return ACPI_CHECKSUM_VALIDATION_FAILED;
     }
 
     for(uint32_t i = 0; i < entryCount; i++)
@@ -239,7 +265,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         if(NULL == madt)
         {
             MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-            RETURN(OUT_OF_RESOURCES);
+            return OUT_OF_RESOURCES;
         }
         if(0 != CmStrncmp(madt->signature, "APIC", 4))
         {
@@ -252,17 +278,18 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         if(NULL == madt)
         {
             MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-            RETURN(OUT_OF_RESOURCES);
+            return OUT_OF_RESOURCES;
         }
 
         if(!verifyChecksum(madt, madtSize))
         {
             MmUnmapDynamicMemory(rxsdt, rxsdtLength);
             MmUnmapDynamicMemory(madt, madtSize);
-            RETURN(ACPI_CHECKSUM_VALIDATION_FAILED);
+            return ACPI_CHECKSUM_VALIDATION_FAILED;
         }
 
         *lapicAddress = madt->lapicAddress;
+        HalSetDualPicPresence((madt->flags & ACPI_MADT_FLAG_PCAT_COMPAT) > 0);
 
         readEntries(madt);
         MmUnmapDynamicMemory(madt, madtSize);
@@ -270,6 +297,6 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     }
     
     MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-    RETURN(ACPI_MADT_NOT_FOUND);
+    return ACPI_MADT_NOT_FOUND;
 
 }

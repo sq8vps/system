@@ -14,12 +14,23 @@
 #include <stdbool.h>
 #include "defines.h"
 
+EXPORT
+/**
+ * @brief Lowest vector available for IRQs
+*/
+#define IT_IRQ_VECTOR_BASE 48
+
+EXPORT
+/**
+ * @brief First vector available for interrupt requests
+*/
 #define IT_FIRST_INTERRUPT_VECTOR 32
 
-enum ItLegacyVectors
-{
-    IT_LEGACY_PIT_VECTOR = 32,
-};
+/*
+* Vectors reserved and used by the kernel
+*/
+#define IT_SYSTEM_TIMER_VECTOR IT_FIRST_INTERRUPT_VECTOR
+#define IT_LAPIC_SPURIOUS_VECTOR (IT_FIRST_INTERRUPT_VECTOR | 0xF)
 
 /**
  * @brief Attribute to be used with interrupt handler wrappers
@@ -62,7 +73,7 @@ enum ItExceptionVector
 */
 
 /**
- * @brief ISR frame for interrupts and exceptions without an error code with no privilege level change
+ * @brief ISR frame for interrupts and exceptions with no privilege level change
 */
 struct ItFrame
 {
@@ -71,21 +82,9 @@ struct ItFrame
     uint32_t flags;
 } PACKED;
 
-
-/**
- * @brief ISR frame for exceptions with error code with no priviliege level change
-*/
-struct ItFrameEC
-{
-    uint32_t error;
-	uint32_t ip;
-    uint32_t cs;
-    uint32_t flags;
-} PACKED;
-
 EXPORT
 /**
- * @brief ISR frame for interrupts and exceptions without an error code with privilege level change
+ * @brief ISR frame for interrupts and exceptions with privilege level change
 */
 struct ItFrameMS
 {
@@ -96,21 +95,11 @@ struct ItFrameMS
     uint32_t ss;
 } PACKED;
 
-
+EXPORT
 /**
- * @brief ISR frame for exceptions with error code with priviliege level change
+ * @brief Type definition for generic interrupt service routine
 */
-struct ItFrameECMS
-{
-    uint32_t error;
-	uint32_t ip;
-    uint32_t cs;
-    uint32_t flags;
-    uint32_t esp;
-    uint32_t ss;
-} PACKED;
-
-
+typedef STATUS (*ItHandler)(uint8_t vector, void *context);
 
 /**
  * @brief Set up interrupts and assign default handlers to them
@@ -121,9 +110,19 @@ INTERNAL STATUS ItInit(void);
 EXPORT 
 /**
  * @brief Get free interrupt vector number
+ * @param requested Requested vector number for compatibility when PIC is used. No effect with I/O APIC.
  * @return Free vector number or 0 on failure
 */
-EXTERN uint8_t ItGetFreeVector(void);
+EXTERN uint8_t ItGetFreeVector(uint8_t requested);
+
+EXPORT
+/**
+ * @brief Release vector number
+ * @param vector Vector to release
+ * @return Status code
+ * @note Uninstalling interrupt handler DOES release vector number
+*/
+EXTERN STATUS ItReleaseVector(uint8_t vector);
 
 EXPORT 
 /**
@@ -134,16 +133,7 @@ EXPORT
  * @param cpl Required privilege level to use this interrupt
  * @return Status code
 */
-EXTERN STATUS ItInstallInterruptHandler(uint8_t vector, void (*isr)(void*), void *context, PrivilegeLevel_t cpl);
-
-/**
- * @brief Install interrupt handler without internal wrapper
- * @param vector Interrupt vector number
- * @param *isr Interrupt service routine pointer
- * @param cpl Required privilege level to use this interrupt
- * @return Status code
-*/
-INTERNAL STATUS ItInstallDirectInterruptHandler(uint8_t vector, void (*isr)(struct ItFrame*), PrivilegeLevel_t cpl);
+EXTERN STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context, PrivilegeLevel_t cpl);
 
 EXPORT 
 /**
@@ -165,6 +155,17 @@ INTERNAL bool ItIsCausedByKernelMode(uint32_t cs);
  * @warning DO NOT USE. Use KePanic() and KePanicEx() instead.
 */
 INTERNAL NORETURN void ItHardReset(void);
+
+/**
+ * @brief Disable all interrupts
+*/
+INTERNAL void ItDisableInterrupts(void);
+
+/**
+ * @brief Enable all interrupts
+*/
+INTERNAL void ItEnableInterrupts(void);
+
 
 /**
  * @}

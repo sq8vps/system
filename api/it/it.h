@@ -24,9 +24,18 @@ struct ItFrameMS
 
 /**
  * @brief Get free interrupt vector number
+ * @param requested Requested vector number for compatibility when PIC is used. No effect with I/O APIC.
  * @return Free vector number or 0 on failure
 */
-extern uint8_t ItGetFreeVector(void);
+extern uint8_t ItGetFreeVector(uint8_t requested);
+
+/**
+ * @brief Release vector number
+ * @param vector Vector to release
+ * @return Status code
+ * @note Uninstalling interrupt handler DOES release vector number
+*/
+extern STATUS ItReleaseVector(uint8_t vector);
 
 /**
  * @brief Install interrupt handler
@@ -36,7 +45,7 @@ extern uint8_t ItGetFreeVector(void);
  * @param cpl Required privilege level to use this interrupt
  * @return Status code
 */
-extern STATUS ItInstallInterruptHandler(uint8_t vector, void (*isr)(void*), void *context, PrivilegeLevel_t cpl);
+extern STATUS ItInstallInterruptHandler(uint8_t vector, uint32_t (*isr)(void*), void *context, PrivilegeLevel_t cpl);
 
 /**
  * @brief Uninstall interrupt handler

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "defines.h"
 #include "pit.h"
+#include "common.h"
 
 static bool tscAvailable = false;
 static uint64_t frequency = 0;
@@ -15,7 +16,7 @@ STATUS TscInit(void)
         {
             if(CpuidCheckIfTscInvariant())
             {
-                PRINT("Invariant TSC available\n");
+                LOG("Invariant TSC available\n");
                 tscAvailable = true;
                 TscCalibrate();
                 return OK;

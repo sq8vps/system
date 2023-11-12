@@ -8,7 +8,7 @@
 
 INTERNAL IT_HANDLER void ItNmiHandler(struct ItFrame *f)
 {
-    KePanicFromInterrupt(NULL, f->ip, NON_MASKABLE_INTERRUPT);
+    KePanicIP(f->ip, NON_MASKABLE_INTERRUPT);
     while(1);
 }
 

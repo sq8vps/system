@@ -48,17 +48,15 @@ extern NORETURN void KePanic(uintptr_t code);
 extern NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 /**
- * @brief Emergency system shutdown routine - kernel panic from interrupt
- * @param *moduleName Module name string (can be NULL)
+ * @brief Emergency system shutdown routine - kernel panic with explicitly provided instruction pointer
  * @param ip Failing instruction pointer
  * @param code Error code
  * @attention This function never returns
 */
-extern NORETURN void KePanicFromInterrupt(char *moduleName, uintptr_t ip, uintptr_t code);
+extern NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
 
 /**
- * @brief Emergency system shutdown routine - kernel panic from interrupt
- * @param *moduleName Module name string (can be NULL)
+ * @brief Emergency system shutdown routine - kernel panic with explicitly provided instruction pointer
  * @param ip Failing instruction pointer
  * @param code Error code
  * @param arg1 Argument 1
@@ -67,7 +65,7 @@ extern NORETURN void KePanicFromInterrupt(char *moduleName, uintptr_t ip, uintpt
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-extern NORETURN void KePanicFromInterruptEx(char *moduleName, uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+extern NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 
 #ifdef __cplusplus

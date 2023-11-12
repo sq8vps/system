@@ -6,14 +6,15 @@
 #include "io/fs/fs.h"
 #include "ke/core/mutex.h"
 #include "mm/mm.h"
+#include "ksym.h"
 #include <stdbool.h>
 
 #define KDRV_MAX_DRIVER_COUNT 200
 
 //list of loaded kernel drivers
-static struct ExDriverObject *kernelDriverList[KDRV_MAX_DRIVER_COUNT];
-//next sequential driver index (starting from 1)
-static uint32_t kernelDriverNextSeqIndex = 1;
+// static struct ExDriverObject *kernelDriverList[KDRV_MAX_DRIVER_COUNT];
+// //next sequential driver index (starting from 1)
+// static uint32_t kernelDriverNextSeqIndex = 1;
 
 static struct ExDriverObject *kernelDriverListHead = NULL;
 static KeMutex kernelDriverListMutex = KeMutexInitializer;
@@ -106,26 +107,25 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObject 
 //     return OK;
 // }
 
-STATUS ExLoadKernelDriver(const char *path, struct ExDriverObject **driverObject)
+STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
 {
     if(!IoCheckIfFileExists(path))
 	{
         return IO_FILE_NOT_FOUND;
 	}
 
-    uint64_t imageSize, freeSize, bssSize;
+    uint64_t imageSize, freeSize;
+    uintptr_t bssSize;
 	STATUS ret = OK;
     if(OK != (ret = IoGetFileSize(path, &imageSize)))
     {
 		return ret;
 	}
 
-    uint64_t bssSize = 0;
     if(OK != (ret = ExGetExecutableRequiredBssSize(path, &bssSize)))
     {
 		return ret;
 	}
-    imageSize += bssSize;
 
     struct ExDriverObject *object = MmAllocateKernelHeap(sizeof(struct ExDriverObject));
     if(NULL == object)
@@ -133,14 +133,14 @@ STATUS ExLoadKernelDriver(const char *path, struct ExDriverObject **driverObject
         return OUT_OF_RESOURCES;
     }
 
-    object->size = imageSize;
+    object->size = imageSize + bssSize;
 
     KeAcquireMutex(&kernelDriverListMutex);
 
     struct ExDriverObject *t = kernelDriverListHead;
 
 //TODO: reuse!
-    if(NULL == kernelDriverListHead)
+    if(NULL == t)
     {
         object->address = MM_DRIVERS_START_ADDRESS;
         freeSize = MM_DRIVERS_MAX_SIZE;
@@ -161,7 +161,7 @@ STATUS ExLoadKernelDriver(const char *path, struct ExDriverObject **driverObject
         object->address = t->address + t->size;
     }
 
-    if(imageSize < freeSize)
+    if(imageSize > freeSize)
     {
         ret = OUT_OF_RESOURCES;
         goto loadKernelDriverFailure;
@@ -172,15 +172,15 @@ STATUS ExLoadKernelDriver(const char *path, struct ExDriverObject **driverObject
     {
         goto loadKernelDriverFailure;
 	}
-    
-    if(OK != (ret = MmAllocateMemory(object->address, object->size, MM_PAGE_FLAG_WRITABLE)))
+
+    if(OK != (ret = MmAllocateMemory(object->address, imageSize + bssSize, MM_PAGE_FLAG_WRITABLE)))
     {
         IoCloseKernelFile(f);
         goto loadKernelDriverFailure;
     }
 
 	uint64_t actualSize = 0;
-	if((OK != (ret = IoReadKernelFile(f, (void*)object->address, object->size, 0, &actualSize))) || (actualSize != object->size))
+	if((OK != (ret = IoReadKernelFile(f, (void*)object->address, imageSize, 0, &actualSize))) || (actualSize != imageSize))
 	{
 		IoCloseKernelFile(f);
 		MmFreeMemory(object->address, object->size);
@@ -205,14 +205,51 @@ STATUS ExLoadKernelDriver(const char *path, struct ExDriverObject **driverObject
         goto loadKernelDriverFailure;
     }
 
-    if(OK != (ret = ExPrepareExecutableBss((void*)object->address, (void*)(object->address + object->size - bssSize))))
+
+    if(OK != (ret = ExPrepareExecutableBss((void*)object->address, (void*)(object->address + (uintptr_t)imageSize))))
     {
 		MmFreeMemory(object->address, object->size);
 		goto loadKernelDriverFailure;
 	}
 
+    if(OK != (ret = ExPerformElf32Relocation(elfHeader, ExGetKernelSymbol)))
+    {
+        MmFreeMemory(object->address, object->size);
+		goto loadKernelDriverFailure;
+    }
+
+    uintptr_t entry;
+    if(OK != (ret = ExGetElf32SymbolValueByName(elfHeader, STRINGIFY(DRIVER_ENTRY), &entry)))
+    {
+        MmFreeMemory(object->address, object->size);
+		goto loadKernelDriverFailure;
+    }
+
+    if(OK != (ret = ((DRIVER_ENTRY_T*)entry)(object)))
+    {
+        MmFreeMemory(object->address, object->size);
+		goto loadKernelDriverFailure;
+    }
+
+    object->fileName = MmAllocateKernelHeap(CmStrlen(CmGetFileName(path)) + 1);
+    if(NULL == object->fileName)
+    {
+        MmFreeMemory(object->address, object->size);
+        ret = OUT_OF_RESOURCES;
+		goto loadKernelDriverFailure;
+    }
+    CmStrcpy(object->fileName, CmGetFileName(path));
+
+    *driverObject = object;
+    
+    KeReleaseMutex(&kernelDriverListMutex);
+
+    return OK;
+
 loadKernelDriverFailure:
-    t->next = NULL;
+    
+    if(NULL != t)
+        t->next = NULL;
     if(NULL == object->previous)
         kernelDriverListHead = NULL;
     else
@@ -222,4 +259,27 @@ loadKernelDriverFailure:
     
     MmFreeKernelHeap(object);
     return ret;
+}
+
+struct ExDriverObject *ExFindDriverByAddress(uintptr_t address)
+{
+    if(NULL == kernelDriverListHead)
+        return NULL;
+
+    KeAcquireMutex(&kernelDriverListMutex);
+    struct ExDriverObject *t = kernelDriverListHead;
+    
+    while(NULL != t->next)
+    {
+        if((address >= t->address) && (address < (t->address + t->size)))
+            break;
+        if(NULL == t->next)
+        {
+            KeReleaseMutex(&kernelDriverListMutex);
+            return NULL;
+        }
+        t = t->next;
+    }
+    KeReleaseMutex(&kernelDriverListMutex);
+    return t;
 }

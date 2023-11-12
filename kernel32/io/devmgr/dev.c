@@ -10,7 +10,7 @@ STATUS IoCreateSubDevice(
     struct ExDriverObject *driver, 
     uint32_t privateSize, 
     enum IoDeviceType type, 
-    IoFlags flags, 
+    IoDeviceFlags flags, 
     struct IoDeviceSubObject **device
     )
 {
@@ -24,6 +24,9 @@ STATUS IoCreateSubDevice(
     (*device)->driverObject = driver;
     (*device)->flags |= flags;
     (*device)->type = type;
+
+    if(0 != privateSize)
+        (*device)->privateData = MmAllocateKernelHeap(privateSize);
     
     //update list of created devices
     (*device)->nextDevice = driver->deviceObject;
@@ -70,7 +73,7 @@ STATUS IoRegisterDevice(struct IoDeviceSubObject *baseDevice, char *deviceId)
     //invoke AddDevice routine for all drivers to form a device stack
     for(uint16_t i = 0; i < driverCount; i++)
     {
-        if(OK != (ret = drivers[i]->driverAddDevice(drivers[i], baseDevice)))
+        if(OK != (ret = drivers[i]->addDevice(drivers[i], baseDevice)))
         {
             device->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
             goto exitIoRegisterDevice;
@@ -86,6 +89,14 @@ STATUS IoRegisterDevice(struct IoDeviceSubObject *baseDevice, char *deviceId)
         goto exitIoRegisterDevice;
     }
     CmStrcpy(device->deviceId, deviceId);
+
+    device->parent = baseDevice->mainDeviceObject;
+    if(NULL != baseDevice->mainDeviceObject->child)
+    {
+        baseDevice->mainDeviceObject->child->previous = device;
+        device->next = baseDevice->mainDeviceObject->child->next;
+    }
+    baseDevice->mainDeviceObject->child = device;
 
     device->flags |= IO_DEVICE_FLAG_INITIALIZED;
 

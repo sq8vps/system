@@ -28,5 +28,5 @@ $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	cp $@ ../output/
 	
 clean:
-	rm -f $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)
+	rm -rf $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)
 

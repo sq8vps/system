@@ -248,7 +248,8 @@ extern const char                       *AcpiGbl_ClockInputScale[];
  * Common message suffix
  */
 #define ACPI_MSG_SUFFIX \
-    AcpiOsPrintf (" (%8.8X/%s-%u)\n", ACPI_CA_VERSION, ModuleName, LineNumber)
+    AcpiOsPrintf("\n")
+    //AcpiOsPrintf (" (%8.8X/%s-%u)\n", ACPI_CA_VERSION, ModuleName, LineNumber)
 
 /* Flags to indicate implicit or explicit string-to-integer conversion */
 

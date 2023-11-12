@@ -23,7 +23,7 @@ EXPORT
 struct ExDriverObject;
 struct IoDeviceSubObject;
 struct IoDeviceSubObject;
-struct IoDriverIRP;
+struct IoDriverRp;
 
 EXPORT
 #define DRIVER_ENTRY DriverEntry
@@ -37,14 +37,15 @@ struct ExDriverObject
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
+    char *fileName;
     char *name;
     char *vendor;
     char *version;
     void *driverData;
-    STATUS (*driverInit)(struct ExDriverObject *driverObject);
-    STATUS (*driverUnload)(struct ExDriverObject *driverObject);
-    STATUS (*driverDispatchIrp)(struct IoDriverIRP *irp);
-    STATUS (*driverAddDevice)(struct ExDriverObject *driverObject, struct IoDeviceSubObject *baseDeviceObject);
+    STATUS (*init)(struct ExDriverObject *driverObject);
+    STATUS (*unload)(struct ExDriverObject *driverObject);
+    STATUS (*dispatch)(struct IoDriverRp *rp);
+    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceSubObject *baseDeviceObject);
 
     struct ExDriverObject *next;
     struct ExDriverObject *previous;
@@ -63,14 +64,20 @@ struct ExDriverObject
 STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObject **drivers, uint16_t *driverCount);
 
 /**
- * @brief Relocate, link and execute preloaded driver
- * @param driverImage Raw driver image address
- * @param size Bytes occupied by the driver
+ * @brief Load given driver
+ * @param *path Driver file path
+ * @param **driverObject Output pointer with created driver object
  * @return Error code
- * @attention Full raw driver image must be preloaded to memory. All no-bits/BSS sections must be allocated before.
 */
-STATUS ExLoadPreloadedDriver(const uintptr_t driverImage, const uintptr_t size);
+INTERNAL STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject);
 
+EXPORT
+/**
+ * @brief Find driver by memory address (e.g. for debugging)
+ * @param address Memory address
+ * @return Matched driver object or NULL if no matching object was found
+*/
+EXTERN struct ExDriverObject *ExFindDriverByAddress(uintptr_t address);
 
 /**
  * @}

@@ -180,6 +180,7 @@
  ******************************************************************************/
 
 void ACPI_INTERNAL_VAR_XFACE
+ACPI_PRINTF_LIKE(3)
 AcpiError (
     const char              *ModuleName,
     UINT32                  LineNumber,
@@ -220,6 +221,7 @@ ACPI_EXPORT_SYMBOL (AcpiError)
  ******************************************************************************/
 
 void ACPI_INTERNAL_VAR_XFACE
+ACPI_PRINTF_LIKE(4)
 AcpiException (
     const char              *ModuleName,
     UINT32                  LineNumber,
@@ -271,6 +273,7 @@ ACPI_EXPORT_SYMBOL (AcpiException)
  ******************************************************************************/
 
 void ACPI_INTERNAL_VAR_XFACE
+ACPI_PRINTF_LIKE(3)
 AcpiWarning (
     const char              *ModuleName,
     UINT32                  LineNumber,
@@ -308,6 +311,7 @@ ACPI_EXPORT_SYMBOL (AcpiWarning)
  ******************************************************************************/
 
 void ACPI_INTERNAL_VAR_XFACE
+ACPI_PRINTF_LIKE(1)
 AcpiInfo (
     const char              *Format,
     ...)
