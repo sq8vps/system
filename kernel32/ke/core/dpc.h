@@ -5,9 +5,15 @@
 #include <stdint.h>
 
 EXPORT
+/**
+ * @brief A callback function type for DPC worker
+*/
 typedef void (*KeDpcCallback)(void *context);
 
 EXPORT
+/**
+ * @brief DPC priority levels
+*/
 enum KeDpcPriority
 {
     KE_DPC_PRIORITY_NORMAL = 0,
@@ -17,27 +23,17 @@ enum KeDpcPriority
 
 EXPORT
 /**
- * @brief Register a Deferred Procedure Call from ISR
- * @param priority DPC priority
- * @param irq IRQ value
- * @param callback DPC function pointer
- * @param *context Context to be passed to the worker function
- * @return Status code 
-*/
-EXTERN STATUS KeRegisterDpcFromIsr(enum KeDpcPriority priority, uint8_t irq, KeDpcCallback callback, void *context);
-
-EXPORT
-/**
  * @brief Register a Deferred Procedure Call
  * @param priority DPC priority
  * @param callback DPC function pointer
  * @param *context Context to be passed to the worker function
- * @return Status code 
+ * @return Status code
+ * @attention Processor priority must be > HAL_TASK_PRIORITY_PASSIVE, otherwise the kernel panic occurs.
 */
 EXTERN STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context);
 
 /**
- * @brief Process all Deferred Procedure Calls
+ * @brief Process all Deferred Procedure Calls if priority level is low enough
 */
 INTERNAL void KeProcessDpcQueue(void);
 

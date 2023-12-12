@@ -11,7 +11,17 @@ extern "C"
 #include <stdbool.h>
 #include "defines.h"
 /**
- * @brief ISR frame for interrupts and exceptions without an error code with privilege level change
+ * @brief Lowest vector available for IRQs
+*/
+#define IT_IRQ_VECTOR_BASE 48
+
+/**
+ * @brief First vector available for interrupt requests
+*/
+#define IT_FIRST_INTERRUPT_VECTOR 32
+
+/**
+ * @brief ISR frame for interrupts and exceptions with privilege level change
 */
 struct ItFrameMS
 {
@@ -21,6 +31,11 @@ struct ItFrameMS
     uint32_t esp;
     uint32_t ss;
 } PACKED;
+
+/**
+ * @brief Type definition for generic interrupt service routine
+*/
+typedef STATUS (*ItHandler)(uint8_t vector, void *context);
 
 /**
  * @brief Get free interrupt vector number
@@ -45,7 +60,7 @@ extern STATUS ItReleaseVector(uint8_t vector);
  * @param cpl Required privilege level to use this interrupt
  * @return Status code
 */
-extern STATUS ItInstallInterruptHandler(uint8_t vector, uint32_t (*isr)(void*), void *context, PrivilegeLevel_t cpl);
+extern STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context, PrivilegeLevel_t cpl);
 
 /**
  * @brief Uninstall interrupt handler

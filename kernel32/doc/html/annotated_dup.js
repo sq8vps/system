@@ -15,7 +15,7 @@ var annotated_dup =
     [ "InitrdFileHeader", "struct_initrd_file_header.html", null ],
     [ "InitrdHeader", "struct_initrd_header.html", null ],
     [ "IoDeviceObject", "struct_io_device_object.html", null ],
-    [ "IoDeviceSubObject", "struct_io_device_sub_object.html", null ],
+    [ "IoSubDeviceObject", "struct_io_device_sub_object.html", null ],
     [ "IoDriverIrp", "struct_io_driver_irp.html", null ],
     [ "IoFileHandle", "struct_io_file_handle.html", "struct_io_file_handle" ],
     [ "IoVfsNode", "struct_io_vfs_node.html", "struct_io_vfs_node" ],

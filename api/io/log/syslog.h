@@ -10,6 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "io/fs/fs.h"
+#include <stdarg.h>
 /**
  * @brief Syslog message types
 */

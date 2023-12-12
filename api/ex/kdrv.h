@@ -9,11 +9,12 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/devmgr/dev.h"
+#include "io/dev/dev.h"
+#include <stdarg.h>
 struct ExDriverObject;
-struct IoDeviceSubObject;
-struct IoDeviceSubObject;
-struct IoDriverIRP;
+struct IoSubDeviceObject;
+struct IoSubDeviceObject;
+struct IoDriverRp;
 
 #define DRIVER_ENTRY DriverEntry
 typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
@@ -21,7 +22,7 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 struct ExDriverObject
 {
     uint32_t index;
-    struct IoDeviceSubObject *deviceObject; //linked list of devices created by the driver
+    struct IoSubDeviceObject *deviceObject; //linked list of devices created by the driver
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
@@ -30,13 +31,19 @@ struct ExDriverObject
     char *vendor;
     char *version;
     void *driverData;
-    STATUS (*driverInit)(struct ExDriverObject *driverObject);
-    STATUS (*driverUnload)(struct ExDriverObject *driverObject);
-    STATUS (*driverDispatchIrp)(struct IoDriverIRP *irp);
-    STATUS (*driverAddDevice)(struct ExDriverObject *driverObject, struct IoDeviceSubObject *baseDeviceObject);
+    STATUS (*init)(struct ExDriverObject *driverObject);
+    STATUS (*unload)(struct ExDriverObject *driverObject);
+    STATUS (*dispatch)(struct IoDriverRp *rp);
+    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject);
 
     struct ExDriverObject *next;
     struct ExDriverObject *previous;
+};
+
+struct ExDriverObjectList
+{
+    struct ExDriverObject *this;
+    struct ExDriverObjectList *next;
 };
 
 /**
@@ -45,6 +52,14 @@ struct ExDriverObject
  * @return Matched driver object or NULL if no matching object was found
 */
 extern struct ExDriverObject *ExFindDriverByAddress(uintptr_t address);
+
+/**
+ * @brief Make OS-compatible device ID
+ * @param count Count of string parameters
+ * @param ... Device ID parts (char*)
+ * @return Allocated and filled output string
+*/
+extern char* ExMakeDeviceId(uint8_t count, ...);
 
 
 #ifdef __cplusplus

@@ -8,7 +8,7 @@ var searchData=
   ['interrupt_2eh_5',['interrupt.h',['../interrupt_8h.html',1,'']]],
   ['io_20port_20manipulation_20routines_6',['IO port manipulation routines',['../group__io_port.html',1,'']]],
   ['iodeviceobject_7',['IoDeviceObject',['../struct_io_device_object.html',1,'']]],
-  ['iodevicesubobject_8',['IoDeviceSubObject',['../struct_io_device_sub_object.html',1,'']]],
+  ['IoSubDeviceObject_8',['IoSubDeviceObject',['../struct_io_device_sub_object.html',1,'']]],
   ['iodriverirp_9',['IoDriverIrp',['../struct_io_driver_irp.html',1,'']]],
   ['iofilehandle_10',['IoFileHandle',['../struct_io_file_handle.html',1,'']]],
   ['iovfsnode_11',['IoVfsNode',['../struct_io_vfs_node.html',1,'']]],

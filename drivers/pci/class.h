@@ -1,0 +1,38 @@
+#ifndef PCI_CLASS_H_
+#define PCI_CLASS_H_
+
+enum PciClass
+{
+    UNCLASSIFIED = 0x00,
+    MASS_STORAGE = 0x01,
+    NETWORK = 0x02,
+    DISPLAY = 0x03,
+    MULTIMEDIA = 0x04,
+    MEMORY = 0x05,
+    BRIDGE = 0x06,
+    SIMPLE_COMM = 0x07,
+    BASE_SYSTEM_PERIPHERAL = 0x08,
+    INPUT_DEVICE = 0x09,
+    DOCKING_STATION = 0x0A,
+    PROCESSOR = 0x0B,
+    SERIAL_BUS = 0x0C,
+    WIRELESS = 0x0D,
+    INTELLIGENT = 0x0E,
+    SATELLITE_COMM = 0x0F,
+    ENCRYPTION = 0x10,
+    SIGNAL_PROCESSING = 0x11,
+    UNASSIGNED = 0xFF,
+};
+
+enum PciSubclass
+{
+    BRIDGE_HOST = 0x00,
+    BRIDGE_ISA = 0x01,
+    BRIDGE_EISA = 0x02,
+    BRIDGE_MCA = 0x03,
+    BRIDGE_PCI = 0x04,
+    BRIDGE_PCMCIA = 0x05,
+    BRIDGE_PCI_2 = 0x09,
+};
+
+#endif

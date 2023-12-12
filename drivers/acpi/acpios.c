@@ -1,11 +1,10 @@
 #include "kernel.h"
 #include "acpica/include/acpi.h"
+#include "logging.h"
 
-static struct IoSyslogHandle *logHandle = NULL;
 
 ACPI_STATUS AcpiOsInitialize(void)
 {
-    logHandle = IoOpenSyslog(DRIVER_NAME);
     return AE_OK;
 }
 
@@ -270,22 +269,68 @@ void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
     KeReleaseSpinlock(Handle);
 }
 
+struct isrContext
+{
+    ACPI_OSD_HANDLER handler;
+    void *context;
+    uint32_t interruptNumber;
+    struct isrContext *next;
+} *isrContextList = NULL;
+
+static void dpc(void *context)
+{
+    struct isrContext *c = context;
+    c->handler(c->context);
+}
+
+static STATUS isrWrapper(uint8_t vector, void *context)
+{
+    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, dpc, context);
+    return OK;
+}
+
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context)
 {
     uint8_t vector = ItGetFreeVector(InterruptLevel);
     if(0 == vector)
         return AE_ALREADY_EXISTS;
+
+    struct isrContext *s = isrContextList;
+    struct isrContext *t = MmAllocateKernelHeap(sizeof(struct isrContext));
+    if(NULL == t)
+    {
+        ItReleaseVector(vector);
+        return AE_ALREADY_EXISTS;
+    }
     
+    if(NULL == isrContextList)
+        isrContextList = t;
+    else
+    {
+        while(NULL != s->next)
+            s = s->next;
+        
+        s->next = t;
+    }
+    t->handler = Handler;
+    t->context = Context;
+    t->interruptNumber = InterruptLevel;
+    t->next = NULL;
+
     STATUS ret;
     if(OK != (ret = HalRegisterIRQ(InterruptLevel, vector, IT_MODE_FIXED, IT_POLARITY_ACTIVE_LOW, IT_TRIGGER_LEVEL)))
     {
         ItReleaseVector(vector);
+        s->next = NULL;
+        MmFreeKernelHeap(t);
         return AE_BAD_PARAMETER;
     }
-    if(OK != (ret = ItInstallInterruptHandler(vector, (uint32_t(*)(void*))Handler, Context, PL_KERNEL)))
+    if(OK != (ret = ItInstallInterruptHandler(vector, isrWrapper, t, PL_KERNEL)))
     {
         HalUnregisterIRQ(InterruptLevel);
         ItReleaseVector(vector);
+        s->next = NULL;
+        MmFreeKernelHeap(t);
         return AE_BAD_PARAMETER;
     }
     if(OK != (ret = HalEnableIRQ(vector)))
@@ -293,6 +338,8 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
         HalUnregisterIRQ(InterruptLevel);
         ItUninstallInterruptHandler(vector);
         ItReleaseVector(vector);
+        s->next = NULL;
+        MmFreeKernelHeap(t);
         return AE_BAD_PARAMETER; 
     }
     return AE_OK;
@@ -303,6 +350,31 @@ ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLE
     uint8_t vector = HalGetAssociatedVector(InterruptNumber);
     if(0 == vector)
         return AE_BAD_PARAMETER;
+
+    struct isrContext *s = isrContextList;
+    if(NULL == s)
+        return AE_BAD_PARAMETER;
+    
+    if(s->interruptNumber == InterruptNumber)
+    {
+        isrContextList = s->next;
+    }
+    else
+    {
+        while(NULL != s)
+        {
+            if((NULL != s->next) && (s->next->interruptNumber == InterruptNumber))
+            {
+                s->next = s->next->next;
+                MmFreeKernelHeap(s->next);
+                break;
+            }
+            s = s->next;
+        }
+        if(NULL == s)
+            return AE_BAD_PARAMETER;
+    }
+
     
     HalDisableIRQ(vector);
     HalUnregisterIRQ(InterruptNumber);
@@ -446,15 +518,15 @@ void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    if(NULL != logHandle)
-        IoWriteSyslogV(logHandle, SYSLOG_INFO, Format, Args);
+    if(NULL != AcpiLogHandle)
+        IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
     va_end(Args);
 }
 
 void AcpiOsVprintf(const char *Format, va_list Args)
 {
-    if(NULL != logHandle)
-        IoWriteSyslogV(logHandle, SYSLOG_INFO, Format, Args);
+    if(NULL != AcpiLogHandle)
+        IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
 }
 
 void AcpiOsRedirectOutput(void *Destination)

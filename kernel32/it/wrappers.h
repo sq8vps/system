@@ -6,6 +6,7 @@
 #include "it.h"
 #include "ke/core/mutex.h"
 #include "hal/interrupt.h"
+#include "ke/core/dpc.h"
 
 /**
  * @brief Interrupt handler descriptor for internal use
@@ -30,6 +31,7 @@ struct ItHandlerDescriptor
         itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].callback(n, itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].context);  \
         HalClearInterruptFlag(n); \
         KeReleaseSpinlock(&itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].spinlock); \
+        KeProcessDpcQueue(); \
     }; \
 
 static struct ItHandlerDescriptor itHandlerDescriptorTable[IT_HANDLER_COUNT];

@@ -118,15 +118,10 @@ NORETURN static void KeInit(void)
 
 	KeSchedulerStart();
 
-	while(NULL == KeGetCurrentTask()) //wait for the scheduler to start
-		;
-
-	// struct ExDriverObject *drv;
-	// ExLoadKernelDriver("/initrd/acpi.drv", &drv);
-	// if(NULL != drv)
-	// {
-	// 	drv->init(drv);
-	// }
+	if(OK != IoInitDeviceManager("ACPI"))
+	{
+		PRINT("FAILURE");
+	}
 
 	struct KeTaskControlBlock *t1, *t2;
 	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);

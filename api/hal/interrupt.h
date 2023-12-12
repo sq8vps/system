@@ -10,6 +10,13 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+enum HalInterruptMethod
+{
+    IT_METHOD_NONE,
+    IT_METHOD_PIC,
+    IT_METHOD_APIC,
+};
+
 /**
  * @brief External interrupt polarity
 */

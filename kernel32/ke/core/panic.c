@@ -21,6 +21,9 @@ static const char *panicStrings[] =
     PANIC_STRING(MACHINE_CHECK_FAULT),
     PANIC_STRING(UNEXPECTED_FAULT),
     PANIC_STRING(ACPI_FATAL_ERROR),
+    PANIC_STRING(PRIORITY_LEVEL_TOO_LOW),
+    PANIC_STRING(PRIORITY_LEVEL_TOO_HIGH),
+    PANIC_STRING(RP_FINALIZED_OUT_OF_LINE),
 };
 
 static void printHex(uintptr_t x)
@@ -47,7 +50,7 @@ static void printPanic(uintptr_t ip, uintptr_t code)
     BootVgaPrintString(")\n\nModule: ");
     struct ExDriverObject *t = ExFindDriverByAddress(ip);
     if(NULL != t)
-        BootVgaPrintString(t->name);
+        BootVgaPrintString(t->fileName);
     else
         BootVgaPrintChar('?');
 

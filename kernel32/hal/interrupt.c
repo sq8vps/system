@@ -144,12 +144,13 @@ STATUS HalClearInterruptFlag(uint8_t irq)
     if(irq < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
 
-    if(IT_METHOD_APIC == interruptMethod)
-        return ApicSendEOI();
-    else if(IT_METHOD_PIC == interruptMethod)
-        return PicSendEOI(irq);
+    if(IT_METHOD_NONE == interruptMethod)
+        return IT_NO_CONTROLLER_CONFIGURED;
 
-    return IT_NO_CONTROLLER_CONFIGURED;
+    if(IT_METHOD_PIC == interruptMethod)
+        PicSendEOI(irq);
+    
+    return ApicSendEOI();
 }
 
 STATUS HalConfigureSystemTimer(uint8_t irq)
@@ -194,4 +195,9 @@ STATUS HalSetTaskPriority(uint8_t priority)
 uint8_t HalGetTaskPriority(void)
 {
     return ApicGetTaskPriority();
+}
+
+uint8_t HalGetProcessorPriority(void)
+{
+    return ApicGetProcessorPriority();
 }

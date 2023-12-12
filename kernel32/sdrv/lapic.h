@@ -92,4 +92,10 @@ INTERNAL STATUS ApicSetTaskPriority(uint8_t priority);
 */
 INTERNAL uint8_t ApicGetTaskPriority(void);
 
+/**
+ * @brief Get current processor priority from PPR register
+ * @return Current processor priority (0-15)
+*/
+INTERNAL uint8_t ApicGetProcessorPriority(void);
+
 #endif

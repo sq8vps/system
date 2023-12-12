@@ -172,6 +172,7 @@ static error_t loadToInitrd(char *name)
 
 	loadToInitrd(KERNEL_FILE_NAME);
 	loadToInitrd("acpi.drv");
+	loadToInitrd("pci.drv");
 
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;

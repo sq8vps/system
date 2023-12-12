@@ -5,7 +5,7 @@
             "includePath": [
                 "kernel32",
                 ".",
-                "api"
+                ".."
             ],
             "defines": [
                 "${default}"
@@ -17,7 +17,7 @@
                     "${default}"
                 ]
             },
-            "intelliSenseMode": "${default}",
+            "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "${default}",
             "cppStandard": "${default}",
             "compilerPath": "${default}"

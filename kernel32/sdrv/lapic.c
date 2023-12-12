@@ -294,3 +294,11 @@ uint8_t ApicGetTaskPriority(void)
     
     return (LAPIC(LAPIC_TPR_OFFSET) >> 4) & 0xFF;
 }
+
+uint8_t ApicGetProcessorPriority(void)
+{
+    if(NULL == lapic)
+        return 0;
+    
+    return (LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xFF;
+}

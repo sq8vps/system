@@ -1,14 +1,12 @@
 //This header file is generated automatically
-#ifndef API___API__KE_TSS_H_
-#define API___API__KE_TSS_H_
+#ifndef EXPORTED___API__ARCH_I686_I686_H_
+#define EXPORTED___API__ARCH_I686_I686_H_
 
 #ifdef __cplusplus
 extern "C" 
 {
 #endif
 
-#include <stdint.h>
-#include "defines.h"
 
 #ifdef __cplusplus
 }

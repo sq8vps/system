@@ -22,6 +22,7 @@
  * @{
 */
 
+EXPORT
 enum HalInterruptMethod
 {
     IT_METHOD_NONE,
@@ -186,6 +187,12 @@ INTERNAL STATUS HalSetTaskPriority(uint8_t priority);
  * @return Current task priority (0-15)
 */
 INTERNAL uint8_t HalGetTaskPriority(void);
+
+/**
+ * @brief Get current processor priority
+ * @return Current processor priority (0-15)
+*/
+INTERNAL uint8_t HalGetProcessorPriority(void);
 
 /**
  * @}

@@ -5,6 +5,7 @@
 #include "hal/time.h"
 #include "hal/interrupt.h"
 #include "mutex.h"
+#include "panic.h"
 #include "ke/sched/sched.h"
 
 struct KeDpcObject
@@ -26,6 +27,9 @@ static KeSpinlock flagMutex = KeSpinlockInitializer;
 
 STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context)
 {
+    if(HalGetProcessorPriority() == HAL_TASK_PRIORITY_PASSIVE)
+        KePanicEx(PRIORITY_LEVEL_TOO_LOW, HalGetProcessorPriority(), HAL_TASK_PRIORITY_PASSIVE + 1, 0, 0);
+
     uint8_t queueIndex = 0;
     switch(priority)
     {
@@ -67,64 +71,51 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     dpc->time = HalGetTimestamp();
     KeReleaseSpinlock(&queueMutex);
     KeAcquireSpinlock(&flagMutex);
-    isPending = true;
+    if(false == isProcessingOngoing)
+        isPending = true;
+    HalSetTaskPriority(HAL_TASK_PRIORITY_DPC);
     KeReleaseSpinlock(&flagMutex);
     return OK;
 }
 
-
+static void KeDpcProcess(void)
+{
+    KeAcquireSpinlock(&flagMutex);
+    isProcessingOngoing = true;
+    isPending = false;
+    KeReleaseSpinlock(&flagMutex);
+    for(uint8_t i = 0; i < sizeof(queue) / sizeof(*queue); i++)
+    {
+        KeAcquireSpinlock(&queueMutex);
+        struct KeDpcObject *t = queue[i];
+        while(NULL != queue[i])
+        {
+            t = queue[i];
+            KeReleaseSpinlock(&queueMutex);
+            t->time = HalGetTimestamp() - t->time;
+            t->callback(t->context);
+            KeAcquireSpinlock(&queueMutex);
+            queue[i] = t->next;
+            MmFreeKernelHeap(t);
+        }
+        KeReleaseSpinlock(&queueMutex);
+    }
+    KeAcquireSpinlock(&flagMutex);
+    isProcessingOngoing = false;
+    HalSetTaskPriority(HAL_TASK_PRIORITY_PASSIVE);
+    KeReleaseSpinlock(&flagMutex);
+}
 
 void KeProcessDpcQueue(void)
 {
     KeAcquireSpinlock(&flagMutex);
-    if(isProcessingOngoing || !isPending)
+    if(isPending && (HalGetProcessorPriority() == HAL_TASK_PRIORITY_DPC))
     {
         KeReleaseSpinlock(&flagMutex);
+        KeDpcProcess();
+        KePerformPreemptedTaskSwitch();
         return;
     }
-    else
-    {
-        KeReleaseSpinlock(&flagMutex);
-        HalSetTaskPriority(HAL_TASK_PRIORITY_DPC);
-        KeTaskYield();
-    }
+    KeReleaseSpinlock(&flagMutex);
 }
 
-//TODO: is this safe?
-bool KeCheckIfDpcPending(void)
-{
-    return isPending;
-}
-
-static NORETURN void KeDpcWorker(void *unused)
-{
-    while(1)
-    {
-        KeAcquireSpinlock(&flagMutex);
-        if(isPending)
-        {
-            isProcessingOngoing = true;
-            KeReleaseSpinlock(&flagMutex);
-            for(uint8_t i = 0; i < sizeof(queue) / sizeof(*queue); i++)
-            {
-                KeAcquireSpinlock(&queueMutex);
-                struct KeDpcObject *t = queue[i];
-                while(NULL != queue[i])
-                {
-                    queue[i] = t->next;
-                    KeReleaseSpinlock(&queueMutex);
-                    t->time = HalGetTimestamp() - t->time;
-                    t->callback(t->context);
-                    KeAcquireSpinlock(&queueMutex);
-                }
-                KeReleaseSpinlock(&queueMutex);
-            }
-            KeAcquireSpinlock(&flagMutex);
-            isProcessingOngoing = false;
-            isPending = false;
-        }
-        KeReleaseSpinlock(&flagMutex);
-        HalSetTaskPriority(HAL_TASK_PRIORITY_PASSIVE);
-        KeTaskYield();
-    }
-}

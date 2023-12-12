@@ -1,6 +1,7 @@
 #ifndef KERNEL_ASSERT_H_
 #define KERNEL_ASSERT_H_
 
+EXPORT
 #ifdef DEBUG
     #include "common.h"
     /**

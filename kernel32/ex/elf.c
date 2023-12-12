@@ -122,6 +122,7 @@ STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t inde
 			}
 			else //no definition found and this symbol is not weak: failure
 			{
+				PRINT("Undefined symbol %s\n", name);
 				return EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL;
 			}
 		}

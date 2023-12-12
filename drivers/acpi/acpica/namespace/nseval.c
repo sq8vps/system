@@ -297,7 +297,6 @@ AcpiNsEvaluate (
     /* For predefined names: Typecheck all incoming arguments */
 
     AcpiNsCheckArgumentTypes (Info);
-
     /*
      * Three major evaluation cases:
      *

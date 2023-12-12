@@ -10,6 +10,9 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "it.h"
+#include "ke/core/mutex.h"
+#include "hal/interrupt.h"
+#include "ke/core/dpc.h"
 
 #ifdef __cplusplus
 }

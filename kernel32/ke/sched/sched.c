@@ -8,11 +8,15 @@
 #include "ke/core/mutex.h"
 #include "it/it.h"
 #include "sleep.h"
+#include "ke/core/dpc.h"
 
 #define KE_SCHEDULER_TIME_SLICE 10000 //microseconds
 
 uint32_t KeSchedPostponeCounter = 0; //count of scheduler task switch postponement events
 bool KeSchedTaskSwitchPending = false; //is there a task switch to perform?
+
+static bool dpcTaskSwitchPending = false;
+static KeSpinlock dpcTaskSwitchFlagMutex = KeSpinlockInitializer;
 
 struct KeSchedulerQueue
 {
@@ -25,16 +29,29 @@ struct KeSchedulerQueue
     struct KeTaskControlBlock *queue[MAX_CPU_COUNT][PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1];
 #else
     struct KeTaskControlBlock *currentTask; //current task TCB
+    struct KeTaskControlBlock *nextTask = NULL; //next task TCB planned to be switched after DPC processing
     static struct KeTaskControlBlock *readyToRun[PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1]; //next ready to run task
     static struct KeTaskControlBlock *terminated; //next task to be terminated
 #endif
 
-extern void KeSchedulerISR(struct ItFrame *f);
+static void KeSchedule(void);
 
-void KeSchedulerISRClearFlag()
+//this worker runs always at the DPC level
+static void KeSchedulerWorker(void *context)
 {
-    HalClearInterruptFlag(IT_SYSTEM_TIMER_VECTOR);
+    KeSchedule();
+    KeAcquireSpinlock(&dpcTaskSwitchFlagMutex);
+    dpcTaskSwitchPending = true;
+    KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
 }
+
+STATUS KeSchedulerISR(uint8_t vector, void *context)
+{
+    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, NULL);
+    HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
+    return OK;
+}
+
 
 static KeSpinlock queueMutex = KeSpinlockInitializer;
 
@@ -96,7 +113,7 @@ static void attachToQueue(struct KeTaskControlBlock *tcb, struct KeTaskControlBl
 
 static KeSpinlock schedulerMutex = KeSpinlockInitializer;
 
-void KeSchedule(void)
+static void KeSchedule(void)
 {
     KeAcquireSpinlock(&schedulerMutex);
     
@@ -130,10 +147,10 @@ void KeSchedule(void)
         {
             if(NULL != readyToRun[major][minor])
             {
-                //get current task from queue
-                currentTask = readyToRun[major][minor];
+                //get next task from queue
+                nextTask = readyToRun[major][minor];
                 //update state
-                currentTask->state = TASK_RUNNING;
+                nextTask->state = TASK_RUNNING;
                 KeReleaseSpinlock(&schedulerMutex);
                 HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
                 return;
@@ -176,7 +193,7 @@ void KeSchedulerStart(void)
     if(OK != (ret = KeCreateIdleTask()))
         KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
 
-    ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, (ItHandler)KeSchedulerISR, NULL, PL_KERNEL);
+    ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, NULL, PL_KERNEL);
 
     //create kernel initialization task
     uintptr_t cr3;
@@ -265,4 +282,25 @@ void KeUnblockTask(struct KeTaskControlBlock *tcb)
 struct KeTaskControlBlock* KeGetCurrentTask(void)
 {
     return currentTask;
+}
+
+void KeTaskYield(void)
+{
+    if(HalGetProcessorPriority() > HAL_TASK_PRIORITY_PASSIVE)
+        KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_TASK_PRIORITY_PASSIVE, 0, 0);
+    KeSchedule();
+    KePerformTaskSwitch();
+}
+
+void KePerformPreemptedTaskSwitch(void)
+{
+    KeAcquireSpinlock(&dpcTaskSwitchFlagMutex);
+    if(true == dpcTaskSwitchPending)
+    {
+        dpcTaskSwitchPending = false;
+        KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
+        KePerformTaskSwitch();
+        return;
+    }
+    KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
 }

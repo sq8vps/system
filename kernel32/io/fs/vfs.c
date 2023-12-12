@@ -1,6 +1,6 @@
 #include "vfs.h"
 #include "common.h"
-#include "io/devmgr/dev.h"
+#include "io/dev/dev.h"
 #include "sdrv/initrd/initrd.h"
 #include "mm/heap.h"
 #include "assert.h"

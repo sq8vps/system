@@ -1,18 +1,17 @@
 ;struct KeTaskControlBlock *currentTask
 extern currentTask
 
+;struct KeTaskControlBlock *nextTask
+extern nextTask
+
 ;void KeSchedule(void)
 ;This is the callback function that should provide scheduling,
-;that is it should set new task TCB in *currentTask
+;that is it should set new task TCB in *nextTask
 extern KeSchedule
 
 ;void KeUpdateTSS(uint16_t cpu, uintptr_t esp0)
 ;This is the function that updates the TSS for given CPU
 extern KeUpdateTSS
-
-;void KeSchedulerISRClearFlag()
-;This function is a wrapper that cleans appropriate interrupt flag
-extern KeSchedulerISRClearFlag
 
 ;uint32_t KeSchedPostponeCounter;
 extern KeSchedPostponeCounter
@@ -20,30 +19,6 @@ extern KeSchedPostponeCounter
 extern KeSchedTaskSwitchPending
 
 section .text
-
-;void KeSchedulerISR(struct ItFrame *f)
-global KeSchedulerISR
-KeSchedulerISR:
-    test DWORD [KeSchedPostponeCounter],0xFFFFFFFF ;check if task switches are postponed
-    jz .continueScheduling 
-    ;if so, mark task switch is pending and return to previous task
-    mov BYTE [KeSchedTaskSwitchPending],1
-    iret
-
-    .continueScheduling:
-
-    ;store task context immediately
-    call KeStoreTaskContext
-
-    ;invoke scheduler
-    call KeSchedule
-
-    ;new task pointer is in currentTask
-    ;switch to the new task
-    call KeSwitchToTask
-
-    ;this point should be unreachable
-    jmp $
 
 ;Store current task context on stack
 ;This function alters the stack
@@ -69,13 +44,15 @@ KeStoreTaskContext:
     ret
 
 ;This function performs task switch, that is it loads and executes
-;the task which TCB is stored in *currentTask.
+;the task which TCB is stored in *nextTask.
 ;Also, the stack must contain all GP registers, EFLAGS, CS and EIP.
 ;This function does not return to it's caller.
 KeSwitchToTask:
     add esp,4 ;remove return address - not needed
 
-    mov esi,[currentTask]
+    mov esi,[nextTask]
+    mov [currentTask],esi
+    mov [nextTask],DWORD 0
     mov esp,[esi + TCB.esp] ;update kernel stack ESP
 
     mov eax,cr3 ;get current CR3
@@ -93,9 +70,6 @@ KeSwitchToTask:
     push 0 ;cpu number
     call KeUpdateTSS
     add esp,8 ;remove arguments
-
-    ;clear interrupt flag (send End Of Interrupt)
-    call KeSchedulerISRClearFlag
 
     ; restore segment registers
     mov ax,[esi + TCB.ds]
@@ -117,15 +91,21 @@ KeSwitchToTask:
     ;jump to the new task
     iret
 
-;extern void KeTaskYield(void)
-;Pause task execution and yield to scheduler.
-;The function returns when the task is scheduled again.
-global KeTaskYield:function
-KeTaskYield:
+;extern void KePerformTaskSwitch(void)
+;Perform task switch immediately if new task is available
+;This function returns when the calling task is scheduled again
+global KePerformTaskSwitch:function
+KePerformTaskSwitch:
+    mov eax,[nextTask]
+    test eax,0xFFFFFFFF
+    jz .returnFromSwitch
+    
+    cli
+
     sub esp,12 ;make room for EIP, CS and EFLAGS
 
     ;store EIP
-    mov [esp],DWORD .returnFromYield
+    mov [esp],DWORD .returnFromSwitch
     ;store CS
     xor eax,eax
     mov ax,cs
@@ -135,12 +115,17 @@ KeTaskYield:
     pop eax
     mov [esp+8],eax
 
-    cli
+    ;store task context immediately
+    call KeStoreTaskContext
 
-    ;jump to scheduler ISR as if it was end of the time slice
-    jmp KeSchedulerISR
+    ;new task pointer is in nextTask
+    ;switch to the new task
+    call KeSwitchToTask
 
-.returnFromYield: ;but return here on task switch
+    ;this point should be unreachable
+    jmp $
+
+.returnFromSwitch: ;but return here on task switch
     ret
 
 

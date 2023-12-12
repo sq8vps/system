@@ -366,7 +366,6 @@
 
 #endif /* ACPI_NO_ERROR_MESSAGES */
 
-
 /*
  * Debug macros that are conditionally compiled
  */

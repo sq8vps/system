@@ -19,8 +19,40 @@
 static struct ExDriverObject *kernelDriverListHead = NULL;
 static KeMutex kernelDriverListMutex = KeMutexInitializer;
 
-STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObject **drivers, uint16_t *driverCount)
+STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectList **drivers, uint16_t *driverCount)
 {
+    if(0 == CmStrcmp("ACPI", deviceId))
+    {
+        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
+        (*drivers)->next = NULL;
+        STATUS ret = ExLoadKernelDriver("/initrd/acpi.drv", &((*drivers)->this));
+        if(OK != ret)
+            return ret;
+        
+        ret = (*drivers)->this->init((*drivers)->this);
+
+        if(OK == ret)
+            *driverCount = 1;
+        
+        return ret;
+    }
+    else if((0 == CmStrcmp("ACPI/PNP0A03", deviceId)) || (0 == CmStrcmp("ACPI/PNP0A08", deviceId)))
+    {
+        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
+        (*drivers)->next = NULL;
+        STATUS ret = ExLoadKernelDriver("/initrd/pci.drv", &((*drivers)->this));
+        if(OK != ret)
+            return ret;
+        
+        ret = (*drivers)->this->init((*drivers)->this);
+
+        if(OK == ret)
+            *driverCount = 1;
+        
+        return ret;
+    }
+    else
+        PRINT("Unknown device %s\n", deviceId);
     return NOT_IMPLEMENTED;
 }
 
@@ -157,8 +189,8 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
         object->previous = t;
         object->next = NULL;
         t->next = object;
-        freeSize = MM_DRIVERS_MAX_SIZE - (t->address + t->size);
-        object->address = t->address + t->size;
+        object->address = ALIGN_UP((t->address + t->size), MM_PAGE_SIZE);
+        freeSize = MM_DRIVERS_MAX_SIZE - object->address;
     }
 
     if(imageSize > freeSize)
@@ -282,4 +314,32 @@ struct ExDriverObject *ExFindDriverByAddress(uintptr_t address)
     }
     KeReleaseMutex(&kernelDriverListMutex);
     return t;
+}
+
+char* ExMakeDeviceId(uint8_t count, ...)
+{
+    if(0 == count)
+        return NULL;
+    
+    va_list args;
+    va_start(args, count);
+    uint32_t size = 0;
+    for(uint8_t i = 0; i < count; i++)
+        size += (CmStrlen(va_arg(args, char*)) + 1);
+
+    char *r = MmAllocateKernelHeap(size);
+    if(NULL == r)
+        return r;
+    r[0] = '\0';
+
+    va_start(args, count);
+    for(uint8_t i = 0; i < count; i++)
+    {
+        CmStrcat(r, va_arg(args, char*));
+        if(i != (count - 1))
+            CmStrcat(r, "/");
+    }
+ 
+    va_end(args);
+    return r;
 }

@@ -10,7 +10,8 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/devmgr/dev.h"
+#include "io/dev/dev.h"
+#include <stdarg.h>
 
 
 /**
@@ -21,8 +22,8 @@
 
 EXPORT
 struct ExDriverObject;
-struct IoDeviceSubObject;
-struct IoDeviceSubObject;
+struct IoSubDeviceObject;
+struct IoSubDeviceObject;
 struct IoDriverRp;
 
 EXPORT
@@ -33,7 +34,7 @@ EXPORT
 struct ExDriverObject
 {
     uint32_t index;
-    struct IoDeviceSubObject *deviceObject; //linked list of devices created by the driver
+    struct IoSubDeviceObject *deviceObject; //linked list of devices created by the driver
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
@@ -45,10 +46,17 @@ struct ExDriverObject
     STATUS (*init)(struct ExDriverObject *driverObject);
     STATUS (*unload)(struct ExDriverObject *driverObject);
     STATUS (*dispatch)(struct IoDriverRp *rp);
-    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceSubObject *baseDeviceObject);
+    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject);
 
     struct ExDriverObject *next;
     struct ExDriverObject *previous;
+};
+
+EXPORT
+struct ExDriverObjectList
+{
+    struct ExDriverObject *this;
+    struct ExDriverObjectList *next;
 };
 
 /**
@@ -61,7 +69,7 @@ struct ExDriverObject
  * @note Freeing the \a **drivers table must be done by the caller.
  * @note This function reuses already loaded drivers.
 */
-STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObject **drivers, uint16_t *driverCount);
+STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectList **drivers, uint16_t *driverCount);
 
 /**
  * @brief Load given driver
@@ -78,6 +86,15 @@ EXPORT
  * @return Matched driver object or NULL if no matching object was found
 */
 EXTERN struct ExDriverObject *ExFindDriverByAddress(uintptr_t address);
+
+EXPORT
+/**
+ * @brief Make OS-compatible device ID
+ * @param count Count of string parameters
+ * @param ... Device ID parts (char*)
+ * @return Allocated and filled output string
+*/
+EXTERN char* ExMakeDeviceId(uint8_t count, ...);
 
 /**
  * @}

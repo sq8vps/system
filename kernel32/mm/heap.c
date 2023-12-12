@@ -137,6 +137,8 @@ static struct HeapBlockMeta *mmSplitHeapBlock(struct HeapBlockMeta *block, uint3
     nextBlock->free = 1;
     nextBlock->size = remainder - META_SIZE;
     nextBlock->next = block->next; //update list pointers
+    if(NULL != block->next)
+        block->next->previous = nextBlock;
     nextBlock->previous = block;
     block->next = nextBlock;
 
@@ -166,7 +168,7 @@ static struct HeapBlockMeta *mmFindPreallocatedHeapBlock(struct HeapBlockMeta **
                 return mmAllocateHeapBlock(b, n - b->size, 1);
             }
         }
-        //this block is not free, look for next block
+        //this block is not free, look for the next block
         
         *previous = b; //store this block address
         b = b->next; //get next block address
@@ -224,9 +226,11 @@ void *MmAllocateKernelHeap(uintptr_t n)
     return (void*)((uintptr_t)block + META_SIZE);
 }
 
+
+
 void MmFreeKernelHeap(const void *ptr)
 {
-    if((uintptr_t)ptr < MM_KERNEL_HEAP_START || ((uintptr_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - META_SIZE)))
+    if((uintptr_t)ptr < (MM_KERNEL_HEAP_START + META_SIZE) || ((uintptr_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - META_SIZE)))
         return;
 
     struct HeapBlockMeta *block = (struct HeapBlockMeta*)((uintptr_t)ptr - META_SIZE); //get block header
@@ -249,9 +253,10 @@ void MmFreeKernelHeap(const void *ptr)
         block = block->next;
         freed += block->size + META_SIZE; //sum consecutive free memory
         first->next = block; //update (extend) first block
-        block->previous = first;
     }
     first->next = block->next;
+    if(NULL != block->next)
+        block->next->previous = first;
     first->size = freed;
     KeReleaseSpinlock(&heapAllocatorMutex);
 }

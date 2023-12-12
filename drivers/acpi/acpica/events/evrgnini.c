@@ -299,9 +299,7 @@ AcpiEvPciConfigRegionSetup (
     ACPI_NAMESPACE_NODE     *PciDeviceNode;
     ACPI_OPERAND_OBJECT     *RegionObj = (ACPI_OPERAND_OBJECT  *) Handle;
 
-
     ACPI_FUNCTION_TRACE (EvPciConfigRegionSetup);
-
 
     HandlerObj = RegionObj->Region.Handler;
     if (!HandlerObj)

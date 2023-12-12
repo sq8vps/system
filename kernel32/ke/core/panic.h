@@ -39,6 +39,9 @@ enum KernelPanicCode
     MACHINE_CHECK_FAULT,
     UNEXPECTED_FAULT,
     ACPI_FATAL_ERROR,
+    PRIORITY_LEVEL_TOO_LOW,
+    PRIORITY_LEVEL_TOO_HIGH,
+    RP_FINALIZED_OUT_OF_LINE,
 };
 
 EXPORT
@@ -82,7 +85,6 @@ EXPORT
  * @attention This function never returns
 */
 EXTERN NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
-
 
 /**
  * @}
