@@ -65,7 +65,7 @@ void task2(void *c)
 		// KeAcquireMutex(&s);
 		// CmPrintf("2");
 		// KeReleaseMutex(&s);
-		KeTaskYield();
+		//KeTaskYield();
 	}
 }
 
@@ -117,6 +117,7 @@ NORETURN static void KeInit(void)
 	}
 
 	KeSchedulerStart();
+	
 
 	if(OK != IoInitDeviceManager("ACPI"))
 	{
@@ -131,7 +132,7 @@ NORETURN static void KeInit(void)
 
 	while(1)
 	{
-		//KeTaskYield();
+		KeTaskYield();
 	}
 }
 

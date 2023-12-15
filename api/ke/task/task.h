@@ -44,6 +44,7 @@ enum KeTaskBlockReason
     TASK_BLOCK_IO,
     TASK_BLOCK_SLEEP,
     TASK_BLOCK_MUTEX,
+    TASK_BLOCK_EVENT,
 };
 
 #define TCB_EFLAGS_IF (1 << 9) //interrupt flag
@@ -86,8 +87,8 @@ struct KeTaskControlBlock
         uint32_t openFileCount;
     } files;
     
-    uint32_t pid; //unique process ID
-    uint32_t tid; //unique task ID
+    uint16_t pid; //unique process ID
+    uint16_t tid; //unique task ID
     struct KeTaskControlBlock *parent; //parent process for owned threads
 
     enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy

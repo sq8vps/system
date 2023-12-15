@@ -2,6 +2,7 @@
 #include "mm/heap.h"
 #include "common.h"
 #include "assert.h"
+#include "enumeration.h"
 
 //root device (ACPI or MP) object
 static struct IoDeviceObject rootDevice = {.type = IO_DEVICE_TYPE_ROOT};
@@ -75,8 +76,14 @@ STATUS IoRegisterDevice(struct IoSubDeviceObject *baseDevice, char *deviceId)
     }
     baseDevice->mainDeviceObject->child = device;
 
-    device->flags |= IO_DEVICE_FLAG_INITIALIZED;
+
     return OK;
+}
+
+STATUS IoInitializeDevice(struct IoDeviceObject *dev)
+{
+    dev->flags |= IO_DEVICE_FLAG_INITIALIZED;
+    return IoNotifyDeviceEnumerator(dev);
 }
 
 STATUS IoBuildDeviceStack(struct IoDeviceObject *device)
@@ -115,6 +122,10 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     STATUS ret = OK;
     struct ExDriverObjectList *drivers = NULL;
     uint16_t driverCount = 0;
+    
+    if(OK != (ret = IoStartDeviceEnumerationThread()))
+        return ret;
+    
     if(OK != (ret = ExLoadKernelDriversForDevice(rootDeviceId, &drivers, &driverCount)))
         return ret;
     
@@ -213,5 +224,30 @@ STATUS IoSendRpDown(struct IoSubDeviceObject *caller, struct IoDriverRp *rp)
 
 STATUS IoSetDeviceDisplayedName(struct IoSubDeviceObject *device, char *name)
 {
-    return NOT_IMPLEMENTED;
+    if(NULL == device->mainDeviceObject)
+        return OK;
+    if(NULL != device->mainDeviceObject->name)
+        MmFreeKernelHeap(device->mainDeviceObject->name);
+    if(NULL == (device->mainDeviceObject->name = MmAllocateKernelHeap(CmStrlen(name))))
+        return OUT_OF_RESOURCES;
+    
+    CmStrcpy(device->mainDeviceObject->name, name);
+    return OK;
+}
+
+STATUS IoUpdateCompatibleDeviceIdList(struct IoDeviceObject *dev, char *id)
+{
+    if(NULL == id)
+        return OK;
+    for(uint8_t i = 0; i < IO_MAX_COMPATIBLE_DEVICE_IDS; i++)
+    {
+        if(NULL == dev->compatibleIds[i])
+        {
+            if(NULL == (dev->compatibleIds[i] = MmAllocateKernelHeap(CmStrlen(id))))
+                return OUT_OF_RESOURCES;
+            CmStrcpy(dev->compatibleIds[i], id);
+            return OK;
+        }
+    }
+    return OUT_OF_RESOURCES;
 }

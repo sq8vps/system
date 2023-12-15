@@ -454,13 +454,13 @@ ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32 *Value, UINT32 Width)
     switch(Width)
     {
         case 8:
-            *Value = PortIoReadByte(Address); 
+            *Value = HalIoPortReadByte(Address); 
             break;
         case 16:
-            *Value = PortIoReadWord(Address); 
+            *Value = HalIoPortReadWord(Address); 
             break;
         case 32:
-            *Value = PortIoReadDWord(Address); 
+            *Value = HalIoPortReadDWord(Address); 
             break;
         default:
             return AE_BAD_PARAMETER;
@@ -474,13 +474,13 @@ ACPI_STATUS AcpiOsWritePort(ACPI_IO_ADDRESS Address, UINT32 Value, UINT32 Width)
     switch(Width)
     {
         case 8:
-            PortIoWriteByte(Address, Value); 
+            HalIoPortWriteByte(Address, Value); 
             break;
         case 16:
-            PortIoWriteWord(Address, Value); 
+            HalIoPortWriteWord(Address, Value); 
             break;
         case 32:
-            PortIoWriteDWord(Address, Value); 
+            HalIoPortWriteDWord(Address, Value); 
             break;
         default:
             return AE_BAD_PARAMETER;

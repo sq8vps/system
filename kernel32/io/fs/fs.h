@@ -7,6 +7,7 @@
 #include "vfs.h"
 #include "fstypedefs.h"
 
+EXPORT
 struct KeTaskControlBlock;
 
 EXPORT

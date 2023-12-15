@@ -18,8 +18,6 @@
 #define KE_PROCESS_INITIAL_STACK_SIZE 4096
 #define KE_PROCESS_MAX_STACK_SIZE 65536
 
-static uint32_t nextSequentialTid = 1;
-
 struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, uintptr_t pageDir, PrivilegeLevel_t pl, const char *name, const char *path)
 {
     struct KeTaskControlBlock *tcb = MmAllocateKernelHeap(sizeof(struct KeTaskControlBlock));
@@ -61,7 +59,8 @@ struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, 
         CmStrcpy(tcb->path, path);
     }
 
-    tcb->tid = nextSequentialTid++;
+    tcb->tid = KeAssignTid();
+    tcb->pid = tcb->tid;
 
     return tcb;
 }

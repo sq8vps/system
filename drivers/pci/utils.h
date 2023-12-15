@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "stdbool.h"
 #include "class.h"
+#include "defines.h"
+#include "io/dev/rp.h"
 
 struct PciAddress
 {
@@ -34,5 +36,9 @@ bool PciIsPciPciBridge(struct PciAddress address);
 bool PciIsHostBridge(struct PciAddress address);
 
 bool PciIsMultifunction(struct PciAddress address);
+
+STATUS PciReadConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp);
+
+STATUS PciWriteConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp);
 
 #endif

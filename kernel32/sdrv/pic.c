@@ -31,12 +31,12 @@ STATUS PicSendEOI(uint8_t irq)
     if(IS_SLAVE_IRQ(irq))
     {
         KeAcquireSpinlock(&slaveMutex);
-        PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_EOI);
+        HalIoPortWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_EOI);
         KeReleaseSpinlock(&slaveMutex);
     }
 
     KeAcquireSpinlock(&masterMutex);
-    PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_EOI);
+    HalIoPortWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_EOI);
     KeReleaseSpinlock(&masterMutex);
     return OK;
 }
@@ -44,21 +44,21 @@ STATUS PicSendEOI(uint8_t irq)
 void PicRemap(uint8_t masterirqOffset, uint8_t slaveirqOffset)
 {
     KeAcquireSpinlock(&masterMutex);
-    uint8_t mMask = PortIoReadByte(PIC_MASTER_DATA_PORT);
-    PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
-    PortIoWriteByte(PIC_MASTER_DATA_PORT, masterirqOffset);
-    PortIoWriteByte(PIC_MASTER_DATA_PORT, 4);
-    PortIoWriteByte(PIC_MASTER_DATA_PORT, PIC_ICW4_FLAG_8086);
-    PortIoWriteByte(PIC_MASTER_DATA_PORT, mMask);
+    uint8_t mMask = HalIoPortReadByte(PIC_MASTER_DATA_PORT);
+    HalIoPortWriteByte(PIC_MASTER_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
+    HalIoPortWriteByte(PIC_MASTER_DATA_PORT, masterirqOffset);
+    HalIoPortWriteByte(PIC_MASTER_DATA_PORT, 4);
+    HalIoPortWriteByte(PIC_MASTER_DATA_PORT, PIC_ICW4_FLAG_8086);
+    HalIoPortWriteByte(PIC_MASTER_DATA_PORT, mMask);
     KeReleaseSpinlock(&masterMutex);
 
     KeAcquireSpinlock(&slaveMutex);
-    uint8_t sMask = PortIoReadByte(PIC_SLAVE_DATA_PORT);
-    PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, slaveirqOffset);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, 2);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, PIC_ICW4_FLAG_8086);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, sMask);
+    uint8_t sMask = HalIoPortReadByte(PIC_SLAVE_DATA_PORT);
+    HalIoPortWriteByte(PIC_SLAVE_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
+    HalIoPortWriteByte(PIC_SLAVE_DATA_PORT, slaveirqOffset);
+    HalIoPortWriteByte(PIC_SLAVE_DATA_PORT, 2);
+    HalIoPortWriteByte(PIC_SLAVE_DATA_PORT, PIC_ICW4_FLAG_8086);
+    HalIoPortWriteByte(PIC_SLAVE_DATA_PORT, sMask);
     KeReleaseSpinlock(&slaveMutex);
 
     irqOffset[0] = masterirqOffset;
@@ -73,13 +73,13 @@ STATUS PicDisableIRQ(uint8_t irq)
     if(IS_MASTER_IRQ(irq))
     {
         KeAcquireSpinlock(&masterMutex);
-        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) | (1 << (irq - irqOffset[0])));
+        HalIoPortWriteByte(PIC_MASTER_DATA_PORT, HalIoPortReadByte(PIC_MASTER_DATA_PORT) | (1 << (irq - irqOffset[0])));
         KeReleaseSpinlock(&masterMutex);
     }
     else
     {
         KeAcquireSpinlock(&slaveMutex);
-        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) | (1 << (irq - irqOffset[1])));
+        HalIoPortWriteByte(PIC_MASTER_DATA_PORT, HalIoPortReadByte(PIC_SLAVE_DATA_PORT) | (1 << (irq - irqOffset[1])));
         KeReleaseSpinlock(&slaveMutex);
     }
 
@@ -94,13 +94,13 @@ STATUS PicEnableIRQ(uint8_t irq)
     if(IS_MASTER_IRQ(irq))
     {
         KeAcquireSpinlock(&masterMutex);
-        PortIoWriteByte(PIC_MASTER_DATA_PORT, PortIoReadByte(PIC_MASTER_DATA_PORT) & ~(1 << (irq - irqOffset[0])));
+        HalIoPortWriteByte(PIC_MASTER_DATA_PORT, HalIoPortReadByte(PIC_MASTER_DATA_PORT) & ~(1 << (irq - irqOffset[0])));
         KeReleaseSpinlock(&masterMutex);
     }
     else
     {
         KeAcquireSpinlock(&slaveMutex);
-        PortIoWriteByte(PIC_SLAVE_DATA_PORT, PortIoReadByte(PIC_SLAVE_DATA_PORT) & ~(1 << (irq - irqOffset[1])));
+        HalIoPortWriteByte(PIC_SLAVE_DATA_PORT, HalIoPortReadByte(PIC_SLAVE_DATA_PORT) & ~(1 << (irq - irqOffset[1])));
         KeReleaseSpinlock(&slaveMutex);
     }
     return OK;
@@ -110,8 +110,8 @@ void PicSetIRQMask(uint16_t mask)
 {
     KeAcquireSpinlock(&masterMutex);
     KeAcquireSpinlock(&slaveMutex);
-    PortIoWriteByte(PIC_MASTER_DATA_PORT, mask & 0xFF);
-    PortIoWriteByte(PIC_SLAVE_DATA_PORT, (mask >> 8) & 0xFF);
+    HalIoPortWriteByte(PIC_MASTER_DATA_PORT, mask & 0xFF);
+    HalIoPortWriteByte(PIC_SLAVE_DATA_PORT, (mask >> 8) & 0xFF);
     KeReleaseSpinlock(&slaveMutex);
     KeReleaseSpinlock(&masterMutex);
 }
@@ -119,12 +119,12 @@ void PicSetIRQMask(uint16_t mask)
 uint16_t PicGetISR(void)
 {
     KeAcquireSpinlock(&masterMutex);
-    PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_READ_ISR);
-    uint8_t t = PortIoReadByte(PIC_MASTER_CMD_PORT);
+    HalIoPortWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_READ_ISR);
+    uint8_t t = HalIoPortReadByte(PIC_MASTER_CMD_PORT);
     KeReleaseSpinlock(&masterMutex);
     KeAcquireSpinlock(&slaveMutex);
-    PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_READ_ISR);
-    uint16_t ret = ((uint16_t)(PortIoReadByte(PIC_SLAVE_CMD_PORT)) << 8) | (uint16_t)t;
+    HalIoPortWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_READ_ISR);
+    uint16_t ret = ((uint16_t)(HalIoPortReadByte(PIC_SLAVE_CMD_PORT)) << 8) | (uint16_t)t;
     KeReleaseSpinlock(&slaveMutex);
     return ret;
 }
@@ -132,12 +132,12 @@ uint16_t PicGetISR(void)
 uint16_t PicGetIRR(void)
 {
     KeAcquireSpinlock(&masterMutex);
-    PortIoWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_READ_IRR);
-    uint8_t t = PortIoReadByte(PIC_MASTER_CMD_PORT);
+    HalIoPortWriteByte(PIC_MASTER_CMD_PORT, PIC_CMD_READ_IRR);
+    uint8_t t = HalIoPortReadByte(PIC_MASTER_CMD_PORT);
     KeReleaseSpinlock(&masterMutex);
     KeAcquireSpinlock(&slaveMutex);
-    PortIoWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_READ_IRR);
-    uint16_t ret = ((uint16_t)(PortIoReadByte(PIC_SLAVE_CMD_PORT)) << 8) | (uint16_t)t;
+    HalIoPortWriteByte(PIC_SLAVE_CMD_PORT, PIC_CMD_READ_IRR);
+    uint16_t ret = ((uint16_t)(HalIoPortReadByte(PIC_SLAVE_CMD_PORT)) << 8) | (uint16_t)t;
     KeReleaseSpinlock(&slaveMutex);
     return ret;
 }

@@ -23,7 +23,7 @@
  * copy of the source code appearing in this file ("Covered Code") an
  * irrevocable, perpetual, worldwide license under Intel's copyrights in the
  * base code distributed originally by Intel ("Original Intel Code") to copy,
- * make derivatives, distribute, use and display any portion of the Covered
+ * make derivatives, distribute, use and display any HalIoPortn of the Covered
  * Code in any form, with the right to sublicense such rights; and
  *
  * 2.3. Intel grants Licensee a non-exclusive and non-transferable patent
@@ -41,7 +41,7 @@
  * 3. Conditions
  *
  * 3.1. Redistribution of Source with Rights to Further Distribute Source.
- * Redistribution of source code of any substantial portion of the Covered
+ * Redistribution of source code of any substantial HalIoPortn of the Covered
  * Code or modification with rights to further distribute source must include
  * the above Copyright Notice, the above License, this list of Conditions,
  * and the following Disclaimer and Export Compliance provision. In addition,
@@ -53,19 +53,19 @@
  * directly or indirectly, from Original Intel Code.
  *
  * 3.2. Redistribution of Source with no Rights to Further Distribute Source.
- * Redistribution of source code of any substantial portion of the Covered
+ * Redistribution of source code of any substantial HalIoPortn of the Covered
  * Code or modification without rights to further distribute source must
  * include the following Disclaimer and Export Compliance provision in the
  * documentation and/or other materials provided with distribution. In
  * addition, Licensee may not authorize further sublicense of source of any
- * portion of the Covered Code, and must include terms to the effect that the
+ * HalIoPortn of the Covered Code, and must include terms to the effect that the
  * license from Licensee to its licensee is limited to the intellectual
  * property embodied in the software Licensee provides to its licensee, and
  * not to intellectual property embodied in modifications its licensee may
  * make.
  *
  * 3.3. Redistribution of Executable. Redistribution in executable form of any
- * substantial portion of the Covered Code or modification must reproduce the
+ * substantial HalIoPortn of the Covered Code or modification must reproduce the
  * above Copyright Notice, and the following Disclaimer and Export Compliance
  * provision in the documentation and/or other materials provided with the
  * distribution.
@@ -610,7 +610,7 @@ AcpiNsRepair_CST (
 
 
     /*
-     * Check if the C-state type values are proportional.
+     * Check if the C-state type values are proHalIoPortnal.
      */
     OuterElementCount = ReturnObject->Package.Count - 1;
     i = 0;
@@ -844,7 +844,7 @@ AcpiNsRepair_PRT (
  *
  * DESCRIPTION: Repair for the _PSS object. If necessary, sort the object list
  *              by the CPU frequencies. Check that the power dissipation values
- *              are all proportional to CPU frequency (i.e., sorting by
+ *              are all proHalIoPortnal to CPU frequency (i.e., sorting by
  *              frequency should be the same as sorting by power.)
  *
  *****************************************************************************/
@@ -868,7 +868,7 @@ AcpiNsRepair_PSS (
      * Entries (subpackages) in the _PSS Package must be sorted by power
      * dissipation, in descending order. If it appears that the list is
      * incorrectly sorted, sort it. We sort by CpuFrequency, since this
-     * should be proportional to the power.
+     * should be proHalIoPortnal to the power.
      */
     Status = AcpiNsCheckSortedList (Info, ReturnObject, 0, 6, 0,
         ACPI_SORT_DESCENDING, "CpuFrequency");
@@ -879,7 +879,7 @@ AcpiNsRepair_PSS (
 
     /*
      * We now know the list is correctly sorted by CPU frequency. Check if
-     * the power dissipation values are proportional.
+     * the power dissipation values are proHalIoPortnal.
      */
     PreviousValue = ACPI_UINT32_MAX;
     OuterElements = ReturnObject->Package.Elements;

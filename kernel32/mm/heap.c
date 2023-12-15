@@ -2,6 +2,7 @@
 #include "mm/mm.h"
 #include <stdbool.h>
 #include "ke/core/mutex.h"
+#include "common.h"
 
 #define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
 #define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
@@ -260,3 +261,20 @@ void MmFreeKernelHeap(const void *ptr)
     first->size = freed;
     KeReleaseSpinlock(&heapAllocatorMutex);
 }
+
+// void *MmReallocateKernelHeap(void *ptr, uintptr_t n)
+// {
+//     if(0 == n)
+//     {
+//         MmFreeKernelHeap(ptr);
+//         return NULL;
+//     }
+//     void *m = MmAllocateKernelHeap(n);
+//     if(NULL == m)
+//         return NULL;
+//     if(NULL == ptr)
+//         return m;
+//     struct HeapBlockMeta *block = (struct HeapBlockMeta*)((uintptr_t)ptr - META_SIZE);
+//     CmMemcpy(m, ptr, block->size);
+//     return m;
+// }

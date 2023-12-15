@@ -1,7 +1,7 @@
 #include "utils.h"
 #include "kernel.h"
 
-#define PCI_CONFIG_IO_ENABLE 0x80000000
+#define PCI_CONFIG_IO_ENABLE_FLAG 0x80000000
 #define PCI_CONFIG_IO_ADDR 0xCF8
 #define PCI_CONFIG_IO_DATA 0xCFC
 
@@ -29,25 +29,39 @@
 uint32_t PciConfigReadDword(struct PciAddress address, uint8_t offset)
 {
 	uint32_t data = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE);
-	PortIoWriteDWord(PCI_CONFIG_IO_ADDR, data);
-	return PortIoReadDWord(PCI_CONFIG_IO_DATA);
+     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
+	return HalIoPortReadDWord(PCI_CONFIG_IO_DATA);
 }
 
 uint16_t PciConfigReadWord(struct PciAddress address, uint8_t offset)
 {
 	uint32_t data = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE);
-	PortIoWriteDWord(PCI_CONFIG_IO_ADDR, data);
-	return (PortIoReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 2) << 3)) & 0xFFFF;
+     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
+	return (HalIoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 2) << 3)) & 0xFFFF;
 }
 
 uint8_t PciConfigReadByte(struct PciAddress address, uint8_t offset)
 {
 	uint32_t data = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE);
-	PortIoWriteDWord(PCI_CONFIG_IO_ADDR, data);
-	return (PortIoReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 3) << 3)) & 0xFF;
+     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
+	return (HalIoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 3) << 3)) & 0xFF;
+}
+
+void PciConfigWriteDword(struct PciAddress address, uint8_t offset, uint32_t data)
+{
+	uint32_t a = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
+     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, a);
+	HalIoPortWriteDWord(PCI_CONFIG_IO_DATA, data);
+}
+
+void PciConfigWriteByte(struct PciAddress address, uint8_t offset, uint8_t data)
+{
+	uint32_t old = PciConfigReadDword(address, offset & 0xFC) & ~((uint32_t)0xFF << ((offset & 0x3) * 8));
+	PciConfigWriteDword(address, offset & 0xFC, old | (data << ((offset & 0x03) * 8)));
 }
 
 uint16_t PciGetVendorId(struct PciAddress address)
@@ -93,4 +107,34 @@ bool PciIsHostBridge(struct PciAddress address)
 			return true;
 	}
 	return false;
+}
+
+STATUS PciReadConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp)
+{
+	if(0 == rp->size)
+		return OK;
+	if(NULL == (rp->buffer = MmAllocateKernelHeap(rp->size)))
+	{
+		return OUT_OF_RESOURCES;
+	}
+	uint8_t *d = (uint8_t*)rp->buffer;
+	for(uint64_t i = 0; i < rp->size; i++)
+	{
+		d[i] = PciConfigReadByte(address, i);
+	}
+	return OK;
+}
+
+STATUS PciWriteConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp)
+{
+	if(0 == rp->size)
+		return OK;
+	if(NULL == rp->buffer)
+		return NULL_POINTER_GIVEN;
+	uint8_t *d = (uint8_t*)rp->buffer;
+	for(uint64_t i = 0; i < rp->size; i++)
+	{
+		PciConfigWriteByte(address, i, d[i]);
+	}
+	return OK;
 }

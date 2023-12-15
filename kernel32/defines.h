@@ -74,6 +74,7 @@ typedef enum
     DEVICE_NOT_AVAILABLE,
     SYSTEM_INCOMPATIBLE,
     BAD_PARAMETER,
+    OPERATION_NOT_ALLOWED,
 
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number

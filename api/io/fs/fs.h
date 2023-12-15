@@ -12,6 +12,8 @@ extern "C"
 #include "defines.h"
 #include "vfs.h"
 #include "fstypedefs.h"
+struct KeTaskControlBlock;
+
 /**
  * @brief File operation flags
 */

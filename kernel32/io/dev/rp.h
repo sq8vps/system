@@ -6,6 +6,7 @@
 #include "dev.h"
 #include "typedefs.h"
 #include "ke/core/mutex.h"
+#include "types.h"
 
 EXPORT
 struct IoDriverRp;
@@ -30,6 +31,9 @@ enum IoRpCode
     
     IO_RP_ENUMERATE,
     IO_RP_GET_BUS_CONFIGURATION,
+    IO_RP_GET_MMIO_MAPPING,
+    IO_RP_GET_DEVICE_CONFIGURATION,
+    IO_RP_SET_DEVICE_CONFIGURATION,
 };
 
 EXPORT
@@ -46,6 +50,7 @@ struct IoDriverRp
     {
         struct
         {
+            enum IoBusType type;
             struct IoSubDeviceObject *device;
             union
             {
@@ -53,11 +58,29 @@ struct IoDriverRp
                 {
                     uint8_t bus, device, function; 
                 } pci;
-                
-            };
-            
-            
+            }; 
         } busConfiguration;
+        struct
+        {
+            enum IoBusType type;
+            struct IoSubDeviceObject *device;
+            void *memory;
+            union
+            {
+                struct
+                {
+                    uint16_t segment;
+                    uint8_t startBus, endBus;
+                } pci;
+            };
+        } mmio;
+        struct
+        {
+            enum IoBusType type;
+            struct IoSubDeviceObject *device;
+            uint64_t offset;
+        } deviceConfiguration;
+        
         
         
     } payload;

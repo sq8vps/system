@@ -83,6 +83,18 @@ NORETURN void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, ui
         ;
 }
 
+
+NORETURN void KePanic(uintptr_t code)
+{
+    KePanicInternal((uintptr_t)__builtin_extract_return_addr (__builtin_return_address (0)), code);
+}
+
+NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+{
+    KePanicExInternal((uintptr_t)__builtin_extract_return_addr (__builtin_return_address (0)), code, 
+        arg1, arg2, arg3, arg4);
+}
+
 NORETURN void KePanicIP(uintptr_t ip, uintptr_t code)
 {
     KePanicInternal(ip, code);

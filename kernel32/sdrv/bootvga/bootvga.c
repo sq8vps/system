@@ -105,64 +105,64 @@ static void setupVgaRegisters(uint8_t *regs)
 	uint16_t i = 0;
 
     /* write MISCELLANEOUS reg */
-	PortIoWriteByte(BOOTVGA_MISC_WRITE, *regs);
+	HalIoPortWriteByte(BOOTVGA_MISC_WRITE, *regs);
 	regs++;
 
     /* unlock CRTC registers */
 	for (i = 0; i < BOOTVGA_NUM_SEQ_REGS; i++)
 	{
-		PortIoWriteByte(BOOTVGA_SEQ_INDEX, i);
-		PortIoWriteByte(BOOTVGA_SEQ_DATA, *regs);
+		HalIoPortWriteByte(BOOTVGA_SEQ_INDEX, i);
+		HalIoPortWriteByte(BOOTVGA_SEQ_DATA, *regs);
 		regs++;
 	}
 	/* unlock CRTC registers */
-	PortIoWriteByte(BOOTVGA_CRTC_INDEX, 0x03);
-	PortIoWriteByte(BOOTVGA_CRTC_DATA, PortIoReadByte(BOOTVGA_CRTC_DATA) | 0x80);
-	PortIoWriteByte(BOOTVGA_CRTC_INDEX, 0x11);
-	PortIoWriteByte(BOOTVGA_CRTC_DATA, PortIoReadByte(BOOTVGA_CRTC_DATA) & ~0x80);
+	HalIoPortWriteByte(BOOTVGA_CRTC_INDEX, 0x03);
+	HalIoPortWriteByte(BOOTVGA_CRTC_DATA, HalIoPortReadByte(BOOTVGA_CRTC_DATA) | 0x80);
+	HalIoPortWriteByte(BOOTVGA_CRTC_INDEX, 0x11);
+	HalIoPortWriteByte(BOOTVGA_CRTC_DATA, HalIoPortReadByte(BOOTVGA_CRTC_DATA) & ~0x80);
 	/* make sure they remain unlocked */
 	regs[0x03] |= 0x80;
 	regs[0x11] &= ~0x80;
 	/* write CRTC regs */
 	for (i = 0; i < BOOTVGA_NUM_CRTC_REGS; i++)
 	{
-		PortIoWriteByte(BOOTVGA_CRTC_INDEX, i);
-		PortIoWriteByte(BOOTVGA_CRTC_DATA, *regs);
+		HalIoPortWriteByte(BOOTVGA_CRTC_INDEX, i);
+		HalIoPortWriteByte(BOOTVGA_CRTC_DATA, *regs);
 		regs++;
 	}
 	/* write GRAPHICS CONTROLLER regs */
 	for (i = 0; i < BOOTVGA_NUM_GC_REGS; i++)
 	{
-		PortIoWriteByte(BOOTVGA_GC_INDEX, i);
-		PortIoWriteByte(BOOTVGA_GC_DATA, *regs);
+		HalIoPortWriteByte(BOOTVGA_GC_INDEX, i);
+		HalIoPortWriteByte(BOOTVGA_GC_DATA, *regs);
 		regs++;
 	}
 	/* write ATTRIBUTE CONTROLLER regs */
 	for (i = 0; i < BOOTVGA_NUM_AC_REGS; i++)
 	{
-		PortIoReadByte(BOOTVGA_INSTAT_READ);
-		PortIoWriteByte(BOOTVGA_AC_INDEX, i);
-		PortIoWriteByte(BOOTVGA_AC_WRITE, *regs);
+		HalIoPortReadByte(BOOTVGA_INSTAT_READ);
+		HalIoPortWriteByte(BOOTVGA_AC_INDEX, i);
+		HalIoPortWriteByte(BOOTVGA_AC_WRITE, *regs);
 		regs++;
 	}
 
 	/* lock 16-color palette and unblank display */
-	PortIoReadByte(BOOTVGA_INSTAT_READ);
-	PortIoWriteByte(BOOTVGA_AC_INDEX, 0x20);
+	HalIoPortReadByte(BOOTVGA_INSTAT_READ);
+	HalIoPortWriteByte(BOOTVGA_AC_INDEX, 0x20);
 }
 
 static void writeColorPalette(void)
 {
-	PortIoWriteByte(BOOTVGA_AC_INDEX, 0x00); //enable access to color palette
-    PortIoWriteByte(BOOTVGA_DAC_WRITE_INDEX, 0);
+	HalIoPortWriteByte(BOOTVGA_AC_INDEX, 0x00); //enable access to color palette
+    HalIoPortWriteByte(BOOTVGA_DAC_WRITE_INDEX, 0);
     
     uint8_t r = 0, g = 0, b = 0;
 #ifdef BOOT_VGA_USE_640_480
     for(uint16_t i = 0; i < 16; i++)
     {
-        PortIoWriteByte(BOOTVGA_DAC_DATA, r);
-        PortIoWriteByte(BOOTVGA_DAC_DATA, g);
-        PortIoWriteByte(BOOTVGA_DAC_DATA, b);
+        HalIoPortWriteByte(BOOTVGA_DAC_DATA, r);
+        HalIoPortWriteByte(BOOTVGA_DAC_DATA, g);
+        HalIoPortWriteByte(BOOTVGA_DAC_DATA, b);
 
 		r += 63;
 		if(126 == r)
@@ -179,9 +179,9 @@ static void writeColorPalette(void)
 #else
     for(uint16_t i = 0; i < 256; i++)
     {
-        PortIoWriteByte(BOOTVGA_DAC_DATA, r);
-        PortIoWriteByte(BOOTVGA_DAC_DATA, g);
-        PortIoWriteByte(BOOTVGA_DAC_DATA, b);
+        HalIoPortWriteByte(BOOTVGA_DAC_DATA, r);
+        HalIoPortWriteByte(BOOTVGA_DAC_DATA, g);
+        HalIoPortWriteByte(BOOTVGA_DAC_DATA, b);
 		//to get 64 colors/6-bit color depth (2 bits per color)
 		//the step needs to be 21 as it covers full 0 to 63 range
 		//the remaining 210 colors are not used and are set to some aribtrary values
@@ -198,7 +198,7 @@ static void writeColorPalette(void)
 		}
 	}
 #endif
-	PortIoWriteByte(BOOTVGA_AC_INDEX, 0x20); //disable access to color palette
+	HalIoPortWriteByte(BOOTVGA_AC_INDEX, 0x20); //disable access to color palette
 }
 
 
@@ -231,8 +231,8 @@ void BootVgaDeinit(void)
         MmUnmapMmIo(vmem, BOOTVGA_WIDTH * BOOTVGA_HEIGHT);
 	}
 
-	PortIoWriteByte(BOOTVGA_GC_INDEX, 0x08);
-    PortIoWriteByte(BOOTVGA_GC_DATA, 0xff);
+	HalIoPortWriteByte(BOOTVGA_GC_INDEX, 0x08);
+    HalIoPortWriteByte(BOOTVGA_GC_DATA, 0xff);
 }
 
 #ifdef BOOT_VGA_USE_640_480
@@ -241,11 +241,11 @@ static inline void setPlane(uint8_t plane)
 	plane &= 3;
 	uint8_t mask = 1 << plane;
 
-	PortIoWriteByte(BOOTVGA_GC_INDEX, 4);
-	PortIoWriteByte(BOOTVGA_GC_DATA, plane);
+	HalIoPortWriteByte(BOOTVGA_GC_INDEX, 4);
+	HalIoPortWriteByte(BOOTVGA_GC_DATA, plane);
 
-	PortIoWriteByte(BOOTVGA_SEQ_INDEX, 2);
-	PortIoWriteByte(BOOTVGA_SEQ_DATA, mask);
+	HalIoPortWriteByte(BOOTVGA_SEQ_INDEX, 2);
+	HalIoPortWriteByte(BOOTVGA_SEQ_DATA, mask);
 }
 #endif
 

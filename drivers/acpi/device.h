@@ -6,6 +6,7 @@
 struct BusSubDeviceInfo
 {
     char *path;
+    enum IoBusType type;
     union
     {
         struct
@@ -16,6 +17,8 @@ struct BusSubDeviceInfo
         } pci;
     } id;
 };
+
+char *AcpiGetPnpName(char *id);
 
 ACPI_STATUS DriverGetBusInfoForDevice(struct IoSubDeviceObject *device, struct BusSubDeviceInfo **info);
 

@@ -18,8 +18,8 @@ enum IoDeviceType
     IO_DEVICE_TYPE_OTHER, //other devices
     IO_DEVICE_TYPE_ROOT, //system root hardware (ACPI, MP)
     IO_DEVICE_TYPE_BUS, //bus (PCI, PCIe, ISA...)
-    IO_DEVICE_TYPE_DISK, //disk (IDE, AHCI, NVMe...)
-    IO_DEVICE_TYPE_PARTMGMT, //partition management (MBR, GPT)
+    IO_DEVICE_TYPE_STORAGE, //storage controller (IDE, AHCI, NVMe...)
+    IO_DEVICE_TYPE_DISK, //disk with partition manager (MBR, GPT)
     IO_DEVICE_TYPE_FS, //filesystem (EXT, FAT...)
 };
 
@@ -28,6 +28,8 @@ struct IoSubDeviceObject;
 struct IoDeviceObject
 {
     char *deviceId;
+    #define IO_MAX_COMPATIBLE_DEVICE_IDS 8
+    char *compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS];
     char *name;
     enum IoDeviceType type;
     IoDeviceFlags flags;
@@ -84,6 +86,13 @@ extern struct IoSubDeviceObject* IoAttachSubDevice(
 extern STATUS IoRegisterDevice(struct IoSubDeviceObject *baseDevice, char *deviceId);
 
 /**
+ * @brief Initialize registered device - notify the device manager
+ * @param *dev Registered device object
+ * @return Status code
+*/
+extern STATUS IoInitializeDevice(struct IoDeviceObject *dev);
+
+/**
  * @brief Build device stack (load drivers and add subdevices) for previously registered device
  * @param *device Device object
  * @return Status code
@@ -109,7 +118,21 @@ extern STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObjec
 */
 extern STATUS IoSendRpDown(struct IoSubDeviceObject *caller, struct IoDriverRp *rp);
 
+/**
+ * @brief Set displayed (friendly) name of a device
+ * @param *device Subdevice object (any for given main device)
+ * @param *name Name to assign
+ * @return Status code
+*/
 extern STATUS IoSetDeviceDisplayedName(struct IoSubDeviceObject *device, char *name);
+
+/**
+ * @brief Add new device ID to compatible device ID list
+ * @param *dev Target device object
+ * @param *id Device ID to be added. If NULL, nothing will be added.
+ * @return Status code
+*/
+extern STATUS IoUpdateCompatibleDeviceIdList(struct IoDeviceObject *dev, char *id);
 
 
 #ifdef __cplusplus

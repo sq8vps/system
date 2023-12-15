@@ -166,11 +166,12 @@ INTERNAL STATUS HalStartSystemTimer(uint64_t time);
 */
 INTERNAL bool HalIsInterruptSpurious(void);
 
+EXPORT
 /**
  * @brief Get interrupt handling method
  * @return Interrupt handling method
 */
-enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
+EXTERN enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
 
 #define HAL_TASK_PRIORITY_PASSIVE 0
 #define HAL_TASK_PRIORITY_DPC 2

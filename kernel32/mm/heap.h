@@ -30,10 +30,25 @@ EXTERN void *MmAllocateKernelHeap(uintptr_t n);
 
 EXPORT
 /**
+ * @brief Allocate memory on kernel heap
+ * @param n Count of bytes to allocate
+ * @return Pointer to allocated memory or NULL on failure
+*/
+#define malloc(n) MmAllocateKernelHeap(n)
+
+EXPORT
+/**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
 EXTERN void MmFreeKernelHeap(const void *ptr);
+
+EXPORT
+/**
+ * @brief Free memory allocated on kernel heap
+ * @param ptr Allocated memory address
+*/
+#define free(ptr) MmFreeKernelHeap(ptr)
 
 /**
  * @}

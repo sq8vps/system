@@ -42,6 +42,7 @@ enum KeTaskBlockReason
     TASK_BLOCK_IO,
     TASK_BLOCK_SLEEP,
     TASK_BLOCK_MUTEX,
+    TASK_BLOCK_EVENT,
 };
 
 EXPORT
@@ -88,8 +89,8 @@ struct KeTaskControlBlock
         uint32_t openFileCount;
     } files;
     
-    uint32_t pid; //unique process ID
-    uint32_t tid; //unique task ID
+    uint16_t pid; //unique process ID
+    uint16_t tid; //unique task ID
     struct KeTaskControlBlock *parent; //parent process for owned threads
 
     enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
@@ -165,5 +166,17 @@ EXTERN STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel
  * @return Highest memory address available (last available byte address)
 */
 INTERNAL uintptr_t KeGetHighestAvailableMemory(void);
+
+/**
+ * @brief Assign task ID
+ * @return Assigned task ID
+*/
+INTERNAL uint16_t KeAssignTid(void);
+
+/**
+ * @brief Free task ID
+ * @param tid Task ID to be freed
+*/
+INTERNAL void KeFreeTid(uint16_t tid);
 
 #endif

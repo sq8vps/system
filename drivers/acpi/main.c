@@ -4,7 +4,7 @@
 #include "logging.h"
 #include "device.h"
 
-static char driverName[] = "ACPI root system driver";
+static char driverName[] = "Generic ACPI system driver";
 static char driverVendor[] = "Standard drivers";
 static char driverVersion[] = "1.0.0";
 
@@ -27,15 +27,23 @@ static void DriverProcessRp(struct IoDriverRp *rp)
             {
                 status = IO_RP_PROCESSING_FAILED;
             }
-            rp->payload.busConfiguration.pci.bus = busConfig->id.pci.bus;
-            rp->payload.busConfiguration.pci.device = busConfig->id.pci.device;
-            rp->payload.busConfiguration.pci.function = busConfig->id.pci.function;
+            if((NULL != busConfig) && (IO_BUS_TYPE_PCI == busConfig->type))
+            {
+                rp->payload.busConfiguration.pci.bus = busConfig->id.pci.bus;
+                rp->payload.busConfiguration.pci.device = busConfig->id.pci.device;
+                rp->payload.busConfiguration.pci.function = busConfig->id.pci.function;
+            }
+            else
+                status = IO_RP_PROCESSING_FAILED;
+            break;
+        case IO_RP_GET_MMIO_MAPPING:
+            
             break;
         default:
                 status = IO_RP_CODE_UNKNOWN;
             break;
     }
-    rp->status = OK;
+    rp->status = status;
     IoFinalizeRp(rp);
 }
 

@@ -95,6 +95,12 @@ extern STATUS HalDisableIRQ(uint8_t irq);
 */
 extern STATUS HalClearInterruptFlag(uint8_t irq);
 
+/**
+ * @brief Get interrupt handling method
+ * @return Interrupt handling method
+*/
+extern enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
+
 
 #ifdef __cplusplus
 }

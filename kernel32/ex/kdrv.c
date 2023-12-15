@@ -51,8 +51,21 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
         
         return ret;
     }
-    else
-        PRINT("Unknown device %s\n", deviceId);
+    else if(0 == CmStrcmp("PCI/8086/7010", deviceId))
+    {
+        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
+        (*drivers)->next = NULL;
+        STATUS ret = ExLoadKernelDriver("/initrd/ide.drv", &((*drivers)->this));
+        if(OK != ret)
+            return ret;
+        
+        ret = (*drivers)->this->init((*drivers)->this);
+
+        if(OK == ret)
+            *driverCount = 1;
+        
+        return ret;
+    }
     return NOT_IMPLEMENTED;
 }
 
@@ -301,7 +314,7 @@ struct ExDriverObject *ExFindDriverByAddress(uintptr_t address)
     KeAcquireMutex(&kernelDriverListMutex);
     struct ExDriverObject *t = kernelDriverListHead;
     
-    while(NULL != t->next)
+    while(NULL != t)
     {
         if((address >= t->address) && (address < (t->address + t->size)))
             break;

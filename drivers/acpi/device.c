@@ -88,6 +88,7 @@ static ACPI_STATUS DriverEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingL
     if(isPciHostBridge)
     {
         pciHostBridgeFound = true;
+        private->type = IO_BUS_TYPE_PCI;
         private->id.pci.bus = 0; //PCI bus = 0 for host controller
         private->id.pci.device = info->Address >> 10;
         private->id.pci.function = info->Address & 0xFFFF;
@@ -102,10 +103,21 @@ static ACPI_STATUS DriverEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingL
         AcpiOsFree(private);
         return AE_OK;
     }
-
-    IoBuildDeviceStack(dev->mainDeviceObject);
+    if(isPciHostBridge)
+    {
+        char *t = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, "PCI");
+        if(t != NULL)
+        {
+            IoUpdateCompatibleDeviceIdList(dev->mainDeviceObject, t);
+            MmFreeKernelHeap(t);
+        }
+    }
+    char *friendlyName = AcpiGetPnpName(info->HardwareId.String);
+    if(NULL != friendlyName)
+        IoSetDeviceDisplayedName(dev, friendlyName);
     
     IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s, device ID is %s\n", (char*)name.Pointer, deviceId);
+    IoInitializeDevice(dev->mainDeviceObject);
     // ACPI_BUFFER prt;
     // prt.Length = ACPI_ALLOCATE_BUFFER;
     // prt.Pointer = NULL;

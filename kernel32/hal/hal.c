@@ -5,6 +5,7 @@
 #include "sdrv/tsc.h"
 #include "sdrv/msr.h"
 #include "time.h"
+#include "ioport.h"
 
 static STATUS verifyRequiredCapatibities(void)
 {
@@ -24,6 +25,8 @@ static STATUS verifyRequiredCapatibities(void)
 
 STATUS HalInit(void)
 {
+    //HalIoPortInit();
+
     if(!CpuidCheckIfAvailable())
         return SYSTEM_INCOMPATIBLE;
     

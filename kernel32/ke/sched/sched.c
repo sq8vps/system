@@ -61,53 +61,64 @@ static KeSpinlock queueMutex = KeSpinlockInitializer;
 */
 static void detachFromQueue(struct KeTaskControlBlock *tcb)
 {
+    if(NULL == tcb->queue)
+        return;
     KeAcquireSpinlock(&queueMutex);
-    if(tcb->next == tcb)
-    {
-        tcb->next = NULL;
-    }
-    else
+    if(tcb != *(tcb->queue))
     {
         tcb->next->previous = tcb->previous;
         tcb->previous->next = tcb->next;
+        tcb->next = NULL;
+        tcb->previous = NULL;
+        tcb->queue = NULL;
     }
-
-    if((NULL != tcb->queue) && (tcb == *(tcb->queue)))
+    else
     {
-        *(tcb->queue) = tcb->next;
-        if(NULL != tcb->next)
-            tcb->next->queue = tcb->queue;
+        if(tcb->next == tcb)
+        {
+            *(tcb->queue) = NULL;
+            tcb->next = NULL;
+            tcb->previous = NULL;
+            tcb->queue = NULL;
+        }
+        else
+        {
+            tcb->next->previous = tcb->previous;
+            tcb->previous->next = tcb->next;
+            *(tcb->queue) = tcb->next;
+            tcb->next = NULL;
+            tcb->previous = NULL;
+            tcb->queue = NULL;
+        }
     }
-    tcb->next = NULL;
-    tcb->previous = NULL;
-    tcb->queue = NULL;
     KeReleaseSpinlock(&queueMutex);
 }
 
 /**
- * @brief Attach task to given queue
+ * @brief (Re)Attach task to given queue
  * @param *tcb TCB pointer
  * @param **queueHandle Queue head pointer
- * @warning This function does NOT detach the task from previous queue
 */
 static void attachToQueue(struct KeTaskControlBlock *tcb, struct KeTaskControlBlock **queueHandle)
 {
+    if(NULL != tcb->queue)
+        detachFromQueue(tcb);
     KeAcquireSpinlock(&queueMutex);
     if(NULL == *queueHandle)
     {
-        *queueHandle = tcb;
         tcb->next = tcb;
         tcb->previous = tcb;
         tcb->queue = queueHandle;
-        KeReleaseSpinlock(&queueMutex);
-        return;
+        *queueHandle = tcb;
     }
-
-    tcb->previous = (*queueHandle)->previous;
-    tcb->next = *queueHandle;
-    (*queueHandle)->previous->next = tcb;
-    (*queueHandle)->previous = tcb;
-    tcb->queue = NULL;
+    else
+    {
+        tcb->next = *queueHandle;
+        tcb->previous = (*queueHandle)->previous;
+        (*queueHandle)->previous->next = tcb;
+        (*queueHandle)->previous = tcb;
+        tcb->queue = queueHandle;
+    }
     KeReleaseSpinlock(&queueMutex);
 }
 
