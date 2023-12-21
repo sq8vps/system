@@ -14,8 +14,9 @@ static uint8_t findHighestPosition(uint64_t n, uint64_t *power)
     }
     uint64_t i = 0;
     uint64_t k = 1;
-    while((k * 10) < n)
+    while(n >= 10)
     {
+        n /= 10;
         k *= 10;
         i++;
     }

@@ -105,7 +105,6 @@ STATUS ApicIoInit(void)
 
 uint8_t ApicIoGetAssociatedVector(uint32_t input)
 {    
-    input = HalResolveIrqMapping(input);
     for(uint16_t i = 0; i < 256; i++)
     {
         if(ioApicIrqLUT[i].input == input)
@@ -117,12 +116,14 @@ uint8_t ApicIoGetAssociatedVector(uint32_t input)
 STATUS ApicIoRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
                         enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger)
 {
-    input = HalResolveIrqMapping(input);
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
         return APIC_IOAPIC_NOT_AVAILABLE;
     
-    if(input >= ioApic->inputs)
+    if(input < ioApic->irqBase)
+        return APIC_IOAPIC_BAD_INPUT_NUMBER;
+    
+    if((input - ioApic->irqBase) >= ioApic->inputs)
         return APIC_IOAPIC_BAD_INPUT_NUMBER;
 
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
@@ -142,12 +143,14 @@ STATUS ApicIoRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode m
 
 STATUS ApicIoUnregisterIRQ(uint32_t input)
 {
-    input = HalResolveIrqMapping(input);
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
         return APIC_IOAPIC_NOT_AVAILABLE;
     
-    if(input >= ioApic->inputs)
+    if(input < ioApic->irqBase)
+        return APIC_IOAPIC_BAD_INPUT_NUMBER;
+    
+    if((input - ioApic->irqBase) >= ioApic->inputs)
         return APIC_IOAPIC_BAD_INPUT_NUMBER;
 
     uint8_t vector = ApicIoGetAssociatedVector(input);
@@ -173,6 +176,9 @@ STATUS ApicIoEnableIRQ(uint8_t vector)
     if(ioApicIrqLUT[vector].input < ioapic->irqBase)
         return IT_BAD_VECTOR;
     
+    if(ioApicIrqLUT[vector].input >= (ioapic->irqBase + ioapic->inputs))
+        return IT_BAD_VECTOR;
+    
     write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase),
             read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase) & ~(IOAPIC_IOREDTBL_MASK)));
     
@@ -186,6 +192,9 @@ STATUS ApicIoDisableIRQ(uint8_t vector)
         return IT_NOT_REGISTERED;
     
     if(ioApicIrqLUT[vector].input < ioapic->irqBase)
+        return IT_BAD_VECTOR;
+
+    if(ioApicIrqLUT[vector].input >= (ioapic->irqBase + ioapic->inputs))
         return IT_BAD_VECTOR;
     
     write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase),

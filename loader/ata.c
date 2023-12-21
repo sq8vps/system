@@ -68,24 +68,22 @@ void ata_registerController(Pci_s_t pci, uint32_t id)
 	ata_controllerList[i].pci = pci;
 	switch(id) //match known IDE controller models with more generic controller type. All models in a group are handled the same way.
 	{
-		case PCI_DEV_AMD_645_IDE:
-		case PCI_DEV_AMD_756_IDE:
-		case PCI_DEV_AMD_766_IDE:
-		case PCI_DEV_AMD_768_IDE:
-		case PCI_DEV_AMD_8111_IDE:
-			ata_controllerList[i].type = ATA_IDE_AMD_XXX;
+		// case PCI_DEV_AMD_645_IDE:
+		// case PCI_DEV_AMD_756_IDE:
+		// case PCI_DEV_AMD_766_IDE:
+		// case PCI_DEV_AMD_768_IDE:
+		// case PCI_DEV_AMD_8111_IDE:
+		// 	ata_controllerList[i].type = ATA_IDE_AMD_XXX;
 
-			break;
-		case PCI_DEV_PIIX_IDE:
-		case PCI_DEV_PIIX3_IDE:
-		case PCI_DEV_PIIX4_IDE:
+		// 	break;
+		// case PCI_DEV_PIIX_IDE:
+		// case PCI_DEV_PIIX3_IDE:
+		// case PCI_DEV_PIIX4_IDE:
+		default:
 			ata_controllerList[i].type = ATA_IDE_PIIX;
 			ata_controllerList[i].cmdPort[0] = ATA_PIIX_CMD_PORT_PRI_BASE; //set base I/O ports
 			ata_controllerList[i].cmdPort[1] = ATA_PIIX_CMD_PORT_SEC_BASE;
 			ata_controllerList[i].bmrPort = ATA_BMR_PORT_BASE + (i * ATA_BMR_SIZE);
-			break;
-		default:
-			ata_controllerList[i].type = ATA_IDE_UNKNOWN;
 			break;
 	}
 }
@@ -125,16 +123,28 @@ void ata_detectDrives(void)
 				}
 				if(err) continue;
 
-				for(uint16_t k = 0; k < 63; k++)
+				for(uint16_t k = 0; k < 60; k++)
 					port_readWord(port); //drop returned data
+				
+				uint32_t sectors28 = (uint32_t)port_readWord(port) | ((uint32_t)port_readWord(port) << 16);
+
+				port_readWord(port);
 
 				err = ((port_readWord(port) & 0b111) == 0); //check if mutliword DMA transfer is supported (at word 63)
+				if(err)
+					printf("\nDMA is not supported\n");
 
 				for(uint16_t k = 64; k < 100; k++)
 					port_readWord(port); //drop returned data
 
-				uint64_t sectors = (uint64_t)port_readWord(port) | ((uint64_t)port_readWord(port) << 16) | ((uint64_t)port_readWord(port) << 32) | ((uint64_t)port_readWord(port) << 48); //number of logical sectors at words 100:103
-				if(sectors == 0) err = 1;
+				uint64_t sectors48 = (uint64_t)port_readWord(port) | ((uint64_t)port_readWord(port) << 16) | ((uint64_t)port_readWord(port) << 32) | ((uint64_t)port_readWord(port) << 48); //number of logical sectors at words 100:103
+				
+				uint64_t sectors = (sectors48 > 0) ? sectors48 : sectors28;
+				if(sectors == 0) 
+				{	
+					printf("\nDisk has 0 sectors\n");
+					err = 1;
+				}
 
 				port_readWord(port); //dummy read at word 104
 				port_readWord(port); //dummy read at word 105
@@ -165,9 +175,11 @@ void ata_detectDrives(void)
 				for(uint16_t k = 119; k < 256; k++)
 					port_readWord(port); //drop returned data
 
-				if(sectorSize == 0 || (sectorSize > 0xFFFF)) err = 1; //sector size of 0 is an error. Also we don't want to work with sectors larger than 65535 bytes
-
-
+				if(sectorSize == 0 || (sectorSize > 0xFFFF))
+				{
+					printf("\nSector size is 0\n");
+					err = 1; //sector size of 0 is an error. Also we don't want to work with sectors larger than 65535 bytes
+				}
 
 				if(err) continue;
 
@@ -204,7 +216,11 @@ void ata_enableControllers(void)
 		if(ata_controllerList[i].present == 0) break; //if this controller is not present, next entries are also not present
 		if(ata_controllerList[i].type == ATA_IDE_UNKNOWN) continue; //we also don't know how to handle unknown controllers
 
-		if(pci_getProgIf(ata_controllerList[i].pci) != 0x80) continue; //check if this controller supports bus master operations
+		if(0 == (pci_getProgIf(ata_controllerList[i].pci) & 0x80)) 
+		{
+			printf("\nNo bus master support...\n");
+			continue; //check if this controller supports bus master operations
+		}
 		ata_controllerList[i].usable = 1; //if so, it's usable
 
 		pci_setBAR(ata_controllerList[i].pci, 4, (uint32_t)(ata_controllerList[i].bmrPort & 0xFFF0));
@@ -217,21 +233,6 @@ void ata_enableControllers(void)
 #if __DEBUG > 1
 		printf("\nATA Controller %d at bus %d, dev %d, func %d, type ", (int)i, (int)ata_controllerList[i].pci.bus, (int)ata_controllerList[i].pci.dev, (int)ata_controllerList[i].pci.func);
 #endif
-
-		if(ata_controllerList[i].type == ATA_IDE_PIIX)
-		{
-			pci_setIdeDecode(ata_controllerList[i].pci, 0, 1); //enable IDE decode for primary channel
-			pci_setIdeDecode(ata_controllerList[i].pci, 1, 1); //enable IDE decode for secondary channel
-#if __DEBUG > 1
-			printf("PIIX/PIIX3/PIIX4");
-#endif
-		}
-		else if(ata_controllerList[i].type == ATA_IDE_AMD_XXX)
-		{
-#if __DEBUG > 1
-			printf("AMD-XXX/AMD-XXXX");
-#endif
-		}
 	}
 	ata_detectDrives();
 }
@@ -399,8 +400,6 @@ error_t ata_IDEreadWrite(AtaController_s_t ata, uint8_t rw, uint8_t chan, uint8_
 	port_writeByte(ata.cmdPort[chan] + ATA_CMD_PORT_LBA_HIGH, (lba & 0xFF0000) >> 16);
 	port_writeByte(ata.cmdPort[chan] + ATA_CMD_PORT_CMD_STA, rw ? ATA_CMD_WRITEDMA : ATA_CMD_READDMA); //issue Read DMA extended (48-bit LBA) command or Write DMA extended command
 	ata_sleep();
-
-
 
 	ata_writeBMRcmd(ata, chan, (rw ? 0 : ATA_BMR_CMD_RWCON_BIT) | ATA_BMR_CMD_SSBM_BIT); //start the process
 	ata_sleep();

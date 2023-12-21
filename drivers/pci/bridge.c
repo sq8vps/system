@@ -9,7 +9,7 @@
 struct PciBridge *PciBridgeList;
 static KeSpinlock PciBridgeListMutex = KeSpinlockInitializer;
 
-STATUS PciRegisterBridge(struct PciAddress address, struct PciBridge *upstreamBridge, struct PciBridge **out)
+STATUS PciRegisterBridge(union IoBusId address, struct PciBridge *upstreamBridge, struct PciBridge **out)
 {
     return NOT_IMPLEMENTED;
     // KeAcquireSpinlock(&PciBridgeListMutex);
@@ -57,7 +57,7 @@ STATUS PciRegisterBridge(struct PciAddress address, struct PciBridge *upstreamBr
     // return OK;
 }
 
-STATUS PciRegisterHostBridge(struct PciAddress address, struct PciBridge **out)
+STATUS PciRegisterHostBridge(union IoBusId address, struct PciBridge **out)
 {
     struct PciBridge *b = MmAllocateKernelHeap(sizeof(*b));
     if(NULL == b)

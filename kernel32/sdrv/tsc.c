@@ -58,7 +58,7 @@ uint64_t TscGet(void)
     if(!tscAvailable)
         return 0;
     
-    return ((uint64_t)1000000000) * TscGetRaw() / frequency;
+    return (uint64_t)((1000000000. * (double)TscGetRaw()) / (double)frequency);
 }
 
 uint64_t TscGetMicros(void)
@@ -66,7 +66,7 @@ uint64_t TscGetMicros(void)
     if(!tscAvailable)
         return 0;
     
-    return ((uint64_t)1000000) * TscGetRaw() / frequency;  
+    return (uint64_t)((1000000. * (double)TscGetRaw()) / (double)frequency);
 }
 
 uint64_t TscGetMillis(void)
@@ -74,10 +74,10 @@ uint64_t TscGetMillis(void)
     if(!tscAvailable)
         return 0;
     
-    return ((uint64_t)1000) * TscGetRaw() / frequency;  
+    return (uint64_t)((1000. * (double)TscGetRaw()) / (double)frequency);
 }
 
 uint64_t TscCalculateRaw(uint64_t time)
 {
-    return frequency * time / ((uint64_t)1000000000);
+    return (uint64_t)((double)frequency * (double)time / 1000000000.f);
 }

@@ -5,6 +5,7 @@
 #include "it/it.h"
 #include "ke/core/panic.h"
 #include "defines.h"
+#include "sdrv/fpu.h"
 
 INTERNAL IT_HANDLER void ItSimdFpuHandler(struct ItFrame *f)
 {
@@ -12,5 +13,9 @@ INTERNAL IT_HANDLER void ItSimdFpuHandler(struct ItFrame *f)
     while(1);
 }
 
+INTERNAL IT_HANDLER void ItFpuHandler(struct ItFrame *f)
+{
+    FpuHandleException();
+}
 
 #endif

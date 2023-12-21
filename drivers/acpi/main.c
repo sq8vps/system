@@ -22,22 +22,10 @@ static void DriverProcessRp(struct IoDriverRp *rp)
             }
             break;
         case IO_RP_GET_BUS_CONFIGURATION:
-            struct BusSubDeviceInfo *busConfig;
-            if(ACPI_FAILURE(DriverGetBusInfoForDevice(rp->payload.busConfiguration.device, &busConfig)))
+            if(ACPI_FAILURE(DriverGetBusInfoForDevice(rp)))
             {
                 status = IO_RP_PROCESSING_FAILED;
             }
-            if((NULL != busConfig) && (IO_BUS_TYPE_PCI == busConfig->type))
-            {
-                rp->payload.busConfiguration.pci.bus = busConfig->id.pci.bus;
-                rp->payload.busConfiguration.pci.device = busConfig->id.pci.device;
-                rp->payload.busConfiguration.pci.function = busConfig->id.pci.function;
-            }
-            else
-                status = IO_RP_PROCESSING_FAILED;
-            break;
-        case IO_RP_GET_MMIO_MAPPING:
-            
             break;
         default:
                 status = IO_RP_CODE_UNKNOWN;

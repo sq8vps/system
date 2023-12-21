@@ -35,6 +35,18 @@ enum HalInterruptTrigger
     IT_TRIGGER_LEVEL,
 };
 
+enum HalInterruptWakeCapable
+{
+    IT_WAKE_INCAPABLE,
+    IT_WAKE_CAPABLE,
+};
+
+enum HalInterruptSharing
+{
+    IT_NOT_SHARED,
+    IT_SHARED,
+};
+
 /**
  * @brief External interrupt mode
 */
@@ -47,6 +59,13 @@ enum HalInterruptMode
     IT_MODE_INIT,
     IT_MODE_EXTINT,
 };
+
+/**
+ * @brief Resolve legacy ISA IRQ to global interrupt mapping
+ * @param irq ISA IRQ from device
+ * @return Resolved IRQ after remapping (if applicable)
+*/
+extern uint32_t HalResolveIsaIrqMapping(uint32_t irq);
 
 /**
  * @brief Register external IRQ

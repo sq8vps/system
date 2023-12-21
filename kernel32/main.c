@@ -89,8 +89,6 @@ NORETURN static void KeInit(void)
 	KePrepareTSS(0);
 
 	ItInit(); //initialize interrupts and exceptions
-	FpuInitialize();
-	SseInitialize();
 	IoVfsInit();
 	IoFsInit();
 	

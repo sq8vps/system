@@ -2,6 +2,7 @@
 #define KERNEL_DEV_TYPES_H_
 
 #include "defines.h"
+#include "hal/interrupt.h"
 
 EXPORT
 enum IoBusType
@@ -11,6 +12,42 @@ enum IoBusType
     IO_BUS_TYPE_PCI,
     IO_BUS_TYPE_USB,
     IO_BUS_TYPE_ISA,
+};
+
+EXPORT
+union IoBusId
+{
+    struct
+    {
+        uint8_t bus;
+        uint8_t device;
+        uint8_t function;
+    } pci;
+
+    void *other;
+};
+
+EXPORT
+struct IoIrqEntry
+{
+    union IoBusId id;
+    uint32_t gsi;
+    uint32_t pin;
+    enum HalInterruptPolarity polarity;
+    enum HalInterruptTrigger trigger;
+    enum HalInterruptWakeCapable wake;
+    enum HalInterruptSharing sharing; 
+};
+
+EXPORT
+struct IoIrqMap
+{
+    enum IoBusType type;
+    union IoBusId id;
+    uint32_t irqCount;
+    struct IoIrqEntry *irq;
+    struct IoIrqMap *next;
+    struct IoIrqMap *child;
 };
 
 EXPORT
@@ -127,5 +164,15 @@ EXPORT
 #define PCI_HEADER_STATUS_RECEIVED_MASTER_ABORT 0x2000
 #define PCI_HEADER_STATUS_SIGNALED_SYSTEM_ERROR 0x4000
 #define PCI_HEADER_STATUS_DETECTED_PARITY_ERROR 0x8000
+
+EXPORT
+struct IoMemoryDescriptor
+{
+    uintptr_t physical;
+    void *mapped;
+    uint64_t size;
+
+    struct IoMemoryDescriptor *next;
+};
 
 #endif

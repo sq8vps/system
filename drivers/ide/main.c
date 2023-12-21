@@ -11,6 +11,17 @@ static STATUS DriverDispatch(struct IoDriverRp *rp)
     STATUS status;
     switch(rp->code)
     {
+        case IO_RP_ENUMERATE:
+            if(NULL != rp->device->privateData)
+            {
+                if(OK == (status = IdeDetectAllDrives(rp->device->privateData)))
+                {
+                    status = IdeCreateAllDriveDevices(rp->device->privateData, rp->device->driverObject);
+                }
+            }
+            else
+                goto DriverDispatchForwardRp;
+            break;
         default:
             goto DriverDispatchForwardRp;
             break;
@@ -27,7 +38,6 @@ static STATUS DriverInit(struct ExDriverObject *driverObject)
     return OK;
 } 
 
-
 static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject)
 {
     struct IoSubDeviceObject *device;
@@ -38,9 +48,10 @@ static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoSubD
     if(NULL == (device->privateData = MmAllocateKernelHeap(sizeof(struct IdeDeviceData))))
         return OUT_OF_RESOURCES;
     
-
-
+    CmMemset(device->privateData, 0, sizeof(struct IdeDeviceData));
+    
     IoAttachSubDevice(device, baseDeviceObject);
+    baseDeviceObject->driverObject->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
     struct IdeDeviceData *info = device->privateData;
     CmMemset(info, 0, sizeof(*info));

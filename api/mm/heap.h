@@ -13,6 +13,7 @@ extern "C"
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
+ * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
 extern void *MmAllocateKernelHeap(uintptr_t n);
 

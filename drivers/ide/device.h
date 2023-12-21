@@ -16,13 +16,17 @@ struct IdePrdTable
 };
 
 #define IDE_DRIVE_SERIAL_NUMBER_SIZE 20
+#define IDE_DRIVE_MODEL_NUMBER_SIZE 40
 
 struct IdeDriveData
 {
-    char serial[IDE_DRIVE_SERIAL_NUMBER_SIZE];
-    bool usable;
+    char serial[IDE_DRIVE_SERIAL_NUMBER_SIZE + 1];
+    char model[IDE_DRIVE_MODEL_NUMBER_SIZE + 1];
+    uint8_t present : 1;
+    uint8_t usable : 1;
+    uint8_t lba48 : 1;
     uint64_t sectors;
-    uint16_t sectorSize;
+    uint32_t sectorSize;
 };
 
 #define PCI_IDE_CHANNEL_PRIMARY 0x00
@@ -53,3 +57,9 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeDevice
 STATUS IdeClearPrdTable(struct IdePrdTable *t);
 
 STATUS IdeInitializePrdTables(struct IdeDeviceData *info);
+
+STATUS IdeDetectAllDrives(struct IdeDeviceData *ide);
+
+STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *driver);
+
+STATUS IdeCreateAllDriveDevices(struct IdeDeviceData *info, struct ExDriverObject *driver);

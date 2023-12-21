@@ -204,5 +204,6 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeDevice
     LOG(SYSLOG_INFO, "Controller succesfully initialized\n");
     
     MmFreeKernelHeap(hdr);
+
     return status;
 }

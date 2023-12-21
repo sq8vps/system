@@ -18,6 +18,12 @@ extern KeSchedPostponeCounter
 ;bool KeSchedTaskSwitchPending
 extern KeSchedTaskSwitchPending
 
+;void HalStoreMathState(struct KeTaskControlBlock *tcb)
+extern HalStoreMathState
+
+;void HalRestoreMathState(struct KeTaskControlBlock *tcb)
+extern HalRestoreMathState
+
 section .text
 
 ;Store current task context on stack
@@ -38,6 +44,12 @@ KeStoreTaskContext:
     mov edi,[currentTask]
     mov [edi + TCB.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
     add DWORD [edi + TCB.esp],4 ;omit locally pushed EDI
+
+    push eax
+    push edi
+    call HalStoreMathState
+    add esp,4
+    pop eax
 
     pop edi ;restore original edi
     push eax ;push return address
@@ -62,6 +74,10 @@ KeSwitchToTask:
     mov cr3,edx
 
     .skipCR3switch:
+
+    push esi
+    call HalRestoreMathState
+    add esp,4
 
     ;update ESP0 in TSS for privilege level switches
     mov eax,[esi + TCB.esp0] 
@@ -139,4 +155,6 @@ struc TCB
     .es resw 1
     .fs resw 1
     .gs resw 1
+
+    .math resd 1
 endstruc

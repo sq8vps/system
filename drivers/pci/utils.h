@@ -7,38 +7,31 @@
 #include "defines.h"
 #include "io/dev/rp.h"
 
-struct PciAddress
-{
-    uint16_t bus : 8;
-    uint16_t device : 5;
-    uint16_t function : 3;
-};
+uint32_t PciConfigReadDword(union IoBusId address, uint8_t offset);
 
-uint32_t PciConfigReadDword(struct PciAddress address, uint8_t offset);
+uint16_t PciConfigReadWord(union IoBusId address, uint8_t offset);
 
-uint16_t PciConfigReadWord(struct PciAddress address, uint8_t offset);
+uint8_t PciConfigReadByte(union IoBusId address, uint8_t offset);
 
-uint8_t PciConfigReadByte(struct PciAddress address, uint8_t offset);
+uint16_t PciGetVendorId(union IoBusId address);
 
-uint16_t PciGetVendorId(struct PciAddress address);
-
-uint16_t PciGetDeviceId(struct PciAddress address);
+uint16_t PciGetDeviceId(union IoBusId address);
 
 #define VENDOR_VALID(vendor) ((vendor) != 0xFFFF)
 #define DEVICE_VALID(device) ((device) != 0xFFFF)
 
-enum PciClass PciGetClass(struct PciAddress address);
+enum PciClass PciGetClass(union IoBusId address);
 
-enum PciSubclass PciGetSubclass(struct PciAddress address);
+enum PciSubclass PciGetSubclass(union IoBusId address);
 
-bool PciIsPciPciBridge(struct PciAddress address);
+bool PciIsPciPciBridge(union IoBusId address);
 
-bool PciIsHostBridge(struct PciAddress address);
+bool PciIsHostBridge(union IoBusId address);
 
-bool PciIsMultifunction(struct PciAddress address);
+bool PciIsMultifunction(union IoBusId address);
 
-STATUS PciReadConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp);
+STATUS PciReadConfigurationSpace(union IoBusId address, struct IoDriverRp *rp);
 
-STATUS PciWriteConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp);
+STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoDriverRp *rp);
 
 #endif

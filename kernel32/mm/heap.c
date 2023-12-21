@@ -108,14 +108,13 @@ static struct HeapBlockMeta *mmAllocateHeapBlock(struct HeapBlockMeta *previous,
 
 /**
  * @brief Split existing heap block
- * @param block Block to be split. Must be free
- * @param n Count of bytes required
- * @return Block of size n
- * 
  * 
  * This function takes an existing block of size N and a number n,
  * checks if splitting this block makes sense, resizes exisiting block to n bytes
  * and creates new block header of size N-n-sizeof(header) and adds it to the list.
+ * @param block Block to be split. Must be free
+ * @param n Count of bytes required
+ * @return Block of size n
 */
 static struct HeapBlockMeta *mmSplitHeapBlock(struct HeapBlockMeta *block, uint32_t n)
 {
@@ -278,3 +277,11 @@ void MmFreeKernelHeap(const void *ptr)
 //     CmMemcpy(m, ptr, block->size);
 //     return m;
 // }
+
+#if MM_KERNEL_HEAP_START & (MM_KERNEL_HEAP_ALIGNMENT - 1)
+    #error Kernel heap start address is not aligned
+#endif
+
+#if (MM_KERNEL_HEAP_ALIGNMENT & 0xF) || (MM_KERNEL_HEAP_ALIGNMENT == 0)
+    #error Kernel heap must be aligned to a non-zero multiple of 16 bytes
+#endif

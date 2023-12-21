@@ -3,14 +3,19 @@
 
 #include "defines.h"
 #include "ex/kdrv.h"
+#include "hal/interrupt.h"
 #include "io/dev/dev.h"
+#include "io/dev/rp.h"
 #include "bridge.h"
+
+#define PCI_DEVICE_IRQ_LINE_COUNT 4
 
 struct PciDeviceData
 {
-    struct IoSubDeviceObject *enumerator;
     struct PciBridge *thisBridge;
-    struct PciAddress address;
+    union IoBusId address;
+    struct IoIrqMap *irqMap;
+    struct IoIrqEntry irqEntry[PCI_DEVICE_IRQ_LINE_COUNT];
 };
 
 /**

@@ -62,6 +62,7 @@ EXPORT
  * @param ... Additional arguments
  * @return Status code
 */
+__attribute__ ((format (printf, 3, 4)))
 EXTERN STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
 
 #endif

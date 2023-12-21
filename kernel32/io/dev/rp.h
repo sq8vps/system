@@ -7,6 +7,7 @@
 #include "typedefs.h"
 #include "ke/core/mutex.h"
 #include "types.h"
+#include "hal/interrupt.h"
 
 EXPORT
 struct IoDriverRp;
@@ -52,13 +53,8 @@ struct IoDriverRp
         {
             enum IoBusType type;
             struct IoSubDeviceObject *device;
-            union
-            {
-                struct
-                {
-                    uint8_t bus, device, function; 
-                } pci;
-            }; 
+            union IoBusId id;
+            struct IoIrqMap *irq;
         } busConfiguration;
         struct
         {
@@ -80,8 +76,12 @@ struct IoDriverRp
             struct IoSubDeviceObject *device;
             uint64_t offset;
         } deviceConfiguration;
-        
-        
+        struct 
+        {
+            uint64_t offset;
+            struct IoMemoryDescriptor *memory;
+            void *systemBuffer;
+        } read;
         
     } payload;
     IoCompletionCallback completionCallback;

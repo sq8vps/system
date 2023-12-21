@@ -128,6 +128,12 @@ enum PciSubclass
     SIGNAL_PROCESSING_OTHER = 0x80,
 };
 
+/**
+ * @brief Get generic PCI device name for given class and subclass
+ * @param class Device class
+ * @param subclass Device subclass
+ * @return Pointer to name in name table or NULL if no generic name available
+*/
 char *PciGetGenericDeviceName(enum PciClass class, enum PciSubclass subclass);
 
 #endif

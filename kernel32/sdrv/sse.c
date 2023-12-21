@@ -1,22 +1,34 @@
 #include "sse.h"
+#include "mm/heap.h"
+#include "common.h"
 
-STATUS SseInitialize(void)
+#define SSE_STATE_BUFFER_SIZE 512
+#define SSE_STATE_BUFFER_ALIGNMENT 16
+static char SseDefaultState[SSE_STATE_BUFFER_SIZE] ALIGN(SSE_STATE_BUFFER_ALIGNMENT);
+
+void SseInit(void)
 {
     uint32_t cr4;
     ASM("mov eax,cr4" : "=a" (cr4) : :);
     cr4 |= (1 << 9) | (1 << 10); //enable SSE and unmask SSE exceptions
     ASM("mov cr4,eax" : : "a" (cr4) :);
-    return OK;
+    SseStore(SseDefaultState);
 }
 
-STATUS SseStore(struct KeTaskControlBlock *tcb)
+void *SseCreateStateBuffer(void)
 {
-    ASM("fxsave [%0]" : "=r" (tcb->mathState) : :);
-    return OK;
+    void *ret = MmAllocateKernelHeap(SSE_STATE_BUFFER_SIZE);
+    if(NULL != ret)
+        CmMemcpy(ret, SseDefaultState, SSE_STATE_BUFFER_SIZE);
+    return ret;
 }
 
-STATUS SseRestore(struct KeTaskControlBlock *tcb)
+void SseStore(void *buffer)
 {
-    ASM("fxrstor [%0]" : : "r" (tcb->mathState) :);
-    return OK;
+    ASM("fxsave [eax]" : : "a" (buffer) : );
+}
+
+void SseRestore(void *buffer)
+{
+    ASM("fxrstor [eax]" : : "a" (buffer) : );
 }

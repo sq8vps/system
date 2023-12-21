@@ -6,6 +6,8 @@
 #include "sdrv/msr.h"
 #include "time.h"
 #include "ioport.h"
+#include "sdrv/sse.h"
+#include "sdrv/fpu.h"
 
 static STATUS verifyRequiredCapatibities(void)
 {
@@ -13,9 +15,6 @@ static STATUS verifyRequiredCapatibities(void)
 
     //this function checks for capabilities required to run this OS
     available &= CpuidCheckIfFpuAvailable();
-    available &= CpuidCheckIfMmxAvailable();
-    available &= CpuidCheckIfSseAvailable();
-    available &= CpuidCheckIfTscAvailable();
 
     if(!available)
         return SYSTEM_INCOMPATIBLE;
@@ -37,6 +36,8 @@ STATUS HalInit(void)
         return ret;
     
     HalMsrInit();
+    if(OK != (ret = HalInitMath()))
+        return ret;
 
     if(OK != (ret = HalInitCpu()))
         return ret;
@@ -44,7 +45,6 @@ STATUS HalInit(void)
     if(OK != (ret = HalInitInterruptController()))
         return ret;
 
-    TscInit();
     if(OK != HalInitTimeController())
         return ret;
 

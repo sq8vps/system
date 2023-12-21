@@ -31,7 +31,7 @@ STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t globalIrq)
     return OK;
 }
 
-uint32_t HalResolveIrqMapping(uint32_t irq)
+uint32_t HalResolveIsaIrqMapping(uint32_t irq)
 {
     if(irq < HAL_ISA_INTERRUPT_COUNT)
         return isaRemapTable[irq];

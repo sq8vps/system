@@ -3,9 +3,9 @@ CC = i686-elf-gcc
 LNK = i686-elf-gcc
 AR = i686-elf-ar
 ASM = nasm
-CC_FLAGS = -I. -I.. -c -ffreestanding -masm=intel -D DEBUG -Wall
+CC_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -Wall
 ASM_FLAGS = -f elf32 -D DEBUG
-LNK_FLAGS = -nostdlib -T kernel.ld -ffreestanding -z noexecstack
+LNK_FLAGS = -g -nostdlib -T kernel.ld -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc
 
 CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c) $(wildcard **/**/*.c)
@@ -25,7 +25,10 @@ all: $(NAME)
 
 $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
+	objcopy --only-keep-debug $@ ${@:.elf=.sym}
+	objcopy --strip-debug $@
 	cp $@ ../output/
+	cp ${@:.drv=.sym} ../symbols/
 	
 clean:
 	rm -rf $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)

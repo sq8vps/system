@@ -26,6 +26,13 @@ struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, 
     
     CmMemset((void*)tcb, 0, sizeof(*tcb));
 
+    tcb->mathState = HalCreateMathStateBuffer();
+    if(NULL == tcb->mathState)
+    {
+        MmFreeKernelHeap(tcb);
+        return NULL;
+    }
+
     tcb->cr3 = pageDir;
     tcb->esp = stack;
     tcb->esp0 = kernelStack;

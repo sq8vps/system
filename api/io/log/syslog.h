@@ -61,6 +61,7 @@ extern STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType 
  * @param ... Additional arguments
  * @return Status code
 */
+__attribute__ ((format (printf, 3, 4)))
 extern STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
 
 

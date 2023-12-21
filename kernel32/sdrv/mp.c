@@ -28,6 +28,14 @@
 
 #define MP_IOAPIC_ENTRY_FLAG_EN 1
 
+/*
+MP does not provide a Global System Interrupt number
+Instead, there is an IO APIC ID
+Calculate GSI as ID * max inputs to get GSI to remain compatible with ACPI
+240 is the maximum number of inputs in IO APIC
+*/
+#define MP_CALCULATE_IO_APIC_GSI_BASE(id) ((id) * 240)
+
 struct MpConfigurationTableHeader
 {
     char signature[4];
@@ -246,6 +254,7 @@ static void readEntries(struct MpConfigurationTableHeader *hdr)
                     break;
                 ApicIoEntryTable[ApicIoEntryCount].id = ioapic->ioApicId;
                 ApicIoEntryTable[ApicIoEntryCount].address = ioapic->ioApicAddress;
+                ApicIoEntryTable[ApicIoEntryCount].irqBase = MP_CALCULATE_IO_APIC_GSI_BASE(ioapic->ioApicId);
                 ApicIoEntryCount++;
                 entry = ((struct MpIOAPICEntry*)entry) + 1;
                 break;

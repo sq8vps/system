@@ -2,26 +2,31 @@
 #define KERNEL_SSE_H_
 
 #include "defines.h"
-#include "ke/task/task.h"
 
 /**
  * @brief Initialize SSE
- * @return Status code
+ * @attention This function assumes that the SSE instruction set is available
+ * @warning This function does not initialize x87 FPU
 */
-INTERNAL STATUS SseInitialize(void);
+INTERNAL void SseInit(void);
+
 
 /**
- * @brief Store SSE, MMX and x87 state for given task
- * @param *tcb Task Control Block
- * @return Status code
+ * @brief Create buffer for x87/MMX/SSE state storage
+ * @return Buffer pointer or NULL on failure
 */
-INTERNAL STATUS SseStore(struct KeTaskControlBlock *tcb);
+INTERNAL void *SseCreateStateBuffer(void);
 
 /**
- * @brief Restore SSE, MMX and x87 state for given task
- * @param *tcb Task Control Block
- * @return Status code
+ * @brief Store x87/MMX/SSE state
+ * @param *buffer Buffer to store the SSE state
 */
-INTERNAL STATUS SseRestore(struct KeTaskControlBlock *tcb);
+INTERNAL void SseStore(void *buffer);
+
+/**
+ * @brief Restore x87/MMX/SSE state
+ * @param *buffer Buffer to restore the SSE state from
+*/
+INTERNAL void SseRestore(void *buffer);
 
 #endif

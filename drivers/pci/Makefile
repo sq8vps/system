@@ -2,9 +2,9 @@ NAME = pci.drv
 CC = i686-elf-gcc
 LNK = i686-elf-gcc
 ASM = nasm
-CC_FLAGS = -I. -I../../api -c -ffreestanding -masm=intel -Wall -DDRIVER_NAME='"$(NAME)"'
+CC_FLAGS = -I. -I../../api -c -g -ffreestanding -masm=intel -Wall -DDRIVER_NAME='"$(NAME)"'
 ASM_FLAGS = -f elf32
-LNK_FLAGS = -r -nostdlib -ffreestanding -z noexecstack
+LNK_FLAGS = -r -g -nostdlib -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc
 
 CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c) $(wildcard **/**/*.c)
@@ -24,7 +24,10 @@ all: $(NAME)
 
 $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
+	objcopy --only-keep-debug $@ ${@:.drv=.sym}
+	objcopy --strip-debug $@
 	cp $@ ../../output/
+	cp ${@:.drv=.sym} ../../symbols/
 	
 clean:
 	rm -f $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)

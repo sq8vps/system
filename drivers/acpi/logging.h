@@ -6,6 +6,8 @@
 
 extern struct IoSyslogHandle *AcpiLogHandle;
 
+#define LOG(type, ...) IoWriteSyslog(AcpiLogHandle, type, __VA_ARGS__)
+
 void AcpiLoggingInit(void);
 
 #endif

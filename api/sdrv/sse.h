@@ -8,7 +8,6 @@ extern "C"
 #endif
 
 #include "defines.h"
-#include "ke/task/task.h"
 
 #ifdef __cplusplus
 }

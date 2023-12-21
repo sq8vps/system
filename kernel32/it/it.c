@@ -58,7 +58,6 @@ static uint32_t irqUsageBitmap[IDT_ENTRY_COUNT / 32];
 */
 STATUS defaultIsr(uint8_t vector, void *context)
 {
-	HalClearInterruptFlag(vector);
 	return OK;
 }
 
@@ -71,8 +70,8 @@ uint8_t ItGetFreeVector(uint8_t requested)
 		if(requested >= 16)
 			return 0;
 		
-		KeAcquireSpinlock(&getFreeVectorMutex);
 		requested += HAL_PIC_REMAP_VECTOR;
+		KeAcquireSpinlock(&getFreeVectorMutex);
 		if(0 == (irqUsageBitmap[1] & ((uint32_t)1 << requested)))
 		{
 			irqUsageBitmap[1] |= ((uint32_t)1 << requested);

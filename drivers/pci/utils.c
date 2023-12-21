@@ -26,70 +26,70 @@
 
 #define PCI_CONFIG_HEADER_MULTIFUNCTION 0x80
 
-uint32_t PciConfigReadDword(struct PciAddress address, uint8_t offset)
+uint32_t PciConfigReadDword(union IoBusId address, uint8_t offset)
 {
-	uint32_t data = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	uint32_t data = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
+     ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
 	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
 	return HalIoPortReadDWord(PCI_CONFIG_IO_DATA);
 }
 
-uint16_t PciConfigReadWord(struct PciAddress address, uint8_t offset)
+uint16_t PciConfigReadWord(union IoBusId address, uint8_t offset)
 {
-	uint32_t data = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	uint32_t data = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
+     ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
 	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
 	return (HalIoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 2) << 3)) & 0xFFFF;
 }
 
-uint8_t PciConfigReadByte(struct PciAddress address, uint8_t offset)
+uint8_t PciConfigReadByte(union IoBusId address, uint8_t offset)
 {
-	uint32_t data = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	uint32_t data = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
+     ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
 	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
 	return (HalIoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 3) << 3)) & 0xFF;
 }
 
-void PciConfigWriteDword(struct PciAddress address, uint8_t offset, uint32_t data)
+void PciConfigWriteDword(union IoBusId address, uint8_t offset, uint32_t data)
 {
-	uint32_t a = (((uint32_t)address.bus << 16) | ((uint32_t)address.device << 11) |
-     ((uint32_t)address.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
+	uint32_t a = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
+     ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
 	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, a);
 	HalIoPortWriteDWord(PCI_CONFIG_IO_DATA, data);
 }
 
-void PciConfigWriteByte(struct PciAddress address, uint8_t offset, uint8_t data)
+void PciConfigWriteByte(union IoBusId address, uint8_t offset, uint8_t data)
 {
 	uint32_t old = PciConfigReadDword(address, offset & 0xFC) & ~((uint32_t)0xFF << ((offset & 0x3) * 8));
 	PciConfigWriteDword(address, offset & 0xFC, old | (data << ((offset & 0x03) * 8)));
 }
 
-uint16_t PciGetVendorId(struct PciAddress address)
+uint16_t PciGetVendorId(union IoBusId address)
 {
     return PciConfigReadWord(address, PCI_CONFIG_STD_VENDOR_ID);
 }
 
-uint16_t PciGetDeviceId(struct PciAddress address)
+uint16_t PciGetDeviceId(union IoBusId address)
 {
     return PciConfigReadWord(address, PCI_CONFIG_STD_DEVICE_ID);
 }
 
-enum PciClass PciGetClass(struct PciAddress address)
+enum PciClass PciGetClass(union IoBusId address)
 {
 	return PciConfigReadByte(address, PCI_CONFIG_STD_CLASS);
 }
 
-enum PciSubclass PciGetSubclass(struct PciAddress address)
+enum PciSubclass PciGetSubclass(union IoBusId address)
 {
 	return PciConfigReadByte(address, PCI_CONFIG_STD_SUBCLASS);
 }
 
-bool PciIsMultifunction(struct PciAddress address)
+bool PciIsMultifunction(union IoBusId address)
 {
 	return PciConfigReadByte(address, PCI_CONFIG_STD_HEADER_TYPE) & PCI_CONFIG_HEADER_MULTIFUNCTION;
 }
 
-bool PciIsPciPciBridge(struct PciAddress address)
+bool PciIsPciPciBridge(union IoBusId address)
 {
 	if(BRIDGE == PciGetClass(address))
 	{
@@ -99,7 +99,7 @@ bool PciIsPciPciBridge(struct PciAddress address)
 	return false;
 }
 
-bool PciIsHostBridge(struct PciAddress address)
+bool PciIsHostBridge(union IoBusId address)
 {
 	if(BRIDGE == PciGetClass(address))
 	{
@@ -109,7 +109,7 @@ bool PciIsHostBridge(struct PciAddress address)
 	return false;
 }
 
-STATUS PciReadConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp)
+STATUS PciReadConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
 {
 	if(0 == rp->size)
 		return OK;
@@ -125,7 +125,7 @@ STATUS PciReadConfigurationSpace(struct PciAddress address, struct IoDriverRp *r
 	return OK;
 }
 
-STATUS PciWriteConfigurationSpace(struct PciAddress address, struct IoDriverRp *rp)
+STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
 {
 	if(0 == rp->size)
 		return OK;

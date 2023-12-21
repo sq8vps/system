@@ -51,6 +51,20 @@ enum HalInterruptTrigger
 };
 
 EXPORT
+enum HalInterruptWakeCapable
+{
+    IT_WAKE_INCAPABLE,
+    IT_WAKE_CAPABLE,
+};
+
+EXPORT
+enum HalInterruptSharing
+{
+    IT_NOT_SHARED,
+    IT_SHARED,
+};
+
+EXPORT
 /**
  * @brief External interrupt mode
 */
@@ -67,12 +81,13 @@ enum HalInterruptMode
 
 #define HAL_PIC_REMAP_VECTOR IT_IRQ_VECTOR_BASE
 
+EXPORT
 /**
- * @brief Resolve IRQ to global interrupt mapping
- * @param irq IRQ from device
+ * @brief Resolve legacy ISA IRQ to global interrupt mapping
+ * @param irq ISA IRQ from device
  * @return Resolved IRQ after remapping (if applicable)
 */
-INTERNAL uint32_t HalResolveIrqMapping(uint32_t irq);
+EXTERN uint32_t HalResolveIsaIrqMapping(uint32_t irq);
 
 /**
  * @brief Set dual-PIC presence state

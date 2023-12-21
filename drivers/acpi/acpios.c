@@ -518,15 +518,15 @@ void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);
-    if(NULL != AcpiLogHandle)
-        IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
+    // if(NULL != AcpiLogHandle)
+    //     IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
     va_end(Args);
 }
 
 void AcpiOsVprintf(const char *Format, va_list Args)
 {
-    if(NULL != AcpiLogHandle)
-        IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
+    // if(NULL != AcpiLogHandle)
+    //     IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
 }
 
 void AcpiOsRedirectOutput(void *Destination)

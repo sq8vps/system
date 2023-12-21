@@ -51,7 +51,9 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
         
         return ret;
     }
-    else if(0 == CmStrcmp("PCI/8086/7010", deviceId))
+    else if((0 == CmStrcmp("PCI/8086/7010", deviceId))
+            || (0 == CmStrcmp("PCI/8086/7111", deviceId))
+    )
     {
         *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
         (*drivers)->next = NULL;
@@ -354,5 +356,12 @@ char* ExMakeDeviceId(uint8_t count, ...)
     }
  
     va_end(args);
+
+    for(uint32_t i = 0; i < CmStrlen(r); i++)
+    {
+        if(' ' == r[i])
+            r[i] = '_';
+    }
+
     return r;
 }

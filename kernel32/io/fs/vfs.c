@@ -79,7 +79,7 @@ STATUS IoVfsInit(void)
 */
 static void detachFileName(char *path, char **file)
 {
-    ASSERT(path && *file);
+    ASSERT(path && file);
     char *c = path + CmStrlen(path);
     while(c >= path)
     {

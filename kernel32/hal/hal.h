@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+#include "ke/task/task.h"
 
 /**
  * @addtogroup hal
@@ -21,11 +22,36 @@
 
 /**
  * @brief Initialize hardware abstraction layer
- * @return Status code
  * 
  * Initializes whole Hardware Abstraction Layer. Reads system tables and sets up all core peripherals.
+ * 
+ * @return Status code
 */
 INTERNAL STATUS HalInit(void);
+
+/**
+ * @brief Initialize math peripherals
+ * @return Status code
+*/
+INTERNAL STATUS HalInitMath(void);
+
+/**
+ * @brief Create buffer for coprocessor state storage
+ * @return Buffer pointer or NULL on failure
+*/
+INTERNAL void *HalCreateMathStateBuffer(void);
+
+/**
+ * @brief Store coprocessor state
+ * @param *tcb Task control block
+*/
+INTERNAL void HalStoreMathState(struct KeTaskControlBlock *tcb);
+
+/**
+ * @brief Restore coprocessor state
+ * @param *tcb Task control block
+*/
+INTERNAL void HalRestoreMathState(struct KeTaskControlBlock *tcb);
 
 /**
  * @}

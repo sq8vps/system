@@ -24,26 +24,37 @@ STATUS ExLoadKernelSymbols(char *path)
     struct Elf32_Ehdr *h = MmAllocateKernelHeap(sizeof(struct Elf32_Ehdr));
     if(NULL == h)
     {
-        ret = OUT_OF_RESOURCES;
-        goto ExLoadKernelSymbolsFailed;
+        IoCloseKernelFile(f);
+        return OUT_OF_RESOURCES;
     }
 
     uint64_t bytesRead;
     if(OK != (ret = IoReadKernelFile(f, h, sizeof(*h), 0, &bytesRead)))
-        goto ExLoadKernelSymbolsFailed;
+    {
+        IoCloseKernelFile(f);
+        MmFreeKernelHeap(h);
+        return ret;
+    }
     
     if(bytesRead != sizeof(*h))
     {
-        ret = EXEC_ELF_BROKEN;
-        goto ExLoadKernelSymbolsFailed;
+        IoCloseKernelFile(f);
+        MmFreeKernelHeap(h);
+        return EXEC_ELF_BROKEN;
     }
 
     if(OK != (ret = ExVerifyElf32Header(h))) //verify header
-        goto ExLoadKernelSymbolsFailed;
+    {
+        IoCloseKernelFile(f);
+        MmFreeKernelHeap(h);
+        return EXEC_ELF_BROKEN;
+    }
 
     /**
      * Calculate required symbol table size first
     */
+
+    struct Elf32_Sym *symbolTab = NULL;
 
     struct Elf32_Shdr *s = MmAllocateKernelHeap(sizeof(struct Elf32_Shdr)); //section header
     if(NULL == s)
@@ -51,8 +62,6 @@ STATUS ExLoadKernelSymbols(char *path)
         ret = OUT_OF_RESOURCES;
         goto ExLoadKernelSymbolsFailed;
     }
-
-    struct Elf32_Sym *symbolTab = NULL;
 
     uint32_t symbolCount = 0;
     struct Elf32_Shdr *stringTabHdr = NULL;

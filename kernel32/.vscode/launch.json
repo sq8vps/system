@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "name": "Kernel QEMU Debug",
+            "type": "gdb",
+            "request": "attach",
+            "executable": "kernel32.sym",
+            "target": "localhost:1234",
+            "remote": true,
+            "cwd": "${workspaceRoot}", 
+            "gdbpath": "gdb",
+        }
+    ],
+}

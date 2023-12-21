@@ -8,6 +8,7 @@ extern "C"
 #endif
 
 #include "defines.h"
+#include "hal/interrupt.h"
 enum IoBusType
 {
     IO_BUS_TYPE_UNKNOWN = 0,
@@ -15,6 +16,39 @@ enum IoBusType
     IO_BUS_TYPE_PCI,
     IO_BUS_TYPE_USB,
     IO_BUS_TYPE_ISA,
+};
+
+union IoBusId
+{
+    struct
+    {
+        uint8_t bus;
+        uint8_t device;
+        uint8_t function;
+    } pci;
+
+    void *other;
+};
+
+struct IoIrqEntry
+{
+    union IoBusId id;
+    uint32_t gsi;
+    uint32_t pin;
+    enum HalInterruptPolarity polarity;
+    enum HalInterruptTrigger trigger;
+    enum HalInterruptWakeCapable wake;
+    enum HalInterruptSharing sharing; 
+};
+
+struct IoIrqMap
+{
+    enum IoBusType type;
+    union IoBusId id;
+    uint32_t irqCount;
+    struct IoIrqEntry *irq;
+    struct IoIrqMap *next;
+    struct IoIrqMap *child;
 };
 
 struct IoPciDeviceHeader
@@ -127,6 +161,15 @@ struct IoPciDeviceHeader
 #define PCI_HEADER_STATUS_RECEIVED_MASTER_ABORT 0x2000
 #define PCI_HEADER_STATUS_SIGNALED_SYSTEM_ERROR 0x4000
 #define PCI_HEADER_STATUS_DETECTED_PARITY_ERROR 0x8000
+
+struct IoMemoryDescriptor
+{
+    uintptr_t physical;
+    void *mapped;
+    uint64_t size;
+
+    struct IoMemoryDescriptor *next;
+};
 
 
 #ifdef __cplusplus

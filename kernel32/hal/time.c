@@ -11,6 +11,7 @@ STATUS HalInitTimeController(void)
     if(CpuidCheckIfTscAvailable() && CpuidCheckIfTscInvariant())
     {
         useTsc = true;
+        TscInit();
     }
     
     return OK;

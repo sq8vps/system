@@ -61,9 +61,19 @@ static void PciVenDevToString(uint16_t n, char *s)
     
 //     IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s, enumerating as %s\n", (char*)name.Pointer, deviceId);
 
+static void addCompatibleDeviceId(struct IoDeviceObject *dev, char *class, char *subclass)
+{
+    char *deviceId;
+    if(NULL != (deviceId = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, class, subclass)))
+    {
+        IoUpdateCompatibleDeviceIdList(dev, deviceId);
+        MmFreeKernelHeap(deviceId);
+    }
+}
+
 static bool alreadyEnumerated = false;
 
-static STATUS PciEnumerateDeviceByAddress(struct PciAddress address, struct ExDriverObject *drv, struct IoSubDeviceObject *dev)
+static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriverObject *drv, struct IoSubDeviceObject *dev)
 {
     STATUS status;
     uint16_t vid, did;
@@ -84,9 +94,13 @@ static STATUS PciEnumerateDeviceByAddress(struct PciAddress address, struct ExDr
         vidS[4] = '\0';
         PciVenDevToString(did, didS);
         didS[4] = '\0';
-        char *deviceId = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, vidS, didS);
+        char *deviceId;
+        if(NULL == (deviceId = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, vidS, didS)))
+            return status;
+        
         if(OK != (status = IoRegisterDevice(newDev, deviceId)))
         {
+            MmFreeKernelHeap(deviceId);
             return status;
         }
 
@@ -96,6 +110,8 @@ static STATUS PciEnumerateDeviceByAddress(struct PciAddress address, struct ExDr
         enum PciClass class = PciGetClass(address);
         enum PciSubclass subclass = PciGetSubclass(address);
 
+        bool isPciBridge = false;
+
         switch(class)
         {
             case STORAGE:
@@ -103,12 +119,10 @@ static STATUS PciEnumerateDeviceByAddress(struct PciAddress address, struct ExDr
                 switch(subclass)
                 {
                     case STORAGE_IDE:
-                        IoUpdateCompatibleDeviceIdList(newDev->mainDeviceObject, 
-                            ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, "STORAGE", "IDE"));
+                        addCompatibleDeviceId(newDev->mainDeviceObject, "STORAGE", "IDE");
                         break;
                     case STORAGE_SATA:
-                        IoUpdateCompatibleDeviceIdList(newDev->mainDeviceObject, 
-                            ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, "STORAGE", "SATA"));
+                        addCompatibleDeviceId(newDev->mainDeviceObject, "STORAGE", "SATA");
                         break;
                     default:
                         break;
@@ -120,8 +134,8 @@ static STATUS PciEnumerateDeviceByAddress(struct PciAddress address, struct ExDr
                 {
                     case BRIDGE_PCI:
                     case BRIDGE_PCI_2:
-                        IoUpdateCompatibleDeviceIdList(newDev->mainDeviceObject, 
-                            ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, "BUS", "PCI"));
+                        addCompatibleDeviceId(newDev->mainDeviceObject, "BUS", "PCI");
+                        isPciBridge = true;
                         break;
                     default:
                         break;
@@ -150,13 +164,42 @@ static STATUS PciEnumerateDeviceByAddress(struct PciAddress address, struct ExDr
         char *name = PciGetGenericDeviceName(class, subclass);
         if(NULL != name)
             IoSetDeviceDisplayedName(newDev, name);
+
+        LOG(SYSLOG_INFO, "Device %s (%s) found at %u:%u:%u", deviceId, name ? name : "", address.pci.bus, address.pci.device, address.pci.function);
     
         struct PciDeviceData *deviceInfo = newDev->privateData;
         deviceInfo->address = address;
         deviceInfo->thisBridge = NULL;
-        deviceInfo->enumerator = dev;
-        
-        LOG(SYSLOG_INFO, "Device %s (%s) found\n", deviceId, name ? name : "");
+
+        if(isPciBridge) 
+        {
+            deviceInfo->irqMap = ((struct PciDeviceData*)dev->privateData)->irqMap->child;
+            while(NULL != deviceInfo->irqMap)
+            {
+                if(deviceInfo->irqMap->id.pci.device == address.pci.device)
+                {
+                    break;
+                }
+                deviceInfo->irqMap = deviceInfo->irqMap->next;
+            }
+        }
+        else
+        {
+            deviceInfo->irqMap = NULL;
+            uint32_t k = 0;
+            for(uint32_t i = 0; i < ((struct PciDeviceData*)dev->privateData)->irqMap->irqCount; i++)
+            {
+                if(((struct PciDeviceData*)dev->privateData)->irqMap->irq[i].id.pci.device == address.pci.device)
+                {
+                    deviceInfo->irqEntry[k++] = ((struct PciDeviceData*)dev->privateData)->irqMap->irq[i];
+                    LOG(SYSLOG_INFO, "IRQ at pin %lu, GSI %lu", deviceInfo->irqEntry[k - 1].pin, deviceInfo->irqEntry[k - 1].gsi);
+                    if(PCI_DEVICE_IRQ_LINE_COUNT == k)
+                        break;
+                }
+            }
+        }
+
+        MmFreeKernelHeap(deviceId);
 
         IoInitializeDevice(newDev->mainDeviceObject);
     }
@@ -175,12 +218,12 @@ STATUS PciEnumerate(struct ExDriverObject *drv, struct IoSubDeviceObject *dev, s
     {
         for(uint16_t device = 0; device < 32; device++)
         {
-            struct PciAddress a = {.bus = bus, .device = device, .function = 0};
+            union IoBusId a = {.pci.bus = bus, .pci.device = device, .pci.function = 0};
             if(PciIsMultifunction(a))
             {
                 for(uint16_t function = 0; function < 8; function++)
                 {
-                    a.function = function;
+                    a.pci.function = function;
                     PciEnumerateDeviceByAddress(a, drv, dev);
                 }
             }
@@ -206,9 +249,8 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObjec
         return OUT_OF_RESOURCES;
     
     struct PciDeviceData *deviceInfo = device->privateData;
-    deviceInfo->enumerator = baseDeviceObject;
     deviceInfo->thisBridge = NULL;
-    
+
     struct IoDriverRp *rp;
     if(OK != (status = IoCreateRp(&rp)))
         return status;
@@ -223,40 +265,38 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObjec
         return status;
     }
 
-    struct PciAddress address;
-    address.bus = rp->payload.busConfiguration.pci.bus;
-    address.device = rp->payload.busConfiguration.pci.device;
-    address.function = rp->payload.busConfiguration.pci.function;
+    deviceInfo->address = rp->payload.busConfiguration.id;
+    deviceInfo->irqMap = rp->payload.busConfiguration.irq;
 
-    if(PciIsHostBridge(address))
+    if(PciIsHostBridge(deviceInfo->address))
     {
         struct PciBridge *b;
-        if(PciIsMultifunction(address))
+        if(PciIsMultifunction(deviceInfo->address))
         {
             //multiple host bridges
             //multiple host bridge architecture is not supported for now, use only the first host bridge
-            PciRegisterHostBridge(address, &b);
+            PciRegisterHostBridge(deviceInfo->address, &b);
             deviceInfo->thisBridge = b;
         }
         else
         {
             //single host bridge
-            PciRegisterHostBridge(address, &b);
+            PciRegisterHostBridge(deviceInfo->address, &b);
             deviceInfo->thisBridge = b;
         }
         device->mainDeviceObject->type = IO_DEVICE_TYPE_BUS;
-        LOG(SYSLOG_INFO, "PCI Host Bridge at %d:%d:%d\n", address.bus, address.device, address.function);
+        LOG(SYSLOG_INFO, "PCI Host Bridge at %d:%d:%d\n", deviceInfo->address.pci.bus, deviceInfo->address.pci.device, deviceInfo->address.pci.function);
     }
-    else if(PciIsPciPciBridge(address))
+    else if(PciIsPciPciBridge(deviceInfo->address))
     {
         struct PciBridge *b;
-        PciRegisterBridge(address, NULL, &b);
+        PciRegisterBridge(deviceInfo->address, NULL, &b);
         deviceInfo->thisBridge = b;
         device->mainDeviceObject->type = IO_DEVICE_TYPE_BUS;
     }
     else
     {
-        device->mainDeviceObject->type = IO_DEVICE_TYPE_NONE;
+        device->mainDeviceObject->type = IO_DEVICE_TYPE_BUS;
     }
     
     MmFreeKernelHeap(rp);

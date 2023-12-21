@@ -262,20 +262,20 @@ void ApicStartSystemTimer(uint64_t time)
 
 uint64_t ApicGetTimestamp(void)
 {
-    return ((uint64_t)1000000000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
-        - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
+    return (uint64_t)((1000000000. * ((double)counter + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)frequency);
 }
 
 uint64_t ApicGetTimestampMicros(void)
 {
-    return ((uint64_t)1000000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
-        - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
+    return (uint64_t)((1000000. * ((double)counter + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)frequency);
 }
 
 uint64_t ApicGetTimestampMillis(void)
 {
-    return ((uint64_t)1000 * (counter + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
-        - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / frequency;
+    return (uint64_t)((1000. * ((double)counter + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)frequency);
 }
 
 STATUS ApicSetTaskPriority(uint8_t priority)
