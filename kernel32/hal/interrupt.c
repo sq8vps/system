@@ -9,6 +9,8 @@
 #include "ke/core/panic.h"
 #include "common.h"
 #include "io/disp/print.h"
+#include "ke/core/mutex.h"
+#include "mm/heap.h"
 
 static enum HalInterruptMethod interruptMethod = IT_METHOD_NONE;
 
@@ -17,24 +19,38 @@ static enum HalInterruptMethod interruptMethod = IT_METHOD_NONE;
 static bool dualPicPresent = false;
 static uint32_t isaRemapTable[HAL_ISA_INTERRUPT_COUNT];
 
+struct HalInterruptEntry
+{
+    uint32_t input;
+    uint8_t vector;
+    struct HalInterruptParams params;
+    uint8_t consumers;
+
+    struct HalInterruptEntry *next;
+} static *HalInterruptList = NULL;
+static KeSpinlock HalInterruptListLock = KeSpinlockInitializer;
+
 void HalSetDualPicPresence(bool state)
 {
     dualPicPresent = state;
 }
 
-STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t globalIrq)
+STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi)
 {
     if(isaIrq >= HAL_ISA_INTERRUPT_COUNT)
         return IT_BAD_VECTOR;
     
-    isaRemapTable[isaIrq] = globalIrq;
+    isaRemapTable[isaIrq] = gsi;
     return OK;
 }
 
 uint32_t HalResolveIsaIrqMapping(uint32_t irq)
 {
-    if(irq < HAL_ISA_INTERRUPT_COUNT)
-        return isaRemapTable[irq];
+    if(IT_METHOD_APIC == interruptMethod)
+    {
+        if(irq < HAL_ISA_INTERRUPT_COUNT)
+            return isaRemapTable[irq];
+    }
     
     return irq;
 }
@@ -82,18 +98,106 @@ STATUS HalInitInterruptController(void)
     }
 }
 
-STATUS HalRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
-                        enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger)
+STATUS HalRegisterIrq(
+    uint32_t input,
+    ItHandler isr,
+    void *context,
+    struct HalInterruptParams params)
 {
-    if(IT_METHOD_APIC == interruptMethod)
-        return ApicIoRegisterIRQ(input, vector, mode, polarity, trigger);
-    else if(IT_METHOD_PIC == interruptMethod)
-        return OK;
+    STATUS status;
 
-    return IT_NO_CONTROLLER_CONFIGURED;
+    struct HalInterruptEntry *matching = NULL;
+    KeAcquireSpinlock(&HalInterruptListLock);
+    if(NULL != HalInterruptList)
+    {
+        matching = HalInterruptList;
+        while(matching)
+        {
+            if(matching->input == input)
+                break;
+            matching = matching->next;
+        }
+    }
+
+    if(NULL != matching)
+    {
+        if(!(
+            (matching->params.mode == params.mode)
+            && (matching->params.polarity == params.polarity)
+            && (matching->params.trigger == params.trigger)
+            && (IT_SHARED == matching->params.shared)
+            && (IT_SHARED == params.shared)
+            ))
+        {
+            KeReleaseSpinlock(&HalInterruptListLock);
+            return IT_ALREADY_REGISTERED;
+        }
+    }
+    else
+    {
+        matching = MmAllocateKernelHeap(sizeof(*matching));
+        if(NULL == matching)
+        {
+            KeReleaseSpinlock(&HalInterruptListLock);
+            return OUT_OF_RESOURCES;
+        }
+        CmMemset(matching, 0, sizeof(*matching));
+        // if(NULL == HalInterruptList)
+        //     HalInterruptList = matching;
+        // else
+        // {
+        //     struct HalInterruptEntry *t = HalInterruptList;
+        //     while(t->next)
+        //         t = t->next;
+        //     t->next = matching;
+        // }
+
+        if(interruptMethod == IT_METHOD_APIC)
+        {
+            uint8_t vector = ItReserveVector(IT_VECTOR_ANY);
+            if(0 == vector)
+            {
+                MmFreeKernelHeap(matching);
+                KeReleaseSpinlock(&HalInterruptListLock);
+                return OUT_OF_RESOURCES;
+            }
+            status = ApicIoRegisterIrq(input, vector, params.mode, params.polarity, params.trigger);
+            if(OK != status)
+            {
+                ItFreeVector(vector);
+                MmFreeKernelHeap(matching);
+                KeReleaseSpinlock(&HalInterruptListLock);
+                return OUT_OF_RESOURCES; 
+            }
+            status = ItInstallInterruptHandler(vector, isr, context);
+            if(OK != status)
+            {
+                ApicIoUnregisterIrq(input);
+                ItFreeVector(vector);
+                MmFreeKernelHeap(matching);
+                KeReleaseSpinlock(&HalInterruptListLock);
+                return status;
+            }
+            matching->input = input;
+            matching->vector = vector;
+            matching->params = params;
+            matching->consumers = 1;
+        }
+        else
+        {
+            
+        }
+
+    }
+
+
+    KeReleaseSpinlock(&HalInterruptListLock);
+    return status;
 }
 
-STATUS HalUnregisterIRQ(uint32_t input)
+STATUS HalUnregisterIrq(
+uint32_t input
+)
 {
     if(IT_METHOD_APIC == interruptMethod)
         return ApicIoUnregisterIRQ(input);

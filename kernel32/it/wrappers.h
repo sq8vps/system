@@ -2,37 +2,31 @@
 #define IT_WRAPPERS_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "defines.h"
 #include "it.h"
-#include "ke/core/mutex.h"
-#include "hal/interrupt.h"
-#include "ke/core/dpc.h"
 
 /**
  * @brief Interrupt handler descriptor for internal use
 */
 struct ItHandlerDescriptor
 {
-    ItHandler callback;
-    void *context;
-    KeSpinlock spinlock;
+    bool reserved; /**<  */
+    uint8_t count; /**< Number of interrupt consumers */
+    struct
+    {
+        ItHandler callback; /**< Consumer ISR */
+        void *context; /**< ISR's context */
+    } consumer[IT_MAX_SHARED_IRQ_CONSUMERS]; /**< A table of interrupt consumers */
 };
+
+void ItHandleIrq(uint8_t vector);
 
 #define IT_HANDLER_COUNT 224
 
 #define IT_ISR_WRAPPER_NAME(n) ItIsrWrapper##n
-//TODO: interrupts should be enabled in ISR
-#define IT_ISR_WRAPPER(n)                                                           \
-    IT_HANDLER static void IT_ISR_WRAPPER_NAME(n)(struct ItFrame *f)              \
-    {                                                                             \
-        if(HalIsInterruptSpurious())                                                \
-            return;                                                                    \
-        KeAcquireSpinlock(&itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].spinlock); \
-        itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].callback(n, itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].context);  \
-        HalClearInterruptFlag(n); \
-        KeReleaseSpinlock(&itHandlerDescriptorTable[n - IT_FIRST_INTERRUPT_VECTOR].spinlock); \
-        KeProcessDpcQueue(); \
-    }; \
+
+#define IT_ISR_WRAPPER(n) IT_HANDLER static void IT_ISR_WRAPPER_NAME(n)(struct ItFrame *f) { ItHandleIrq(n); }
 
 static struct ItHandlerDescriptor itHandlerDescriptorTable[IT_HANDLER_COUNT];
 

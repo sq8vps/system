@@ -15,6 +15,9 @@
 #include "defines.h"
 
 EXPORT
+#define IT_VECTOR_ANY 0
+
+EXPORT
 /**
  * @brief Lowest vector available for IRQs
 */
@@ -26,11 +29,20 @@ EXPORT
 */
 #define IT_FIRST_INTERRUPT_VECTOR 32
 
+EXPORT
+#define IT_MAX_IRQ_VECTORS (256 - IT_FIRST_INTERRUPT_VECTOR)
+
 /*
 * Vectors reserved and used by the kernel
 */
 #define IT_SYSTEM_TIMER_VECTOR IT_FIRST_INTERRUPT_VECTOR
 #define IT_LAPIC_SPURIOUS_VECTOR (IT_FIRST_INTERRUPT_VECTOR | 0xF)
+
+EXPORT
+/**
+ * @brief Maximum number of shared IRQ consumers
+*/
+#define IT_MAX_SHARED_IRQ_CONSUMERS 8
 
 /**
  * @brief Attribute to be used with interrupt handler wrappers
@@ -99,7 +111,7 @@ EXPORT
 /**
  * @brief Type definition for generic interrupt service routine
 */
-typedef STATUS (*ItHandler)(uint8_t vector, void *context);
+typedef STATUS (*ItHandler)(void *context);
 
 /**
  * @brief Set up interrupts and assign default handlers to them
@@ -107,41 +119,43 @@ typedef STATUS (*ItHandler)(uint8_t vector, void *context);
 */
 INTERNAL STATUS ItInit(void);
 
-EXPORT 
+EXPORT
 /**
- * @brief Get free interrupt vector number
- * @param requested Requested vector number for compatibility when PIC is used. No effect with I/O APIC.
- * @return Free vector number or 0 on failure
+ * @brief Get and reserve vector
+ * @param vector Requested vector number or \a IT_VECTOR_ANY for any vector number
+ * @return Reserved vector or 0 on failure
+ * @note Use \a ItFreeVector to release vector that was reserved but not used
 */
-EXTERN uint8_t ItGetFreeVector(uint8_t requested);
+EXTERN uint8_t ItReserveVector(uint8_t vector);
 
 EXPORT
 /**
- * @brief Release vector number
- * @param vector Vector to release
- * @return Status code
- * @note Uninstalling interrupt handler DOES release vector number
+ * @brief Free reserved vector
+ * @param vector Reserved vector number to be freed
+ * @note This function affects only vector that were reserved but not used
 */
-EXTERN STATUS ItReleaseVector(uint8_t vector);
+EXTERN void ItFreeVector(uint8_t vector);
 
 EXPORT 
 /**
  * @brief Install interrupt handler
  * @param vector Interrupt vector number
- * @param *isr Interrupt service routine pointer
+ * @param isr Interrupt service routine pointer
  * @param *context Context to be passed to ISR
- * @param cpl Required privilege level to use this interrupt
  * @return Status code
+ * @note This function fails if maximum number of shared IRQ consumers is already reached
+ * @warning This function does not know anything about the shareability of the IRQs services by this vector
 */
-EXTERN STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context, PrivilegeLevel_t cpl);
+EXTERN STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context);
 
 EXPORT 
 /**
  * @brief Uninstall interrupt handler
  * @param vector Vector number
+ * @param isr Interrupt service routine pointer
  * @return Status code
 */
-EXTERN STATUS ItUninstallInterruptHandler(uint8_t vector);
+STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
 
 /**
  * @brief Check if exeception/interrupt was caused by kernel mode code

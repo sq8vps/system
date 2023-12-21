@@ -47,79 +47,100 @@ struct
  * @brief Interrupt Descriptor Table itself
 */
 static struct IdtEntry idt[IDT_ENTRY_COUNT] __attribute__((aligned(8)));
-
-/**
- * @brief Bitmap of used IRQ vectors
-*/
-static uint32_t irqUsageBitmap[IDT_ENTRY_COUNT / 32];
  
-/**
- * @brief Default ISR for interrupts
-*/
-STATUS defaultIsr(uint8_t vector, void *context)
-{
-	return OK;
-}
+static KeSpinlock ItHandlerTableMutex = KeSpinlockInitializer;
 
-static KeSpinlock getFreeVectorMutex = KeSpinlockInitializer;
-
-uint8_t ItGetFreeVector(uint8_t requested)
+uint8_t ItReserveVector(uint8_t vector)
 {
-	if(IT_METHOD_PIC == HalGetInterruptHandlingMethod())
+	if(0 == vector)
 	{
-		if(requested >= 16)
-			return 0;
-		
-		requested += HAL_PIC_REMAP_VECTOR;
-		KeAcquireSpinlock(&getFreeVectorMutex);
-		if(0 == (irqUsageBitmap[1] & ((uint32_t)1 << requested)))
+		KeAcquireSpinlock(&ItHandlerTableMutex);
+		for(uint16_t i = 0; i < sizeof(itHandlerDescriptorTable) / sizeof(*itHandlerDescriptorTable); i++)
 		{
-			irqUsageBitmap[1] |= ((uint32_t)1 << requested);
-			KeReleaseSpinlock(&getFreeVectorMutex);
-			return requested;
+			if((0 == itHandlerDescriptorTable[i].count) && (false == itHandlerDescriptorTable[i].reserved))
+				return i + IT_FIRST_INTERRUPT_VECTOR;
 		}
-		return 0;
 	}
-	KeAcquireSpinlock(&getFreeVectorMutex);
-	uint8_t k = IT_IRQ_VECTOR_BASE % 32;
-	for(uint8_t i = (IT_IRQ_VECTOR_BASE / 32); i < sizeof(irqUsageBitmap); i++)
+	else if(vector >= IT_FIRST_INTERRUPT_VECTOR)
 	{
-		for(; k < 32; k++)
-		{
-			if(0 == (irqUsageBitmap[i] & ((uint32_t)1 << k)))
-			{
-				irqUsageBitmap[i] |= ((uint32_t)1 << k);
-				KeReleaseSpinlock(&getFreeVectorMutex);
-				return (i * 32) + k;
-			}
-		}
-		k = 0;
+		vector -= IT_FIRST_INTERRUPT_VECTOR;
+		KeAcquireSpinlock(&ItHandlerTableMutex);
+		if(0 == itHandlerDescriptorTable[vector].count)
+			itHandlerDescriptorTable[vector].reserved = true;
+		else
+			vector = 0;
+		KeReleaseSpinlock(&ItHandlerTableMutex);
+		return vector;
 	}
-	KeReleaseSpinlock(&getFreeVectorMutex);
-	return 0;
-}
-
-STATUS ItReleaseVector(uint8_t vector)
-{
-	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
-	irqUsageBitmap[vector / 32] &= ~((uint32_t)1 << (vector % 32));
-	return OK;
-}
-
-STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context, PrivilegeLevel_t cpl)
-{
-	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
-	if(PL_USER == cpl)
-		idt[vector].flags |= IDT_FLAG_INTERRUPT_USERMODE;
 	else
-		idt[vector].flags &= ~IDT_FLAG_INTERRUPT_USERMODE;
+		return 0;
+}
+
+void ItFreeVector(uint8_t vector)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return;
+	
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
-	itHandlerDescriptorTable[vector].callback = isr;
-	itHandlerDescriptorTable[vector].context = context;
-	irqUsageBitmap[vector / 32] |= ((uint32_t)1 << (vector % 32));
+
+	KeAcquireSpinlock(&ItHandlerTableMutex);
+	if(true == itHandlerDescriptorTable[vector].reserved)
+	{
+		itHandlerDescriptorTable[vector].reserved = false;
+	}
+	KeReleaseSpinlock(&ItHandlerTableMutex);
+}
+
+STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return IT_BAD_VECTOR;
+
+	vector -= IT_FIRST_INTERRUPT_VECTOR;
+
+	KeAcquireSpinlock(&ItHandlerTableMutex);
+
+	if(itHandlerDescriptorTable[vector].count == IT_MAX_SHARED_IRQ_CONSUMERS)
+	{
+		KeReleaseSpinlock(&ItHandlerTableMutex);
+		return IT_VECTOR_NOT_FREE;
+	}
+
+	itHandlerDescriptorTable[vector].consumer[itHandlerDescriptorTable[vector].count].callback = isr;
+	itHandlerDescriptorTable[vector].consumer[itHandlerDescriptorTable[vector].count].context = context;
+	itHandlerDescriptorTable[vector].count++;
+	itHandlerDescriptorTable[vector].reserved = false;
+	KeReleaseSpinlock(&ItHandlerTableMutex);
+
 	return OK;
+}
+
+STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return IT_BAD_VECTOR;
+	
+	KeAcquireSpinlock(&ItHandlerTableMutex);
+	for(uint8_t i = 0; i < itHandlerDescriptorTable[vector].count; i++)
+	{
+		if(itHandlerDescriptorTable[vector].consumer[i].callback == isr)
+		{
+			for(uint8_t k = IT_MAX_SHARED_IRQ_CONSUMERS; k > i; k--)
+			{
+				if(k > 1)
+					itHandlerDescriptorTable[vector].consumer[k - 2] = itHandlerDescriptorTable[vector].consumer[k - 1];
+			}
+			for(uint8_t k = i; k < IT_MAX_SHARED_IRQ_CONSUMERS; k++)
+			{
+				itHandlerDescriptorTable[vector].consumer[k].callback = NULL;
+			}
+			itHandlerDescriptorTable[vector].count--;
+			KeReleaseSpinlock(&ItHandlerTableMutex);
+			return OK;
+		}
+	}
+	KeReleaseSpinlock(&ItHandlerTableMutex);
+	return IT_NOT_REGISTERED;
 }
 
 static STATUS insertIdtEntry(uint8_t vector, void *wrapper)
@@ -130,19 +151,6 @@ static STATUS insertIdtEntry(uint8_t vector, void *wrapper)
 	idt[vector].isrHigh = (uint32_t)wrapper >> 16;
 	idt[vector].selector = MmGdtGetFlatPrivilegedCodeOffset(); //interrupt are always processed in kernel mode
 	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT;
-	return OK;
-}
-
-
-STATUS ItUninstallInterruptHandler(uint8_t vector)
-{
-	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
-	
-	ItInstallInterruptHandler(vector, defaultIsr, NULL, PL_KERNEL);
-
-	irqUsageBitmap[vector / 32] &= ~((uint32_t)1 << (vector % 32));
-	
 	return OK;
 }
 
@@ -163,9 +171,8 @@ STATUS ItInit(void)
 	CmMemset(idt, 0, sizeof(idt));
 	for(uint16_t i = 0; i < sizeof(itHandlerDescriptorTable) / sizeof(*itHandlerDescriptorTable); i++)
 	{
-		itHandlerDescriptorTable[i].context = NULL;
-		itHandlerDescriptorTable[i].callback = defaultIsr;
-		itHandlerDescriptorTable[i].spinlock.lock = 0;
+		itHandlerDescriptorTable[i].count = 0;
+		CmMemset(itHandlerDescriptorTable[i].consumer, 0, sizeof(itHandlerDescriptorTable[i].consumer[0]));
 	}
 	//set up all defined exceptions to default handlers
 	ItInstallExceptionHandler(IT_EXCEPTION_DIVIDE, ItDivisionByZeroHandler);
@@ -189,8 +196,6 @@ STATUS ItInit(void)
 	ItInstallExceptionHandler(IT_EXCEPTION_SIMD_FPU, ItSimdFpuHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_VIRTUALIZATION, ItUnexpectedFaultHandler);
 	ItInstallExceptionHandler(IT_EXCEPTION_CONTROL_PROTECTION, ItUnexpectedFaultHandlerEC);
-
-	irqUsageBitmap[0] = 0xFFFFFFFF; //mark first 32 vectors as used
 
 	//install dummy handlers for all non-exception interrupts
 	for(uint16_t i = IT_FIRST_INTERRUPT_VECTOR; i < IDT_ENTRY_COUNT; i++)
@@ -232,4 +237,15 @@ void ItDisableInterrupts(void)
 void ItEnableInterrupts(void)
 {
 	ASM("sti");
+}
+
+void ItHandleIrq(uint8_t vector)
+{
+	if(HalIsInterruptSpurious())                                               
+        return;            
+	ItEnableInterrupts();
+	for(uint8_t i = 0; i < itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)                                                      
+		itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].callback(itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].context);
+	HalClearInterruptFlag(vector);
+	KeProcessDpcQueue();
 }

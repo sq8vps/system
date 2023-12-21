@@ -2,6 +2,7 @@
 #include "mm/mmio.h"
 #include "it/it.h"
 #include "common.h"
+#include "ke/core/Lock.h"
 
 struct ApicIoEntry ApicIoEntryTable[MAX_IOAPIC_COUNT];
 uint8_t ApicIoEntryCount = 0;
@@ -24,6 +25,8 @@ struct IOAPIC
     uint8_t id;
     uint8_t inputs;
     uint32_t irqBase;
+    uint32_t usage[(IOAPIC_MAX_INPUTS / 32) + ((IOAPIC_MAX_INPUTS % 32) ? 1 : 0)];
+    KeSpinlock Lock;
 } static ioApicDevice[MAX_IOAPIC_COUNT]; //table of I/O APIC chips
 static uint8_t ioApicDeviceCount = 0; //number of I/O APIC chips
 
@@ -31,14 +34,20 @@ struct
 {
     struct IOAPIC *ioApic;
     uint32_t input;
-} static ioApicIrqLUT[256]; //look-up table to speed up getting IOAPIC structure and input number for given IRQ
+} static ioApicIrqLUT[IT_MAX_IRQ_VECTORS]; //look-up table to speed up getting IOAPIC structure and input number for given IRQ
+static KeSpinlock IoApicIrqLutMutex = KeSpinlockInitializer;
 
 static struct IOAPIC* findIoApic(uint32_t input)
 {
     for(uint8_t i = 0; i < ioApicDeviceCount; i++)
     {
+        KeAcquireSpinlock(&ioApicDevice[i].Lock);
         if((ioApicDevice[i].irqBase < input) && ((ioApicDevice[i].irqBase + ioApicDevice[i].inputs) >= input))
+        {
+            KeReleaseSpinlock(&ioApicDevice[i].Lock);
             return &ioApicDevice[i];
+        }
+        KeReleaseSpinlock(&ioApicDevice[i].Lock);
     }
     return NULL;
 }
@@ -74,7 +83,9 @@ STATUS ApicIoInit(void)
     if(0 == ApicIoEntryCount)
         return APIC_IOAPIC_NOT_AVAILABLE;
 
+    KeAcquireSpinlock(&IoApicIrqLutMutex);
     CmMemset(ioApicIrqLUT, 0, sizeof(ioApicIrqLUT));
+    KeReleaseSpinlock(&IoApicIrqLutMutex);
 
     uintptr_t lowestAddress = 0xFFFFFFFF;
     uintptr_t highestAddress = 0;
@@ -93,10 +104,13 @@ STATUS ApicIoInit(void)
 
     for(uint16_t i = 0; i < ApicIoEntryCount; i++)
     {
+        KeAcquireSpinlock(&ioApicDevice[ioApicDeviceCount].Lock);
         ioApicDevice[ioApicDeviceCount].mmio = (uint32_t*)(((uintptr_t)mmio) + (ApicIoEntryTable[i].address - lowestAddress));
         ioApicDevice[ioApicDeviceCount].inputs = (read(&ioApicDevice[ioApicDeviceCount], IOAPIC_REG_IOAPICVER) >> 16) & 0x7F;
         ioApicDevice[ioApicDeviceCount].id = ApicIoEntryTable[i].id;
         ioApicDevice[ioApicDeviceCount].irqBase = ApicIoEntryTable[i].irqBase;
+        CmMemset(ioApicDevice[ioApicDeviceCount].usage, 0, sizeof(ioApicDevice[ioApicDeviceCount].usage));
+        KeReleaseSpinlock(&ioApicDevice[ioApicDeviceCount].Lock);
         ioApicDeviceCount++;
     }
 
@@ -105,100 +119,169 @@ STATUS ApicIoInit(void)
 
 uint8_t ApicIoGetAssociatedVector(uint32_t input)
 {    
-    for(uint16_t i = 0; i < 256; i++)
+    KeAcquireSpinlock(&IoApicIrqLutMutex);
+    for(uint16_t i = 0; i < IT_MAX_IRQ_VECTORS; i++)
     {
         if(ioApicIrqLUT[i].input == input)
+        {
+            KeReleaseSpinlock(&IoApicIrqLutMutex);
             return i;
+        }
     }
+    KeReleaseSpinlock(&IoApicIrqLutMutex);
     return 0;
 }
 
-STATUS ApicIoRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
+STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
                         enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger)
 {
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
         return APIC_IOAPIC_NOT_AVAILABLE;
-    
-    if(input < ioApic->irqBase)
-        return APIC_IOAPIC_BAD_INPUT_NUMBER;
-    
-    if((input - ioApic->irqBase) >= ioApic->inputs)
-        return APIC_IOAPIC_BAD_INPUT_NUMBER;
 
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
     
+    KeAcquireSpinlock(&IoApicIrqLutMutex);
     if(NULL != ioApicIrqLUT[ApicIoGetAssociatedVector(input)].ioApic)
+    {
+        KeReleaseSpinlock(&IoApicIrqLutMutex);
         return IT_ALREADY_REGISTERED;
+    }
     
+    KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), 
         ((uint32_t)vector) | (((uint32_t)mode) << 8) | (((uint32_t)polarity) << 13) | (((uint32_t)trigger) << 15) | IOAPIC_IOREDTBL_MASK);
+    KeReleaseSpinlock(&ioApic->Lock);
 
     ioApicIrqLUT[vector].input = input;
     ioApicIrqLUT[vector].ioApic = ioApic;
+    KeReleaseSpinlock(&IoApicIrqLutMutex);
 
     return OK;
 }
 
-STATUS ApicIoUnregisterIRQ(uint32_t input)
+STATUS ApicIoUnregisterIrq(uint32_t input)
 {
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
         return APIC_IOAPIC_NOT_AVAILABLE;
-    
-    if(input < ioApic->irqBase)
-        return APIC_IOAPIC_BAD_INPUT_NUMBER;
-    
-    if((input - ioApic->irqBase) >= ioApic->inputs)
-        return APIC_IOAPIC_BAD_INPUT_NUMBER;
 
+    KeAcquireSpinlock(&IoApicIrqLutMutex);
     uint8_t vector = ApicIoGetAssociatedVector(input);
     if(NULL == ioApicIrqLUT[vector].ioApic)
+    {
+        KeReleaseSpinlock(&IoApicIrqLutMutex);
         return OK;
+    }
     
+    KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), IT_FIRST_INTERRUPT_VECTOR | IOAPIC_IOREDTBL_MASK);
+    KeReleaseSpinlock(&ioApic->Lock);
 
     ioApicIrqLUT[vector].input = 0;
     ioApicIrqLUT[vector].ioApic = NULL;
+    KeReleaseSpinlock(&IoApicIrqLutMutex);
 
     return OK;
 }
 
-
-
-STATUS ApicIoEnableIRQ(uint8_t vector)
+STATUS ApicIoEnableIrq(uint8_t vector)
 {
-    struct IOAPIC *ioapic = ioApicIrqLUT[vector].ioApic;
-    if(NULL == ioapic)
+    struct IOAPIC *ioApic = ioApicIrqLUT[vector].ioApic;
+    if(NULL == ioApic)
         return IT_NOT_REGISTERED;
     
-    if(ioApicIrqLUT[vector].input < ioapic->irqBase)
+    KeAcquireSpinlock(&IoApicIrqLutMutex);
+    if(ioApicIrqLUT[vector].input < ioApic->irqBase)
+    {
+        KeReleaseSpinlock(&IoApicIrqLutMutex);
         return IT_BAD_VECTOR;
+    }
     
-    if(ioApicIrqLUT[vector].input >= (ioapic->irqBase + ioapic->inputs))
+    if(ioApicIrqLUT[vector].input >= (ioApic->irqBase + ioApic->inputs))
+    {
+        KeReleaseSpinlock(&IoApicIrqLutMutex);
         return IT_BAD_VECTOR;
+    }
     
-    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase),
-            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase) & ~(IOAPIC_IOREDTBL_MASK)));
+    KeAcquireSpinlock(&ioApic->Lock);
+    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioApic->irqBase),
+            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioApic->irqBase) & ~(IOAPIC_IOREDTBL_MASK)));
+    KeReleaseSpinlock(&ioApic->Lock);
+    KeReleaseSpinlock(&IoApicIrqLutMutex);
     
     return OK;
 }
 
-STATUS ApicIoDisableIRQ(uint8_t vector)
+STATUS ApicIoDisableIrq(uint8_t vector)
 {
-    struct IOAPIC *ioapic = ioApicIrqLUT[vector].ioApic;
-    if(NULL == ioapic)
+    struct IOAPIC *ioApic = ioApicIrqLUT[vector].ioApic;
+    if(NULL == ioApic)
         return IT_NOT_REGISTERED;
     
-    if(ioApicIrqLUT[vector].input < ioapic->irqBase)
+    if(ioApicIrqLUT[vector].input < ioApic->irqBase)
         return IT_BAD_VECTOR;
 
-    if(ioApicIrqLUT[vector].input >= (ioapic->irqBase + ioapic->inputs))
+    if(ioApicIrqLUT[vector].input >= (ioApic->irqBase + ioApic->inputs))
         return IT_BAD_VECTOR;
     
-    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase),
-            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioapic->irqBase) | IOAPIC_IOREDTBL_MASK));
+    KeAcquireSpinlock(&ioApic->Lock);
+    write64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioApic->irqBase),
+            read64(ioApicIrqLUT[vector].ioApic, IOAPIC_REG_IOREDTBL(ioApicIrqLUT[vector].input - ioApic->irqBase) | IOAPIC_IOREDTBL_MASK));
+    KeReleaseSpinlock(&ioApic->Lock);
     
     return OK;
+}
+
+uint32_t ApicIoReserveInput(uint32_t input)
+{
+    for(uint8_t i = 0; i < ioApicDeviceCount; i++)
+    {
+        KeAcquireSpinlock(&ioApicDevice[i].Lock);
+        if(0 == input)
+        {
+            for(uint16_t k = 0; k < ioApicDevice[i].inputs; k++)
+            {
+                if(0 == (ioApicDevice[i].usage[k / 32] & ((uint32_t)1 << (k % 32))))
+                {
+                    ioApicDevice[i].usage[k / 32] |= ((uint32_t)1 << (k % 32));
+                    input = k + ioApicDevice[i].irqBase;
+                    KeReleaseSpinlock(&ioApicDevice[i].Lock);
+                    return input;
+                }
+            }
+        }
+        else if((input >= ioApicDevice[i].irqBase) && (input < (ioApicDevice[i].irqBase + ioApicDevice[i].inputs)))
+        {
+            input -= ioApicDevice[i].irqBase;
+            if(0 == (ioApicDevice[i].usage[input / 32] & ((uint32_t)1 << (input % 32))))
+            {
+                ioApicDevice[i].usage[input / 32] |= (uint32_t)1 << (input % 32);
+                input += ioApicDevice[i].irqBase;
+            }
+            else
+                input = UINT32_MAX;
+            KeReleaseSpinlock(&ioApicDevice[i].Lock);
+            return UINT32_MAX;
+        }
+        KeReleaseSpinlock(&ioApicDevice[i].Lock);
+    }
+    return UINT32_MAX;
+}
+
+void ApicIoFreeInput(uint32_t input)
+{
+    for(uint8_t i = 0; i < ioApicDeviceCount; i++)
+    {
+        KeAcquireSpinlock(&ioApicDevice[i].Lock);
+        if((input >= ioApicDevice[i].irqBase) && (input < (ioApicDevice[i].irqBase + ioApicDevice[i].inputs)))
+        {
+            input -= ioApicDevice[i].irqBase;
+            ioApicDevice[i].usage[input / 32] &= ~((uint32_t)1 << (input % 32));
+            KeReleaseSpinlock(&ioApicDevice[i].Lock);
+            break;
+        }
+        KeReleaseSpinlock(&ioApicDevice[i].Lock);
+    }
 }

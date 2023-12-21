@@ -34,7 +34,7 @@ Instead, there is an IO APIC ID
 Calculate GSI as ID * max inputs to get GSI to remain compatible with ACPI
 240 is the maximum number of inputs in IO APIC
 */
-#define MP_CALCULATE_IO_APIC_GSI_BASE(id) ((id) * 240)
+#define MP_CALCULATE_IO_APIC_GSI_BASE(id) ((id) * IOAPIC_MAX_INPUTS)
 
 struct MpConfigurationTableHeader
 {

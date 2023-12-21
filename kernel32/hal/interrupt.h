@@ -32,7 +32,7 @@ enum HalInterruptMethod
 
 EXPORT
 /**
- * @brief External interrupt polarity
+ * @brief IRQ polarity
 */
 enum HalInterruptPolarity
 {
@@ -42,7 +42,7 @@ enum HalInterruptPolarity
 
 EXPORT
 /**
- * @brief External interrupt trigger mode
+ * @brief IRQ trigger mode
 */
 enum HalInterruptTrigger
 {
@@ -51,6 +51,9 @@ enum HalInterruptTrigger
 };
 
 EXPORT
+/**
+ * @brief IRQ wake capability
+*/
 enum HalInterruptWakeCapable
 {
     IT_WAKE_INCAPABLE,
@@ -58,6 +61,9 @@ enum HalInterruptWakeCapable
 };
 
 EXPORT
+/**
+ * @brief IRQ sharing capability
+*/
 enum HalInterruptSharing
 {
     IT_NOT_SHARED,
@@ -76,6 +82,16 @@ enum HalInterruptMode
     IT_MODE_NMI,
     IT_MODE_INIT,
     IT_MODE_EXTINT,
+};
+
+EXPORT
+struct HalInterruptParams
+{
+    enum HalInterruptMode mode;
+    enum HalInterruptPolarity polarity;
+    enum HalInterruptTrigger trigger;
+    enum HalInterruptSharing shared;
+    enum HalInterruptWakeCapable wake;
 };
 
 
@@ -98,10 +114,10 @@ INTERNAL void HalSetDualPicPresence(bool state);
 /**
  * @brief Add ISA remap entry when I/O APIC is used
  * @param isaIrq Original ISA IRQ
- * @param globalIrq Global IRQ
+ * @param gsi Global System Interrupt (Global IRQ number)
  * @return Status code
 */
-INTERNAL STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t globalIrq);
+INTERNAL STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi);
 
 /**
  * @brief Initialize interrupt controller
