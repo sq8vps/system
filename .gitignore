@@ -31,18 +31,9 @@
 # Executables
 *.exe
 *.out
-*.app
-*.i*86
-*.x86_64
 *.hex
 *.elf
 *.drv
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
 
 # Kernel Module Compile Results
 *.mod*
@@ -55,3 +46,5 @@ dkms.conf
 os-image.img
 elf/
 __pycache__/
+*.bat
+*.vmdk
