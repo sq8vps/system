@@ -64,3 +64,41 @@ STATUS IdeCreateAllDriveDevices(struct IdeDeviceData *info, struct ExDriverObjec
         IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE]), driver);
     return OK;
 }
+
+STATUS IdeIsr(void *context)
+{
+    struct IdeDeviceData *info = context;
+
+    
+    return OK;
+}
+
+static STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
+{
+    KeAcquireSpinlock(&(info->channel[channel].lock));
+    IdeClearPrdTable(&(info->channel[channel].prdt));
+    struct IoMemoryDescriptor *mem = buffer;
+    uint64_t bytesProcessed = 0;
+    while(bytesProcessed < size)
+    {
+
+    }
+IdeReadWriteContinue:
+    info->channel[channel].nextLba = lba + (bytesProcessed / info->channel[channel].drive[slot].sectorSize);
+    info->channel[channel].remainingBytes = size - bytesProcessed;
+    KeReleaseSpinlock(&(info->channel[channel].lock));
+    IdeWriteBmrPrdt(info, channel, &(info->channel[channel].prdt));
+    uint8_t status = IdeReadBmrStatus(info, channel);
+    status &= ~(IDE_BMR_STATUS_INTERRUPT | IDE_BMR_STATUS_ERROR);
+    IdeWriteBmrStatus(info, channel, status);
+
+    if(info->channel[channel].drive[slot].lba48)
+        IdeWriteLba48Parameters(info, channel, slot, lba, bytesProcessed / info->channel[channel].drive[slot].sectorSize);
+    else
+        IdeWriteLba28Parameters(info, channel, slot, lba, bytesProcessed / info->channel[channel].drive[slot].sectorSize);
+
+    IdeStartTransfer(info, channel, slot, write, info->channel[channel].drive[slot].lba48);
+
+    IdeWriteBmrCommand(info, channel, IDE_BMR_COMMAND_START | (write ? 0 : IDE_BMR_COMMAND_RW_CONTROL));
+    return OK;
+}

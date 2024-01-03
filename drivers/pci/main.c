@@ -57,6 +57,26 @@ static STATUS DriverDispatch(struct IoDriverRp *rp)
             }
             status = IO_RP_PROCESSING_FAILED;
             break;
+        case IO_RP_GET_BUS_CONFIGURATION:
+            if(NULL == rp->payload.busConfiguration.device)
+            {
+                status = NULL_POINTER_GIVEN;
+                break;
+            }
+            if(rp->device->mainDeviceObject == rp->payload.busConfiguration.device->mainDeviceObject)
+            {
+                if(NULL != rp->device->privateData)
+                {
+                    struct PciDeviceData *info = rp->device->privateData;
+                    rp->payload.busConfiguration.id = info->address;
+                    rp->payload.busConfiguration.irqMap = info->irqMap;
+                    rp->payload.busConfiguration.irq = info->irq;
+                    status = OK;
+                    break;
+                }
+            }
+            status = IO_RP_PROCESSING_FAILED;
+            break;
         default:
             goto DriverDispatchForwardRp;
             break;

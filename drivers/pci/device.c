@@ -61,10 +61,10 @@ static void PciVenDevToString(uint16_t n, char *s)
     
 //     IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s, enumerating as %s\n", (char*)name.Pointer, deviceId);
 
-static void addCompatibleDeviceId(struct IoDeviceObject *dev, char *class, char *subclass)
+static void addCompatibleDeviceId(struct IoDeviceObject *dev, char *pciClass, char *pciSubclass)
 {
     char *deviceId;
-    if(NULL != (deviceId = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, class, subclass)))
+    if(NULL != (deviceId = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, pciClass, pciSubclass)))
     {
         IoUpdateCompatibleDeviceIdList(dev, deviceId);
         MmFreeKernelHeap(deviceId);
@@ -106,6 +106,8 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
 
         if(NULL == (newDev->privateData = MmAllocateKernelHeap(sizeof(struct PciDeviceData))))
             return OUT_OF_RESOURCES;
+        
+        CmMemset(newDev->privateData, 0, sizeof(struct PciDeviceData));
         
         enum PciClass class = PciGetClass(address);
         enum PciSubclass subclass = PciGetSubclass(address);
@@ -186,15 +188,16 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
         else
         {
             deviceInfo->irqMap = NULL;
-            uint32_t k = 0;
             for(uint32_t i = 0; i < ((struct PciDeviceData*)dev->privateData)->irqMap->irqCount; i++)
             {
                 if(((struct PciDeviceData*)dev->privateData)->irqMap->irq[i].id.pci.device == address.pci.device)
                 {
-                    deviceInfo->irqEntry[k++] = ((struct PciDeviceData*)dev->privateData)->irqMap->irq[i];
-                    LOG(SYSLOG_INFO, "IRQ at pin %lu, GSI %lu", deviceInfo->irqEntry[k - 1].pin, deviceInfo->irqEntry[k - 1].gsi);
-                    if(PCI_DEVICE_IRQ_LINE_COUNT == k)
+                    if(PciGetInterruptPin(address) == ((struct PciDeviceData*)dev->privateData)->irqMap->irq[i].pin)
+                    {
+                        deviceInfo->irq = ((struct PciDeviceData*)dev->privateData)->irqMap->irq[i];
+                        LOG(SYSLOG_INFO, "IRQ at pin %lu, GSI %lu", deviceInfo->irq.pin, deviceInfo->irq.gsi);
                         break;
+                    }
                 }
             }
         }
@@ -266,7 +269,8 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObjec
     }
 
     deviceInfo->address = rp->payload.busConfiguration.id;
-    deviceInfo->irqMap = rp->payload.busConfiguration.irq;
+    deviceInfo->irqMap = rp->payload.busConfiguration.irqMap;
+    deviceInfo->irq = rp->payload.busConfiguration.irq;
 
     if(PciIsHostBridge(deviceInfo->address))
     {

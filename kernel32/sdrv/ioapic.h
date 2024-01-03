@@ -52,21 +52,21 @@ INTERNAL STATUS ApicIoUnregisterIrq(uint32_t input);
 
 /**
  * @brief Enable I/O APIC IRQ
- * @param vector Vector (IRQ) number
+ * @param input Input (IRQ) number
  * @return Status code
 */
-INTERNAL STATUS ApicIoEnableIrq(uint8_t vector);
+INTERNAL STATUS ApicIoEnableIrq(uint32_t input);
 
 /**
  * @brief Disable I/O APIC IRQ
- * @param vector Vector (IRQ) number
+ * @param input Input (IRQ) number
  * @return Status code
 */
-INTERNAL STATUS ApicIoDisableIrq(uint8_t vector);
+INTERNAL STATUS ApicIoDisableIrq(uint32_t input);
 
 /**
  * @brief Reserve IO APIC input
- * @param input Requested input or 0 for any input
+ * @param input Requested input or HAL_INTERRUPT_INPUT_ANY for any input
  * @return Reserved input or UINT32_MAX on failure
 */
 INTERNAL uint32_t ApicIoReserveInput(uint32_t input);

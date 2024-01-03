@@ -11,17 +11,17 @@ static ACPI_STATUS AcpiExtractIrqResource(ACPI_RESOURCE *res, struct IoIrqEntry 
     {
         if(res->Length == 2)
         {
-            irq->polarity = IT_POLARITY_ACTIVE_HIGH;
-            irq->trigger = IT_TRIGGER_EDGE;
-            irq->wake = IT_WAKE_INCAPABLE;
-            irq->sharing = IT_NOT_SHARED;
+            irq->params.polarity = IT_POLARITY_ACTIVE_HIGH;
+            irq->params.trigger = IT_TRIGGER_EDGE;
+            irq->params.wake = IT_WAKE_INCAPABLE;
+            irq->params.shared = IT_NOT_SHARED;
         }
         else
         {
-            irq->polarity = res->Data.Irq.Polarity ? IT_POLARITY_ACTIVE_LOW : IT_POLARITY_ACTIVE_HIGH;
-            irq->trigger = res->Data.Irq.Triggering ? IT_TRIGGER_EDGE : IT_TRIGGER_LEVEL;
-            irq->wake = res->Data.Irq.WakeCapable ? IT_WAKE_CAPABLE : IT_WAKE_INCAPABLE;
-            irq->sharing = res->Data.Irq.Shareable ? IT_SHARED : IT_NOT_SHARED;
+            irq->params.polarity = res->Data.Irq.Polarity ? IT_POLARITY_ACTIVE_LOW : IT_POLARITY_ACTIVE_HIGH;
+            irq->params.trigger = res->Data.Irq.Triggering ? IT_TRIGGER_EDGE : IT_TRIGGER_LEVEL;
+            irq->params.wake = res->Data.Irq.WakeCapable ? IT_WAKE_CAPABLE : IT_WAKE_INCAPABLE;
+            irq->params.shared = res->Data.Irq.Shareable ? IT_SHARED : IT_NOT_SHARED;
         }
         //ACPICA spec says absolutely nothing about how to handle these structures
         //ACPI says it should be a 16-bit PIC IRQ bit map, but this structure has no 16-bit field
@@ -30,10 +30,10 @@ static ACPI_STATUS AcpiExtractIrqResource(ACPI_RESOURCE *res, struct IoIrqEntry 
     }
     else if(ACPI_RESOURCE_TYPE_EXTENDED_IRQ == res->Type)
     {
-        irq->polarity = res->Data.ExtendedIrq.Polarity ? IT_POLARITY_ACTIVE_LOW : IT_POLARITY_ACTIVE_HIGH;
-        irq->trigger = res->Data.ExtendedIrq.Triggering ? IT_TRIGGER_EDGE : IT_TRIGGER_LEVEL;
-        irq->wake = res->Data.ExtendedIrq.WakeCapable ? IT_WAKE_CAPABLE : IT_WAKE_INCAPABLE;
-        irq->sharing = res->Data.ExtendedIrq.Shareable ? IT_SHARED : IT_NOT_SHARED;
+        irq->params.polarity = res->Data.ExtendedIrq.Polarity ? IT_POLARITY_ACTIVE_LOW : IT_POLARITY_ACTIVE_HIGH;
+        irq->params.trigger = res->Data.ExtendedIrq.Triggering ? IT_TRIGGER_EDGE : IT_TRIGGER_LEVEL;
+        irq->params.wake = res->Data.ExtendedIrq.WakeCapable ? IT_WAKE_CAPABLE : IT_WAKE_INCAPABLE;
+        irq->params.shared = res->Data.ExtendedIrq.Shareable ? IT_SHARED : IT_NOT_SHARED;
         irq->gsi = res->Data.ExtendedIrq.Interrupts[index];
     }
     else
@@ -118,14 +118,14 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap **map)
     //parse and store them
     while(prt->Length > 0) //loop for all elements
     {
-        if(prt->Source[0] == '\0') //standard entry, parameter are given explicitely
+        if(prt->Source[0] == '\0') //standard entry, parameters are given explicitely
         {
             (*map)->irq[i].gsi = prt->SourceIndex;
             (*map)->irq[i].pin = prt->Pin + 1;
-            (*map)->irq[i].polarity = IT_POLARITY_ACTIVE_LOW;
-            (*map)->irq[i].trigger = IT_TRIGGER_LEVEL;
-            (*map)->irq[i].wake = IT_WAKE_INCAPABLE;
-            (*map)->irq[i].sharing = IT_SHARED;
+            (*map)->irq[i].params.polarity = IT_POLARITY_ACTIVE_LOW;
+            (*map)->irq[i].params.trigger = IT_TRIGGER_LEVEL;
+            (*map)->irq[i].params.wake = IT_WAKE_INCAPABLE;
+            (*map)->irq[i].params.shared = IT_SHARED;
             (*map)->irq[i].id.pci.bus = 0;
             (*map)->irq[i].id.pci.device = PCI_ADR_EXTRACT_DEVICE(prt->Address);
             (*map)->irq[i].id.pci.function = PCI_ADR_EXTRACT_FUNCTION(prt->Address);
@@ -139,7 +139,7 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap **map)
                 ACPI_BUFFER resBuf;
                 resBuf.Length = ACPI_ALLOCATE_BUFFER;
                 resBuf.Pointer = NULL;
-                if(ACPI_SUCCESS(AcpiGetCurrentResources(linkDev, &resBuf))) //get link device resources
+                if(ACPI_SUCCESS(AcpiGetCurrentResources(linkDev, &resBuf))) //get current link device resources
                 {
                     ACPI_RESOURCE *res = resBuf.Pointer;
                     while(ACPI_RESOURCE_TYPE_END_TAG != res->Type)

@@ -11,10 +11,11 @@
 */
 struct ItHandlerDescriptor
 {
-    bool reserved; /**<  */
+    bool reserved; /**< Vector is not used, but reserved for IRQ registering */
     uint8_t count; /**< Number of interrupt consumers */
     struct
     {
+        bool enabled; /**< Consumer enabled */
         ItHandler callback; /**< Consumer ISR */
         void *context; /**< ISR's context */
     } consumer[IT_MAX_SHARED_IRQ_CONSUMERS]; /**< A table of interrupt consumers */

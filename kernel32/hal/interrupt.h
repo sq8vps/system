@@ -16,11 +16,16 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+#include "it/it.h"
 
 /**
  * @addtogroup halIt
  * @{
 */
+
+EXPORT
+#define HAL_INTERRUPT_INPUT_ANY UINT32_MAX
+
 
 EXPORT
 enum HalInterruptMethod
@@ -128,22 +133,40 @@ EXPORT
 /**
  * @brief Register external IRQ
  * @param input Global interrupt source number
- * @param vector Interrupt vector number
- * @param mode Interrupt delivery mode
- * @param polarity Input polarity
- * @param trigger Interrupt trigger
+ * @param isr Interrupt service routine pointer
+ * @param *context Context to be passed to ISR
+ * @param params IRQ parameters
  * @return Status code
 */
-EXTERN STATUS HalRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
-                        enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger);
+EXTERN STATUS HalRegisterIrq(
+    uint32_t input,
+    ItHandler isr,
+    void *context,
+    struct HalInterruptParams params);
 
 EXPORT
 /**
  * @brief Unregister external IRQ
  * @param input Global interrupt source number
+ * @param isr Interrupt service routine pointer
  * @return Status code
 */
-EXTERN STATUS HalUnregisterIRQ(uint32_t input);
+EXTERN STATUS HalUnregisterIrq(uint32_t input, ItHandler isr);
+
+EXPORT
+/**
+ * @brief Reserve interrupt input
+ * @param input Requested input or \a HAL_INTERRUPT_INPUT_ANY
+ * @return Reserved interrupt input or \a UINT32_MAX on failure
+*/
+EXTERN uint32_t HalReserveIrq(uint32_t input);
+
+EXPORT
+/**
+ * @brief Free previously interrupt input
+ * @param input Previously reserved interrupt input
+*/
+EXTERN void HalFreeIrq(uint32_t input);
 
 EXPORT
 /**
@@ -156,33 +179,35 @@ EXTERN uint8_t HalGetAssociatedVector(uint32_t input);
 EXPORT
 /**
  * @brief Enable external interrupt
- * @param irq Interrupt vector
+ * @param input IRQ (input) number
+ * @param isr Interrupt service routine pointer
  * @return Error code
 */
-EXTERN STATUS HalEnableIRQ(uint8_t irq);
+EXTERN STATUS HalEnableIrq(uint32_t input, ItHandler isr);
 
 EXPORT
 /**
  * @brief Disable external interrupt
- * @param irq Interrupt vector
+ * @param input IRQ (input) number
+ * @param isr Interrupt service routine pointer
  * @return Error code
 */
-EXTERN STATUS HalDisableIRQ(uint8_t irq);
+EXTERN STATUS HalDisableIrq(uint32_t input, ItHandler isr);
 
 EXPORT
 /**
  * @brief Clear external interrupt flag
- * @param irq Interrupt vector
+ * @param input IRQ (input) number
  * @return Error code
 */
-EXTERN STATUS HalClearInterruptFlag(uint8_t irq);
+EXTERN STATUS HalClearInterruptFlag(uint32_t input);
 
 /**
  * @brief Initialize system (shcheduler) timer
- * @param irq Interrupt vector number
+ * @param vector Interrupt vector number
  * @return Status code
 */
-INTERNAL STATUS HalConfigureSystemTimer(uint8_t irq);
+INTERNAL STATUS HalConfigureSystemTimer(uint8_t vector);
 
 /**
  * @brief Start one-shot system timer

@@ -10,6 +10,9 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+#include "it/it.h"
+#define HAL_INTERRUPT_INPUT_ANY UINT32_MAX
+
 enum HalInterruptMethod
 {
     IT_METHOD_NONE,
@@ -18,7 +21,7 @@ enum HalInterruptMethod
 };
 
 /**
- * @brief External interrupt polarity
+ * @brief IRQ polarity
 */
 enum HalInterruptPolarity
 {
@@ -27,7 +30,7 @@ enum HalInterruptPolarity
 };
 
 /**
- * @brief External interrupt trigger mode
+ * @brief IRQ trigger mode
 */
 enum HalInterruptTrigger
 {
@@ -35,12 +38,18 @@ enum HalInterruptTrigger
     IT_TRIGGER_LEVEL,
 };
 
+/**
+ * @brief IRQ wake capability
+*/
 enum HalInterruptWakeCapable
 {
     IT_WAKE_INCAPABLE,
     IT_WAKE_CAPABLE,
 };
 
+/**
+ * @brief IRQ sharing capability
+*/
 enum HalInterruptSharing
 {
     IT_NOT_SHARED,
@@ -60,6 +69,15 @@ enum HalInterruptMode
     IT_MODE_EXTINT,
 };
 
+struct HalInterruptParams
+{
+    enum HalInterruptMode mode;
+    enum HalInterruptPolarity polarity;
+    enum HalInterruptTrigger trigger;
+    enum HalInterruptSharing shared;
+    enum HalInterruptWakeCapable wake;
+};
+
 /**
  * @brief Resolve legacy ISA IRQ to global interrupt mapping
  * @param irq ISA IRQ from device
@@ -70,21 +88,37 @@ extern uint32_t HalResolveIsaIrqMapping(uint32_t irq);
 /**
  * @brief Register external IRQ
  * @param input Global interrupt source number
- * @param vector Interrupt vector number
- * @param mode Interrupt delivery mode
- * @param polarity Input polarity
- * @param trigger Interrupt trigger
+ * @param isr Interrupt service routine pointer
+ * @param *context Context to be passed to ISR
+ * @param params IRQ parameters
  * @return Status code
 */
-extern STATUS HalRegisterIRQ(uint32_t input, uint8_t vector, enum HalInterruptMode mode,
-                        enum HalInterruptPolarity polarity, enum HalInterruptTrigger trigger);
+extern STATUS HalRegisterIrq(
+    uint32_t input,
+    ItHandler isr,
+    void *context,
+    struct HalInterruptParams params);
 
 /**
  * @brief Unregister external IRQ
  * @param input Global interrupt source number
+ * @param isr Interrupt service routine pointer
  * @return Status code
 */
-extern STATUS HalUnregisterIRQ(uint32_t input);
+extern STATUS HalUnregisterIrq(uint32_t input, ItHandler isr);
+
+/**
+ * @brief Reserve interrupt input
+ * @param input Requested input or \a HAL_INTERRUPT_INPUT_ANY
+ * @return Reserved interrupt input or \a UINT32_MAX on failure
+*/
+extern uint32_t HalReserveIrq(uint32_t input);
+
+/**
+ * @brief Free previously interrupt input
+ * @param input Previously reserved interrupt input
+*/
+extern void HalFreeIrq(uint32_t input);
 
 /**
  * @brief Get vector number associated with given interrupt source
@@ -95,24 +129,26 @@ extern uint8_t HalGetAssociatedVector(uint32_t input);
 
 /**
  * @brief Enable external interrupt
- * @param irq Interrupt vector
+ * @param input IRQ (input) number
+ * @param isr Interrupt service routine pointer
  * @return Error code
 */
-extern STATUS HalEnableIRQ(uint8_t irq);
+extern STATUS HalEnableIrq(uint32_t input, ItHandler isr);
 
 /**
  * @brief Disable external interrupt
- * @param irq Interrupt vector
+ * @param input IRQ (input) number
+ * @param isr Interrupt service routine pointer
  * @return Error code
 */
-extern STATUS HalDisableIRQ(uint8_t irq);
+extern STATUS HalDisableIrq(uint32_t input, ItHandler isr);
 
 /**
  * @brief Clear external interrupt flag
- * @param irq Interrupt vector
+ * @param input IRQ (input) number
  * @return Error code
 */
-extern STATUS HalClearInterruptFlag(uint8_t irq);
+extern STATUS HalClearInterruptFlag(uint32_t input);
 
 /**
  * @brief Get interrupt handling method

@@ -14,6 +14,7 @@
 #include "handlers/gp.h"
 #include "handlers/pagefault.h"
 #include "wrappers.h"
+#include "ke/core/dpc.h"
 
 #define IDT_FLAG_INTERRUPT_GATE 0xE
 #define IDT_FLAG_TRAP_GATE  0xF
@@ -58,8 +59,12 @@ uint8_t ItReserveVector(uint8_t vector)
 		for(uint16_t i = 0; i < sizeof(itHandlerDescriptorTable) / sizeof(*itHandlerDescriptorTable); i++)
 		{
 			if((0 == itHandlerDescriptorTable[i].count) && (false == itHandlerDescriptorTable[i].reserved))
+			{
+				KeReleaseSpinlock(&ItHandlerTableMutex);
 				return i + IT_FIRST_INTERRUPT_VECTOR;
+			}
 		}
+		vector = 0;
 	}
 	else if(vector >= IT_FIRST_INTERRUPT_VECTOR)
 	{
@@ -69,11 +74,9 @@ uint8_t ItReserveVector(uint8_t vector)
 			itHandlerDescriptorTable[vector].reserved = true;
 		else
 			vector = 0;
-		KeReleaseSpinlock(&ItHandlerTableMutex);
-		return vector;
 	}
-	else
-		return 0;
+	KeReleaseSpinlock(&ItHandlerTableMutex);
+	return vector;
 }
 
 void ItFreeVector(uint8_t vector)
@@ -119,6 +122,8 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
 		return IT_BAD_VECTOR;
+
+	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
 	KeAcquireSpinlock(&ItHandlerTableMutex);
 	for(uint8_t i = 0; i < itHandlerDescriptorTable[vector].count; i++)
@@ -141,6 +146,27 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 	}
 	KeReleaseSpinlock(&ItHandlerTableMutex);
 	return IT_NOT_REGISTERED;
+}
+
+STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
+{
+	if(vector < IT_FIRST_INTERRUPT_VECTOR)
+		return IT_BAD_VECTOR;
+
+	vector -= IT_FIRST_INTERRUPT_VECTOR;
+	
+	KeAcquireSpinlock(&ItHandlerTableMutex);
+	for(uint8_t i = 0; i < itHandlerDescriptorTable[vector].count; i++)
+	{
+		if(itHandlerDescriptorTable[vector].consumer[i].callback == isr)
+		{
+			itHandlerDescriptorTable[vector].consumer[i].enabled = enable;
+			KeReleaseSpinlock(&ItHandlerTableMutex);
+			return OK;
+		}
+	}
+	KeReleaseSpinlock(&ItHandlerTableMutex);
+	return IT_NOT_REGISTERED;	
 }
 
 static STATUS insertIdtEntry(uint8_t vector, void *wrapper)
@@ -244,8 +270,11 @@ void ItHandleIrq(uint8_t vector)
 	if(HalIsInterruptSpurious())                                               
         return;            
 	ItEnableInterrupts();
-	for(uint8_t i = 0; i < itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)                                                      
-		itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].callback(itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].context);
+	for(uint8_t i = 0; i < itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)        
+	{                                
+		if(itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].enabled)              
+			itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].callback(itHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].context);
+	}
 	HalClearInterruptFlag(vector);
 	KeProcessDpcQueue();
 }

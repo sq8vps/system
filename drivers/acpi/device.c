@@ -20,7 +20,7 @@ ACPI_STATUS DriverGetBusInfoForDevice(struct IoDriverRp *rp)
                 rp->payload.busConfiguration.id.pci.device = busConfig->id.pci.device;
                 rp->payload.busConfiguration.id.pci.function = busConfig->id.pci.function;
             }
-            rp->payload.busConfiguration.irq = busConfig->irqMap;
+            rp->payload.busConfiguration.irqMap = busConfig->irqMap;
             return AE_OK;
         }
     }

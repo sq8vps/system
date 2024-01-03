@@ -8,14 +8,12 @@
 #include "io/dev/rp.h"
 #include "bridge.h"
 
-#define PCI_DEVICE_IRQ_LINE_COUNT 4
-
 struct PciDeviceData
 {
     struct PciBridge *thisBridge;
     union IoBusId address;
     struct IoIrqMap *irqMap;
-    struct IoIrqEntry irqEntry[PCI_DEVICE_IRQ_LINE_COUNT];
+    struct IoIrqEntry irq;
 };
 
 /**

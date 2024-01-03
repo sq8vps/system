@@ -45,7 +45,7 @@ static void KeSchedulerWorker(void *context)
     KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
 }
 
-STATUS KeSchedulerISR(uint8_t vector, void *context)
+STATUS KeSchedulerISR(void *context)
 {
     KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, NULL);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
@@ -204,8 +204,10 @@ void KeSchedulerStart(void)
     if(OK != (ret = KeCreateIdleTask()))
         KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
 
-    ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, NULL, PL_KERNEL);
-
+    if(OK != (ret = ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, NULL)))
+        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
+    if(OK != (ret = ItSetInterruptHandlerEnable(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, true)))
+        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
     //create kernel initialization task
     uintptr_t cr3;
     ASM("mov %0,cr3" : "=r" (cr3) : );
@@ -223,7 +225,6 @@ void KeSchedulerStart(void)
 
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
-	HalEnableIRQ(IT_SYSTEM_TIMER_VECTOR);
 
     while(NULL == KeGetCurrentTask())
         ;

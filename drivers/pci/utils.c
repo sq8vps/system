@@ -23,6 +23,7 @@
 #define PCI_CONFIG_STD_BAR3 0x1C
 #define PCI_CONFIG_STD_BAR4 0x20
 #define PCI_CONFIG_STD_BAR5 0x24
+#define PCI_CONFIG_STD_INTERRUPT_PIN 0x3D
 
 #define PCI_CONFIG_HEADER_MULTIFUNCTION 0x80
 
@@ -84,6 +85,11 @@ enum PciSubclass PciGetSubclass(union IoBusId address)
 	return PciConfigReadByte(address, PCI_CONFIG_STD_SUBCLASS);
 }
 
+uint8_t PciGetInterruptPin(union IoBusId address)
+{
+	return PciConfigReadByte(address, PCI_CONFIG_STD_INTERRUPT_PIN);
+}
+
 bool PciIsMultifunction(union IoBusId address)
 {
 	return PciConfigReadByte(address, PCI_CONFIG_STD_HEADER_TYPE) & PCI_CONFIG_HEADER_MULTIFUNCTION;
@@ -120,7 +126,7 @@ STATUS PciReadConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
 	uint8_t *d = (uint8_t*)rp->buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{
-		d[i] = PciConfigReadByte(address, i);
+		d[i] = PciConfigReadByte(address, rp->payload.deviceConfiguration.offset + i);
 	}
 	return OK;
 }
@@ -134,7 +140,7 @@ STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
 	uint8_t *d = (uint8_t*)rp->buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{
-		PciConfigWriteByte(address, i, d[i]);
+		PciConfigWriteByte(address, rp->payload.deviceConfiguration.offset + i, d[i]);
 	}
 	return OK;
 }

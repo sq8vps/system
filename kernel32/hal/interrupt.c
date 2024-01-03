@@ -62,7 +62,7 @@ STATUS HalInitInterruptController(void)
         isaRemapTable[i] = i;
     }
 
-    PicSetIRQMask(0xFFFF); //mask all PIC interrupts
+    PicSetIrqMask(0xFFFF); //mask all PIC interrupts
     PicRemap(HAL_PIC_REMAP_VECTOR, HAL_PIC_REMAP_VECTOR + 8);
 
     if(CpuidCheckIfApicAvailable()) //APIC available?
@@ -104,7 +104,8 @@ STATUS HalRegisterIrq(
     void *context,
     struct HalInterruptParams params)
 {
-    STATUS status;
+    STATUS status = OK;
+    uint8_t vector = 0;
 
     struct HalInterruptEntry *matching = NULL;
     KeAcquireSpinlock(&HalInterruptListLock);
@@ -132,6 +133,10 @@ STATUS HalRegisterIrq(
             KeReleaseSpinlock(&HalInterruptListLock);
             return IT_ALREADY_REGISTERED;
         }
+
+        status = ItInstallInterruptHandler(matching->vector, isr, context);
+        if(OK == status)
+            matching->consumers++;
     }
     else
     {
@@ -142,19 +147,10 @@ STATUS HalRegisterIrq(
             return OUT_OF_RESOURCES;
         }
         CmMemset(matching, 0, sizeof(*matching));
-        // if(NULL == HalInterruptList)
-        //     HalInterruptList = matching;
-        // else
-        // {
-        //     struct HalInterruptEntry *t = HalInterruptList;
-        //     while(t->next)
-        //         t = t->next;
-        //     t->next = matching;
-        // }
 
         if(interruptMethod == IT_METHOD_APIC)
         {
-            uint8_t vector = ItReserveVector(IT_VECTOR_ANY);
+            vector = ItReserveVector(IT_VECTOR_ANY);
             if(0 == vector)
             {
                 MmFreeKernelHeap(matching);
@@ -167,7 +163,7 @@ STATUS HalRegisterIrq(
                 ItFreeVector(vector);
                 MmFreeKernelHeap(matching);
                 KeReleaseSpinlock(&HalInterruptListLock);
-                return OUT_OF_RESOURCES; 
+                return status; 
             }
             status = ItInstallInterruptHandler(vector, isr, context);
             if(OK != status)
@@ -178,90 +174,226 @@ STATUS HalRegisterIrq(
                 KeReleaseSpinlock(&HalInterruptListLock);
                 return status;
             }
-            matching->input = input;
-            matching->vector = vector;
-            matching->params = params;
-            matching->consumers = 1;
         }
-        else
+        else //8259 PIC
         {
-            
+            if(input >= PIC_INPUT_COUNT)
+            {
+                MmFreeKernelHeap(matching);
+                KeReleaseSpinlock(&HalInterruptListLock);
+                return IT_VECTOR_NOT_FREE;
+            }
+            else
+            {
+                vector = ItReserveVector(input + HAL_PIC_REMAP_VECTOR);
+                if(vector != (input + HAL_PIC_REMAP_VECTOR))
+                {
+                    MmFreeKernelHeap(matching);
+                    KeReleaseSpinlock(&HalInterruptListLock);
+                    return IT_NO_FREE_VECTORS;
+                }
+                status = ItInstallInterruptHandler(vector, isr, context);
+                if(OK != status)
+                {
+                    ItFreeVector(vector);
+                    MmFreeKernelHeap(matching);
+                    KeReleaseSpinlock(&HalInterruptListLock);
+                    return status;
+                }
+            }
         }
 
     }
+    matching->input = input;
+    matching->vector = vector;
+    matching->params = params;
+    matching->consumers = 1;
 
+    if(NULL == HalInterruptList)
+        HalInterruptList = matching;
+    else
+    {
+        struct HalInterruptEntry *t = HalInterruptList;
+        while(t->next)
+            t = t->next;
+        t->next = matching;
+    }
+
+    KeReleaseSpinlock(&HalInterruptListLock);
+    return OK;
+}
+
+STATUS HalUnregisterIrq(uint32_t input, ItHandler isr)
+{
+    STATUS status = OK;
+
+    struct HalInterruptEntry *matching = NULL;
+    struct HalInterruptEntry *previous = NULL;
+    KeAcquireSpinlock(&HalInterruptListLock);
+    if(NULL != HalInterruptList)
+    {
+        matching = HalInterruptList;
+        previous = HalInterruptList;
+        while(matching)
+        {
+            if(matching->input == input)
+                break;
+            if(NULL != previous->next)
+                previous = previous->next;
+            matching = matching->next;
+        }
+    }   
+    if(NULL != matching)
+    {
+        status = ItUninstallInterruptHandler(matching->input, isr);
+        if(OK != status)
+            goto HalUnregisterIrqExit;
+
+        matching->consumers--;
+        if(0 == matching->consumers)
+        {
+            if(IT_METHOD_APIC == interruptMethod)
+            {
+                status = ApicIoUnregisterIrq(matching->input);
+                if(OK != status)
+                    goto HalUnregisterIrqExit;
+            }
+
+            if(NULL != previous)
+                previous->next = matching->next;
+            else
+                HalInterruptList = matching->next;
+            
+            MmFreeKernelHeap(matching);
+        }
+    }
+    else
+    {
+        status = IT_NOT_REGISTERED;
+    }
+HalUnregisterIrqExit:
+    KeReleaseSpinlock(&HalInterruptListLock);
+    return status;
+}
+
+uint8_t HalGetAssociatedVector(uint32_t input)
+{
+    uint8_t vector = 0;
+    KeAcquireSpinlock(&HalInterruptListLock);
+    struct HalInterruptEntry *t = HalInterruptList;
+    while(NULL != t)
+    {
+        if(t->input == input)
+        {
+            vector = t->vector;
+            break;
+        }
+        t = t->next;
+    }
+    KeReleaseSpinlock(&HalInterruptListLock);
+    return vector;
+}
+
+STATUS HalEnableIrq(uint32_t input, ItHandler isr)
+{
+    STATUS status = OK;
+    KeAcquireSpinlock(&HalInterruptListLock);
+    struct HalInterruptEntry *t = HalInterruptList;
+    while(NULL != t)
+    {
+        if(t->input == input)
+        {
+            break;
+        }
+        t = t->next;
+    }
+
+    if(NULL != t)
+    {
+        if(IT_METHOD_APIC == interruptMethod)
+            status = ApicIoEnableIrq(input);
+        else if(IT_METHOD_PIC == interruptMethod)
+            status = PicEnableIrq(input);
+
+        if(OK == status)
+        {
+            status = ItSetInterruptHandlerEnable(t->vector, isr, true);
+        }
+    }
+    else
+        status = IT_NOT_REGISTERED;
 
     KeReleaseSpinlock(&HalInterruptListLock);
     return status;
 }
 
-STATUS HalUnregisterIrq(
-uint32_t input
-)
+STATUS HalDisableIrq(uint32_t input, ItHandler isr)
 {
-    if(IT_METHOD_APIC == interruptMethod)
-        return ApicIoUnregisterIRQ(input);
-    else if(IT_METHOD_PIC == interruptMethod)
-        return OK;
+    STATUS status = OK;
+    KeAcquireSpinlock(&HalInterruptListLock);
+    struct HalInterruptEntry *t = HalInterruptList;
+    while(NULL != t)
+    {
+        if(t->input == input)
+        {
+            break;
+        }
+        t = t->next;
+    }
 
-    return IT_NO_CONTROLLER_CONFIGURED;
+    if(NULL != t)
+    {
+        if(IT_METHOD_APIC == interruptMethod)
+            status = ApicIoDisableIrq(input);
+        else if(IT_METHOD_PIC == interruptMethod)
+            status = PicDisableIrq(input);
+
+        if(OK == status)
+        {
+            status = ItSetInterruptHandlerEnable(t->vector, isr, false);
+        }
+    }
+    else
+        status = IT_NOT_REGISTERED;
+
+    KeReleaseSpinlock(&HalInterruptListLock);
+    return status;
 }
 
-uint8_t HalGetAssociatedVector(uint32_t input)
+uint32_t HalReserveIrq(uint32_t input)
 {
     if(IT_METHOD_APIC == interruptMethod)
-        return ApicIoGetAssociatedVector(input);
+        return ApicIoReserveInput(input);
     else if(IT_METHOD_PIC == interruptMethod)
-        return input + HAL_PIC_REMAP_VECTOR;
-    
-    return 0;
+        return PicReserveInput(input);
+    else
+        return IT_NO_CONTROLLER_CONFIGURED;
 }
 
-STATUS HalEnableIRQ(uint8_t irq)
+void HalFreeIrq(uint32_t input)
 {
-    if(irq < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
-    
     if(IT_METHOD_APIC == interruptMethod)
-        return ApicEnableIRQ(irq);
+        ApicIoFreeInput(input);
     else if(IT_METHOD_PIC == interruptMethod)
-        return PicEnableIRQ(irq);
-
-    return IT_NO_CONTROLLER_CONFIGURED;
+        PicFreeInput(input);
 }
 
-STATUS HalDisableIRQ(uint8_t irq)
+STATUS HalClearInterruptFlag(uint32_t input)
 {
-    if(irq < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
-    
-    if(IT_METHOD_APIC == interruptMethod)
-        return ApicDisableIRQ(irq);
-    else if(IT_METHOD_PIC == interruptMethod)
-        return PicDisableIRQ(irq);
-
-    return IT_NO_CONTROLLER_CONFIGURED;  
-}
-
-STATUS HalClearInterruptFlag(uint8_t irq)
-{
-    if(irq < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
-
     if(IT_METHOD_NONE == interruptMethod)
         return IT_NO_CONTROLLER_CONFIGURED;
 
     if(IT_METHOD_PIC == interruptMethod)
-        PicSendEOI(irq);
+        PicSendEoi(input);
     
-    return ApicSendEOI();
+    return ApicSendEoi();
 }
 
-STATUS HalConfigureSystemTimer(uint8_t irq)
+STATUS HalConfigureSystemTimer(uint8_t vector)
 {   
     if(IT_METHOD_NONE != interruptMethod)
     {
-        return ApicConfigureSystemTimer(irq);
+        return ApicConfigureSystemTimer(vector);
     }
 
     return IT_NO_CONTROLLER_CONFIGURED;

@@ -28,7 +28,7 @@ $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	objcopy --only-keep-debug $@ ${@:.elf=.sym}
 	objcopy --strip-debug $@
 	cp $@ ../output/
-	cp ${@:.drv=.sym} ../symbols/
+	cp ${@:.elf=.sym} ../symbols/
 	
 clean:
 	rm -rf $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)

@@ -35,10 +35,7 @@ struct IoIrqEntry
     union IoBusId id;
     uint32_t gsi;
     uint32_t pin;
-    enum HalInterruptPolarity polarity;
-    enum HalInterruptTrigger trigger;
-    enum HalInterruptWakeCapable wake;
-    enum HalInterruptSharing sharing; 
+    struct HalInterruptParams params;
 };
 
 struct IoIrqMap

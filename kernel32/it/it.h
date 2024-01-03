@@ -36,7 +36,7 @@ EXPORT
 * Vectors reserved and used by the kernel
 */
 #define IT_SYSTEM_TIMER_VECTOR IT_FIRST_INTERRUPT_VECTOR
-#define IT_LAPIC_SPURIOUS_VECTOR (IT_FIRST_INTERRUPT_VECTOR | 0xF)
+#define IT_LAPIC_SPURIOUS_VECTOR (255)
 
 EXPORT
 /**
@@ -145,6 +145,7 @@ EXPORT
  * @return Status code
  * @note This function fails if maximum number of shared IRQ consumers is already reached
  * @warning This function does not know anything about the shareability of the IRQs services by this vector
+ * @warning This function does not enable the interrupt handler
 */
 EXTERN STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context);
 
@@ -155,7 +156,18 @@ EXPORT
  * @param isr Interrupt service routine pointer
  * @return Status code
 */
-STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
+EXTERN STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
+
+EXPORT
+/**
+ * @brief Enable/disable interrupt handler
+ * @param vector Vector number
+ * @param isr Interrupt service routine pointer
+ * @param enable Enable state: \a true to enable, \a false to disable
+ * @return Status code
+ * @warning This function does not install the interrupt handler
+*/
+EXTERN STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable);
 
 /**
  * @brief Check if exeception/interrupt was caused by kernel mode code

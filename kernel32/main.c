@@ -70,6 +70,7 @@ void task2(void *c)
 }
 
 
+
 NORETURN static void KeInit(void)
 {	
 	//initialize core kernel modules
@@ -122,7 +123,8 @@ NORETURN static void KeInit(void)
 		PRINT("FAILURE");
 	}
 
-	struct KeTaskControlBlock *t1, *t2;
+	static struct KeTaskControlBlock *t1, *t2;
+
 	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
 	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
 	KeEnableTask(t1);

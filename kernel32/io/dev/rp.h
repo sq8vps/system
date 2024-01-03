@@ -54,7 +54,8 @@ struct IoDriverRp
             enum IoBusType type;
             struct IoSubDeviceObject *device;
             union IoBusId id;
-            struct IoIrqMap *irq;
+            struct IoIrqMap *irqMap;
+            struct IoIrqEntry irq;
         } busConfiguration;
         struct
         {

@@ -10,7 +10,7 @@
  * @brief Send End Of Interrupt using APIC
  * @return Status code
 */
-INTERNAL STATUS ApicSendEOI(void);
+INTERNAL STATUS ApicSendEoi(void);
 
 /**
  * @brief Set NMI input
@@ -33,20 +33,6 @@ INTERNAL STATUS ApicInitAP(void);
  * @return Status code
 */
 INTERNAL STATUS ApicInitBSP(uintptr_t address);
-
-/**
- * @brief Enable local or I/O APIC IRQ
- * @param vector Vector (IRQ) number
- * @return Status code
-*/
-INTERNAL STATUS ApicEnableIRQ(uint8_t vector);
-
-/**
- * @brief Disable local or I/O APIC IRQ
- * @param vector Vector (IRQ) number
- * @return Status code
-*/
-INTERNAL STATUS ApicDisableIRQ(uint8_t vector);
 
 /**
  * @brief Configure system timer

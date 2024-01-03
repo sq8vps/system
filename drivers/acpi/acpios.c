@@ -269,117 +269,30 @@ void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
     KeReleaseSpinlock(Handle);
 }
 
-struct isrContext
-{
-    ACPI_OSD_HANDLER handler;
-    void *context;
-    uint32_t interruptNumber;
-    struct isrContext *next;
-} *isrContextList = NULL;
-
-static void dpc(void *context)
-{
-    struct isrContext *c = context;
-    c->handler(c->context);
-}
-
-static STATUS isrWrapper(uint8_t vector, void *context)
-{
-    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, dpc, context);
-    return OK;
-}
-
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context)
-{
-    uint8_t vector = ItGetFreeVector(InterruptLevel);
-    if(0 == vector)
-        return AE_ALREADY_EXISTS;
+{   
+    STATUS ret = HalRegisterIrq(InterruptLevel, Handler, Context, 
+        (struct HalInterruptParams){.mode = IT_MODE_FIXED, .polarity = IT_POLARITY_ACTIVE_LOW, .trigger = IT_TRIGGER_LEVEL, 
+            .wake = IT_WAKE_CAPABLE, .shared = IT_NOT_SHARED});
 
-    struct isrContext *s = isrContextList;
-    struct isrContext *t = MmAllocateKernelHeap(sizeof(struct isrContext));
-    if(NULL == t)
-    {
-        ItReleaseVector(vector);
+    if(IT_ALREADY_REGISTERED == ret)
         return AE_ALREADY_EXISTS;
-    }
-    
-    if(NULL == isrContextList)
-        isrContextList = t;
-    else
-    {
-        while(NULL != s->next)
-            s = s->next;
-        
-        s->next = t;
-    }
-    t->handler = Handler;
-    t->context = Context;
-    t->interruptNumber = InterruptLevel;
-    t->next = NULL;
-
-    STATUS ret;
-    if(OK != (ret = HalRegisterIRQ(InterruptLevel, vector, IT_MODE_FIXED, IT_POLARITY_ACTIVE_LOW, IT_TRIGGER_LEVEL)))
-    {
-        ItReleaseVector(vector);
-        s->next = NULL;
-        MmFreeKernelHeap(t);
+    else if(OK != ret)
         return AE_BAD_PARAMETER;
-    }
-    if(OK != (ret = ItInstallInterruptHandler(vector, isrWrapper, t, PL_KERNEL)))
-    {
-        HalUnregisterIRQ(InterruptLevel);
-        ItReleaseVector(vector);
-        s->next = NULL;
-        MmFreeKernelHeap(t);
-        return AE_BAD_PARAMETER;
-    }
-    if(OK != (ret = HalEnableIRQ(vector)))
-    {
-        HalUnregisterIRQ(InterruptLevel);
-        ItUninstallInterruptHandler(vector);
-        ItReleaseVector(vector);
-        s->next = NULL;
-        MmFreeKernelHeap(t);
-        return AE_BAD_PARAMETER; 
-    }
-    return AE_OK;
+    else 
+        return AE_OK;
 }
 
 ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER Handler)
 {
-    uint8_t vector = HalGetAssociatedVector(InterruptNumber);
-    if(0 == vector)
-        return AE_BAD_PARAMETER;
+    STATUS ret = HalUnregisterIrq(InterruptNumber, Handler);
 
-    struct isrContext *s = isrContextList;
-    if(NULL == s)
+    if(IT_NOT_REGISTERED == ret)
+        return AE_NOT_EXIST;
+    else if(OK != ret)
         return AE_BAD_PARAMETER;
-    
-    if(s->interruptNumber == InterruptNumber)
-    {
-        isrContextList = s->next;
-    }
-    else
-    {
-        while(NULL != s)
-        {
-            if((NULL != s->next) && (s->next->interruptNumber == InterruptNumber))
-            {
-                s->next = s->next->next;
-                MmFreeKernelHeap(s->next);
-                break;
-            }
-            s = s->next;
-        }
-        if(NULL == s)
-            return AE_BAD_PARAMETER;
-    }
-
-    
-    HalDisableIRQ(vector);
-    HalUnregisterIRQ(InterruptNumber);
-    ItUninstallInterruptHandler(vector);
-    return AE_OK;
+    else 
+        return AE_OK;
 }
 
 /* 
