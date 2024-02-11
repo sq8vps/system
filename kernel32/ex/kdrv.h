@@ -82,10 +82,10 @@ INTERNAL STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObj
 EXPORT
 /**
  * @brief Find driver by memory address (e.g. for debugging)
- * @param address Memory address
+ * @param *address Input/output pointer to memory address buffer. The driver base address is returned to this variable.
  * @return Matched driver object or NULL if no matching object was found
 */
-EXTERN struct ExDriverObject *ExFindDriverByAddress(uintptr_t address);
+EXTERN struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
 
 EXPORT
 /**

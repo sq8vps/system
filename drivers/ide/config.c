@@ -216,9 +216,11 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeDevice
     }
 
     struct IoIrqEntry *irq = &(rp->payload.busConfiguration.irq);
+    uint32_t irqInput = 0;
     if(0 != irq->pin)
     {
-        status = HalRegisterIrq(irq->gsi, IdeIsr, info, irq->params);
+        irqInput = irq->gsi;
+        status = HalRegisterIrq(irqInput, IdeIsr, info, irq->params);
     }
     else if(0xFF != hdr->standard.interruptLine)
     {
@@ -229,10 +231,19 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeDevice
         params.shared = IT_SHARED;
         params.wake = IT_WAKE_INCAPABLE;
         if(0 != hdr->standard.interruptLine)
-            status = HalRegisterIrq(HalResolveIsaIrqMapping(hdr->standard.interruptLine), IdeIsr, info, params);
+        {
+            irqInput = HalResolveIsaIrqMapping(hdr->standard.interruptLine);
+            status = HalRegisterIrq(irqInput, IdeIsr, info, params);
+        }
         else
-            status = HalRegisterIrq(HalResolveIsaIrqMapping(IDE_DEFAULT_ISA_IRQ), IdeIsr, info, params);
+        {
+            irqInput = HalResolveIsaIrqMapping(IDE_DEFAULT_ISA_IRQ);
+            status = HalRegisterIrq(irqInput, IdeIsr, info, params);
+        }
     }
+    
+    if(OK == status)
+        status = HalEnableIrq(irqInput, IdeIsr);
 
     if(OK != status)
     {

@@ -126,10 +126,49 @@ STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode m
 
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
         return IT_BAD_VECTOR;
-    
+    uint64_t params = 0;
+    switch(mode)
+    {
+        case IT_MODE_LOWEST_PRIORITY:
+            params |= (0b001 << 8);
+            break;
+        case IT_MODE_SMI:
+            params |= (0b010 << 8);
+            break;
+        case IT_MODE_NMI:
+            params |= (0b100 << 8);
+            break;
+        case IT_MODE_INIT:
+            params |= (0b101 << 8);
+            break;
+        case IT_MODE_EXTINT:
+            params |= (0b111 << 8);
+        case IT_MODE_FIXED:
+        default:
+            break;
+    }
+    switch(polarity)
+    {
+        case IT_POLARITY_ACTIVE_LOW:
+            params |= (1 << 13);
+            break;
+        case IT_POLARITY_ACTIVE_HIGH:
+        default:
+            break;
+    }
+    switch(trigger)
+    {
+        case IT_TRIGGER_LEVEL:
+            params |= (1 << 15);
+            break;
+        case IT_TRIGGER_EDGE:
+        default:
+            break;
+    }
+    params |= vector;
+    params &= ~IOAPIC_IOREDTBL_MASK;
     KeAcquireSpinlock(&ioApic->Lock);
-    write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), 
-        ((uint32_t)vector) | (((uint32_t)mode) << 8) | (((uint32_t)polarity) << 13) | (((uint32_t)trigger) << 15) | IOAPIC_IOREDTBL_MASK);
+    write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), params);
     KeReleaseSpinlock(&ioApic->Lock);
 
     return OK;

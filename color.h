@@ -12,10 +12,3 @@ typedef struct
 #define CM_RGB_RED (CmRGB){.r = 255, .g = 0, .b = 0}
 #define CM_RGB_GREEN (CmRGB){.r = 0, .g = 255, .b = 0}
 #define CM_RGB_BLUE (CmRGB){.r = 0, .g = 0, .b = 255}
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif

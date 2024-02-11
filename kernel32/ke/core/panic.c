@@ -48,9 +48,14 @@ static void printPanic(uintptr_t ip, uintptr_t code)
     BootVgaPrintString(" (");
     printHex(code);
     BootVgaPrintString(")\n\nModule: ");
-    struct ExDriverObject *t = ExFindDriverByAddress(ip);
+    uintptr_t addr = ip;
+    struct ExDriverObject *t = ExFindDriverByAddress(&addr);
     if(NULL != t)
+    {
         BootVgaPrintString(t->fileName);
+        BootVgaPrintString(", base at: ");
+        printHex(addr);
+    }
     else
         BootVgaPrintChar('?');
 
@@ -86,12 +91,12 @@ NORETURN void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, ui
 
 NORETURN void KePanic(uintptr_t code)
 {
-    KePanicInternal((uintptr_t)__builtin_extract_return_addr (__builtin_return_address (0)), code);
+    KePanicInternal((uintptr_t)__builtin_extract_return_addr(__builtin_return_address (0)), code);
 }
 
 NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
-    KePanicExInternal((uintptr_t)__builtin_extract_return_addr (__builtin_return_address (0)), code, 
+    KePanicExInternal((uintptr_t)__builtin_extract_return_addr(__builtin_return_address (0)), code, 
         arg1, arg2, arg3, arg4);
 }
 

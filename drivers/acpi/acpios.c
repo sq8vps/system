@@ -274,6 +274,9 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
     STATUS ret = HalRegisterIrq(InterruptLevel, Handler, Context, 
         (struct HalInterruptParams){.mode = IT_MODE_FIXED, .polarity = IT_POLARITY_ACTIVE_LOW, .trigger = IT_TRIGGER_LEVEL, 
             .wake = IT_WAKE_CAPABLE, .shared = IT_NOT_SHARED});
+    
+    if(OK == ret)
+        HalEnableIrq(InterruptLevel, Handler);
 
     if(IT_ALREADY_REGISTERED == ret)
         return AE_ALREADY_EXISTS;
@@ -285,6 +288,7 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
 
 ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER Handler)
 {
+    HalDisableIrq(InterruptNumber, Handler);
     STATUS ret = HalUnregisterIrq(InterruptNumber, Handler);
 
     if(IT_NOT_REGISTERED == ret)

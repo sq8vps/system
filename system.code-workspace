@@ -1,0 +1,56 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "kernel32"
+		},
+		{
+			"path": "drivers/ide"
+		},
+		{
+			"path": "drivers/acpi"
+		},
+		{
+			"path": "drivers/pci"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.cpp": "cpp",
+			"kernel.h": "c",
+			"acpi.h": "c",
+			"cpu.h": "c",
+			"kdrv.h": "c",
+			"exec.h": "c",
+			"time.h": "c",
+			"defines.h": "c",
+			"stdint.h": "c",
+			"elf.h": "c",
+			"syslog.h": "c",
+			"task.h": "c",
+			"msr.h": "c",
+			"bootvga.h": "c",
+			"print.h": "c",
+			"stdio.h": "c",
+			"acenv.h": "c",
+			"fs.h": "c",
+			"stdbool.h": "c",
+			"common.h": "c",
+			"random": "c",
+			"assert.h": "c",
+			"heap.h": "c",
+			"utils.h": "c",
+			"interrupt.h": "c",
+			"logging.h": "c",
+			"compare": "cpp",
+			"type_traits": "cpp",
+			"cmath": "cpp",
+			"limits": "cpp",
+			"functional": "c",
+			"algorithm": "c",
+			"mutex.h": "c"
+		}
+	}
+}

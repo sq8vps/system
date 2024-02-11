@@ -308,7 +308,7 @@ loadKernelDriverFailure:
     return ret;
 }
 
-struct ExDriverObject *ExFindDriverByAddress(uintptr_t address)
+struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address)
 {
     if(NULL == kernelDriverListHead)
         return NULL;
@@ -318,7 +318,7 @@ struct ExDriverObject *ExFindDriverByAddress(uintptr_t address)
     
     while(NULL != t)
     {
-        if((address >= t->address) && (address < (t->address + t->size)))
+        if((*address >= t->address) && (*address < (t->address + t->size)))
             break;
         if(NULL == t->next)
         {
@@ -327,6 +327,7 @@ struct ExDriverObject *ExFindDriverByAddress(uintptr_t address)
         }
         t = t->next;
     }
+    *address = t->address;
     KeReleaseMutex(&kernelDriverListMutex);
     return t;
 }

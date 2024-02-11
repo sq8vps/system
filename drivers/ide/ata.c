@@ -56,7 +56,7 @@ static void selectDrive(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot
     if(ide->channel[channel].lastSelectedSlot != slot)
     {
         HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_DEVICE, 
-           ATA_DEVICE_RSVD_BITS | ((slot == PCI_IDE_SLOT_MASTER) ? ATA_DEVICE_MASTER_FLAG : ATA_DEVICE_SLAVE_FLAG));
+           ATA_DEVICE_RSVD_BITS | ATA_DEVICE_LBA_FLAG | ((slot == PCI_IDE_SLOT_MASTER) ? ATA_DEVICE_MASTER_FLAG : ATA_DEVICE_SLAVE_FLAG));
         for(uint8_t i = 0; i < 15; i++)
             HalIoPortReadByte(ide->channel[channel].controlPort + ATA_REG_ALTERNATE_STATUS);
         
@@ -192,6 +192,12 @@ STATUS IdeDetectDrive(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot)
 
     if(drive->usable)
         LOG(SYSLOG_INFO, "Found drive at channel %d, slot %d, sector size %lu, %llu sectors", channel, slot, drive->sectorSize, drive->sectors);
+
+    uintptr_t addr;
+    MmAllocateContiguousPhysicalMemory(4096, &addr, 65536);
+    struct IoMemoryDescriptor mem = {.physical = addr, .size = 4096, .mapped = MmMapDynamicMemory(addr, 4096, 0), .next = NULL};
+    IdeReadWrite(ide, channel, slot, false, 0, 512, &mem);
+
     return OK;
 }
 
@@ -208,17 +214,6 @@ STATUS IdeDetectAllDrives(struct IdeDeviceData *ide)
     IdeDetectDrive(ide, PCI_IDE_CHANNEL_SECONDARY, PCI_IDE_SLOT_MASTER);
     IdeDetectDrive(ide, PCI_IDE_CHANNEL_SECONDARY, PCI_IDE_SLOT_SLAVE);
     return OK;
-}
-
-void IdeWriteLba28Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint32_t lba, uint8_t sectors)
-{
-    selectDrive(ide, channel, slot);
-    HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_LOW, lba & 0xFF);
-    HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_MID, lba >> 8);
-    HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_HIGH, lba >> 16);
-    uint8_t t = HalIoPortReadByte(ide->channel[channel].cmdPort + ATA_REG_DEVICE) & ~ATA_DEVICE_LBA28_MASK;
-    HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_DEVICE, t | ((lba >> 24) & ATA_DEVICE_LBA28_MASK));
-    HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_SECTOR_COUNT, sectors);
 }
 
 void IdeWriteLba28Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint32_t lba, uint8_t sectors)

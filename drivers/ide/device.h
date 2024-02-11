@@ -20,6 +20,8 @@ struct IdePrdTable
 #define IDE_DRIVE_SERIAL_NUMBER_SIZE 20
 #define IDE_DRIVE_MODEL_NUMBER_SIZE 40
 
+struct IdeDeviceData;
+
 struct IdeDriveData
 {
     char serial[IDE_DRIVE_SERIAL_NUMBER_SIZE + 1];
@@ -29,6 +31,10 @@ struct IdeDriveData
     uint8_t lba48 : 1;
     uint64_t sectors;
     uint32_t sectorSize;
+
+    uint8_t channel;
+    uint8_t drive;
+    struct IdeDeviceData *controller;
 };
 
 #define PCI_IDE_CHANNEL_PRIMARY 0x00
@@ -67,9 +73,18 @@ struct IdeDeviceData
         struct IoRpQueue *queue;
         struct IoDriverRp *rp;
         
-        struct IoMemoryDescriptor nextBuffer;
-        uint64_t remainingBytes;
-        uint64_t nextLba;
+        struct
+        {
+            uint8_t write : 1;
+            uint8_t busy : 1;
+            uint8_t slot;
+            uint64_t lba;
+            uint64_t size;
+            uint64_t remaining;
+            uint8_t retries;
+            struct IoMemoryDescriptor memory;
+        } operation;
+
         KeSpinlock lock;
 
         struct IdeDriveData drive[2];
@@ -105,3 +120,5 @@ void IdeWriteLba28Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t
 void IdeWriteLba48Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint64_t lba, uint16_t sectors);
 
 void IdeStartTransfer(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, bool lba48);
+
+STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer);
