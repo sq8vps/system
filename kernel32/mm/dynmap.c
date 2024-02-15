@@ -6,7 +6,7 @@
 
 #define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (MM_PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
-struct MmAvlNode *dynamicMemoryTree[2] = {NULL, NULL};
+static struct MmAvlNode *dynamicMemoryTree[2] = {NULL, NULL};
 #define MM_DYNAMIC_ADDRESS_TREE dynamicMemoryTree[0]
 #define MM_DYNAMIC_SIZE_TREE dynamicMemoryTree[1]
 
@@ -46,7 +46,7 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
             KeReleaseSpinlock(&dynamicAllocatorMutex);
             return NULL;
         }
-            //TODO: this should be handled somehow
+        //TODO: this should be handled somehow
     }
     KeReleaseSpinlock(&dynamicAllocatorMutex);
     return (void*)(vAddress + (pAddress % MM_PAGE_SIZE));
@@ -87,12 +87,10 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
     if(0 != kernelArgs->initrdSize)
     {
         //align size to page size
-        if(kernelArgs->initrdSize % MM_PAGE_SIZE)
-            kernelArgs->initrdSize += (MM_PAGE_SIZE - (kernelArgs->initrdSize % MM_PAGE_SIZE));
+        kernelArgs->initrdSize = ALIGN_UP(kernelArgs->initrdSize, MM_PAGE_SIZE);
         
         if(kernelArgs->initrdAddress & (MM_PAGE_SIZE - 1)) //address not aligned
             KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, MM_UNALIGNED_MEMORY, 0, 0);
-
 
         if(MM_DYNAMIC_START_ADDRESS <= kernelArgs->initrdAddress)
         {   
@@ -101,7 +99,7 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
             {
                 //check if pages are actually mapped
                 if(OK != MmGetPhysicalPageAddress(kernelArgs->initrdAddress + (i * MM_PAGE_SIZE), &dummy))
-                    KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 1, 0, 0);
+                    KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 0, 0, 0);
             }
 
             if(kernelArgs->initrdAddress - MM_DYNAMIC_START_ADDRESS)
@@ -112,7 +110,7 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
             }
         }
         else if(MM_DYNAMIC_START_ADDRESS > kernelArgs->initrdAddress)
-            KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 2, 0, 0);
+            KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 0, 0, 0);
     }
     else
         kernelArgs->initrdAddress = MM_DYNAMIC_START_ADDRESS;

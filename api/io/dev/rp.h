@@ -37,6 +37,7 @@ enum IoRpCode
     IO_RP_GET_MMIO_MAPPING,
     IO_RP_GET_DEVICE_CONFIGURATION,
     IO_RP_SET_DEVICE_CONFIGURATION,
+    IO_RP_GET_IO_PARAMETERS,
 };
 
 struct IoDriverRp
@@ -53,7 +54,6 @@ struct IoDriverRp
         struct
         {
             enum IoBusType type;
-            struct IoSubDeviceObject *device;
             union IoBusId id;
             struct IoIrqMap *irqMap;
             struct IoIrqEntry irq;
@@ -61,7 +61,6 @@ struct IoDriverRp
         struct
         {
             enum IoBusType type;
-            struct IoSubDeviceObject *device;
             void *memory;
             union
             {
@@ -75,7 +74,6 @@ struct IoDriverRp
         struct
         {
             enum IoBusType type;
-            struct IoSubDeviceObject *device;
             uint64_t offset;
         } deviceConfiguration;
         struct 
@@ -83,14 +81,15 @@ struct IoDriverRp
             uint64_t offset;
             struct IoMemoryDescriptor *memory;
             void *systemBuffer;
-        } read;
-        
+        } readWrite;
+        struct IoAccessParameters ioParams;
     } payload;
     IoCompletionCallback completionCallback;
     IoCancelRpCallback cancelCallback;
     void *completionContext;
     struct IoDriverRp *next, *previous;
     struct IoRpQueue *queue;
+    struct IoSubDeviceObject *currentPosition;
 };
 
 struct IoRpQueue
@@ -140,6 +139,13 @@ extern STATUS IoFinalizeRp(struct IoDriverRp *rp);
  * @attention The cancel callback routine must be provided
 */
 extern STATUS IoCancelRp(struct IoDriverRp *rp);
+
+/**
+ * @brief Get current Request Packet position in device stack
+ * @param *rp Request Packet pointer
+ * @return Current subdevice object
+*/
+extern struct IoSubDeviceObject* IoGetCurrentRpPosition(struct IoDriverRp *rp);
 
 
 #ifdef __cplusplus

@@ -111,12 +111,11 @@ extern STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObjec
 
 /**
  * @brief Send/pass Request Packet down the stack
- * @param *caller Caller subdevice object; send RP to the subdevice below caller subdevice
- * @param *rp RP to be sent
+ * @param *rp RP to be sent down
  * @return Status code
  * @attention This function fails if there are no more subdevices in the stack
 */
-extern STATUS IoSendRpDown(struct IoSubDeviceObject *caller, struct IoDriverRp *rp);
+extern STATUS IoSendRpDown(struct IoDriverRp *rp);
 
 /**
  * @brief Set displayed (friendly) name of a device

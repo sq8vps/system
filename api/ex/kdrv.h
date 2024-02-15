@@ -48,10 +48,10 @@ struct ExDriverObjectList
 
 /**
  * @brief Find driver by memory address (e.g. for debugging)
- * @param address Memory address
+ * @param *address Input/output pointer to memory address buffer. The driver base address is returned to this variable.
  * @return Matched driver object or NULL if no matching object was found
 */
-extern struct ExDriverObject *ExFindDriverByAddress(uintptr_t address);
+extern struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
 
 /**
  * @brief Make OS-compatible device ID

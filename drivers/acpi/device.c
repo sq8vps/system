@@ -9,9 +9,9 @@ static bool pciHostBridgeFound = false; //allow only one PCI/PCI-E host bridge
 
 ACPI_STATUS DriverGetBusInfoForDevice(struct IoDriverRp *rp)
 {
-    if(NULL != rp->payload.busConfiguration.device)
+    if(NULL != rp->device)
     {
-        struct BusSubDeviceInfo *busConfig = ((struct BusSubDeviceInfo*)(rp->payload.busConfiguration.device->privateData));
+        struct BusSubDeviceInfo *busConfig = ((struct BusSubDeviceInfo*)(rp->device->privateData));
         if(NULL != busConfig)
         {
             if(IO_BUS_TYPE_PCI == busConfig->type)

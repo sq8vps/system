@@ -50,6 +50,7 @@ typedef enum
     BAD_PARAMETER,
     OPERATION_NOT_ALLOWED,
     BAD_ALIGNMENT,
+    NOT_COMPATIBLE,
 
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number
@@ -123,6 +124,8 @@ typedef enum
     INITRD_INIT_FAILURE,
 
     HAL_INIT_FAILURE,
+
+    UNKNOWN_ERROR = 0xFFFFFFFF,
 
 } STATUS;
 

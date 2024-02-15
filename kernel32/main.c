@@ -69,8 +69,6 @@ void task2(void *c)
 	}
 }
 
-
-
 NORETURN static void KeInit(void)
 {	
 	//initialize core kernel modules

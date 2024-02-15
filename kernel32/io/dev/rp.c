@@ -134,3 +134,9 @@ STATUS IoCancelRp(struct IoDriverRp *rp)
     KeReleaseSpinlock(&(rp->queue->queueLock)); 
     return IO_RP_NOT_CANCELLABLE;
 }
+
+struct IoSubDeviceObject* IoGetCurrentRpPosition(struct IoDriverRp *rp)
+{
+    ASSERT(rp);
+    return rp->currentPosition;
+}

@@ -1,9 +1,25 @@
+#ifndef IDE_DEVICE_H_
+#define IDE_DEVICE_H_
+
 #include "defines.h"
 #include "io/dev/dev.h"
 #include "io/dev/rp.h"
 #include "ke/core/mutex.h"
 #include <stdbool.h>
 
+/**
+ * @brief Driver serial number length defined by ATA
+*/
+#define ATA_DRIVE_SERIAL_NUMBER_SIZE 20
+
+/**
+ * @brief Driver model number length defined by ATA
+*/
+#define ATA_DRIVE_MODEL_NUMBER_SIZE 40
+
+/**
+ * @brief Physical Region Descriptor entry
+*/
 struct IdePrdEntry
 {
     uint32_t address;
@@ -11,30 +27,42 @@ struct IdePrdEntry
     uint16_t eot;
 } PACKED;
 
+/**
+ * @brief Internal PRD table structure
+ * 
+ * Contains pointer to the PRD table and its physical address
+*/
 struct IdePrdTable
 {
     struct IdePrdEntry *table;
     uint32_t physical;
 };
 
-#define IDE_DRIVE_SERIAL_NUMBER_SIZE 20
-#define IDE_DRIVE_MODEL_NUMBER_SIZE 40
+enum IdeSubdeviceType
+{
+    IDE_SUBDEVICE_CONTROLLER = 1,
+    IDE_SUBDEVICE_DRIVE = 2,
+};
 
-struct IdeDeviceData;
+struct IdeControllerData;
 
+/**
+ * @brief IDE drive structure
+*/
 struct IdeDriveData
 {
-    char serial[IDE_DRIVE_SERIAL_NUMBER_SIZE + 1];
-    char model[IDE_DRIVE_MODEL_NUMBER_SIZE + 1];
-    uint8_t present : 1;
-    uint8_t usable : 1;
-    uint8_t lba48 : 1;
-    uint64_t sectors;
-    uint32_t sectorSize;
+    enum IdeSubdeviceType type;
+    char serial[ATA_DRIVE_SERIAL_NUMBER_SIZE + 1]; /**< Serial number in ATA standard */
+    char model[ATA_DRIVE_MODEL_NUMBER_SIZE + 1]; /**< Model number in ATA standard */
+    uint8_t present : 1; /**< Is drive present? If not, this structure is invalid */
+    uint8_t usable : 1; /**< Is usable by this driver? */
+    uint8_t lba48 : 1; /**< Does the drive support LBA48 addressing? If not, only LBA28 is available */
+    uint64_t sectors; /**< Number of sectors */
+    uint32_t sectorSize; /**< Logical sector size */
 
-    uint8_t channel;
-    uint8_t drive;
-    struct IdeDeviceData *controller;
+    uint8_t channel; /**< Channel number that this drive is connected to */
+    uint8_t drive; /**< Slot number that this drive is connected to */
+    struct IdeControllerData *controller; /**< Reference to controller data */
 };
 
 #define PCI_IDE_CHANNEL_PRIMARY 0x00
@@ -52,11 +80,15 @@ struct IdeDriveData
 
 #define IDE_PRD_MAX_SIZE 65536
 
-struct IdeDeviceData
+/**
+ * @brief IDE controller structure
+*/
+struct IdeControllerData
 {
-    struct IoSubDeviceObject *enumerator;
-    bool initialized;
-    bool busMaster;
+    enum IdeSubdeviceType type; /**< Structure type to distinguish between controller and drive */
+    struct IoSubDeviceObject *enumerator; /**< Reference to enumerating device */
+    bool initialized; /**< Is controller fully initialized? */
+    bool busMaster; /**< Does the controller support Bus Mastering? If not, it is not usable here */
     struct
     {
         //I/O ports
@@ -91,34 +123,40 @@ struct IdeDeviceData
     } channel[2];
 };
 
-STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeDeviceData *info);
+/**
+ * @brief Process request packet - callback function for IO manager
+*/
+void IdeProcessRequest(struct IoDriverRp *rp);
 
-STATUS IdeClearPrdTable(struct IdePrdTable *t);
+/**
+ * @brief Create drive device objects for all present drives
+ * @param *info Controller data structure
+ * @param *driver IDE driver object
+ * @return Status code
+*/
+STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct ExDriverObject *driver);
 
-STATUS IdeInitializePrdTables(struct IdeDeviceData *info);
-
-uint32_t IdeAddPrdEntry(struct IdePrdTable *table, uint32_t address, uint16_t size);
-
-STATUS IdeDetectAllDrives(struct IdeDeviceData *ide);
-
-STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *driver);
-
-STATUS IdeCreateAllDriveDevices(struct IdeDeviceData *info, struct ExDriverObject *driver);
-
+/**
+ * @brief General IDE interrupt service routine
+ * @param *context ISR context, a IdeControllerData structure
+*/
 STATUS IdeIsr(void *context);
 
-void IdeWriteBmrCommand(struct IdeDeviceData *info, uint8_t chan, uint8_t command);
+/**
+ * @brief Verify request and start read/write to drive
+ * 
+ * Verify request parameters (alignment, size, memory buffer, etc.) and start requested operation.
+ * The function returns immediately. The end of the operation is reported through a completion callback
+ * provided in the Request Packet.
+ * 
+ * @param *info Drive data structure
+ * @param write True if writing, false if reading
+ * @param offset Offset to start from in bytes
+ * @param size Size in bytes
+ * @param *buffer A memory descriptor list for the operation
+ * @return Status code
+ * @attention This function returns fast. The operation is always asynchronous.
+*/
+STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct IoMemoryDescriptor *buffer);
 
-uint8_t IdeReadBmrStatus(struct IdeDeviceData *info, uint8_t chan);
-
-void IdeWriteBmrStatus(struct IdeDeviceData *info, uint8_t chan, uint8_t status);
-
-void IdeWriteBmrPrdt(struct IdeDeviceData *info, uint8_t chan, struct IdePrdTable *prdt);
-
-void IdeWriteLba28Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint32_t lba, uint8_t sectors);
-
-void IdeWriteLba48Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint64_t lba, uint16_t sectors);
-
-void IdeStartTransfer(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, bool lba48);
-
-STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer);
+#endif

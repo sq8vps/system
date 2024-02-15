@@ -155,6 +155,7 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     if(OK != IoCreateRp(&rp))
         goto exitIoInitDeviceManagerOnFailure;
 
+    rp->device = rootSubDevice;
     rp->code = IO_RP_ENUMERATE;
     rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     if(OK != IoSendRp(rootSubDevice, NULL, rp))
@@ -172,20 +173,27 @@ exitIoInitDeviceManagerOnFailure:
     return IO_ROOT_DEVICE_INIT_FAILURE;
 }
 
+struct IoSubDeviceObject* IoGetDeviceStackStop(struct IoDeviceObject *dev)
+{
+    ASSERT(dev);
+    struct IoSubDeviceObject *subDevice = dev->baseDevice;
+    while(subDevice->attachedDevice) //find stack top
+        subDevice = subDevice->attachedDevice;
+    return subDevice;
+}
+
 STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObject *device, struct IoDriverRp *rp)
 {
     ASSERT(rp);
     ASSERT(subDevice || device);
     if(NULL == subDevice)
     {
-        subDevice = device->baseDevice;
-        while(subDevice->attachedDevice) //find stack top
-            subDevice = subDevice->attachedDevice;
+        subDevice = IoGetDeviceStackStop(device);
     }
     if(NULL == subDevice->driverObject->dispatch)
         return DEVICE_NOT_AVAILABLE;
 
-    rp->device = subDevice;
+    rp->currentPosition = subDevice;
     STATUS status = subDevice->driverObject->dispatch(rp);
     if(OK != status)
         return status;
@@ -199,15 +207,15 @@ STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObject *devi
     return status;
 }
 
-STATUS IoSendRpDown(struct IoSubDeviceObject *caller, struct IoDriverRp *rp)
+STATUS IoSendRpDown(struct IoDriverRp *rp)
 {
-    ASSERT(rp && caller);
-    if(NULL != caller->attachedTo)
+    ASSERT(rp);
+    if(NULL != rp->currentPosition->attachedTo)
     {
-        if(NULL != caller->attachedTo->driverObject->dispatch)
+        if(NULL != rp->currentPosition->attachedTo->driverObject->dispatch)
         {
-            rp->device = caller->attachedTo;
-            STATUS status = caller->attachedTo->driverObject->dispatch(rp);
+            rp->currentPosition = rp->currentPosition->attachedTo;
+            STATUS status = rp->currentPosition->attachedTo->driverObject->dispatch(rp);
             if(OK != status)
                 return status;
 

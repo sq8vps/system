@@ -1,8 +1,8 @@
 #include <stdint.h>
-#include "device.h"
 #include "defines.h"
 #include "hal/ioport.h"
 #include "logging.h"
+#include "ata.h"
 
 #define ATA_REG_DATA 0x00
 #define ATA_REG_ERROR 0x01
@@ -51,7 +51,7 @@
 #define ATA_COMMAND_READ_DMA_LBA28 0xC8
 #define ATA_COMMAND_WRITE_DMA_LBA28 0xCA
 
-static void selectDrive(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot)
+static void selectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t slot)
 {
     if(ide->channel[channel].lastSelectedSlot != slot)
     {
@@ -64,7 +64,7 @@ static void selectDrive(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot
     }
 }
 
-STATUS IdeDetectDrive(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot)
+STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t slot)
 {
     uint16_t cmdPort = ide->channel[channel].cmdPort;
     uint16_t controlPort = ide->channel[channel].controlPort;
@@ -193,15 +193,10 @@ STATUS IdeDetectDrive(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot)
     if(drive->usable)
         LOG(SYSLOG_INFO, "Found drive at channel %d, slot %d, sector size %lu, %llu sectors", channel, slot, drive->sectorSize, drive->sectors);
 
-    uintptr_t addr;
-    MmAllocateContiguousPhysicalMemory(4096, &addr, 65536);
-    struct IoMemoryDescriptor mem = {.physical = addr, .size = 4096, .mapped = MmMapDynamicMemory(addr, 4096, 0), .next = NULL};
-    IdeReadWrite(ide, channel, slot, false, 0, 512, &mem);
-
     return OK;
 }
 
-STATUS IdeDetectAllDrives(struct IdeDeviceData *ide)
+STATUS IdeDetectAllDrives(struct IdeControllerData *ide)
 {
     //force drive selection to save state 
     selectDrive(ide, PCI_IDE_CHANNEL_PRIMARY, PCI_IDE_SLOT_SLAVE);
@@ -216,7 +211,7 @@ STATUS IdeDetectAllDrives(struct IdeDeviceData *ide)
     return OK;
 }
 
-void IdeWriteLba28Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint32_t lba, uint8_t sectors)
+void IdeWriteLba28Parameters(struct IdeControllerData *ide, uint8_t channel, uint8_t slot, uint32_t lba, uint8_t sectors)
 {
     selectDrive(ide, channel, slot);
     HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_LOW, lba & 0xFF);
@@ -227,7 +222,7 @@ void IdeWriteLba28Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t
     HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_SECTOR_COUNT, sectors);
 }
 
-void IdeWriteLba48Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t slot, uint64_t lba, uint16_t sectors)
+void IdeWriteLba48Parameters(struct IdeControllerData *ide, uint8_t channel, uint8_t slot, uint64_t lba, uint16_t sectors)
 {
     selectDrive(ide, channel, slot);
     HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_LOW, lba >> 24);
@@ -240,7 +235,7 @@ void IdeWriteLba48Parameters(struct IdeDeviceData *ide, uint8_t channel, uint8_t
     HalIoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_SECTOR_COUNT, sectors & 0xFF);
 }
 
-void IdeStartTransfer(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, bool lba48)
+void IdeStartTransfer(struct IdeControllerData *info, uint8_t channel, uint8_t slot, bool write, bool lba48)
 {
     selectDrive(info, channel, slot);
 

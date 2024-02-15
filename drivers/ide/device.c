@@ -4,10 +4,60 @@
 #include "common.h"
 #include "logging.h"
 #include "ke/core/dpc.h"
+#include "ata.h"
+#include "config.h"
 
-#define IDE_DEVICE_ID_PREFIX "SCSI"
-#define IDE_DEVICE_ID_GENERIC "DISK"
+#define IDE_DEVICE_ID_PREFIX "DISK"
+#define IDE_DEVICE_ID_GENERIC "GENERIC"
 
+/**
+ * @brief Request Packet callback called by IO queue manager
+*/
+void IdeProcessRequest(struct IoDriverRp *rp)
+{
+    STATUS status = OK;
+    struct IdeDriveData *info = rp->device->privateData;
+    if((IDE_SUBDEVICE_DRIVE != info->type)
+        || NULL == rp->payload.readWrite.memory)
+    {
+        rp->status = NOT_COMPATIBLE;
+        IoFinalizeRp(rp);
+        return;
+    }
+
+    info->controller->channel[info->channel].rp = rp;
+
+    switch(rp->code)
+    {
+        case IO_RP_READ:
+        case IO_RP_WRITE:
+            status = IdeReadWrite(info, (IO_RP_WRITE == rp->code), rp->payload.readWrite.offset, rp->size, rp->payload.readWrite.memory);
+            break;
+        default:
+            status = IO_RP_CODE_UNKNOWN;
+            break;
+    }
+    
+    if(OK != status)
+    {
+        rp->status = status;
+        IoFinalizeRp(rp);
+    }
+}
+
+/**
+ * @brief Request finalization callback, handled as DPC registered from ISR
+*/
+static void IdeFinalizeRequest(void *context)
+{
+    IoFinalizeRp((struct IoDriverRp*)context);
+}
+
+/**
+ * @brief Create new disk drive device
+ * 
+ * This function is called when the IDE controller is enumerating the bus
+*/
 STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *driver)
 {
     if((NULL == drive) || (NULL == driver))
@@ -31,6 +81,8 @@ STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *d
         return status;
     }
 
+    dev->mainDeviceObject->type = IO_DEVICE_TYPE_DISK;
+
     LOG(SYSLOG_INFO, "Registered disk drive (%s)", deviceId);
 
     MmFreeKernelHeap(deviceId);
@@ -42,19 +94,16 @@ STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *d
         MmFreeKernelHeap(deviceId);
     }
 
-    // if(NULL == (dev->privateData = MmAllocateKernelHeap(sizeof(*drive))))
-    //     return OUT_OF_RESOURCES;
-    
-    // CmMemcpy(dev->privateData, drive, sizeof(*drive));
     dev->privateData = drive;
+    drive->type = IDE_SUBDEVICE_DRIVE;
 
-    IoSetDeviceDisplayedName(dev, "Generic disk drive");
+    IoSetDeviceDisplayedName(dev, "Generic IDE disk drive");
 
 
     return IoInitializeDevice(dev->mainDeviceObject);
 }
 
-STATUS IdeCreateAllDriveDevices(struct IdeDeviceData *info, struct ExDriverObject *driver)
+STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct ExDriverObject *driver)
 {
     if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER].present)
         IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER]), driver);
@@ -69,14 +118,14 @@ STATUS IdeCreateAllDriveDevices(struct IdeDeviceData *info, struct ExDriverObjec
 
 
 
-static STATUS IdeStartReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
+static STATUS IdeStartReadWrite(struct IdeDriveData *info,  bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
 {
-    KeAcquireSpinlock(&(info->channel[channel].lock));
+    KeAcquireSpinlock(&(info->controller->channel[info->channel].lock));
     //clear Physical Region Descriptors
-    IdeClearPrdTable(&(info->channel[channel].prdt));
+    IdeClearPrdTable(&(info->controller->channel[info->channel].prdt));
     //form PRD entries for this operation using provided memory descriptors
     uint64_t remainingBytes = size;
-    uint64_t byteLimit = info->channel[channel].drive[slot].sectorSize * (info->channel[channel].drive[slot].lba48 ? 0x10000 : 0x100); 
+    uint64_t byteLimit = info->sectorSize * (info->lba48 ? 0x10000 : 0x100); 
     uint64_t blockRemainingBytes = buffer->size;
     uint64_t blockNextAddress = buffer->physical;
     while(blockRemainingBytes > 0)
@@ -94,7 +143,7 @@ static STATUS IdeStartReadWrite(struct IdeDeviceData *info, uint8_t channel, uin
             if(bytes > IDE_PRD_MAX_SIZE)
             {
                 //0 in PRD size means 65536 bytes
-                prdFull = (0 == IdeAddPrdEntry(&(info->channel[channel].prdt), blockNextAddress, 0));
+                prdFull = (0 == IdeAddPrdEntry(&(info->controller->channel[info->channel].prdt), blockNextAddress, 0));
                 bytes -= IDE_PRD_MAX_SIZE;
                 blockNextAddress += IDE_PRD_MAX_SIZE;
                 blockRemainingBytes -= IDE_PRD_MAX_SIZE;
@@ -102,7 +151,7 @@ static STATUS IdeStartReadWrite(struct IdeDeviceData *info, uint8_t channel, uin
             }
             else
             {
-                prdFull = (0 == IdeAddPrdEntry(&(info->channel[channel].prdt), blockNextAddress, bytes));
+                prdFull = (0 == IdeAddPrdEntry(&(info->controller->channel[info->channel].prdt), blockNextAddress, bytes));
                 blockNextAddress += bytes;
                 blockRemainingBytes -= bytes;
                 remainingBytes -= bytes;
@@ -123,54 +172,57 @@ IdeStartReadWriteContinue:
     {
         if(blockRemainingBytes > 0)
         {
-            info->channel[channel].operation.memory.physical = blockNextAddress;
-            info->channel[channel].operation.memory.size = blockRemainingBytes;
-            info->channel[channel].operation.memory.next = buffer->next;
+            info->controller->channel[info->channel].operation.memory.physical = blockNextAddress;
+            info->controller->channel[info->channel].operation.memory.size = blockRemainingBytes;
+            info->controller->channel[info->channel].operation.memory.next = buffer->next;
         }
         else
         {
-            info->channel[channel].operation.memory = *(buffer->next);
+            info->controller->channel[info->channel].operation.memory = *(buffer->next);
         }
-        info->channel[channel].operation.remaining = remainingBytes;
+        info->controller->channel[info->channel].operation.remaining = remainingBytes;
     }
     else
-        info->channel[channel].operation.remaining = 0;
+        info->controller->channel[info->channel].operation.remaining = 0;
     
-    info->channel[channel].operation.lba = lba;
-    info->channel[channel].operation.size = size;
-    info->channel[channel].operation.slot = slot;
-    info->channel[channel].operation.write = (true == write);
-    info->channel[channel].operation.busy = 1;
-    KeReleaseSpinlock(&(info->channel[channel].lock));
+    info->controller->channel[info->channel].operation.lba = lba;
+    info->controller->channel[info->channel].operation.size = size;
+    info->controller->channel[info->channel].operation.slot = info->drive;
+    info->controller->channel[info->channel].operation.write = (true == write);
+    info->controller->channel[info->channel].operation.busy = 1;
+    KeReleaseSpinlock(&(info->controller->channel[info->channel].lock));
 
     //store PRD table
-    IdeWriteBmrPrdt(info, channel, &(info->channel[channel].prdt));
+    IdeWriteBmrPrdt(info->controller, info->channel, &(info->controller->channel[info->channel].prdt));
     //clear bus master status
-    uint8_t status = IdeReadBmrStatus(info, channel);
+    uint8_t status = IdeReadBmrStatus(info->controller, info->channel);
     status |= IDE_BMR_STATUS_INTERRUPT | IDE_BMR_STATUS_ERROR;
-    IdeWriteBmrStatus(info, channel, status);
+    IdeWriteBmrStatus(info->controller, info->channel, status);
 
     //set operation parameters
-    if(info->channel[channel].drive[slot].lba48)
-        IdeWriteLba48Parameters(info, channel, slot, lba, (size - remainingBytes) / info->channel[channel].drive[slot].sectorSize);
+    if(info->lba48)
+        IdeWriteLba48Parameters(info->controller, info->channel, info->drive, lba, (size - remainingBytes) / info->sectorSize);
     else
-        IdeWriteLba28Parameters(info, channel, slot, lba, (size - remainingBytes) / info->channel[channel].drive[slot].sectorSize);
+        IdeWriteLba28Parameters(info->controller, info->channel, info->drive, lba, (size - remainingBytes) / info->sectorSize);
 
     //issue ATA command
-    IdeStartTransfer(info, channel, slot, write, true == info->channel[channel].drive[slot].lba48);
+    IdeStartTransfer(info->controller, info->channel, info->drive, write, true == info->lba48);
 
     //start DMA
-    IdeWriteBmrCommand(info, channel, IDE_BMR_COMMAND_START | (write ? 0 : IDE_BMR_COMMAND_RW_CONTROL));
+    IdeWriteBmrCommand(info->controller, info->channel, IDE_BMR_COMMAND_START | (write ? 0 : IDE_BMR_COMMAND_RW_CONTROL));
     return OK;
 }
 
-STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
+STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct IoMemoryDescriptor *buffer)
 {
     //verify request
-    if(!info->channel[channel].drive[slot].present || !info->channel[channel].drive[slot].usable)
+    if(!info->present || !info->usable)
         return DEVICE_NOT_AVAILABLE;
 
-    if(size % info->channel[channel].drive[slot].sectorSize)
+    if(size % info->sectorSize)
+        return BAD_ALIGNMENT;
+
+    if(offset % info->sectorSize)
         return BAD_ALIGNMENT;
 
     uint64_t availableMemory = 0;
@@ -179,11 +231,11 @@ STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, b
         struct IoMemoryDescriptor *t = buffer;
         while(t)
         {
-            //block size must be a multiple of sector size and must be even
-            if((t->size % info->channel[channel].drive[slot].sectorSize)
+            //block size must be a multiple of sector size and must be word aligned
+            if((t->size % info->sectorSize)
                || (t->size & 1))
                 return BAD_ALIGNMENT;
-            //address must be even
+            //address must be word aligned
             if(t->physical & 1)
                 return BAD_ALIGNMENT;
             //memory region must fit in 32 bits
@@ -193,7 +245,7 @@ STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, b
             uint32_t closestBoundary = (t->physical & 0xFFFF0000) + 0x10000;
             //check if the distance between the memory base and the closest boundary is a multiple of sector size
             //if so, then all sectors are aligned to 64 KiB boundary (assuming sector size being 2^n)
-            if((closestBoundary - t->physical) % info->channel[channel].drive[slot].sectorSize)
+            if((closestBoundary - t->physical) % info->sectorSize)
                 return BAD_ALIGNMENT;
             availableMemory += t->size;
             t = t->next;
@@ -205,12 +257,12 @@ STATUS IdeReadWrite(struct IdeDeviceData *info, uint8_t channel, uint8_t slot, b
     if(availableMemory < size)
         return OUT_OF_RESOURCES;
     
-    return IdeStartReadWrite(info, channel, slot, write, lba, size, buffer);
+    return IdeStartReadWrite(info, write, offset / info->sectorSize, size, buffer);
 }
 
 STATUS IdeIsr(void *context)
 {
-    struct IdeDeviceData *info = context;
+    struct IdeControllerData *info = context;
     for(uint8_t i = 0; i < 2; i++)
     {
         uint8_t bmrStatus = IdeReadBmrStatus(info, i);
@@ -226,32 +278,40 @@ STATUS IdeIsr(void *context)
                 if(!(bmrStatus & IDE_BMR_STATUS_ACTIVE) && !(bmrStatus & IDE_BMR_STATUS_ERROR))
                 {
                     //more data to transfer
-                    // if(info->channel[i].operation.remaining > 0)
-                    // {
-                    //     IdeStartReadWrite(info, i, 
-                    //         info->channel[i].operation.slot, 
-                    //         info->channel[i].operation.write, 
-                    //         info->channel[i].operation.lba
-                    //             + ((info->channel[i].operation.size - info->channel[i].operation.remaining) 
-                    //                 / info->channel[i].drive[info->channel[i].operation.slot].sectorSize),
-                    //         info->channel[i].operation.remaining,
-                    //         &(info->channel[i].operation.memory)
-                    //     );
-                    // }
-                    // else //all data transferred
-                    // {
-                    //     KeAcquireSpinlock(&(info->channel[i].lock));
-                    //     //RP finalization
-
-                    //     CmMemset(&(info->channel[i].operation), 0, size(info->channel[i].operation));
-                    //     info->channel[i].operation.busy = 0;
-                    //     KeReleaseSpinlock(&(info->channel[i].lock));
-                    // }
-                    LOG(SYSLOG_ERROR, "Operation successful");
+                    //TODO: this was actually not tested
+                    if(info->channel[i].operation.remaining > 0)
+                    {
+                        IdeStartReadWrite(&(info->channel[i].drive[info->channel[i].operation.slot]),
+                            info->channel[i].operation.write, 
+                            info->channel[i].operation.lba
+                                + ((info->channel[i].operation.size - info->channel[i].operation.remaining) 
+                                    / info->channel[i].drive[info->channel[i].operation.slot].sectorSize),
+                            info->channel[i].operation.remaining,
+                            &(info->channel[i].operation.memory)
+                        );
+                    }
+                    else //all data transferred
+                    {
+                        KeAcquireSpinlock(&(info->channel[i].lock));
+                        //RP finalization
+                        info->channel[i].rp->status = OK;
+                        KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
+                        CmMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
+                        info->channel[i].operation.busy = 0;
+                        KeReleaseSpinlock(&(info->channel[i].lock));
+                    }
+                    
                 }
-                else
+                else //failure
                 {
-                    LOG(SYSLOG_ERROR, "Operation failed");
+                    KeAcquireSpinlock(&(info->channel[i].lock));
+                    //RP finalization
+                    info->channel[i].rp->status = UNKNOWN_ERROR;
+                    info->channel[i].rp->size = 0;
+                    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
+                    CmMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
+                    info->channel[i].operation.busy = 0;
+                    KeReleaseSpinlock(&(info->channel[i].lock));
                 }
             }
             else

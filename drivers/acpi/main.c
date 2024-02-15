@@ -13,24 +13,29 @@ static struct IoRpQueue *rpQueue = NULL;
 static void DriverProcessRp(struct IoDriverRp *rp)
 {
     STATUS status = OK;
-    switch(rp->code)
+    if(IoGetCurrentRpPosition(rp) == rp->device)
     {
-        case IO_RP_ENUMERATE:
-            if(ACPI_FAILURE(DriverEnumerate(rp->device->driverObject)))
-            {
-                status = IO_RP_PROCESSING_FAILED;
-            }
-            break;
-        case IO_RP_GET_BUS_CONFIGURATION:
-            if(ACPI_FAILURE(DriverGetBusInfoForDevice(rp)))
-            {
-                status = IO_RP_PROCESSING_FAILED;
-            }
-            break;
-        default:
-                status = IO_RP_CODE_UNKNOWN;
-            break;
+        switch(rp->code)
+        {
+            case IO_RP_ENUMERATE:
+                if(ACPI_FAILURE(DriverEnumerate(rp->device->driverObject)))
+                {
+                    status = IO_RP_PROCESSING_FAILED;
+                }
+                break;
+            case IO_RP_GET_BUS_CONFIGURATION:
+                if(ACPI_FAILURE(DriverGetBusInfoForDevice(rp)))
+                {
+                    status = IO_RP_PROCESSING_FAILED;
+                }
+                break;
+            default:
+                    status = IO_RP_CODE_UNKNOWN;
+                break;
+        }
     }
+    else
+        status = IO_RP_PROCESSING_FAILED;
     rp->status = status;
     IoFinalizeRp(rp);
 }

@@ -168,6 +168,21 @@ struct IoMemoryDescriptor
     struct IoMemoryDescriptor *next;
 };
 
+struct IoAccessParameters
+{
+    struct
+    {
+        struct
+        {
+            uint8_t available : 1;
+            uint64_t blockSize;
+            uint64_t requiredAlignment;
+            uint64_t minOffset;
+            uint64_t maxOffset;
+        } buffered, direct;
+    } read, write;
+};
+
 
 #ifdef __cplusplus
 }

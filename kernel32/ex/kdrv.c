@@ -68,7 +68,28 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
         
         return ret;
     }
-    return NOT_IMPLEMENTED;
+    else if(0 == CmStrncmp("DISK", deviceId, 4))
+    {
+        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
+        (*drivers)->next = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
+        (*drivers)->next->next = NULL;
+        STATUS ret = ExLoadKernelDriver("/initrd/disk.drv", &((*drivers)->this));
+        if(OK != ret)
+            return ret;
+        ret = ExLoadKernelDriver("/initrd/partmgr.drv", &((*drivers)->next->this));
+        if(OK != ret)
+            return ret;
+
+        ret = (*drivers)->this->init((*drivers)->this);
+        ret = (*drivers)->next->this->init((*drivers)->next->this);
+
+        if(OK == ret)
+            *driverCount = 2;
+        
+        return ret; 
+    }
+    *driverCount = 0;
+    return OK;
 }
 
 //#define KDRV_INITIAL_INDEX 0

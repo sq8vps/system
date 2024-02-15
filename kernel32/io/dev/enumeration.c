@@ -5,6 +5,8 @@
 #include "ke/core/mutex.h"
 #include "mm/heap.h"
 
+
+
 static struct KeTaskControlBlock *enumeratorThread;
 struct IoEnumerationQueue
 {
@@ -14,6 +16,15 @@ struct IoEnumerationQueue
 static struct IoEnumerationQueue *IoEnumerationQueueHead = NULL;
 static KeSpinlock IoEnumerationQueueMutex = KeSpinlockInitializer;
 
+#include "mm/palloc.h"
+#include "mm/mmio.h"
+#include "io/dev/types.h"
+#include "common.h"
+STATUS cb(struct IoDriverRp *rp, void *context)
+{
+    PRINT("JEST %X!!\n", ((uint8_t*)(((struct IoMemoryDescriptor*)context)->mapped))[511]);
+    return OK;
+}
 
 static void IoEnumeratorThread(void *unused)
 {
@@ -33,14 +44,34 @@ static void IoEnumeratorThread(void *unused)
                     struct IoDriverRp *rp;
                     if(OK == IoCreateRp(&rp))
                     {
+                        rp->device = IoGetDeviceStackStop(t->device);
                         rp->code = IO_RP_ENUMERATE;
                         rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
                         IoSendRp(NULL, t->device, rp);
                         
                         MmFreeKernelHeap(rp);
-
                     }
                 }
+                // if(t->device->type == IO_DEVICE_TYPE_DISK)
+                // {
+                //     struct IoDriverRp *rp;
+                //     IoCreateRp(&rp);
+                //     rp->device = IoGetDeviceStackStop(t->device);
+                //     rp->code = IO_RP_READ;
+                //     rp->flags = 0;
+                //     rp->completionCallback = cb;
+                //     struct IoMemoryDescriptor *mem;
+                //     mem = MmAllocateKernelHeap(sizeof(*mem));
+                //     mem->next = NULL;
+                //     MmAllocateContiguousPhysicalMemory(1024, &mem->physical, 2);
+                //     mem->size = 1024;
+                //     mem->mapped = MmMapMmIo(mem->physical, 1024);
+                //     rp->payload.readWrite.memory = mem;
+                //     rp->completionContext = mem;
+                //     rp->size = 512;
+                //     rp->payload.readWrite.offset = 0;
+                //     IoSendRp(NULL, t->device, rp);
+                // }
             }
             MmFreeKernelHeap(t);
             

@@ -260,7 +260,7 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObjec
     
     rp->code = IO_RP_GET_BUS_CONFIGURATION;
     rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-    rp->payload.busConfiguration.device = baseDeviceObject;
+    rp->device = baseDeviceObject;
     rp->payload.busConfiguration.type = IO_BUS_TYPE_PCI;
     if(OK != (status = IoSendRp(baseDeviceObject, NULL, rp)))
     {
