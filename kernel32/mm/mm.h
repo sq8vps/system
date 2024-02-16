@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include "valloc.h"
+#include "heap.h"
 
 /**
  * @defgroup genmem General memory manipulation routines

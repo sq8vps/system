@@ -236,7 +236,7 @@ uintptr_t MmCreateProcessPageDirectory(void)
 	//apply self-referencing page directory trick
 	newPageDir[MM_PAGE_DIRECTORY_ENTRY_COUNT - 1] = newPageDirAddress | MM_PAGE_FLAG_WRITABLE | MM_PAGE_FLAG_PRESENT;
 
-	MmUnmapDynamicMemory(newPageDir, MM_PAGE_DIRECTORY_SIZE);
+	MmUnmapDynamicMemory(newPageDir);
 
 	return newPageDirAddress;
 }

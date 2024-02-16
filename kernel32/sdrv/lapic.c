@@ -130,14 +130,14 @@ STATUS ApicInitBSP(uintptr_t address)
     STATUS ret = OK;
     if(OK != (ret = ApicInitAP()))
     {
-        MmUnmapMmIo(lapic, MM_PAGE_SIZE);
+        MmUnmapMmIo(lapic);
         lapic = NULL;
         return ret;
     }
 
     if(OK != (ret = ItInstallInterruptHandler(IT_LAPIC_SPURIOUS_VECTOR, spuriousInterruptHandler, NULL)))
     {
-        MmUnmapMmIo(lapic, MM_PAGE_SIZE);
+        MmUnmapMmIo(lapic);
         lapic = NULL;
         return ret;
     }
@@ -145,7 +145,7 @@ STATUS ApicInitBSP(uintptr_t address)
     if(OK != (ret = ItSetInterruptHandlerEnable(IT_LAPIC_SPURIOUS_VECTOR, spuriousInterruptHandler, true)))
     {
         ItUninstallInterruptHandler(IT_LAPIC_SPURIOUS_VECTOR, spuriousInterruptHandler);
-        MmUnmapMmIo(lapic, MM_PAGE_SIZE);
+        MmUnmapMmIo(lapic);
         lapic = NULL;
         return ret;
     }

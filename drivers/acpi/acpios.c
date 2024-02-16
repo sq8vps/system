@@ -46,7 +46,7 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
 {
-    MmUnmapDynamicMemory(where, length);
+    MmUnmapDynamicMemory(where);
 }
 
 ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
@@ -327,11 +327,11 @@ ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT3
             *Value = *((uint64_t*)mem);
             break;
         default:
-            MmUnmapMmIo(mem, MM_PAGE_SIZE);
+            MmUnmapMmIo(mem);
             return AE_BAD_PARAMETER;
             break;
     }
-    MmUnmapMmIo(mem, MM_PAGE_SIZE);
+    MmUnmapMmIo(mem);
     return AE_OK;
 }
 
@@ -358,11 +358,11 @@ ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT3
             *((uint64_t*)mem) = (uint64_t)Value; 
             break;
         default:
-            MmUnmapMmIo(mem, MM_PAGE_SIZE);
+            MmUnmapMmIo(mem);
             return AE_BAD_PARAMETER;
             break;
     }
-    MmUnmapMmIo(mem, MM_PAGE_SIZE);
+    MmUnmapMmIo(mem);
     return AE_OK;
 }
 

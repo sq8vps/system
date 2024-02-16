@@ -118,6 +118,13 @@ extern STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObjec
 extern STATUS IoSendRpDown(struct IoDriverRp *rp);
 
 /**
+ * @brief Find device stack top subdevice
+ * @param *dev Device object to find the top subdevice of
+ * @return Top subdevice object
+*/
+extern struct IoSubDeviceObject* IoGetDeviceStackStop(struct IoDeviceObject *dev);
+
+/**
  * @brief Set displayed (friendly) name of a device
  * @param *device Subdevice object (any for given main device)
  * @param *name Name to assign

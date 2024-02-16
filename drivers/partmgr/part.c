@@ -21,7 +21,7 @@ static STATUS PartmgrInitializeCallback(struct IoDriverRp *rp, void *context)
                 info->scheme = SCHEME_MBR;
                 PartmgrMbrParse(m, info->mbr);
             }
-            MmUnmapMmIo(m, rp->payload.readWrite.memory->size);
+            MmUnmapMmIo(m);
         }
         MmFreePhysicalMemory(rp->payload.readWrite.memory->physical, rp->payload.readWrite.memory->size);
     }

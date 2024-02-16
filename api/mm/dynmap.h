@@ -23,9 +23,8 @@ extern void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t
 /**
  * @brief Unmap dynamic kernel memory
  * @param *ptr Memory pointer (from MmMapDynamicMemory)
- * @param n Byte count
 */
-extern void MmUnmapDynamicMemory(void *ptr, uintptr_t n);
+extern void MmUnmapDynamicMemory(void *ptr);
 
 
 #ifdef __cplusplus

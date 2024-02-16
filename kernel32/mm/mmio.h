@@ -17,8 +17,7 @@ EXPORT
 /**
  * @brief Unmap Memory-Mapped I/O space
  * @param *ptr Mapped memory pointer (returned from MmMapMmIo())
- * @param n Space size
 */
-EXTERN void MmUnmapMmIo(void *ptr, uintptr_t n);
+EXTERN void MmUnmapMmIo(void *ptr);
 
 #endif

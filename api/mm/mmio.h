@@ -20,9 +20,8 @@ extern void *MmMapMmIo(uintptr_t pAddress, uintptr_t n);
 /**
  * @brief Unmap Memory-Mapped I/O space
  * @param *ptr Mapped memory pointer (returned from MmMapMmIo())
- * @param n Space size
 */
-extern void MmUnmapMmIo(void *ptr, uintptr_t n);
+extern void MmUnmapMmIo(void *ptr);
 
 
 #ifdef __cplusplus

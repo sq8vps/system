@@ -11,6 +11,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * @defgroup avl AVL Tree library
@@ -27,26 +28,34 @@ struct MmAvlNode
     
     struct MmAvlNode *left, *right; //children pointers
     struct MmAvlNode *buddy; //buddy pointer (address-size pair)
+    uintptr_t val; //additional value
     int height; //node height
 };
 
 /**
- * @brief Insert node to AVL trees
- * @param **addressRoot Root of tree sorted by address
- * @param **sizeRoot Root of tree sorted by size
- * @param address Address for the new node
- * @param size Size for the new node
+ * @brief Insert node to AVL tree
+ * @param **root Root of the tree
+ * @param key Key for the new node
+ * @return Created node or NULL on failure
 */
-struct MmAvlNode* MmAvlInsert(struct MmAvlNode **addressRoot, struct MmAvlNode **sizeRoot, uintptr_t address, uintptr_t size);
+struct MmAvlNode* MmAvlInsert(struct MmAvlNode **root, uintptr_t key);
 
 /**
- * @brief Delete node from AVL trees
- * @param **nodeRoot Root of the tree that contains the node to be deleted
- * @param **buddyRoot Root of the tree that contains the buddy of the node to be deleted
- * @param *node Node to be deleted
- * @attention The node buddy is also deleted
+ * @brief Insert pair of nodes to AVL tree
+ * @param **rootA Root of the tree A
+ * @param **rootB Root of the tree B
+ * @param keyA Key for the new node A
+ * @param keyB Key for the new node B
+ * @return Pointer to node A or NULL on failure
 */
-void MmAvlDelete(struct MmAvlNode **nodeRoot, struct MmAvlNode **buddyRoot, struct MmAvlNode *node);
+struct MmAvlNode* MmAvlInsertPair(struct MmAvlNode **rootA, struct MmAvlNode **rootB, uintptr_t keyA, uintptr_t keyB);
+
+/**
+ * @brief Delete node from AVL tree
+ * @param **root Root of the tree
+ * @param *node Node to be deleted
+*/
+void MmAvlDelete(struct MmAvlNode **root, struct MmAvlNode *node);
  
 /**
  * @brief Find best-fitting free memory block in AVL tree

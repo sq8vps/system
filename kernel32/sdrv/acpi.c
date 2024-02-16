@@ -143,14 +143,14 @@ static uintptr_t getRXSDTAddress(void)
         }
         if(NULL == rsdp)
         {
-            MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+            MmUnmapDynamicMemory(t);
             return 0; //failure
         }
     }
 
     if(!verifyChecksum(rsdp, sizeof(struct AcpiRsdp)))
     {
-        MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+        MmUnmapDynamicMemory(t);
         return 0;
     }
 
@@ -161,7 +161,7 @@ static uintptr_t getRXSDTAddress(void)
 
         if(!verifyChecksum(rsdp, sizeof(struct AcpiRsdpV2)))
         {
-            MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+            MmUnmapDynamicMemory(t);
             return 0;
         }
 
@@ -173,7 +173,7 @@ static uintptr_t getRXSDTAddress(void)
     }
 
 
-    MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+    MmUnmapDynamicMemory(t);
     return ret;
 }
 
@@ -246,7 +246,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     uint32_t entryCount = (rxsdt->length - sizeof(struct AcpiRXsdt)) / entrySize;
     uint32_t rxsdtLength = rxsdt->length;
 
-    MmUnmapDynamicMemory(rxsdt, sizeof(struct AcpiRXsdt));
+    MmUnmapDynamicMemory(rxsdt);
 
     rxsdt = MmMapDynamicMemory(rsdtPhysical, rxsdtLength, 0);
     if(NULL == rxsdt)
@@ -254,7 +254,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 
     if(!verifyChecksum(rxsdt, rxsdtLength))
     {
-        MmUnmapDynamicMemory(rxsdt, rxsdtLength);
+        MmUnmapDynamicMemory(rxsdt);
         return ACPI_CHECKSUM_VALIDATION_FAILED;
     }
 
@@ -264,27 +264,27 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         struct AcpiMadt *madt = MmMapDynamicMemory(madtAddress, sizeof(struct AcpiMadt), 0);
         if(NULL == madt)
         {
-            MmUnmapDynamicMemory(rxsdt, rxsdtLength);
+            MmUnmapDynamicMemory(rxsdt);
             return OUT_OF_RESOURCES;
         }
         if(0 != CmStrncmp(madt->signature, "APIC", 4))
         {
-            MmUnmapDynamicMemory(madt, sizeof(struct AcpiMadt));
+            MmUnmapDynamicMemory(madt);
             continue;
         }
         uint32_t madtSize = madt->length;
-        MmUnmapDynamicMemory(madt, sizeof(struct AcpiMadt));
+        MmUnmapDynamicMemory(madt);
         madt = MmMapDynamicMemory(madtAddress, madtSize, 0);
         if(NULL == madt)
         {
-            MmUnmapDynamicMemory(rxsdt, rxsdtLength);
+            MmUnmapDynamicMemory(rxsdt);
             return OUT_OF_RESOURCES;
         }
 
         if(!verifyChecksum(madt, madtSize))
         {
-            MmUnmapDynamicMemory(rxsdt, rxsdtLength);
-            MmUnmapDynamicMemory(madt, madtSize);
+            MmUnmapDynamicMemory(rxsdt);
+            MmUnmapDynamicMemory(madt);
             return ACPI_CHECKSUM_VALIDATION_FAILED;
         }
 
@@ -292,11 +292,11 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         HalSetDualPicPresence((madt->flags & ACPI_MADT_FLAG_PCAT_COMPAT) > 0);
 
         readEntries(madt);
-        MmUnmapDynamicMemory(madt, madtSize);
+        MmUnmapDynamicMemory(madt);
         return OK;
     }
     
-    MmUnmapDynamicMemory(rxsdt, rxsdtLength);
+    MmUnmapDynamicMemory(rxsdt);
     return ACPI_MADT_NOT_FOUND;
 
 }

@@ -91,33 +91,6 @@ static struct MmAvlNode* mmAvlInsertPreallocated(struct MmAvlNode *parent, struc
     return parent;
 }
 
-struct MmAvlNode* MmAvlInsert(struct MmAvlNode **addressRoot, struct MmAvlNode **sizeRoot, uintptr_t address, uintptr_t size)
-{
-    if(0 == size)
-        return NULL;
-    struct MmAvlNode* addressNode = MmAllocateKernelHeap(sizeof(struct MmAvlNode));
-    struct MmAvlNode* sizeNode = MmAllocateKernelHeap(sizeof(struct MmAvlNode));
-    
-    if((NULL == addressNode) || (NULL == sizeNode))
-        return NULL;
-    
-    addressNode->key = address;
-    addressNode->height = 1;
-    addressNode->left = NULL;
-    addressNode->right = NULL;
-    sizeNode->key = size;
-    sizeNode->height = 1;
-    sizeNode->left = NULL;
-    sizeNode->right = NULL;
-    addressNode->buddy = sizeNode; //store buddy node pointer for both nodes
-    sizeNode->buddy = addressNode;
-
-    *addressRoot = mmAvlInsertPreallocated(*addressRoot, addressNode);
-    *sizeRoot = mmAvlInsertPreallocated(*sizeRoot, sizeNode);
-
-    return addressNode;
-}
-
 static struct MmAvlNode* mmAvlLowestNode(struct MmAvlNode* node)
 {
     while (NULL != node->left)
@@ -140,31 +113,34 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, uintptr_t key)
         //1 or 0 children
         if((NULL == root->left) || (NULL == root->right))
         {
-            struct MmAvlNode *temp = root->left ? root->left : root->right;
+            struct MmAvlNode *child = root->left ? root->left : root->right;
             
-            if (temp == NULL) //no children
+            if(child == NULL) //no children
             {
-                temp = root;
+                child = root;
                 root = NULL;
             }
             else //1 child
             {
-                *root = *temp; //copy child to root
-                root->buddy->buddy = root; //update buddy of the other node
+                *root = *child; //copy child to root
+                if(NULL != root->buddy)
+                    root->buddy->buddy = root; //update buddy of the other node
             }
 
-            MmFreeKernelHeap(temp);
+            MmFreeKernelHeap(child);
         }
         else //2 children
         {
             //get root successor
-            struct MmAvlNode* temp = mmAvlLowestNode(root->right);
+            struct MmAvlNode* child = mmAvlLowestNode(root->right);
 
-            root->key = temp->key; //copy value
-            root->buddy = temp->buddy; //copy buddy pointer
-            root->buddy->buddy = root; //update buddy of the other node
+            root->key = child->key; //copy value
+            root->val = child->val;
+            root->buddy = child->buddy; //copy buddy pointer
+            if(NULL != child->buddy)
+                child->buddy->buddy = root; //update buddy of the other node
 
-            root->right = mmAvlDeleteNode(root->right, temp->key);
+            root->right = mmAvlDeleteNode(root->right, child->key);
         }
     }
 
@@ -196,11 +172,8 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, uintptr_t key)
     return root;
 }
 
-void MmAvlDelete(struct MmAvlNode **nodeRoot, struct MmAvlNode **buddyRoot, struct MmAvlNode *node)
-{
-    *buddyRoot = mmAvlDeleteNode(*buddyRoot, node->buddy->key);
-    *nodeRoot = mmAvlDeleteNode(*nodeRoot, node->key);
-}
+
+
  
 struct MmAvlNode* MmAvlFindFreeMemory(struct MmAvlNode *root, uintptr_t size)
 {
@@ -282,4 +255,44 @@ struct MmAvlNode* MmAvlFindHighestMemoryByAddressLimit(struct MmAvlNode *root, u
     }
     //else no region found
     return NULL;
+}
+
+struct MmAvlNode* MmAvlInsert(struct MmAvlNode **root, uintptr_t key)
+{
+    struct MmAvlNode* node = MmAllocateKernelHeap(sizeof(struct MmAvlNode));
+    
+    if(NULL == node)
+        return NULL;
+    
+    node->key = key;
+    node->height = 1;
+    node->left = NULL;
+    node->right = NULL;
+    node->buddy = NULL;
+
+    *root = mmAvlInsertPreallocated(*root, node);
+
+    return node;
+}
+
+struct MmAvlNode* MmAvlInsertPair(struct MmAvlNode **rootA, struct MmAvlNode **rootB, uintptr_t keyA, uintptr_t keyB)
+{
+    struct MmAvlNode *nA, *nB;
+    nA = MmAvlInsert(rootA, keyA);
+    if(NULL == nA)
+        return NULL;
+    nB = MmAvlInsert(rootB, keyB);
+    if(NULL == nB)
+    {
+        MmAvlDelete(rootA, nA);
+        return NULL;
+    }
+    nB->buddy = nA;
+    nA->buddy = nB;
+    return nA;
+}
+
+void MmAvlDelete(struct MmAvlNode **root, struct MmAvlNode *node)
+{
+    *root = mmAvlDeleteNode(*root, node->key);
 }

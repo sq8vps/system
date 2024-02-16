@@ -228,7 +228,7 @@ void BootVgaDeinit(void)
 {
     if(NULL != vmem)
 	{
-        MmUnmapMmIo(vmem, BOOTVGA_WIDTH * BOOTVGA_HEIGHT);
+        MmUnmapMmIo(vmem);
 	}
 
 	HalIoPortWriteByte(BOOTVGA_GC_INDEX, 0x08);

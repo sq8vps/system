@@ -166,7 +166,7 @@ static uintptr_t getConfigurationTableAddress(void)
             }
             if(NULL == fpsr)
             {
-                MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+                MmUnmapDynamicMemory(t);
                 return 0; //failure
             }
         }
@@ -174,12 +174,12 @@ static uintptr_t getConfigurationTableAddress(void)
 
     if(!verifyChecksum(fpsr, MP_FPS_SIZE))
     {
-        MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+        MmUnmapDynamicMemory(t);
         return 0;
     }
 
     uint32_t ret = ((uint32_t*)fpsr)[MP_FPS_CONFIGURATION_TABLE_ADDRESS_OFFSET]; //get physical address pointer
-    MmUnmapDynamicMemory(t, MM_LOWER_MEMORY_SIZE);
+    MmUnmapDynamicMemory(t);
     return ret;
 }
 
@@ -203,17 +203,17 @@ static STATUS readConfigurationTableHeader()
                     MP_CONFIGURATION_TABLE_HEADER_SIGNATURE, 
                     sizeof(MP_CONFIGURATION_TABLE_HEADER_SIGNATURE) - 1))
     {
-        MmUnmapDynamicMemory(confHeader, MM_PAGE_SIZE);
+        MmUnmapDynamicMemory(confHeader);
         return MP_CONFIGURATION_TABLE_NOT_FOUND;
     }
 
     confTableSize = confHeader->size; //get whole configuration table size
-    MmUnmapDynamicMemory(confHeader, MM_PAGE_SIZE);
+    MmUnmapDynamicMemory(confHeader);
     confHeader = MmMapDynamicMemory(cth, confTableSize, 0);
 
     if(!verifyChecksum(confHeader, confTableSize))
     {
-        MmUnmapDynamicMemory(confHeader, confTableSize);
+        MmUnmapDynamicMemory(confHeader);
         return MP_CONFIGURATION_TABLE_NOT_FOUND;
     }
 

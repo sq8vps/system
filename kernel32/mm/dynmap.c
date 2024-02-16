@@ -6,19 +6,20 @@
 
 #define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (MM_PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
-static struct MmAvlNode *dynamicMemoryTree[2] = {NULL, NULL};
-#define MM_DYNAMIC_ADDRESS_TREE dynamicMemoryTree[0]
-#define MM_DYNAMIC_SIZE_TREE dynamicMemoryTree[1]
+static struct MmAvlNode *dynamicMemoryTree[3] = {NULL, NULL, NULL};
+#define MM_DYNAMIC_ADDRESS_FREE_TREE dynamicMemoryTree[0]
+#define MM_DYNAMIC_SIZE_FREE_TREE dynamicMemoryTree[1]
+#define MM_DYNAMIC_ADDRESS_USED_TREE dynamicMemoryTree[2]
 
 static KeSpinlock dynamicAllocatorMutex = KeSpinlockInitializer;
 
-void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
+void *MmReserveDynamicMemory(uintptr_t n)
 {
     n = ALIGN_UP(n, MM_PAGE_SIZE);
     
     KeAcquireSpinlock(&dynamicAllocatorMutex);
 
-    struct MmAvlNode *region = MmAvlFindFreeMemory(MM_DYNAMIC_SIZE_TREE, n);
+    struct MmAvlNode *region = MmAvlFindFreeMemory(MM_DYNAMIC_SIZE_FREE_TREE, n);
     if(NULL == region) //no fitting region available
     {
         KeReleaseSpinlock(&dynamicAllocatorMutex);
@@ -27,59 +28,102 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
     //else region is available
     uintptr_t vAddress = region->buddy->key; //store its address
     uintptr_t remainingSize = region->key - n; //calculate remaining size
-    //perform mapping first
-    STATUS ret = OK;
-    if(OK != (ret = MmMapMemoryEx(vAddress, ALIGN_DOWN(pAddress, MM_PAGE_SIZE), n, MM_PAGE_FLAG_WRITABLE | flags)))
-    {
-        KeReleaseSpinlock(&dynamicAllocatorMutex);
-        return NULL;
-    }
+
     //delete old nodes
-    MmAvlDelete(&MM_DYNAMIC_SIZE_TREE, &MM_DYNAMIC_ADDRESS_TREE, region);
+    struct MmAvlNode *buddy = region->buddy;
+    MmAvlDelete(&MM_DYNAMIC_SIZE_FREE_TREE, region);
+    MmAvlDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, buddy);
 
     //check if it should be split
 
     if(remainingSize >= MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD)
     {
-        if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, vAddress + n, remainingSize))
-        {
-            KeReleaseSpinlock(&dynamicAllocatorMutex);
-            return NULL;
-        }
-        //TODO: this should be handled somehow
+        region = MmAvlInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, remainingSize, vAddress + n);
+        if(NULL == region)
+            goto MmMapDynamicMemoryFail;
     }
+
+    struct MmAvlNode *node = MmAvlInsert(&MM_DYNAMIC_ADDRESS_USED_TREE, vAddress);
+    if(NULL == node)
+    {
+        MmAvlDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, region->buddy);
+        MmAvlDelete(&MM_DYNAMIC_SIZE_FREE_TREE, region);
+        goto MmMapDynamicMemoryFail;  
+    }
+
+    node->val = n; //store size
+
     KeReleaseSpinlock(&dynamicAllocatorMutex);
-    return (void*)(vAddress + (pAddress % MM_PAGE_SIZE));
+    return (void*)vAddress;
+
+MmMapDynamicMemoryFail:
+    KeReleaseSpinlock(&dynamicAllocatorMutex);
+    return NULL;
 }
 
-void MmUnmapDynamicMemory(void *ptr, uintptr_t n)
+uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
 {
-    n = ALIGN_UP(n, MM_PAGE_SIZE);
     ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE);
 
-    MmUnmapMemoryEx((uintptr_t)ptr, n);
-
     KeAcquireSpinlock(&dynamicAllocatorMutex);
+    struct MmAvlNode *this = MmAvlFindMemoryByAddress(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
+    if(NULL == this)
+    {
+        KeReleaseSpinlock(&dynamicAllocatorMutex);
+        return 0;
+    }
+
+    uintptr_t n = this->val; //get size
+    uintptr_t originalSize = n;
+    MmAvlDelete(&MM_DYNAMIC_ADDRESS_USED_TREE, this);
 
     //check if there is an adjacent free region with higher address
-    struct MmAvlNode *node = MmAvlFindMemoryByAddress(MM_DYNAMIC_ADDRESS_TREE, (uintptr_t)ptr + n);
+    struct MmAvlNode *node = MmAvlFindMemoryByAddress(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr + n);
     if(NULL != node)
     {
         n += node->buddy->key; //sum size
-        MmAvlDelete(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, node);
+        MmAvlDelete(&MM_DYNAMIC_SIZE_FREE_TREE, node->buddy);
+        MmAvlDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, node);
     }
     //check if there is an adjacent preceeding free region
-    node = MmAvlFindHighestMemoryByAddressLimit(MM_DYNAMIC_ADDRESS_TREE, (uintptr_t)ptr);
+    node = MmAvlFindHighestMemoryByAddressLimit(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr);
     if(NULL != node)
     {
         n += node->buddy->key; //sum size
         ptr = (void*)(node->key); //store new address
-        MmAvlDelete(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, node);
+        MmAvlDelete(&MM_DYNAMIC_SIZE_FREE_TREE, node->buddy);
+        MmAvlDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, node);
     }
 
     //TODO: should be handled somehow if NULL returned
-    MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, (uintptr_t)ptr, n);
+    MmAvlInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, n, (uintptr_t)ptr);
     KeReleaseSpinlock(&dynamicAllocatorMutex);
+    return originalSize;
+}
+
+void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
+{
+    void *ptr = MmReserveDynamicMemory(n);
+    if(NULL == ptr)
+        return NULL;
+    
+    STATUS ret;
+    if(OK != (ret = MmMapMemoryEx(ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE), 
+        ALIGN_DOWN(pAddress, MM_PAGE_SIZE), 
+        n, 
+        MM_PAGE_FLAG_WRITABLE | flags)))
+    {
+        MmFreeDynamicMemoryReservation(ptr);
+        return NULL;
+    }
+    return (void*)((uintptr_t)ptr + (pAddress % MM_PAGE_SIZE));
+}
+
+void MmUnmapDynamicMemory(void *ptr)
+{
+    uintptr_t n = MmFreeDynamicMemoryReservation(ptr);
+    if(0 != n)
+        MmUnmapMemoryEx((uintptr_t)ptr, n);
 }
 
 void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
@@ -102,9 +146,14 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
                     KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 0, 0, 0);
             }
 
+            struct MmAvlNode *node =  MmAvlInsert(&MM_DYNAMIC_ADDRESS_USED_TREE, kernelArgs->initrdAddress);
+            if(NULL == node)
+                KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
+            node->val = kernelArgs->initrdSize;
+
             if(kernelArgs->initrdAddress - MM_DYNAMIC_START_ADDRESS)
             {
-                if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, 
+                if(NULL == MmAvlInsertPair(&MM_DYNAMIC_ADDRESS_FREE_TREE, &MM_DYNAMIC_SIZE_FREE_TREE, 
                 MM_DYNAMIC_START_ADDRESS, kernelArgs->initrdAddress - MM_DYNAMIC_START_ADDRESS))
                     KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
             }
@@ -118,7 +167,7 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
     uintptr_t remaining = MM_DYNAMIC_MAX_SIZE - (kernelArgs->initrdAddress + kernelArgs->initrdSize - MM_DYNAMIC_START_ADDRESS);
     if(remaining)
     {
-        if(NULL == MmAvlInsert(&MM_DYNAMIC_ADDRESS_TREE, &MM_DYNAMIC_SIZE_TREE, 
+        if(NULL == MmAvlInsertPair(&MM_DYNAMIC_ADDRESS_FREE_TREE, &MM_DYNAMIC_SIZE_FREE_TREE, 
             kernelArgs->initrdAddress + kernelArgs->initrdSize, remaining))
                 KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
     }
