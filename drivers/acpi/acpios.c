@@ -273,7 +273,7 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
 {   
     STATUS ret = HalRegisterIrq(InterruptLevel, Handler, Context, 
         (struct HalInterruptParams){.mode = IT_MODE_FIXED, .polarity = IT_POLARITY_ACTIVE_LOW, .trigger = IT_TRIGGER_LEVEL, 
-            .wake = IT_WAKE_CAPABLE, .shared = IT_NOT_SHARED});
+            .wake = IT_WAKE_CAPABLE, .shared = IT_NOT_SHAREABLE});
     
     if(OK == ret)
         HalEnableIrq(InterruptLevel, Handler);

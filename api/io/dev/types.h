@@ -18,8 +18,14 @@ enum IoBusType
     IO_BUS_TYPE_ISA,
 };
 
+/**
+ * @brief Bus location
+*/
 union IoBusId
 {
+    /**
+     * @brief PCI address
+    */
     struct
     {
         uint8_t bus;
@@ -27,27 +33,15 @@ union IoBusId
         uint8_t function;
     } pci;
 
-    void *other;
+    void *p; /**< Pointer */
+    uint16_t u16; /**< 16-bit unsigned int */
+    uint32_t u32; /**< 32-bit unsigned int */
+    uint64_t u64; /**< 64-bit unsigned int */
 };
 
-struct IoIrqEntry
-{
-    union IoBusId id;
-    uint32_t gsi;
-    uint32_t pin;
-    struct HalInterruptParams params;
-};
-
-struct IoIrqMap
-{
-    enum IoBusType type;
-    union IoBusId id;
-    uint32_t irqCount;
-    struct IoIrqEntry *irq;
-    struct IoIrqMap *next;
-    struct IoIrqMap *child;
-};
-
+/**
+ * @brief Common PCI configuration space header
+*/
 struct IoPciDeviceHeader
 {
     uint16_t vendor;
@@ -166,21 +160,6 @@ struct IoMemoryDescriptor
     uint64_t size;
 
     struct IoMemoryDescriptor *next;
-};
-
-struct IoAccessParameters
-{
-    struct
-    {
-        struct
-        {
-            uint8_t available : 1;
-            uint64_t blockSize;
-            uint64_t requiredAlignment;
-            uint64_t minOffset;
-            uint64_t maxOffset;
-        } buffered, direct;
-    } read, write;
 };
 
 

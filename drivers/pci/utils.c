@@ -115,7 +115,7 @@ bool PciIsHostBridge(union IoBusId address)
 	return false;
 }
 
-STATUS PciReadConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
+STATUS PciReadConfigurationSpace(union IoBusId address, struct IoRp *rp)
 {
 	if(0 == rp->size)
 		return OK;
@@ -126,12 +126,12 @@ STATUS PciReadConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
 	uint8_t *d = (uint8_t*)rp->buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{
-		d[i] = PciConfigReadByte(address, rp->payload.deviceConfiguration.offset + i);
+		d[i] = PciConfigReadByte(address, rp->payload.configSpace.offset + i);
 	}
 	return OK;
 }
 
-STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
+STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoRp *rp)
 {
 	if(0 == rp->size)
 		return OK;
@@ -140,7 +140,7 @@ STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoDriverRp *rp)
 	uint8_t *d = (uint8_t*)rp->buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{
-		PciConfigWriteByte(address, rp->payload.deviceConfiguration.offset + i, d[i]);
+		PciConfigWriteByte(address, rp->payload.configSpace.offset + i, d[i]);
 	}
 	return OK;
 }

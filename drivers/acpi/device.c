@@ -7,30 +7,63 @@ static bool pciHostBridgeFound = false; //allow only one PCI/PCI-E host bridge
 
 #define ACPI_DEVICE_ID_PREFIX "ACPI"
 
-ACPI_STATUS DriverGetBusInfoForDevice(struct IoDriverRp *rp)
+STATUS AcpiGetDeviceLocation(struct IoRp *rp)
 {
-    if(NULL != rp->device)
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+
+    struct AcpiDeviceInfo *busConfig = ((struct AcpiDeviceInfo*)(dev->privateData));
+    if(NULL != busConfig)
     {
-        struct BusSubDeviceInfo *busConfig = ((struct BusSubDeviceInfo*)(rp->device->privateData));
-        if(NULL != busConfig)
+        if(IO_BUS_TYPE_PCI == busConfig->type)
         {
-            if(IO_BUS_TYPE_PCI == busConfig->type)
-            {
-                rp->payload.busConfiguration.id.pci.bus = busConfig->id.pci.bus;
-                rp->payload.busConfiguration.id.pci.device = busConfig->id.pci.device;
-                rp->payload.busConfiguration.id.pci.function = busConfig->id.pci.function;
-            }
-            rp->payload.busConfiguration.irqMap = busConfig->irqMap;
-            return AE_OK;
+            rp->payload.location.id.pci.bus = busConfig->id.pci.bus;
+            rp->payload.location.id.pci.device = busConfig->id.pci.device;
+            rp->payload.location.id.pci.function = busConfig->id.pci.function;
+            rp->payload.location.type = IO_BUS_TYPE_PCI;
         }
+        return OK;
     }
-    return AE_NOT_FOUND;
+    return IO_RP_PROCESSING_FAILED;
 }
 
-static ACPI_STATUS DriverEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue)
+STATUS AcpiGetDeviceResources(struct IoRp *rp)
+{
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+
+    struct AcpiDeviceInfo *devInfo = ((struct AcpiDeviceInfo*)(dev->privateData));
+    if(NULL != devInfo)
+    {
+        rp->payload.resource.count = 0;
+        if(0 == devInfo->resourceCount)
+        {
+            return OK;
+        }
+        else
+        {
+            uintptr_t size = devInfo->resourceCount * sizeof(devInfo->resource[0]);
+            rp->payload.resource.res = MmAllocateKernelHeap(size);
+            if(NULL == rp->payload.resource.res)
+                return OUT_OF_RESOURCES;
+            CmMemcpy(rp->payload.resource.res, devInfo->resource, size);
+            rp->payload.resource.count = devInfo->resourceCount;
+            return OK;
+        }
+    }
+    return IO_RP_PROCESSING_FAILED;
+}
+
+struct AcpiEnumerationContext
+{
+    struct ExDriverObject *driver;
+    struct IoDeviceObject *dev;
+};
+
+static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue)
 {
     if(NestingLevel > 2)
         return AE_OK;
+
+    struct AcpiEnumerationContext *ctx = Context;
 
     ACPI_DEVICE_INFO *info;
     ACPI_OBJECT_TYPE type;
@@ -56,7 +89,7 @@ static ACPI_STATUS DriverEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingL
 
     //check if PCI/PCI-E host bridge was enumerated previously, i.e., allow only one host bridge
     //PNP0A03 is the PCI host bridge, PNP0A08 is the PCI-E host bridge
-    bool isPciHostBridge = !CmStrcmp(info->HardwareId.String, "PNP0A03") || !CmStrcmp(info->HardwareId.String, "PNP0A08");
+    bool isPciHostBridge = ACPI_IS_PCI_HOST_BRIDGE(info->HardwareId.String);
     if(pciHostBridgeFound && isPciHostBridge)
     {
         ACPI_FREE(info);
@@ -73,25 +106,28 @@ static ACPI_STATUS DriverEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingL
         return AE_OK;
     }
     //prepare space for private data for the bus subdevice
-    struct BusSubDeviceInfo *private;
-    if(NULL == (private = AcpiOsAllocateZeroed(sizeof(*private))))
+    struct AcpiDeviceInfo *private;
+    if(NULL == (private = AcpiOsAllocateZeroed(sizeof(*private) + name.Length + 1)))
     {
         ACPI_FREE(info);
         AcpiOsFree(name.Pointer);
         return AE_OK;
     }
-    //create subdevice for new device
-    struct IoSubDeviceObject *dev;
-    if(OK != IoCreateSubDevice((struct ExDriverObject*)Context, 0, &dev))
+
+    CmStrncpy(private->pnpId, info->HardwareId.String, ACPI_PNP_ID_MAX_LENGTH);
+    CmStrcpy(private->path, name.Pointer);
+
+    AcpiOsFree(name.Pointer);
+
+    //create device for new device
+    struct IoDeviceObject *dev;
+    if(OK != IoCreateDevice(ctx->driver, IO_DEVICE_TYPE_OTHER, 0, &dev))
     {
         ACPI_FREE(info);
-        AcpiOsFree(name.Pointer);
         AcpiOsFree(private);
         return AE_OK;
     }
 
-    //store ACPI path for the new device
-    private->path = name.Pointer;
     //store PCI bus number
     if(isPciHostBridge)
     {
@@ -100,54 +136,78 @@ static ACPI_STATUS DriverEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingL
         private->id.pci.bus = 0; //PCI bus = 0 for host controller
         private->id.pci.device = PCI_ADR_EXTRACT_DEVICE(info->Address);
         private->id.pci.function = PCI_ADR_EXTRACT_FUNCTION(info->Address);
+        dev->type = IO_DEVICE_TYPE_BUS;
     }
     else
     {
         private->type = IO_BUS_TYPE_ACPI;
     }
     dev->privateData = private;
-    //register new device in OS
-    char *deviceId = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, info->HardwareId.String);
-    if(OK != IoRegisterDevice(dev, deviceId))
+
+    ACPI_FREE(info);
+
+    if(ACPI_FAILURE(AcpiFillResourceList(Object, private)))
     {
-        MmFreeKernelHeap(deviceId);
-        ACPI_FREE(info);
+        if(NULL != private->resource)
+            MmFreeKernelHeap(private->resource);
         AcpiOsFree(private);
         return AE_OK;
     }
-    if(isPciHostBridge)
-    {
-        char *t = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, "PCI");
-        if(t != NULL)
-        {
-            IoUpdateCompatibleDeviceIdList(dev->mainDeviceObject, t);
-            MmFreeKernelHeap(t);
-        }
 
-        AcpiGetPciIrqTree(Object, &(private->irqMap));
-    }
-    else
+    //register new device in OS
+    if(OK != IoRegisterDevice(dev, ctx->dev))
     {
-        AcpiGetIrq(Object, private);
+        if(NULL != private->resource)
+            MmFreeKernelHeap(private->resource);
+        AcpiOsFree(private);
+        return AE_OK;
     }
-    char *friendlyName = AcpiGetPnpName(info->HardwareId.String);
-    if(NULL != friendlyName)
-        IoSetDeviceDisplayedName(dev, friendlyName);
-    
-    IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s, device ID is %s\n", (char*)name.Pointer, deviceId);
-    IoInitializeDevice(dev->mainDeviceObject);
 
-    MmFreeKernelHeap(deviceId);
-    ACPI_FREE(info);
+    IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s\n", private->path);
+
     return AE_OK;
 }
 
-ACPI_STATUS DriverEnumerate(struct ExDriverObject *drv)
+ACPI_STATUS DriverEnumerate(struct ExDriverObject *drv, struct IoDeviceObject *dev)
 {
+    struct AcpiEnumerationContext ctx;
+    ctx.driver = drv;
+    ctx.dev = dev;
     void *ret;
     if(alreadyEnumerated)
         return AE_OK;
     alreadyEnumerated = true;
-    return AcpiGetDevices(NULL, DriverEnumerationCallback, drv, &ret);
+    return AcpiGetDevices(NULL, AcpiEnumerationCallback, &ctx, &ret);
 }
 
+STATUS AcpiGetDeviceId(struct IoRp *rp)
+{
+    if(NULL != rp->device->privateData)
+    {
+        struct AcpiDeviceInfo *info = IoGetCurrentRpPosition(rp)->privateData;
+        char *deviceId, **compatibleIds;
+        deviceId = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, info->pnpId);
+        if(NULL == deviceId)
+        {
+            rp->status = OUT_OF_RESOURCES;
+            return OUT_OF_RESOURCES;
+        }
+        compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
+        if(NULL == compatibleIds)
+        {
+            MmFreeKernelHeap(deviceId);
+            rp->status = OUT_OF_RESOURCES;
+            return OUT_OF_RESOURCES;
+        }
+        
+        if(IO_BUS_TYPE_PCI == info->type)
+        {
+            compatibleIds[0] = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, "PCI");
+        }
+
+        rp->payload.deviceId.mainId = deviceId;
+        rp->payload.deviceId.compatibleId = compatibleIds;
+        return OK;
+    }
+    return IO_RP_PROCESSING_FAILED;
+}

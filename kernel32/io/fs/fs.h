@@ -182,6 +182,6 @@ EXTERN STATUS IoGetFileSize(char *file, uint64_t *size);
  * @brief Initialize I/O File Manager subsystem
  * @return Status code
 */
-STATUS IoFsInit(void);
+INTERNAL STATUS IoFsInit(void);
 
 #endif

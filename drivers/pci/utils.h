@@ -32,8 +32,8 @@ bool PciIsHostBridge(union IoBusId address);
 
 bool PciIsMultifunction(union IoBusId address);
 
-STATUS PciReadConfigurationSpace(union IoBusId address, struct IoDriverRp *rp);
+STATUS PciReadConfigurationSpace(union IoBusId address, struct IoRp *rp);
 
-STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoDriverRp *rp);
+STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoRp *rp);
 
 #endif

@@ -8,42 +8,52 @@
 #include "ke/core/mutex.h"
 #include "types.h"
 #include "hal/interrupt.h"
+#include "io/fs/vfs.h"
+#include "res.h"
 
 EXPORT
-struct IoDriverRp;
+struct IoRp;
 struct IoRpQueue;
-struct IoSubDeviceObject;
+struct IoDeviceObject;
 
 EXPORT
-typedef STATUS (*IoCompletionCallback)(struct IoDriverRp *rp, void *context);
-typedef void (*IoProcessRpCallback)(struct IoDriverRp *rp);
-typedef void (*IoCancelRpCallback)(struct IoDriverRp *rp);
+typedef STATUS (*IoCompletionCallback)(struct IoRp *rp, void *context);
+typedef void (*IoProcessRpCallback)(struct IoRp *rp);
+typedef void (*IoCancelRpCallback)(struct IoRp *rp);
 
 EXPORT
 enum IoRpCode
 {
-    IO_RP_UNKNOWN = 0,
+    IO_RP_UNKNOWN = 0, /**< Unknown request, do not use */
     //common requests
-    IO_RP_READ, //read
-    IO_RP_WRITE, //write
-    IO_RP_IOCTL, //arbitrary i/o control
+    IO_RP_READ, /**< Read file */
+    IO_RP_WRITE, /**< Write file */
+    IO_RP_OPEN, /**< Open file */
+    IO_RP_IOCTL, /**< Driver-defined I/O control */
     //PnP requests
     IO_RP_START_DEVICE = 0x1000,
     
-    IO_RP_ENUMERATE,
-    IO_RP_GET_BUS_CONFIGURATION,
-    IO_RP_GET_MMIO_MAPPING,
-    IO_RP_GET_DEVICE_CONFIGURATION,
-    IO_RP_SET_DEVICE_CONFIGURATION,
-    IO_RP_GET_IO_PARAMETERS,
+    IO_RP_GET_DEVICE_ID, /**< Get device ID and compatible IDs */
+    IO_RP_GET_DEVICE_TEXT, /**< Get user-friendly device name */
+    
+    IO_RP_ENUMERATE, /**< Enumerate children of the device */
+    IO_RP_GET_DEVICE_LOCATION, /**< Get device location on the bus */
+    IO_RP_GET_DEVICE_RESOURCES, /**< Get device resources: IRQs, MMIOs, ports, etc. */
+    IO_RP_GET_CONFIG_SPACE, /**< Read device configuration space */
+    IO_RP_SET_CONFIG_SPACE, /**< Write device configuration space */
+
+    //device type specific control requests
+    IO_RP_STORAGE_CONTROL = 0x2000,
+
 };
 
 EXPORT
-struct IoDriverRp
+struct IoRp
 {
-    struct IoSubDeviceObject *device;
+    struct IoDeviceObject *device;
+    struct IoVfsNode *vfsNode;
     enum IoRpCode code;
-    IoDriverRpFlags flags;
+    IoRpFlags flags;
     void *buffer;
     uint64_t size;
     STATUS status;
@@ -52,50 +62,73 @@ struct IoDriverRp
     {
         struct
         {
+            uint32_t count; /**< Count of resource entries */
+            struct IoDeviceResource *res; /**< Contiguous list of \a count resources */
+        } resource;
+
+        /**
+         * @brief \a IO_RP_GET_DEVICE_LOCATION
+        */
+        struct 
+        {
             enum IoBusType type;
             union IoBusId id;
-            struct IoIrqMap *irqMap;
-            struct IoIrqEntry irq;
-        } busConfiguration;
+        } location;
+        
+
+        /**
+         * @brief \a IO_RP_GET_CONFIG_SPACE and \a IO_RP_SET_CONFIG_SPACE
+        */
         struct
         {
-            enum IoBusType type;
-            void *memory;
-            union
-            {
-                struct
-                {
-                    uint16_t segment;
-                    uint8_t startBus, endBus;
-                } pci;
-            };
-        } mmio;
-        struct
-        {
-            enum IoBusType type;
             uint64_t offset;
-        } deviceConfiguration;
+        } configSpace;
+
+        /**
+         * @brief \a IO_RP_READ and \a IO_RP_WRITE
+        */
         struct 
         {
             uint64_t offset;
             struct IoMemoryDescriptor *memory;
             void *systemBuffer;
         } readWrite;
-        struct IoAccessParameters ioParams;
+
+        /**
+         * @brief \a IO_RP_GET_DEVICE_ID
+        */
+        struct
+        {
+            char *mainId;
+            char **compatibleId;
+        } deviceId;
+
+        /**
+         * @brief \a IO_RP_GET_DEVICE_TEXT
+        */
+        char *text;
+
+        /**
+         * @brief Payload for device type specific requests
+        */
+        struct
+        {
+            uint32_t code;
+            void *data;
+        } deviceControl;
     } payload;
     IoCompletionCallback completionCallback;
     IoCancelRpCallback cancelCallback;
     void *completionContext;
-    struct IoDriverRp *next, *previous;
+    struct IoRp *next, *previous;
     struct IoRpQueue *queue;
-    struct IoSubDeviceObject *currentPosition;
 };
 
 EXPORT
 struct IoRpQueue
 {
     IoProcessRpCallback callback;
-    struct IoDriverRp *head;
+    struct IoRp *head;
     KeSpinlock queueLock;
     uint8_t busy : 1;
 };
@@ -106,7 +139,7 @@ EXPORT
  * @param **rp Output Request Packet pointer (the memory is allocated by the function)
  * @return Status code
 */
-EXTERN STATUS IoCreateRp(struct IoDriverRp **rp);
+EXTERN STATUS IoCreateRp(struct IoRp **rp);
 
 EXPORT
 /**
@@ -125,7 +158,7 @@ EXPORT
  * @param cancelCb Callback function required for RP cancelling; called after RP is removed from the queue. NULL if not used.
  * @return Status code
 */
-EXTERN STATUS IoStartRp(struct IoRpQueue *queue, struct IoDriverRp *rp, IoCancelRpCallback cancelCb);
+EXTERN STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoCancelRpCallback cancelCb);
 
 EXPORT
 /**
@@ -134,7 +167,7 @@ EXPORT
  * @return Status code
  * @attention This function does not free the memory
 */
-EXTERN STATUS IoFinalizeRp(struct IoDriverRp *rp);
+EXTERN STATUS IoFinalizeRp(struct IoRp *rp);
 
 EXPORT
 /**
@@ -143,7 +176,7 @@ EXPORT
  * @return Status code
  * @attention The cancel callback routine must be provided
 */
-EXTERN STATUS IoCancelRp(struct IoDriverRp *rp);
+EXTERN STATUS IoCancelRp(struct IoRp *rp);
 
 EXPORT
 /**
@@ -151,6 +184,6 @@ EXPORT
  * @param *rp Request Packet pointer
  * @return Current subdevice object
 */
-EXTERN struct IoSubDeviceObject* IoGetCurrentRpPosition(struct IoDriverRp *rp);
+EXTERN struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
 
 #endif

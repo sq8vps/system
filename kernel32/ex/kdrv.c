@@ -71,25 +71,25 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
     else if(0 == CmStrncmp("DISK", deviceId, 4))
     {
         *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        (*drivers)->next = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        (*drivers)->next->next = NULL;
+        // (*drivers)->next = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
+        (*drivers)->next = NULL;
         STATUS ret = ExLoadKernelDriver("/initrd/disk.drv", &((*drivers)->this));
         if(OK != ret)
             return ret;
-        ret = ExLoadKernelDriver("/initrd/partmgr.drv", &((*drivers)->next->this));
-        if(OK != ret)
-            return ret;
+        // ret = ExLoadKernelDriver("/initrd/partmgr.drv", &((*drivers)->next->this));
+        // if(OK != ret)
+        //     return ret;
 
         ret = (*drivers)->this->init((*drivers)->this);
-        ret = (*drivers)->next->this->init((*drivers)->next->this);
+        // ret = (*drivers)->next->this->init((*drivers)->next->this);
 
         if(OK == ret)
-            *driverCount = 2;
+            *driverCount = 1;
         
         return ret; 
     }
-    *driverCount = 0;
-    return OK;
+    
+    return IO_FILE_NOT_FOUND;
 }
 
 //#define KDRV_INITIAL_INDEX 0
@@ -228,6 +228,8 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
         object->address = ALIGN_UP((t->address + t->size), MM_PAGE_SIZE);
         freeSize = MM_DRIVERS_MAX_SIZE - object->address;
     }
+
+    LOG("Driver %s loaded at 0x%lX\n", path, object->address);
 
     if(imageSize > freeSize)
     {

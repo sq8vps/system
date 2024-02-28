@@ -3,16 +3,24 @@
 
 #include "acpica/include/acpi.h"
 #include "io/dev/rp.h"
+#include "io/dev/dev.h"
 
 #define PCI_ADR_EXTRACT_DEVICE(adr) (((adr) >> 16) & 0xFFFF)
 #define PCI_ADR_EXTRACT_FUNCTION(adr) ((adr) & 0xFFFF)
 
-struct BusSubDeviceInfo
+#define ACPI_PNP_ID_MAX_LENGTH 8
+
+#define ACPI_IS_PCI_HOST_BRIDGE(pnpId) !CmStrcmp((pnpId), "PNP0A03") || !CmStrcmp((pnpId), "PNP0A08") 
+
+struct AcpiDeviceInfo
 {
-    char *path;
-    enum IoBusType type;
-    union IoBusId id;
-    struct IoIrqMap *irqMap;
+    char pnpId[ACPI_PNP_ID_MAX_LENGTH + 1]; /**< ACPI or PNP ID */
+    enum IoBusType type; /**< Bus type this controller handles */
+    union IoBusId id; /**< Bus-specific ID of this controller */
+    
+    uint32_t resourceCount; /**< Number of associated resources */
+    struct IoDeviceResource *resource; /**< Resource table */
+    char path[]; /**< ACPI path */
 };
 
 /**
@@ -22,24 +30,19 @@ struct BusSubDeviceInfo
 */
 char *AcpiGetPnpName(char *id);
 
-ACPI_STATUS DriverGetBusInfoForDevice(struct IoDriverRp *rp);
-
-ACPI_STATUS DriverEnumerate(struct ExDriverObject *drv);
-
 /**
- * @brief Build IRQ mapping tree recursively for given PCI host bridge
- * @param device PCI host bridge ACPI object handle
- * @param **map Output map pointer (allocated by the function)
+ * @brief Get device location data
+ * @param *rp Input/output RP
  * @return Status code
 */
-ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap **map);
+STATUS AcpiGetDeviceLocation(struct IoRp *rp);
 
-/**
- * @brief Get IRQ mapping for given device
- * @param device ACPI device object handle
- * @param *info Device private data pointer
- * @return Status code
-*/
-ACPI_STATUS AcpiGetIrq(ACPI_HANDLE device, struct BusSubDeviceInfo *info);
+STATUS AcpiGetDeviceResources(struct IoRp *rp);
+
+ACPI_STATUS DriverEnumerate(struct ExDriverObject *drv, struct IoDeviceObject *dev);
+
+ACPI_STATUS AcpiFillResourceList(ACPI_HANDLE device, struct AcpiDeviceInfo *info);
+
+STATUS AcpiGetDeviceId(struct IoRp *rp);
 
 #endif

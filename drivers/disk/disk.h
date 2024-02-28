@@ -4,13 +4,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "io/dev/rp.h"
+#include "io/dev/dev.h"
 
 struct DiskData
 {
     bool usable;
-    struct IoAccessParameters ioParams;
+    struct IoDeviceObject *bdo;
 };
 
-STATUS DiskReadWrite(struct IoDriverRp *rp);
+STATUS DiskReadWrite(struct IoRp *rp);
 
 #endif

@@ -126,8 +126,8 @@ STATUS HalRegisterIrq(
             (matching->params.mode == params.mode)
             && (matching->params.polarity == params.polarity)
             && (matching->params.trigger == params.trigger)
-            && (IT_SHARED == matching->params.shared)
-            && (IT_SHARED == params.shared)
+            && (IT_SHAREABLE == matching->params.shared)
+            && (IT_SHAREABLE == params.shared)
             ))
         {
             KeReleaseSpinlock(&HalInterruptListLock);

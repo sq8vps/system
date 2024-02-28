@@ -12,6 +12,18 @@ extern "C"
 #include "defines.h"
 #include "ke/core/mutex.h"
 #include "fstypedefs.h"
+union IoVfsReference
+{
+    void *pv;
+    char *pc;
+    uint64_t u64;
+    int64_t i64;
+    uint32_t u32;
+    int32_t i32;
+    uint8_t u8;
+    int8_t i8;
+};
+
 
 #ifdef __cplusplus
 }

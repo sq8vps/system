@@ -14,6 +14,12 @@
 		},
 		{
 			"path": "drivers/pci"
+		},
+		{
+			"path": "drivers/disk"
+		},
+		{
+			"path": "drivers/partmgr"
 		}
 	],
 	"settings": {
@@ -50,7 +56,12 @@
 			"limits": "cpp",
 			"functional": "c",
 			"algorithm": "c",
-			"mutex.h": "c"
+			"mutex.h": "c",
+			"dev.h": "c",
+			"concepts": "c",
+			"new": "c",
+			"rp.h": "c",
+			"bridge.h": "c"
 		}
 	}
 }

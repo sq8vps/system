@@ -17,7 +17,7 @@
 enum IoVfsEntryType
 {
     IO_VFS_UNKNOWN = 0, //unknown type, for entries not initialized properly that should be ommited
-    IO_VFS_DISK, //disk (block device)
+    IO_VFS_DISK, //disk (block device) with filesystem
     IO_VFS_DEVICE, //device other than disk that provides the IoDeviceObject structure
     IO_VFS_DIRECTORY,
     IO_VFS_FILE,
@@ -25,11 +25,11 @@ enum IoVfsEntryType
 };
 
 /**
- * @brief Major VFS filesystem type
+ * @brief VFS filesystem type
 */
-enum IoVfsMajorType
+enum IoVfsFsType
 {
-    IO_VFS_FS_UNKNOWN = 0, //unknown major filesystem, entry should be ommited
+    IO_VFS_FS_UNKNOWN = 0, //unknown filesystem, entry should be ommited
     IO_VFS_FS_PHYSICAL, //filesystem corresponding to a physical filesystem 
     IO_VFS_FS_VIRTUAL,  //virtual FS that can be modified only by the kernel
                         //and does not require any special/separate handling
@@ -38,26 +38,43 @@ enum IoVfsMajorType
 };
 
 /**
+ * @brief VFS node reference value type
+*/
+EXPORT
+union IoVfsReference
+{
+    void *pv;
+    char *pc;
+    uint64_t u64;
+    int64_t i64;
+    uint32_t u32;
+    int32_t i32;
+    uint8_t u8;
+    int8_t i8;
+};
+
+/**
  * @brief Main VFS node structure
 */
 struct IoVfsNode
 {
-    char *name; /**< Node name */
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
     IoVfsFlags flags; /**< Node flags */
     Time_t lastUse; /**< Last node use timestamp */
     uint32_t referenceCount; /**< Count of references to this object, including symlinks */
 
-    enum IoVfsMajorType majorType; /**< Major VFS filesystem type this node belongs to */
+    enum IoVfsFsType fsType; /**< VFS filesystem type this node belongs to */
     struct IoDeviceObject *device; /**< Associated device */
     struct IoVfsNode *linkDestination; /**< Symbolic link destination */
-    uint64_t referenceValue; /**< Reference value for the driver (LBA, inode number etc.) */
+    union IoVfsReference ref; /**< Reference value for the driver (LBA, inode number etc.) */
 
     struct IoVfsNode *parent; /**< Higher level (parent) node */
     struct IoVfsNode *child; /**< First lower level (child) node */
     struct IoVfsNode *next; /**< Same level next node in linked list */
     struct IoVfsNode *previous; /**< Same level previous node in linked list */
+
+    char name[]; /**< Node name (flexible member) */
 };
 
 /**
@@ -67,11 +84,44 @@ struct IoVfsNode
 STATUS IoVfsInit(void);
 
 /**
+ * @brief Detach file name from given path
+ * @param *path Input: path to detach the file name from, output: path without file name
+ * @return File name pointer
+*/
+char* IoVfsDetachFileName(char *path);
+
+/**
+ * @brief Get VFS node of given name under given parent
+ * @param *parent Parent VFS node
+ * @param *name Node name
+ * @return Requested node or NULL if not found
+ * @attention This function does not resolve links
+*/
+struct IoVfsNode* IoVfsGetNode(struct IoVfsNode *parent, char *name);
+
+/**
  * @brief Get VFS node for given path
  * @param *path Path string
  * @return VFS node or NULL if not found
+ * @attention This function resolves links along the path.
+ * If the final file is a link, it is not resolved.
 */
-struct IoVfsNode* IoVfsGetNode(char *path);
+struct IoVfsNode* IoVfsGetNodeByPath(char *path);
+
+/**
+ * @brief Check if VFS node of given name exists under given parent
+ * @param *parent Parent VFS node
+ * @param *name Node name
+ * @return True if exists, false otherwise
+*/
+bool IoVfsCheckIfNodeExists(struct IoVfsNode *parent, char *name);
+
+/**
+ * @brief Check if VFS with given path exists
+ * @param *path Node path
+ * @return True if exists, false otherwise
+*/
+bool IoVfsCheckIfNodeExistsByPath(char *path);
 
 /**
  * @brief Insert previously prepared node at given position in the tree
@@ -86,10 +136,9 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path);
  * @brief Insert previously prepared node under given parent node
  * @param *node VFS node to insert
  * @param *parent Parent node
- * @return \a *node or NULL on failure
  * @warning This function does NOT check if node with given name already exists
 */
-struct IoVfsNode* IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent);
+void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent);
 
 /**
  * @brief Create symbolic link

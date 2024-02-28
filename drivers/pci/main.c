@@ -8,65 +8,61 @@ static char driverName[] = "Generic PCI bus driver";
 static char driverVendor[] = "Standard drivers";
 static char driverVersion[] = "1.0.0";
 
-static STATUS DriverDispatch(struct IoDriverRp *rp)
+static STATUS DriverDispatch(struct IoRp *rp)
 {
     STATUS status;
-    if(IoGetCurrentRpPosition(rp) == rp->device)
+
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+
+    switch(rp->code)
     {
-        switch(rp->code)
-        {
-            case IO_RP_ENUMERATE:
-                if(NULL != ((struct PciDeviceData*)rp->device->privateData)->thisBridge)
-                    status = PciEnumerate(rp->device->driverObject, rp->device, ((struct PciDeviceData*)rp->device->privateData)->thisBridge);
-                else
-                    goto DriverDispatchForwardRp;
-                break;
-            case IO_RP_GET_DEVICE_CONFIGURATION:
-                if(IO_BUS_TYPE_PCI != rp->payload.deviceConfiguration.type)
-                    goto DriverDispatchForwardRp;
-                if(NULL != rp->device->privateData)
-                {
-                    struct PciDeviceData *info = rp->device->privateData;
-                    status = PciReadConfigurationSpace(info->address, rp);
-                    break;
-                }
+        case IO_RP_ENUMERATE:
+            if(NULL != ((struct PciDeviceData*)dev->privateData)->thisBridge)
+                status = PciEnumerate(dev->driverObject, dev, ((struct PciDeviceData*)dev->privateData)->thisBridge);
+            else
                 status = IO_RP_PROCESSING_FAILED;
+            break;
+        case IO_RP_GET_CONFIG_SPACE:
+            if(NULL != dev->privateData)
+            {
+                struct PciDeviceData *info = dev->privateData;
+                status = PciReadConfigurationSpace(info->address, rp);
                 break;
-            case IO_RP_SET_DEVICE_CONFIGURATION:
-                if(IO_BUS_TYPE_PCI != rp->payload.deviceConfiguration.type)
-                    goto DriverDispatchForwardRp;
-                if(NULL != rp->device->privateData)
-                {
-                    struct PciDeviceData *info = rp->device->privateData;
-                    status = PciWriteConfigurationSpace(info->address, rp);
-                    break;
-                }
-                status = IO_RP_PROCESSING_FAILED;
+            }
+            status = IO_RP_PROCESSING_FAILED;
+            break;
+        case IO_RP_SET_CONFIG_SPACE:
+            if(NULL != dev->privateData)
+            {
+                struct PciDeviceData *info = dev->privateData;
+                status = PciWriteConfigurationSpace(info->address, rp);
                 break;
-            case IO_RP_GET_BUS_CONFIGURATION:
-                if(NULL != rp->device->privateData)
-                {
-                    struct PciDeviceData *info = rp->device->privateData;
-                    rp->payload.busConfiguration.id = info->address;
-                    rp->payload.busConfiguration.irqMap = info->irqMap;
-                    rp->payload.busConfiguration.irq = info->irq;
-                    status = OK;
-                    break;
-                }
-                status = IO_RP_PROCESSING_FAILED;
+            }
+            status = IO_RP_PROCESSING_FAILED;
+            break;
+        case IO_RP_GET_DEVICE_LOCATION:
+            if(NULL != dev->privateData)
+            {
+                struct PciDeviceData *info = dev->privateData;
+                rp->payload.location.id = info->address;
+                status = OK;
                 break;
-            default:
-                goto DriverDispatchForwardRp;
-                break;
-        }
+            }
+            status = IO_RP_PROCESSING_FAILED;
+            break;
+        case IO_RP_GET_DEVICE_RESOURCES:
+            status = PciGetResources(rp);
+            break;
+        case IO_RP_GET_DEVICE_ID:
+            status = PciGetSystemDeviceId(rp);
+            break;
+        default:
+            break;
     }
-    else
-        goto DriverDispatchForwardRp;
+
     rp->status = status;
     IoFinalizeRp(rp);
     return status;
-DriverDispatchForwardRp:
-    return IoSendRpDown(rp);
 }
 
 static STATUS DriverInit(struct ExDriverObject *driverObject)
@@ -74,7 +70,7 @@ static STATUS DriverInit(struct ExDriverObject *driverObject)
     return OK;
 } 
 
-static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject)
+static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
     return PciAddDevice(driverObject, baseDeviceObject);
 }

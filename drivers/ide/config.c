@@ -103,29 +103,18 @@ uint32_t IdeAddPrdEntry(struct IdePrdTable *table, uint32_t address, uint16_t si
 }
 
 
-STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeControllerData *info)
+STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct IdeControllerData *info)
 {
     STATUS status = OK;
     
-    struct IoDriverRp *rp;
-    if(OK != (status = IoCreateRp(&rp)))
-        return status;
-    
-    rp->code = IO_RP_GET_DEVICE_CONFIGURATION;
-    rp->payload.deviceConfiguration.type = IO_BUS_TYPE_PCI;
-    rp->device = device->attachedTo;
-    rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-    rp->size = sizeof(struct IoPciDeviceHeader);
-    rp->buffer = NULL;
+    struct IoPciDeviceHeader *hdr = NULL;
+    status = IoReadConfigSpace(bdo, 0, sizeof(struct IoPciDeviceHeader), (void**)&hdr);
 
-    if(OK != (status = IoSendRp(device->attachedTo, NULL, rp)))
+    if(OK != status)
     {
         LOG(SYSLOG_ERROR, "Getting PCI configuration failed with status 0x%X", status);
-        MmFreeKernelHeap(rp->buffer);
-        MmFreeKernelHeap(rp);
         return status;
     }
-    struct IoPciDeviceHeader *hdr = rp->buffer;
 
     if((hdr->classCode != PCI_IDE_CLASS_CODE)
         || (hdr->subclass != PCI_IDE_SUBCLASS_CODE))
@@ -135,9 +124,8 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeContro
         return SYSTEM_INCOMPATIBLE;
     }
 
-    device->mainDeviceObject->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
-    device->mainDeviceObject->type = IO_DEVICE_TYPE_STORAGE;
-    IoSetDeviceDisplayedName(device, "IDE storage controller");
+    mdo->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
+    mdo->type = IO_DEVICE_TYPE_STORAGE;
 
     if(hdr->progIf & PCI_IDE_PROGIF_OPMODE_PRIMARY_NATIVE)
     {
@@ -248,19 +236,12 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeContro
 
     hdr->command |= PCI_HEADER_COMMAND_IO_SPACE;
 
-    rp->code = IO_RP_SET_DEVICE_CONFIGURATION;
-    rp->payload.deviceConfiguration.type = IO_BUS_TYPE_PCI;
-    rp->device = device->attachedTo;
-    rp->payload.deviceConfiguration.offset = offsetof(struct IoPciDeviceHeader, command);
-    rp->size = 1;
-    rp->buffer = &(hdr->command);
-    rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+    status = IoWriteConfigSpace(bdo, offsetof(struct IoPciDeviceHeader, command), 1, &(hdr->command));
 
-    if(OK != (status = IoSendRp(device->attachedTo, NULL, rp)))
+    if(OK != (status))
     {
         LOG(SYSLOG_ERROR, "Setting PCI configuration failed with status 0x%X", status);
         MmFreeKernelHeap(hdr);
-        MmFreeKernelHeap(rp);
         return status;
     }
 
@@ -269,16 +250,23 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeContro
         if(OK != (status = IdeInitializePrdTables(info)))
         {
             MmFreeKernelHeap(hdr);
-            MmFreeKernelHeap(rp);
             return status;
         }
     }
 
-    rp->code = IO_RP_GET_BUS_CONFIGURATION;
-    rp->payload.busConfiguration.type = IO_BUS_TYPE_PCI;
-    rp->device = device->attachedTo;
-    rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-    if(OK != (status = IoSendRp(device->attachedTo, NULL, rp)))
+    struct IoRp *rp = NULL;
+    status = IoCreateRp(&rp);
+    if(OK != status)
+    {
+        LOG(SYSLOG_ERROR, "Creating RP failed with status 0x%X", status);
+        MmFreeKernelHeap(hdr);
+        return status;
+    }
+
+    struct IoDeviceResource *resource;
+    uint32_t resourceCount;
+    status = IoGetDeviceResources(bdo, &resource, &resourceCount);
+    if(OK != status)
     {
         LOG(SYSLOG_ERROR, "Getting bus configuration failed with status 0x%X", status);
         MmFreeKernelHeap(hdr);
@@ -286,9 +274,19 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeContro
         return status;
     }
 
-    struct IoIrqEntry *irq = &(rp->payload.busConfiguration.irq);
+    struct IoIrqEntry *irq = NULL;
+
+    for(uint32_t i = 0; i < resourceCount; i++)
+    {
+        if(IO_RESOURCE_IRQ == resource[i].type)
+        {
+            irq = &(resource[i].irq);
+            break;
+        }
+    }
+
     uint32_t irqInput = 0;
-    if(0 != irq->pin)
+    if((NULL != irq) && (0 != irq->pin))
     {
         irqInput = irq->gsi;
         status = HalRegisterIrq(irqInput, IdeIsr, info, irq->params);
@@ -299,7 +297,7 @@ STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeContro
         params.trigger = IT_TRIGGER_EDGE;
         params.mode = IT_MODE_FIXED;
         params.polarity = IT_POLARITY_ACTIVE_HIGH;
-        params.shared = IT_SHARED;
+        params.shared = IT_SHAREABLE;
         params.wake = IT_WAKE_INCAPABLE;
         if(0 != hdr->standard.interruptLine)
         {

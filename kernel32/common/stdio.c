@@ -582,9 +582,9 @@ int CmVprintf(const char *format, va_list args)
                     case 'E':
                         written += printfFloat(x, true, false, 'E' == format[k], width, precisionSpecified, precision, pFlag);
                         break;
-                    case 'a':
-                    case 'A':
-                        written += printfFloat(x, false, true, 'A' == format[k], width, precisionSpecified, precision, pFlag);
+                    case 'g':
+                    case 'G':
+                        written += printfFloat(x, false, true, 'G' == format[k], width, precisionSpecified, precision, pFlag);
                         break;
                 }     
             }

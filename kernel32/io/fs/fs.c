@@ -12,7 +12,7 @@ static STATUS open(char *file, IoFileOpenMode mode, IoFileFlags flags, struct Io
 {
     *handle = NULL;
 
-    struct IoVfsNode *fileNode = IoVfsGetNode(file);
+    struct IoVfsNode *fileNode = IoVfsGetNodeByPath(file);
     if(NULL == fileNode)
         return IO_FILE_NOT_FOUND;
 
@@ -310,7 +310,7 @@ STATUS IoFsInit(void)
 
 bool IoCheckIfFileExists(char *file)
 {
-    return (NULL != IoVfsGetNode(file));
+    return (NULL != IoVfsGetNodeByPath(file));
 }
 
 STATUS IoGetFileSize(char *file, uint64_t *size)

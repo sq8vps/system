@@ -6,7 +6,7 @@ static char driverName[] = "Partition manager";
 static char driverVendor[] = "Standard drivers";
 static char driverVersion[] = "1.0.0";
 
-static STATUS PartmgrDispatch(struct IoDriverRp *rp)
+static STATUS PartmgrDispatch(struct IoRp *rp)
 {
     if(IoGetCurrentRpPosition(rp) == rp->device)
     {
@@ -15,9 +15,6 @@ static STATUS PartmgrDispatch(struct IoDriverRp *rp)
             case IO_RP_READ:
             case IO_RP_WRITE:
                 //return DiskReadWrite(rp);
-                break;
-            case IO_RP_GET_IO_PARAMETERS:
-                rp->device = rp->device->attachedTo;
                 break;
             default:
                 break;
@@ -37,11 +34,11 @@ static STATUS PartmgrInit(struct ExDriverObject *driverObject)
  * 
  * This function is called when a disk device is created to instantiate a partition manager for given drive
 */
-static STATUS PartmgrAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject)
+static STATUS PartmgrAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
-    struct IoSubDeviceObject *device;
+    struct IoDeviceObject *device;
     STATUS status;
-    if(OK != (status = IoCreateSubDevice(driverObject, 0, &device)))
+    if(OK != (status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_DISK, 0, &device)))
         return status;
     
     if(NULL == (device->privateData = MmAllocateKernelHeap(sizeof(struct PartmgrDriveData))))
@@ -49,7 +46,7 @@ static STATUS PartmgrAddDevice(struct ExDriverObject *driverObject, struct IoSub
     
     CmMemset(device->privateData, 0, sizeof(struct PartmgrDriveData));
     
-    IoAttachSubDevice(device, baseDeviceObject);
+    IoAttachDevice(device, baseDeviceObject);
     baseDeviceObject->driverObject->flags = 0;
 
     struct PartmgrDriveData *info = device->privateData;
@@ -57,7 +54,7 @@ static STATUS PartmgrAddDevice(struct ExDriverObject *driverObject, struct IoSub
     info->usable = false;
     info->device = device;
     
-    struct IoDriverRp *rp;
+    struct IoRp *rp;
     status = IoCreateRp(&rp);
     if(OK != status)
         return status;
@@ -65,7 +62,7 @@ static STATUS PartmgrAddDevice(struct ExDriverObject *driverObject, struct IoSub
     rp->device = baseDeviceObject;
     rp->code = IO_RP_GET_IO_PARAMETERS;
     rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-    status = IoSendRp(baseDeviceObject, NULL, rp);
+    status = IoSendRp(baseDeviceObject, rp);
     if(OK == status)
     {
         info->usable = true;

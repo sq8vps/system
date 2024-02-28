@@ -27,16 +27,16 @@ static STATUS DiskVerifyMemoryTable(struct IoMemoryDescriptor *mem, uint64_t ali
     return OK;
 }
 
-static STATUS DiskFinalizeTransaction(struct IoDriverRp *rp, void *context)
+static STATUS DiskFinalizeTransaction(struct IoRp *rp, void *context)
 {
-    IoFinalizeRp((struct IoDriverRp*)context);
+    IoFinalizeRp((struct IoRp*)context);
     return OK;
 }
 
-static STATUS DiskPerformTransaction(struct IoDriverRp *original)
+static STATUS DiskPerformTransaction(struct IoRp *original)
 {
     STATUS status;
-    struct IoDriverRp *rp;
+    struct IoRp *rp;
     status = IoCreateRp(&rp);
     if(OK != status)
         return status;
@@ -46,10 +46,10 @@ static STATUS DiskPerformTransaction(struct IoDriverRp *original)
     rp->size = original->size;
     rp->completionCallback = DiskFinalizeTransaction;
     rp->completionContext = original;
-    return IoSendRp(rp->device, NULL, rp);
+    return IoSendRp(rp->device, rp);
 }
 
-STATUS DiskReadWrite(struct IoDriverRp *rp)
+STATUS DiskReadWrite(struct IoRp *rp)
 {
     STATUS status;
     if(IoGetCurrentRpPosition(rp) != rp->device)
@@ -78,7 +78,7 @@ STATUS DiskReadWrite(struct IoDriverRp *rp)
     */
 
     //verify if request can be satisfied
-    if(IO_RP_READ == rp->code)
+    if((IO_RP_READ == rp->code) || (IO_RP_WRITE == rp->code))
     {
         if(0 == rp->size)
         {
@@ -87,16 +87,16 @@ STATUS DiskReadWrite(struct IoDriverRp *rp)
             return OK;
         }
 
-        if(info->ioParams.read.direct.available) //prefer direct I/O on the drive side
+        if(info->bdo->flags & IO_DEVICE_FLAG_DIRECT_IO) //prefer direct I/O on the drive side
         {
             if(NULL != rp->payload.readWrite.memory) //memory descriptor provided for direct I/O?
             {
                 //do full direct I/O, but alignment might be the problem
-                if(rp->payload.readWrite.offset % info->ioParams.read.direct.blockSize)
+                if(rp->payload.readWrite.offset % info->bdo->blockSize)
                     return BAD_ALIGNMENT;
                 if(OK != (
-                    status = DiskVerifyMemoryTable(rp->payload.readWrite.memory, info->ioParams.read.direct.requiredAlignment, 
-                            rp->size, info->ioParams.read.direct.blockSize)))
+                    status = DiskVerifyMemoryTable(rp->payload.readWrite.memory, info->bdo->alignment, 
+                            rp->size, info->bdo->blockSize)))
                     return status;
                 
                 return DiskPerformTransaction(rp);
@@ -108,50 +108,14 @@ STATUS DiskReadWrite(struct IoDriverRp *rp)
             else
                 return NULL_POINTER_GIVEN; //no memory description was given
         }
-        else if(info->ioParams.read.buffered.available)
+        else if(info->bdo->flags & IO_DEVICE_FLAG_BUFFERED_IO)
         {
             
         }
         else
             return OPERATION_NOT_ALLOWED;
     }
-    else if(IO_RP_WRITE == rp->code)
-    {
-        if(0 == rp->size)
-        {
-            rp->status = OK;
-            IoFinalizeRp(rp);
-            return OK;
-        }
 
-        if(info->ioParams.write.direct.available) //prefer direct I/O on the drive side
-        {
-            if(NULL != rp->payload.readWrite.memory) //memory descriptor provided for direct I/O?
-            {
-                //do full direct I/O, but alignment might be the problem
-                if(rp->payload.readWrite.offset % info->ioParams.read.direct.blockSize)
-                    return BAD_ALIGNMENT;
-                if(OK != (
-                    status = DiskVerifyMemoryTable(rp->payload.readWrite.memory, info->ioParams.write.direct.requiredAlignment, 
-                            rp->size, info->ioParams.write.direct.blockSize)))
-                    return status;
-                
-                return DiskPerformTransaction(rp);
-            }
-            else if(NULL != rp->payload.readWrite.systemBuffer) //buffer provided?
-            {
-                
-            }
-            else
-                return NULL_POINTER_GIVEN; //no memory description was given
-        }
-        else if(info->ioParams.read.buffered.available)
-        {
-            
-        }
-        else
-            return OPERATION_NOT_ALLOWED;
-    }
 
     return OPERATION_NOT_ALLOWED;
 }

@@ -17,7 +17,7 @@ enum PartmgrScheme
 
 struct PartmgrDriveData
 {
-    struct IoSubDeviceObject *device;
+    struct IoDeviceObject *device;
     bool usable;
     enum PartmgrScheme scheme;
     union

@@ -13,9 +13,9 @@ INTERNAL STATUS IoStartDeviceEnumerationThread(void);
 
 /**
  * @brief Notify device enumerator thread that a new device has been created
- * @param *dev Device object
+ * @param *node Device node
  * @return Status code
 */
-INTERNAL STATUS IoNotifyDeviceEnumerator(struct IoDeviceObject *dev);
+INTERNAL STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node);
 
 #endif

@@ -2,7 +2,7 @@ NAME = acpi.drv
 CC = i686-elf-gcc
 LNK = i686-elf-gcc
 ASM = nasm
-CC_FLAGS = -I. -I../../api -I./acpica/include -c -g -ffreestanding -masm=intel -Wall -DDRIVER_NAME='"$(NAME)"'
+CC_FLAGS = -I. -I../../api -I./acpica/include -c -g -ffreestanding -masm=intel -Wall -DDRIVER_NAME='"$(NAME)"' -DDEBUG
 ASM_FLAGS = -f elf32
 LNK_FLAGS = -r -g -nostdlib -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc

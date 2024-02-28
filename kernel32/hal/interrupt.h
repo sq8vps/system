@@ -71,8 +71,8 @@ EXPORT
 */
 enum HalInterruptSharing
 {
-    IT_NOT_SHARED,
-    IT_SHARED,
+    IT_NOT_SHAREABLE,
+    IT_SHAREABLE,
 };
 
 EXPORT

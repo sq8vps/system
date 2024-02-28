@@ -120,14 +120,14 @@ $(document).ready(function(){initNavTree('dev_8h_source.html',''); initResizable
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>    IO_DEVICE_TYPE_FS, <span class="comment">//filesystem (EXT, FAT...)</span></div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>};</div>
 <div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span> </div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a>;</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a>;</div>
 <div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_driver_irp.html">IoDriverIrp</a>;</div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="keyword">typedef</span> <a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> (*IoCompletionCallback)(<span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *device, <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_driver_irp.html">IoDriverIrp</a> *irp, <span class="keywordtype">void</span> *context);</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="keyword">typedef</span> <a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> (*IoCompletionCallback)(<span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *device, <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_driver_irp.html">IoDriverIrp</a> *irp, <span class="keywordtype">void</span> *context);</div>
 <div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span> </div>
 <div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="struct_io_driver_irp.html">   34</a></span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_driver_irp.html">IoDriverIrp</a></div>
 <div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>{</div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *deviceObject;</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *deviceObject;</div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>    IoIrpCode code;</div>
 <div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>    IoFlags flags;</div>
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>    <span class="keywordtype">void</span> *buffer;</div>
@@ -146,17 +146,17 @@ $(document).ready(function(){initNavTree('dev_8h_source.html',''); initResizable
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>    <span class="keywordtype">char</span> *deviceId;</div>
 <div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>    <span class="keywordtype">char</span> *name;</div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>    IoFlags flags;</div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *baseDevice;</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *baseDevice;</div>
 <div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_object.html">IoDeviceObject</a> *parent;</div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>};</div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno"><a class="line" href="struct_io_device_sub_object.html">   59</a></span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a></div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno"><a class="line" href="struct_io_device_sub_object.html">   59</a></span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a></div>
 <div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>{</div>
 <div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>    <span class="keyword">enum</span> IoDeviceType type;</div>
 <div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_ex_driver_object.html">ExDriverObject</a> *driverObject;</div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *nextDevice; <span class="comment">//next device created by the same driver</span></div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *attachedTo;</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *attachedDevice;</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *nextDevice; <span class="comment">//next device created by the same driver</span></div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *attachedTo;</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *attachedDevice;</div>
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_driver_irp.html">IoDriverIrp</a> *currentIrp;</div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    uint32_t referenceCount;</div>
 <div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    IoFlags flags;</div>
@@ -164,22 +164,22 @@ $(document).ready(function(){initNavTree('dev_8h_source.html',''); initResizable
 <div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>    <span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_object.html">IoDeviceObject</a> *mainDeviceObject;</div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>};</div>
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span> </div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoCreateSubDevice(</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoCreateDevice(</div>
 <div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_ex_driver_object.html">ExDriverObject</a> *driver, </div>
 <div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>    uint32_t privateSize, </div>
 <div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    <span class="keyword">enum</span> IoDeviceType type, </div>
 <div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    IoFlags flags, </div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> **device);</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> **device);</div>
 <div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span> </div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a>* IoAttachSubDevice(</div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *attachee, </div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *destination);</div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span><span class="keyword">struct </span><a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a>* IoAttachDevice(</div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *attachee, </div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>    <span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *destination);</div>
 <div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoRegisterDevice(<span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *baseDevice, <span class="keywordtype">char</span> *deviceId);</div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoRegisterDevice(<span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *baseDevice, <span class="keywordtype">char</span> *deviceId);</div>
 <div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span> </div>
 <div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoInitDeviceManager(<span class="keywordtype">char</span> *rootDeviceId);</div>
 <div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span> </div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoSetDeviceDisplayedName(<span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoSubDeviceObject</a> *device, <span class="keywordtype">char</span> *name);</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span><a class="code hl_enumeration" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> IoSetDeviceDisplayedName(<span class="keyword">struct</span> <a class="code hl_struct" href="struct_io_device_sub_object.html">IoDeviceObject</a> *device, <span class="keywordtype">char</span> *name);</div>
 <div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span> </div>
 <div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="adefines_8h_html"><div class="ttname"><a href="defines_8h.html">defines.h</a></div><div class="ttdoc">Common kernel definitions and macros.</div></div>
@@ -187,7 +187,7 @@ $(document).ready(function(){initNavTree('dev_8h_source.html',''); initResizable
 <div class="ttc" id="akdrv_8h_html"><div class="ttname"><a href="kdrv_8h.html">kdrv.h</a></div><div class="ttdoc">Kernel mode driver library.</div></div>
 <div class="ttc" id="astruct_ex_driver_object_html"><div class="ttname"><a href="struct_ex_driver_object.html">ExDriverObject</a></div><div class="ttdef"><b>Definition</b> kdrv.h:33</div></div>
 <div class="ttc" id="astruct_io_device_object_html"><div class="ttname"><a href="struct_io_device_object.html">IoDeviceObject</a></div><div class="ttdef"><b>Definition</b> dev.h:51</div></div>
-<div class="ttc" id="astruct_io_device_sub_object_html"><div class="ttname"><a href="struct_io_device_sub_object.html">IoSubDeviceObject</a></div><div class="ttdef"><b>Definition</b> dev.h:60</div></div>
+<div class="ttc" id="astruct_io_device_sub_object_html"><div class="ttname"><a href="struct_io_device_sub_object.html">IoDeviceObject</a></div><div class="ttdef"><b>Definition</b> dev.h:60</div></div>
 <div class="ttc" id="astruct_io_driver_irp_html"><div class="ttname"><a href="struct_io_driver_irp.html">IoDriverIrp</a></div><div class="ttdef"><b>Definition</b> dev.h:35</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

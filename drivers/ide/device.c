@@ -10,10 +10,12 @@
 #define IDE_DEVICE_ID_PREFIX "DISK"
 #define IDE_DEVICE_ID_GENERIC "GENERIC"
 
+#define IDE_DMA_REQUIRED_ALIGNMENT 2
+
 /**
  * @brief Request Packet callback called by IO queue manager
 */
-void IdeProcessRequest(struct IoDriverRp *rp)
+void IdeProcessRequest(struct IoRp *rp)
 {
     STATUS status = OK;
     struct IdeDriveData *info = rp->device->privateData;
@@ -50,7 +52,7 @@ void IdeProcessRequest(struct IoDriverRp *rp)
 */
 static void IdeFinalizeRequest(void *context)
 {
-    IoFinalizeRp((struct IoDriverRp*)context);
+    IoFinalizeRp((struct IoRp*)context);
 }
 
 /**
@@ -58,7 +60,7 @@ static void IdeFinalizeRequest(void *context)
  * 
  * This function is called when the IDE controller is enumerating the bus
 */
-STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *driver)
+STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct IoDeviceObject *enumerator, struct ExDriverObject *driver)
 {
     if((NULL == drive) || (NULL == driver))
         return NULL_POINTER_GIVEN;
@@ -67,58 +69,44 @@ STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct ExDriverObject *d
 
     STATUS status;
     //create subdevice for new device
-    struct IoSubDeviceObject *dev;
-    if(OK != (status = IoCreateSubDevice(driver, 0, &dev)))
+    struct IoDeviceObject *dev;
+    if(OK != (status = IoCreateDevice(driver, IO_DEVICE_TYPE_DISK, IO_DEVICE_FLAG_DIRECT_IO, &dev)))
     {
         return status;
     }
+
+    dev->blockSize = drive->sectorSize;
+    dev->alignment = IDE_DMA_REQUIRED_ALIGNMENT;
 
     //register new device in OS
-    char *deviceId = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, drive->model);
-    if(OK != (status = IoRegisterDevice(dev, deviceId)))
+    if(OK != (status = IoRegisterDevice(dev, enumerator)))
     {
-        MmFreeKernelHeap(deviceId);
         return status;
     }
 
-    dev->mainDeviceObject->type = IO_DEVICE_TYPE_DISK;
-
-    LOG(SYSLOG_INFO, "Registered disk drive (%s)", deviceId);
-
-    MmFreeKernelHeap(deviceId);
-
-    deviceId = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, IDE_DEVICE_ID_GENERIC);
-    if(NULL != deviceId)
-    {
-        IoUpdateCompatibleDeviceIdList(dev->mainDeviceObject, deviceId);
-        MmFreeKernelHeap(deviceId);
-    }
+    LOG(SYSLOG_INFO, "Registered disk drive (%s)", drive->model);
 
     dev->privateData = drive;
     drive->type = IDE_SUBDEVICE_DRIVE;
 
-    IoSetDeviceDisplayedName(dev, "Generic IDE disk drive");
 
-
-    return IoInitializeDevice(dev->mainDeviceObject);
-}
-
-STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct ExDriverObject *driver)
-{
-    if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER]), driver);
-    if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE]), driver);
-    if(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER]), driver);
-    if(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE]), driver);
     return OK;
 }
 
+STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct IoDeviceObject *dev, struct ExDriverObject *driver)
+{
+    if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER].present)
+        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER]), dev, driver);
+    if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE].present)
+        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE]), dev, driver);
+    if(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER].present)
+        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER]), dev, driver);
+    if(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE].present)
+        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE]), dev, driver);
+    return OK;
+}
 
-
-static STATUS IdeStartReadWrite(struct IdeDriveData *info,  bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
+static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
 {
     KeAcquireSpinlock(&(info->controller->channel[info->channel].lock));
     //clear Physical Region Descriptors
@@ -319,4 +307,37 @@ STATUS IdeIsr(void *context)
         }
     }
     return OK;
+}
+
+STATUS IdeGetDeviceId(struct IoRp *rp)
+{
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+    if(NULL != dev->privateData)
+    {
+        struct IdeDriveData *info = dev->privateData;
+        char *deviceId, **compatibleIds;
+
+        deviceId = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, info->model);
+
+        if(NULL == deviceId)
+        {
+            rp->status = OUT_OF_RESOURCES;
+            return OUT_OF_RESOURCES;
+        }
+
+        compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
+        if(NULL == compatibleIds)
+        {
+            MmFreeKernelHeap(deviceId);
+            rp->status = OUT_OF_RESOURCES;
+            return OUT_OF_RESOURCES;
+        }
+
+        compatibleIds[0] = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, IDE_DEVICE_ID_GENERIC);
+
+        rp->payload.deviceId.mainId = deviceId;
+        rp->payload.deviceId.compatibleId = compatibleIds;
+        return OK;
+    }
+    return IO_RP_PROCESSING_FAILED;
 }

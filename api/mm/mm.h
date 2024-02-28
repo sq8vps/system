@@ -10,6 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "valloc.h"
+#include "heap.h"
 
 #ifdef __cplusplus
 }

@@ -6,7 +6,7 @@
 #include "mm/mmio.h"
 #include "logging.h"
 
-static STATUS PartmgrInitializeCallback(struct IoDriverRp *rp, void *context)
+static STATUS PartmgrInitializeCallback(struct IoRp *rp, void *context)
 {
     struct PartmgrDriveData *info = context;
 
@@ -48,7 +48,7 @@ STATUS PartmgrInitialize(struct PartmgrDriveData *info)
     if(0 == size)
         return OUT_OF_RESOURCES;
 
-    struct IoDriverRp *rp;
+    struct IoRp *rp;
     status = IoCreateRp(&rp);
     if(OK != status)
     {
@@ -78,7 +78,7 @@ STATUS PartmgrInitialize(struct PartmgrDriveData *info)
     rp->payload.readWrite.offset = 0;
     rp->payload.readWrite.memory = mem;
 
-    status = IoSendRp(info->device->attachedTo, NULL, rp);
+    status = IoSendRp(info->device->attachedTo, rp);
     if(OK != status)
     {
         MmFreePhysicalMemory(addr, size);

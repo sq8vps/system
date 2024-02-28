@@ -7,6 +7,11 @@
 #include "ke/core/mutex.h"
 #include <stdbool.h>
 
+struct IdeDriverData
+{
+    uint32_t controllerCount;
+};
+
 /**
  * @brief Driver serial number length defined by ATA
 */
@@ -86,7 +91,7 @@ struct IdeDriveData
 struct IdeControllerData
 {
     enum IdeSubdeviceType type; /**< Structure type to distinguish between controller and drive */
-    struct IoSubDeviceObject *enumerator; /**< Reference to enumerating device */
+    struct IoDeviceObject *enumerator; /**< Reference to enumerating device */
     bool initialized; /**< Is controller fully initialized? */
     bool busMaster; /**< Does the controller support Bus Mastering? If not, it is not usable here */
     struct
@@ -103,7 +108,7 @@ struct IdeControllerData
         struct IoMemoryDescriptor *buffer;
 
         struct IoRpQueue *queue;
-        struct IoDriverRp *rp;
+        struct IoRp *rp;
         
         struct
         {
@@ -126,15 +131,16 @@ struct IdeControllerData
 /**
  * @brief Process request packet - callback function for IO manager
 */
-void IdeProcessRequest(struct IoDriverRp *rp);
+void IdeProcessRequest(struct IoRp *rp);
 
 /**
  * @brief Create drive device objects for all present drives
  * @param *info Controller data structure
+ * @param *dev Enumerator device object
  * @param *driver IDE driver object
  * @return Status code
 */
-STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct ExDriverObject *driver);
+STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct IoDeviceObject *dev, struct ExDriverObject *driver);
 
 /**
  * @brief General IDE interrupt service routine
@@ -158,5 +164,7 @@ STATUS IdeIsr(void *context);
  * @attention This function returns fast. The operation is always asynchronous.
 */
 STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct IoMemoryDescriptor *buffer);
+
+STATUS IdeGetDeviceId(struct IoRp *rp);
 
 #endif

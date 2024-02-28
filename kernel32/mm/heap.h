@@ -31,11 +31,30 @@ EXTERN void *MmAllocateKernelHeap(uintptr_t n);
 
 EXPORT
 /**
+ * @brief Allocate memory on kernel heap and clear it
+ * @param n Count of bytes to allocate
+ * @return Pointer to allocated memory or NULL on failure
+ * @note The address returned is aligned to a non-zero multiple of 16 bytes
+*/
+EXTERN void *MmAllocateKernelHeapZeroed(uintptr_t n);
+
+EXPORT
+/**
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
 */
 #define malloc(n) MmAllocateKernelHeap(n)
+
+EXPORT
+/**
+ * @brief Allocate memory on kernel heap and clear it
+ * @param n Number of elements to allocate
+ * @param size Element size
+ * @return Pointer to allocated memory or NULL on failure
+ * @note The address returned is aligned to a non-zero multiple of 16 bytes
+*/
+#define calloc(n, size) MmAllocateKernelHeapZeroed((n) * (size))
 
 EXPORT
 /**

@@ -12,9 +12,9 @@ extern "C"
 #include "io/dev/dev.h"
 #include <stdarg.h>
 struct ExDriverObject;
-struct IoSubDeviceObject;
-struct IoSubDeviceObject;
-struct IoDriverRp;
+struct IoDeviceObject;
+struct IoDeviceObject;
+struct IoRp;
 
 #define DRIVER_ENTRY DriverEntry
 typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
@@ -22,7 +22,7 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 struct ExDriverObject
 {
     uint32_t index;
-    struct IoSubDeviceObject *deviceObject; //linked list of devices created by the driver
+    struct IoDeviceObject *deviceObject; //linked list of devices created by the driver
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
@@ -33,8 +33,9 @@ struct ExDriverObject
     void *driverData;
     STATUS (*init)(struct ExDriverObject *driverObject);
     STATUS (*unload)(struct ExDriverObject *driverObject);
-    STATUS (*dispatch)(struct IoDriverRp *rp);
-    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject);
+    STATUS (*dispatch)(struct IoRp *rp);
+    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject);
+    STATUS (*fsCheck)(struct ExDriverObject *driverObject, char *path);
 
     struct ExDriverObject *next;
     struct ExDriverObject *previous;

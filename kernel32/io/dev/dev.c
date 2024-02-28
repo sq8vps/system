@@ -5,23 +5,22 @@
 #include "enumeration.h"
 
 //root device (ACPI or MP) object
-static struct IoDeviceObject rootDevice = {.type = IO_DEVICE_TYPE_ROOT};
+static struct IoDeviceNode rootDevice = {};
 
-STATUS IoCreateSubDevice(
+STATUS IoCreateDevice(
     struct ExDriverObject *driver, 
+    enum IoDeviceType type,
     IoDeviceFlags flags, 
-    struct IoSubDeviceObject **device
-    )
+    struct IoDeviceObject **device)
 {
     ASSERT(driver);
-    *device = MmAllocateKernelHeap(sizeof(**device));
+    *device = MmAllocateKernelHeapZeroed(sizeof(**device));
     if(NULL == *device)
         return OUT_OF_RESOURCES;
-
-    CmMemset(*device, 0, sizeof(**device));
     
     (*device)->driverObject = driver;
     (*device)->flags |= flags;
+    (*device)->type = type;
     
     //update list of created devices
     (*device)->nextDevice = driver->deviceObject;
@@ -31,7 +30,7 @@ STATUS IoCreateSubDevice(
 }
 
 
-struct IoSubDeviceObject* IoAttachSubDevice(struct IoSubDeviceObject *attachee, struct IoSubDeviceObject *destination)
+struct IoDeviceObject* IoAttachDevice(struct IoDeviceObject *attachee, struct IoDeviceObject *destination)
 {
     ASSERT(attachee && destination);
     while(destination->attachedDevice)
@@ -40,61 +39,69 @@ struct IoSubDeviceObject* IoAttachSubDevice(struct IoSubDeviceObject *attachee, 
     }
     destination->attachedDevice = attachee;
     attachee->attachedTo = destination;
-    attachee->mainDeviceObject = destination->mainDeviceObject;
+    attachee->node = destination->node;
     return destination;
 }
 
-STATUS IoRegisterDevice(struct IoSubDeviceObject *baseDevice, char *deviceId)
+STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enumerator)
 {
-    ASSERT(baseDevice && deviceId);
+    ASSERT(bdo && enumerator);
 
-    struct IoDeviceObject *device = MmAllocateKernelHeap(sizeof(*device));
-    if(NULL == device)
+    //create device node
+    struct IoDeviceNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
+    if(NULL == node)
         return OUT_OF_RESOURCES;
+        
+    node->next = node;
+    node->previous = node;
+
+    //attach BDO to a node
+    bdo->node = node;
+    //store BDO pointer
+    node->bdo = bdo;
+
+    //store parent node
+    node->parent = enumerator->node;
+
+    //update parent node child list
+    if(NULL == enumerator->node->child)
+    {
+        enumerator->node->child = node;
+    }
+    else
+    {
+        node->next = enumerator->node->child;
+        node->previous = enumerator->node->child->previous;
+        enumerator->node->child->previous->next = node;
+        enumerator->node->child->previous = node;
+    }
+
+    node->flags |= IO_DEVICE_FLAG_INITIALIZED;
+
+    return IoNotifyDeviceEnumerator(node);
+}
+
+
+
+STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
+{
+    ASSERT(node);
+    STATUS ret;
+    char *deviceId, *compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS];
     
-    CmMemset(device, 0, sizeof(*device));
-
-    //store main device object in base subdevice object
-    //new subdevice object will copy this field
-    baseDevice->mainDeviceObject = device;
-
-    device->type = IO_DEVICE_TYPE_NONE;
-    device->baseDevice = baseDevice;
-    device->deviceId = MmAllocateKernelHeap(CmStrlen(deviceId));
-    if(NULL == device->deviceId)
+    if(OK != (ret = IoGetDeviceId(node->bdo, &deviceId, (char***)&compatibleIds)))
     {
-        device->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
-        return OUT_OF_RESOURCES;
+        node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+        return ret;
     }
-    CmStrcpy(device->deviceId, deviceId);
 
-    device->parent = baseDevice->mainDeviceObject;
-    if(NULL != baseDevice->mainDeviceObject->child)
-    {
-        baseDevice->mainDeviceObject->child->previous = device;
-        device->next = baseDevice->mainDeviceObject->child->next;
-    }
-    baseDevice->mainDeviceObject->child = device;
-
-
-    return OK;
-}
-
-STATUS IoInitializeDevice(struct IoDeviceObject *dev)
-{
-    dev->flags |= IO_DEVICE_FLAG_INITIALIZED;
-    return IoNotifyDeviceEnumerator(dev);
-}
-
-STATUS IoBuildDeviceStack(struct IoDeviceObject *device)
-{
     struct ExDriverObjectList *drivers = NULL;
     uint16_t driverCount = 0;
-    STATUS ret;
+
     //find and load required drivers
-    if(OK != (ret = ExLoadKernelDriversForDevice(device->deviceId, &drivers, &driverCount)))
+    if(OK != (ret = ExLoadKernelDriversForDevice(deviceId, &drivers, &driverCount)))
     {
-        device->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+        node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
         MmFreeKernelHeap(drivers);
         return ret;
     }
@@ -103,15 +110,18 @@ STATUS IoBuildDeviceStack(struct IoDeviceObject *device)
     struct ExDriverObjectList *d = drivers;
     for(uint16_t i = 0; i < driverCount; i++)
     {
-        if(OK != (ret = d->this->addDevice(d->this, device->baseDevice)))
+        if(OK != (ret = d->this->addDevice(d->this, node->bdo)))
         {
-            device->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+            node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
             MmFreeKernelHeap(drivers);
             return ret;
         }
+        //TODO: remove!!!!!!
+        if(i == 0)
+            node->mdo = node->bdo->attachedDevice;
         d = d->next;
     }
-    device->flags |= IO_DEVICE_FLAG_READY_TO_RUN;
+    node->flags |= IO_DEVICE_FLAG_READY_TO_RUN;
     MmFreeKernelHeap(drivers);
     return OK;
 }
@@ -134,31 +144,30 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
         MmFreeKernelHeap(drivers);
         return IO_ROOT_DEVICE_INIT_FAILURE;
     }
-    struct IoSubDeviceObject *rootSubDevice = NULL;
-    if(OK != (ret = IoCreateSubDevice(drivers->this, 0, &rootSubDevice)))
+    struct IoDeviceObject *rootBaseDevice = NULL;
+    if(OK != (ret = IoCreateDevice(drivers->this, IO_DEVICE_TYPE_ROOT, 0, &rootBaseDevice)))
     {
         MmFreeKernelHeap(drivers);
         return ret;
     }
 
-    rootDevice.type = IO_DEVICE_TYPE_ROOT;
     rootDevice.flags = IO_DEVICE_FLAG_PERSISTENT;
-    rootDevice.baseDevice = rootSubDevice;
+    rootDevice.bdo = rootBaseDevice;
+    rootDevice.mdo = rootBaseDevice;
     rootDevice.parent = NULL;
+    rootDevice.child = NULL;
+    rootDevice.next = NULL;
+    rootDevice.previous = NULL;
+    rootBaseDevice->node = &rootDevice;
 
-    rootDevice.deviceId = MmAllocateKernelHeap(CmStrlen(rootDeviceId));
-    if(NULL == rootDevice.deviceId)
-        goto exitIoInitDeviceManagerOnFailure;
-    CmStrcpy(rootDevice.deviceId, rootDeviceId);
-
-    struct IoDriverRp *rp;
+    struct IoRp *rp;
     if(OK != IoCreateRp(&rp))
         goto exitIoInitDeviceManagerOnFailure;
 
-    rp->device = rootSubDevice;
+    rp->device = rootBaseDevice;
     rp->code = IO_RP_ENUMERATE;
     rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-    if(OK != IoSendRp(rootSubDevice, NULL, rp))
+    if(OK != IoSendRp(rootBaseDevice, rp))
         goto exitIoInitDeviceManagerOnFailure;
     
     MmFreeKernelHeap(rp);
@@ -169,32 +178,27 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
 
 exitIoInitDeviceManagerOnFailure:
     MmFreeKernelHeap(drivers);
-    MmFreeKernelHeap(rootSubDevice);
+    MmFreeKernelHeap(rootBaseDevice);
     return IO_ROOT_DEVICE_INIT_FAILURE;
 }
 
-struct IoSubDeviceObject* IoGetDeviceStackStop(struct IoDeviceObject *dev)
+struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev)
 {
     ASSERT(dev);
-    struct IoSubDeviceObject *subDevice = dev->baseDevice;
-    while(subDevice->attachedDevice) //find stack top
-        subDevice = subDevice->attachedDevice;
-    return subDevice;
+    while(dev->attachedDevice) //find stack top
+        dev = dev->attachedDevice;
+    return dev;
 }
 
-STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObject *device, struct IoDriverRp *rp)
+STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
 {
     ASSERT(rp);
-    ASSERT(subDevice || device);
-    if(NULL == subDevice)
-    {
-        subDevice = IoGetDeviceStackStop(device);
-    }
-    if(NULL == subDevice->driverObject->dispatch)
+    ASSERT(dev);
+    if(NULL == dev->driverObject->dispatch)
         return DEVICE_NOT_AVAILABLE;
 
-    rp->currentPosition = subDevice;
-    STATUS status = subDevice->driverObject->dispatch(rp);
+    rp->device = dev;
+    STATUS status = dev->driverObject->dispatch(rp);
     if(OK != status)
         return status;
 
@@ -207,55 +211,162 @@ STATUS IoSendRp(struct IoSubDeviceObject *subDevice, struct IoDeviceObject *devi
     return status;
 }
 
-STATUS IoSendRpDown(struct IoDriverRp *rp)
+STATUS IoSendRpDown(struct IoRp *rp)
 {
     ASSERT(rp);
-    if(NULL != rp->currentPosition->attachedTo)
+    struct IoDeviceObject *dev = rp->device->attachedTo;
+    if(NULL != dev)
     {
-        if(NULL != rp->currentPosition->attachedTo->driverObject->dispatch)
+        if(NULL != dev->driverObject->dispatch)
         {
-            rp->currentPosition = rp->currentPosition->attachedTo;
-            STATUS status = rp->currentPosition->attachedTo->driverObject->dispatch(rp);
-            if(OK != status)
-                return status;
-
-            if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-            {
-                while(!rp->completed)
-                    ;
-            }
-            return status;
+            return IoSendRp(dev, rp);
         }
     }
     return DEVICE_NOT_AVAILABLE;
 }
 
-STATUS IoSetDeviceDisplayedName(struct IoSubDeviceObject *device, char *name)
+STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS])
 {
-    if(NULL == device->mainDeviceObject)
-        return OK;
-    if(NULL != device->mainDeviceObject->name)
-        MmFreeKernelHeap(device->mainDeviceObject->name);
-    if(NULL == (device->mainDeviceObject->name = MmAllocateKernelHeap(CmStrlen(name))))
-        return OUT_OF_RESOURCES;
-    
-    CmStrcpy(device->mainDeviceObject->name, name);
-    return OK;
-}
-
-STATUS IoUpdateCompatibleDeviceIdList(struct IoDeviceObject *dev, char *id)
-{
-    if(NULL == id)
-        return OK;
-    for(uint8_t i = 0; i < IO_MAX_COMPATIBLE_DEVICE_IDS; i++)
+    ASSERT(dev);
+    *deviceId = NULL;
+    *compatibleIds = NULL;
+    STATUS status;
+    struct IoRp *rp;
+    status = IoCreateRp(&rp);
+    if(OK != status)
+        return status;
+    rp->device = dev;
+    rp->code = IO_RP_GET_DEVICE_ID;
+    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+    status = IoSendRp(dev, rp);
+    if(OK == status)
     {
-        if(NULL == dev->compatibleIds[i])
+        if(OK == rp->status)
         {
-            if(NULL == (dev->compatibleIds[i] = MmAllocateKernelHeap(CmStrlen(id))))
-                return OUT_OF_RESOURCES;
-            CmStrcpy(dev->compatibleIds[i], id);
-            return OK;
+            *deviceId = rp->payload.deviceId.mainId;
+            *compatibleIds = rp->payload.deviceId.compatibleId;
+        }
+        else
+        {
+            status = rp->status;
         }
     }
-    return OUT_OF_RESOURCES;
+    return status;
+}
+
+STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer)
+{
+    ASSERT(dev && buffer);
+
+    *buffer = NULL;
+
+    STATUS status = OK;
+
+    struct IoRp *rp;
+    status = IoCreateRp(&rp);
+    if(OK != status)
+        return status;
+    
+    rp->device = dev;
+    rp->code = IO_RP_GET_CONFIG_SPACE;
+    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+    rp->payload.configSpace.offset = offset;
+    rp->size = size;
+    rp->buffer = NULL;
+    status = IoSendRp(dev, rp);
+    if(OK == status)
+    {
+        *buffer = rp->buffer;
+        status = rp->status;
+    }
+    else if(NULL != rp->buffer)
+        MmFreeKernelHeap(rp->buffer);
+
+    MmFreeKernelHeap(rp);
+
+    return status;
+}
+
+STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void *buffer)
+{
+    ASSERT(dev && buffer);
+
+    STATUS status = OK;
+
+    struct IoRp *rp;
+    status = IoCreateRp(&rp);
+    if(OK != status)
+        return status;
+    
+    rp->device = dev;
+    rp->code = IO_RP_SET_CONFIG_SPACE;
+    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+    rp->payload.configSpace.offset = offset;
+    rp->size = size;
+    rp->buffer = buffer;
+    status = IoSendRp(dev, rp);
+    if(OK == status)
+    {
+        status = rp->status;
+    }
+
+    MmFreeKernelHeap(rp);
+    
+    return status;
+}
+
+STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource **res, uint32_t *count)
+{
+    ASSERT(dev && res);
+
+    *count = 0;
+
+    STATUS status = OK;
+
+    struct IoRp *rp;
+    status = IoCreateRp(&rp);
+    if(OK != status)
+        return status;
+    
+    rp->device = dev;
+    rp->code = IO_RP_GET_DEVICE_RESOURCES;
+    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+    status = IoSendRp(dev, rp);
+    if(OK == status)
+    {
+        status = rp->status;
+        *res = rp->payload.resource.res;
+        *count = rp->payload.resource.count;
+    }
+
+    MmFreeKernelHeap(rp);
+    
+    return status;    
+}
+
+STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, union IoBusId *location)
+{
+    ASSERT(dev && type && location);
+
+    STATUS status = OK;
+
+    struct IoRp *rp;
+    status = IoCreateRp(&rp);
+    if(OK != status)
+        return status;
+    
+    rp->device = dev;
+    rp->code = IO_RP_GET_DEVICE_LOCATION;
+    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+    status = IoSendRp(dev, rp);
+    if(OK == status)
+    {
+        status = rp->status;
+        *type = rp->payload.location.type;
+        *location = rp->payload.location.id;
+    }
+
+    MmFreeKernelHeap(rp);
+    
+    return status;       
 }

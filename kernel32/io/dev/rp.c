@@ -4,7 +4,7 @@
 #include "common.h"
 #include "ke/core/panic.h"
 
-STATUS IoCreateRp(struct IoDriverRp **rp)
+STATUS IoCreateRp(struct IoRp **rp)
 {
     *rp = MmAllocateKernelHeap(sizeof(**rp));
     if(NULL == (*rp))
@@ -31,13 +31,13 @@ STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
     return OK;
 }
 
-STATUS IoStartRp(struct IoRpQueue *queue, struct IoDriverRp *rp, IoCancelRpCallback cancelCb)
+STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoCancelRpCallback cancelCb)
 {
     ASSERT(NULL != rp);
     ASSERT(NULL != queue);
     rp->cancelCallback = cancelCb;
     KeAcquireSpinlock(&(queue->queueLock));
-    struct IoDriverRp *t = queue->head;
+    struct IoRp *t = queue->head;
     if(NULL == t)
     {
         queue->head = rp;
@@ -65,7 +65,7 @@ STATUS IoStartRp(struct IoRpQueue *queue, struct IoDriverRp *rp, IoCancelRpCallb
     }
 }
 
-STATUS IoFinalizeRp(struct IoDriverRp *rp)
+STATUS IoFinalizeRp(struct IoRp *rp)
 {
     ASSERT(NULL != rp);
     if(NULL != rp->queue)
@@ -104,7 +104,7 @@ STATUS IoFinalizeRp(struct IoDriverRp *rp)
     return OK;
 }
 
-STATUS IoCancelRp(struct IoDriverRp *rp)
+STATUS IoCancelRp(struct IoRp *rp)
 {
     if(NULL == rp->queue)
         return IO_RP_NOT_CANCELLABLE;
@@ -115,7 +115,7 @@ STATUS IoCancelRp(struct IoDriverRp *rp)
         KeReleaseSpinlock(&(rp->queue->queueLock)); 
         return IO_RP_NOT_CANCELLABLE;
     }
-    struct IoDriverRp *t = rp->queue->head;
+    struct IoRp *t = rp->queue->head;
     while(NULL != t)
     {
         if(t == rp)
@@ -135,8 +135,8 @@ STATUS IoCancelRp(struct IoDriverRp *rp)
     return IO_RP_NOT_CANCELLABLE;
 }
 
-struct IoSubDeviceObject* IoGetCurrentRpPosition(struct IoDriverRp *rp)
+struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp)
 {
     ASSERT(rp);
-    return rp->currentPosition;
+    return rp->device;
 }

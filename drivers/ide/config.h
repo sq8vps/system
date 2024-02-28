@@ -30,12 +30,13 @@ uint32_t IdeAddPrdEntry(struct IdePrdTable *table, uint32_t address, uint16_t si
 
 /**
  * @brief Perform full IDE controller initialization
- * @param *device Subdevice object for this controller
+ * @param *bdo Base Device Object
+ * @param *mdo Main Device Object of this controller
  * @param *info Controller structure pointer
  * @return Status code
  * @attention This function should be called only once
 */
-STATUS IdeConfigureController(struct IoSubDeviceObject *device, struct IdeControllerData *info);
+STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct IdeControllerData *info);
 
 /**
  * @brief Issue a Bus Master command

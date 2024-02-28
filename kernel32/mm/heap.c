@@ -261,6 +261,14 @@ void MmFreeKernelHeap(const void *ptr)
     KeReleaseSpinlock(&heapAllocatorMutex);
 }
 
+void *MmAllocateKernelHeapZeroed(uintptr_t n)
+{
+    void *p = MmAllocateKernelHeap(n);
+    if(NULL != p)
+        CmMemset(p, 0, n);
+    return p;
+}
+
 // void *MmReallocateKernelHeap(void *ptr, uintptr_t n)
 // {
 //     if(0 == n)

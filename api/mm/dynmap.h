@@ -12,6 +12,24 @@ extern "C"
 #include "defines.h"
 #include "valloc.h"
 /**
+ * @brief Reserve dynamic memory pool without mapping
+ * @param n Byte count
+ * @return Pointer to reserved virtual memory
+ * @attention This function does not map the memory. 
+ * The pointer does not point to any physical memory. 
+ * To reserve and map dynamic memory, use \a MmMapDynamicMemory()
+*/
+extern void *MmReserveDynamicMemory(uintptr_t n);
+
+/**
+ * @brief Free reservation of dynamic memory pool
+ * @param *ptr Memory pointer from \a MmReserveDynamicMemory()
+ * @return Count of bytes previously reserved
+ * @attention This function does not unmap the memory.
+*/
+extern uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
+
+/**
  * @brief Map dynamic kernel memory
  * @param pAddress Physical address
  * @param n Byte count

@@ -11,71 +11,46 @@ static char driverVersion[] = "1.0.0";
 /**
  * @brief Request dispatch routine
 */
-static STATUS DriverDispatch(struct IoDriverRp *rp)
+static STATUS DriverDispatch(struct IoRp *rp)
 {
     STATUS status;
-    if(IoGetCurrentRpPosition(rp) == rp->device)
+
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+
+    switch(rp->code)
     {
-        switch(rp->code)
-        {
-            //enumerate drives connected to a controller
-            case IO_RP_ENUMERATE:
-                if((NULL != rp->device->privateData) 
-                    && (IDE_SUBDEVICE_CONTROLLER == ((struct IdeControllerData*)rp->device->privateData)->type))
+        //enumerate drives connected to a controller
+        case IO_RP_ENUMERATE:
+            if((NULL != dev->privateData) 
+                && (IDE_SUBDEVICE_CONTROLLER == ((struct IdeControllerData*)dev->privateData)->type))
+            {
+                if(OK == (status = IdeDetectAllDrives(dev->privateData)))
                 {
-                    if(OK == (status = IdeDetectAllDrives(rp->device->privateData)))
-                    {
-                        status = IdeCreateAllDriveDevices(rp->device->privateData, rp->device->driverObject);
-                    }
-                    rp->status = status;
-                    IoFinalizeRp(rp);
-                    return status;
+                    status = IdeCreateAllDriveDevices(dev->privateData, dev, dev->driverObject);
                 }
-                break;
-            //read or write
-            case IO_RP_READ:
-            case IO_RP_WRITE:
-                if((NULL != rp->device->privateData)
-                    && (IDE_SUBDEVICE_DRIVE == ((struct IdeDriveData*)rp->device->privateData)->type))
-                {
-                    struct IdeDriveData *info = rp->device->privateData;
-                    return IoStartRp(info->controller->channel[info->channel].queue, rp, NULL);
-                }
-                break;
-            //get drive access parameters: block size, alignment etc.
-            case IO_RP_GET_IO_PARAMETERS:
-                if(NULL != rp->device->privateData)
-                {
-                    CmMemset(&(rp->payload.ioParams), 0, sizeof(rp->payload.ioParams));
-                    if(IDE_SUBDEVICE_CONTROLLER == ((struct IdeControllerData*)rp->device->privateData)->type)
-                    {
-                        //cannot read from or write to the controller itself
-                        rp->status = OK;
-                        IoFinalizeRp(rp);
-                        return OK;
-                    }
-                    else if(IDE_SUBDEVICE_DRIVE == ((struct IdeDriveData*)rp->device->privateData)->type)
-                    {
-                        struct IdeDriveData *info = (struct IdeDriveData*)rp->device->privateData;
-                        if(info->present && info->usable)
-                        {
-                            rp->payload.ioParams.read.direct.available = true;
-                            rp->payload.ioParams.read.direct.blockSize = info->sectorSize;
-                            rp->payload.ioParams.read.direct.minOffset = 0;
-                            rp->payload.ioParams.read.direct.maxOffset = info->sectors * info->sectorSize - 1;
-                            rp->payload.ioParams.read.direct.requiredAlignment = 2; //16-bit alignment is required for DMA
-                            //read and write is symmetrical
-                            rp->payload.ioParams.write = rp->payload.ioParams.read;
-                        }
-                        rp->status = OK;
-                        IoFinalizeRp(rp);
-                        return OK;
-                    }
-                }   
-                break;
-            default:
-        }
+                rp->status = status;
+                IoFinalizeRp(rp);
+                return status;
+            }
+            break;
+        //read or write
+        case IO_RP_READ:
+        case IO_RP_WRITE:
+            if((NULL != dev->privateData)
+                && (IDE_SUBDEVICE_DRIVE == ((struct IdeDriveData*)dev->privateData)->type))
+            {
+                struct IdeDriveData *info = dev->privateData;
+                return IoStartRp(info->controller->channel[info->channel].queue, rp, NULL);
+            }
+            break;
+        case IO_RP_GET_DEVICE_ID:
+            status = IdeGetDeviceId(rp);
+            IoFinalizeRp(rp);
+            return status;
+            break;
+        default:
     }
+
     return IoSendRpDown(rp);
 }
 
@@ -85,16 +60,16 @@ static STATUS DriverInit(struct ExDriverObject *driverObject)
 } 
 
 /**
- * @brief Add IDE controller subdevice object
+ * @brief Add IDE controller device object
  * 
- * This function is called on the IDE controller object to create a main subdevice.
+ * This function is called on the IDE controller object to create a main device.
  * It is not called for disk devices.
 */
-static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoSubDeviceObject *baseDeviceObject)
+static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
-    struct IoSubDeviceObject *device;
+    struct IoDeviceObject *device;
     STATUS status;
-    if(OK != (status = IoCreateSubDevice(driverObject, 0, &device)))
+    if(OK != (status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_STORAGE, 0, &device)))
         return status;
     
     if(NULL == (device->privateData = MmAllocateKernelHeap(sizeof(struct IdeControllerData))))
@@ -102,7 +77,7 @@ static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoSubD
     
     CmMemset(device->privateData, 0, sizeof(struct IdeControllerData));
     
-    IoAttachSubDevice(device, baseDeviceObject);
+    IoAttachDevice(device, baseDeviceObject);
     baseDeviceObject->driverObject->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
     struct IdeControllerData *info = device->privateData;
@@ -110,7 +85,7 @@ static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoSubD
     info->enumerator = baseDeviceObject;
     info->type = IDE_SUBDEVICE_CONTROLLER;
         
-    return IdeConfigureController(device, info);
+    return IdeConfigureController(baseDeviceObject, device, info);
 }
 
 /**

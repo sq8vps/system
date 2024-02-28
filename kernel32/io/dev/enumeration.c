@@ -10,7 +10,7 @@
 static struct KeTaskControlBlock *enumeratorThread;
 struct IoEnumerationQueue
 {
-    struct IoDeviceObject *device;
+    struct IoDeviceNode *node;
     struct IoEnumerationQueue *next;
 };
 static struct IoEnumerationQueue *IoEnumerationQueueHead = NULL;
@@ -20,7 +20,7 @@ static KeSpinlock IoEnumerationQueueMutex = KeSpinlockInitializer;
 #include "mm/mmio.h"
 #include "io/dev/types.h"
 #include "common.h"
-STATUS cb(struct IoDriverRp *rp, void *context)
+STATUS cb(struct IoRp *rp, void *context)
 {
     PRINT("JEST %X!!\n", ((uint8_t*)(((struct IoMemoryDescriptor*)context)->mapped))[511]);
     return OK;
@@ -37,24 +37,24 @@ static void IoEnumeratorThread(void *unused)
             IoEnumerationQueueHead = t->next;
             KeReleaseSpinlock(&IoEnumerationQueueMutex);
             
-            if(OK == IoBuildDeviceStack(t->device))
+            if(OK == IoBuildDeviceStack(t->node))
             {
-                if((t->device->type == IO_DEVICE_TYPE_BUS) || (t->device->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
+                if((t->node->mdo->type == IO_DEVICE_TYPE_BUS) || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
                 {
-                    struct IoDriverRp *rp;
+                    struct IoRp *rp;
                     if(OK == IoCreateRp(&rp))
                     {
-                        rp->device = IoGetDeviceStackStop(t->device);
+                        rp->device = t->node->mdo;
                         rp->code = IO_RP_ENUMERATE;
                         rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-                        IoSendRp(NULL, t->device, rp);
+                        IoSendRp(rp->device, rp);
                         
                         MmFreeKernelHeap(rp);
                     }
                 }
                 // if(t->device->type == IO_DEVICE_TYPE_DISK)
                 // {
-                //     struct IoDriverRp *rp;
+                //     struct IoRp *rp;
                 //     IoCreateRp(&rp);
                 //     rp->device = IoGetDeviceStackStop(t->device);
                 //     rp->code = IO_RP_READ;
@@ -96,13 +96,13 @@ STATUS IoStartDeviceEnumerationThread(void)
     return OK;
 }
 
-STATUS IoNotifyDeviceEnumerator(struct IoDeviceObject *dev)
+STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node)
 {
     struct IoEnumerationQueue *t = MmAllocateKernelHeap(sizeof(*t));
     if(NULL == t)
         return OUT_OF_RESOURCES;
 
-    t->device = dev;
+    t->node = node;
     t->next = NULL;
     KeAcquireSpinlock(&IoEnumerationQueueMutex);
     if(NULL == IoEnumerationQueueHead)

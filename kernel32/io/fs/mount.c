@@ -21,7 +21,7 @@ STATUS IoMountVolume(char *device, char *mountPointName)
     }
 
     //get device to mount
-    struct IoVfsNode *dev = IoVfsGetNode(device);
+    struct IoVfsNode *dev = IoVfsGetNodeByPath(device);
     if(NULL == dev)
     {
         PRINT("Device %s not found\n", device);
@@ -32,7 +32,7 @@ STATUS IoMountVolume(char *device, char *mountPointName)
         return IO_NOT_DISK_DEVICE_FILE;
     
     //prepare mount point path
-    char *mountPointPath = MmAllocateKernelHeap(CmStrlen(mountPointName) + 2);
+    char *mountPointPath = MmAllocateKernelHeap(CmStrlen(mountPointName) + 1);
     if(NULL == mountPointPath)
         return OUT_OF_RESOURCES;
 
