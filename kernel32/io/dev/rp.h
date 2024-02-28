@@ -74,7 +74,6 @@ struct IoRp
             enum IoBusType type;
             union IoBusId id;
         } location;
-        
 
         /**
          * @brief \a IO_RP_GET_CONFIG_SPACE and \a IO_RP_SET_CONFIG_SPACE
@@ -92,7 +91,7 @@ struct IoRp
             uint64_t offset;
             struct IoMemoryDescriptor *memory;
             void *systemBuffer;
-        } readWrite;
+        } read, write;
 
         /**
          * @brief \a IO_RP_GET_DEVICE_ID
@@ -116,6 +115,7 @@ struct IoRp
             uint32_t code;
             void *data;
         } deviceControl;
+
     } payload;
     IoCompletionCallback completionCallback;
     IoCancelRpCallback cancelCallback;
