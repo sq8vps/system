@@ -37,17 +37,18 @@ static void IoEnumeratorThread(void *unused)
             IoEnumerationQueueHead = t->next;
             KeReleaseSpinlock(&IoEnumerationQueueMutex);
             
-            if(OK == IoBuildDeviceStack(t->node))
+            if((NULL != t->node->mdo)
+                || (OK == IoBuildDeviceStack(t->node)))
             {
-                if((t->node->mdo->type == IO_DEVICE_TYPE_BUS) || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
+                if((IO_DEVICE_TYPE_BUS == t->node->mdo->type)
+                    || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
                 {
                     struct IoRp *rp;
                     if(OK == IoCreateRp(&rp))
                     {
-                        rp->device = t->node->mdo;
                         rp->code = IO_RP_ENUMERATE;
-                        rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-                        IoSendRp(rp->device, rp);
+                        rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
+                        IoSendRp(t->node->mdo, rp);
                         
                         MmFreeKernelHeap(rp);
                     }

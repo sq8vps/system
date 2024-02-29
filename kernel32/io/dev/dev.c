@@ -3,9 +3,10 @@
 #include "common.h"
 #include "assert.h"
 #include "enumeration.h"
+#include "ke/sched/sched.h"
 
-//root device (ACPI or MP) object
-static struct IoDeviceNode rootDevice = {};
+//root device (ACPI or MP) node
+static struct IoDeviceNode rootNode = {};
 
 STATUS IoCreateDevice(
     struct ExDriverObject *driver, 
@@ -86,6 +87,7 @@ STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enume
 STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
 {
     ASSERT(node);
+
     STATUS ret;
     char *deviceId, *compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS];
     
@@ -151,35 +153,21 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
         return ret;
     }
 
-    rootDevice.flags = IO_DEVICE_FLAG_PERSISTENT;
-    rootDevice.bdo = rootBaseDevice;
-    rootDevice.mdo = rootBaseDevice;
-    rootDevice.parent = NULL;
-    rootDevice.child = NULL;
-    rootDevice.next = NULL;
-    rootDevice.previous = NULL;
-    rootBaseDevice->node = &rootDevice;
+    rootNode.flags = IO_DEVICE_FLAG_PERSISTENT;
+    rootNode.bdo = rootBaseDevice;
+    rootNode.mdo = rootBaseDevice;
+    rootNode.parent = NULL;
+    rootNode.child = NULL;
+    rootNode.next = NULL;
+    rootNode.previous = NULL;
+    rootBaseDevice->node = &rootNode;
+    rootBaseDevice->flags |= IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
-    struct IoRp *rp;
-    if(OK != IoCreateRp(&rp))
-        goto exitIoInitDeviceManagerOnFailure;
+    rootNode.flags |= IO_DEVICE_FLAG_INITIALIZED;
 
-    rp->device = rootBaseDevice;
-    rp->code = IO_RP_ENUMERATE;
-    rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-    if(OK != IoSendRp(rootBaseDevice, rp))
-        goto exitIoInitDeviceManagerOnFailure;
-    
-    MmFreeKernelHeap(rp);
-
-    rootDevice.flags |= IO_DEVICE_FLAG_INITIALIZED;
+    IoNotifyDeviceEnumerator(&rootNode);
 
     return OK;
-
-exitIoInitDeviceManagerOnFailure:
-    MmFreeKernelHeap(drivers);
-    MmFreeKernelHeap(rootBaseDevice);
-    return IO_ROOT_DEVICE_INIT_FAILURE;
 }
 
 struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev)
@@ -197,18 +185,26 @@ STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
     if(NULL == dev->driverObject->dispatch)
         return DEVICE_NOT_AVAILABLE;
 
+    if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
+    {
+        rp->task = KeGetCurrentTask();
+        KeBlockTask(rp->task, TASK_BLOCK_IO);
+    }
+
     rp->device = dev;
     STATUS status = dev->driverObject->dispatch(rp);
     if(OK != status)
-        return status;
-
-    if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
     {
-        while(!rp->completed)
-            ;
+        //TODO: this is really not elegant
+        if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
+            KeUnblockTask(rp->task);
+        return status;
     }
 
-    return status;
+    if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
+        KeTaskYield();
+
+    return OK;
 }
 
 STATUS IoSendRpDown(struct IoRp *rp)
@@ -272,15 +268,15 @@ STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t s
     rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     rp->payload.configSpace.offset = offset;
     rp->size = size;
-    rp->buffer = NULL;
+    rp->payload.configSpace.buffer = NULL;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {
-        *buffer = rp->buffer;
+        *buffer = rp->payload.configSpace.buffer;
         status = rp->status;
     }
-    else if(NULL != rp->buffer)
-        MmFreeKernelHeap(rp->buffer);
+    else if(NULL != rp->payload.configSpace.buffer)
+        MmFreeKernelHeap(rp->payload.configSpace.buffer);
 
     MmFreeKernelHeap(rp);
 
@@ -303,7 +299,7 @@ STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t 
     rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     rp->payload.configSpace.offset = offset;
     rp->size = size;
-    rp->buffer = buffer;
+    rp->payload.configSpace.buffer = buffer;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {

@@ -342,11 +342,6 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
         return status;           
     }
 
-    info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER].controller = info;
-    info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE].controller = info;
-    info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER].controller = info;
-    info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE].controller = info;
-
     MmFreeKernelHeap(rp);
     MmFreeKernelHeap(hdr);
 

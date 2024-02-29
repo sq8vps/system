@@ -14,12 +14,12 @@ STATUS IdeDetectAllDrives(struct IdeControllerData *ide);
 
 /**
  * @brief Create and register new drive device
- * @param *drive Preallocated drive structure pointer
+ * @param *drive IDE device data for drive pointer
  * @param *enumerator Enumerating device
  * @param *driver Appropriate driver object
  * @return Status code
 */
-STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct IoDeviceObject *enumerator, struct ExDriverObject *driver);
+STATUS IdeCreateDriveDevice(struct IdeDeviceData *drive, struct IoDeviceObject *enumerator, struct ExDriverObject *driver);
 
 /**
  * @brief Write parameters for read/write operation using LBA28

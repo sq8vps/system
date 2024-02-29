@@ -52,18 +52,18 @@ static int mmAvlBalanceFactor(struct MmAvlNode *node)
     return mmAvlHeight(node->left) - mmAvlHeight(node->right);
 }
 
-static struct MmAvlNode* mmAvlInsertPreallocated(struct MmAvlNode *parent, struct MmAvlNode *node)
+struct MmAvlNode* MmAvlInsertExisting(struct MmAvlNode *parent, struct MmAvlNode *node)
 {
     if(NULL == parent)
         return node;
     
     if (node->key < parent->key)
     {
-        parent->left = mmAvlInsertPreallocated(parent->left, node);
+        parent->left = MmAvlInsertExisting(parent->left, node);
     }
     else
     {
-        parent->right = mmAvlInsertPreallocated(parent->right, node);
+        parent->right = MmAvlInsertExisting(parent->right, node);
     }
 
     parent->height = MAX(mmAvlHeight(parent->left), mmAvlHeight(parent->right)) + 1;
@@ -270,7 +270,7 @@ struct MmAvlNode* MmAvlInsert(struct MmAvlNode **root, uintptr_t key)
     node->right = NULL;
     node->buddy = NULL;
 
-    *root = mmAvlInsertPreallocated(*root, node);
+    *root = MmAvlInsertExisting(*root, node);
 
     return node;
 }

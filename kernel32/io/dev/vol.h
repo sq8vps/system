@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "dev.h"
-#include "typedefs.h"
+#include "types.h"
 
 EXPORT
 /**

@@ -16,6 +16,7 @@ extern "C"
 #include "hal/interrupt.h"
 #include "io/fs/vfs.h"
 #include "res.h"
+#include "ke/task/task.h"
 struct IoRp;
 struct IoRpQueue;
 struct IoDeviceObject;
@@ -51,14 +52,16 @@ enum IoRpCode
 
 struct IoRp
 {
-    struct IoDeviceObject *device;
-    struct IoVfsNode *vfsNode;
-    enum IoRpCode code;
-    IoRpFlags flags;
-    void *buffer;
-    uint64_t size;
-    STATUS status;
-    bool completed;
+    struct IoDeviceObject *device; /**< Target device for this request */
+    struct IoVfsNode *vfsNode; /**< VFS node associated with this request */
+    enum IoRpCode code; /**< Request code */
+    IoRpFlags flags; /**< Request flags */
+    void *systemBuffer; /**< System buffer in kernel space */
+    void *userBuffer; /**< User buffer in user space */
+    uint64_t size; /**< Request data size */
+    STATUS status; /**< Request status */
+    bool completed; /**< Completion flag */
+    struct KeTaskControlBlock *task; /**< Associated task */
     union
     {
         struct
@@ -75,7 +78,6 @@ struct IoRp
             enum IoBusType type;
             union IoBusId id;
         } location;
-        
 
         /**
          * @brief \a IO_RP_GET_CONFIG_SPACE and \a IO_RP_SET_CONFIG_SPACE
@@ -83,6 +85,7 @@ struct IoRp
         struct
         {
             uint64_t offset;
+            void *buffer;
         } configSpace;
 
         /**
@@ -93,7 +96,7 @@ struct IoRp
             uint64_t offset;
             struct IoMemoryDescriptor *memory;
             void *systemBuffer;
-        } readWrite;
+        } read, write;
 
         /**
          * @brief \a IO_RP_GET_DEVICE_ID
@@ -117,13 +120,13 @@ struct IoRp
             uint32_t code;
             void *data;
         } deviceControl;
+
     } payload;
     IoCompletionCallback completionCallback;
     IoCancelRpCallback cancelCallback;
     void *completionContext;
     struct IoRp *next, *previous;
     struct IoRpQueue *queue;
-    struct IoDeviceObject *currentPosition;
 };
 
 struct IoRpQueue

@@ -5,7 +5,7 @@
 #include "defines.h"
 #include "ex/kdrv.h"
 #include "rp.h"
-#include "typedefs.h"
+#include "types.h"
 #include "io/fs/vfs.h"
 #include "vol.h"
 #include "res.h"

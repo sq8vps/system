@@ -61,7 +61,8 @@
 			"concepts": "c",
 			"new": "c",
 			"rp.h": "c",
-			"bridge.h": "c"
+			"bridge.h": "c",
+			"vfs.h": "c"
 		}
 	}
 }

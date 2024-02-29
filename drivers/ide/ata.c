@@ -68,7 +68,6 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
 {
     uint16_t cmdPort = ide->channel[channel].cmdPort;
     uint16_t controlPort = ide->channel[channel].controlPort;
-    struct IdeDriveData *drive = &(ide->channel[channel].drive[slot]);
 
     selectDrive(ide, channel, slot);
     HalIoPortWriteByte(cmdPort + ATA_REG_SECTOR_COUNT, 0);
@@ -78,8 +77,7 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
     HalIoPortWriteByte(cmdPort + ATA_REG_COMMAND, ATA_COMMAND_IDENTIFY);
     if(0 == HalIoPortReadByte(controlPort + ATA_REG_ALTERNATE_STATUS))
     {
-        drive->usable = 0;
-        drive->present = 0;
+        //drive not present
         return OK;
     }
     uint8_t status = ATA_STATUS_BSY;
@@ -92,14 +90,23 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
             || HalIoPortReadByte(cmdPort + ATA_REG_LBA_HIGH)
             || HalIoPortReadByte(cmdPort + ATA_REG_LBA_MID))
         {
-            drive->usable = 0;
-            drive->present = 0;
+            //drive not present
             return OK;
         }
     }
     //assume drive usability
+
+    ide->channel[channel].drive[slot] = MmAllocateKernelHeapZeroed(sizeof(struct IdeDeviceData));
+    if(NULL == ide->channel[channel].drive[slot])
+        return OUT_OF_RESOURCES;
+    
+    ide->channel[channel].drive[slot]->isController = 0;
+        
+    struct IdeDriveData *drive = &(ide->channel[channel].drive[slot]->drive);
+
     drive->usable = 1;
     drive->present = 1;
+    drive->controller = ide;
     //0-9
     //skip
     for(uint16_t i = 0; i < 10; i++)

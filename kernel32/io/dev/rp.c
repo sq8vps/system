@@ -3,6 +3,7 @@
 #include "assert.h"
 #include "common.h"
 #include "ke/core/panic.h"
+#include "ke/sched/sched.h"
 
 STATUS IoCreateRp(struct IoRp **rp)
 {
@@ -51,6 +52,8 @@ STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoCancelRpCallback ca
         t->next = rp;
     }
 
+    rp->queue = queue;
+
     if(!queue->busy)
     {
         queue->busy = 1;
@@ -76,7 +79,11 @@ STATUS IoFinalizeRp(struct IoRp *rp)
             //no return
         }
         if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
+        {
             rp->completed = true;
+            if(NULL != rp->task)
+                KeUnblockTask(rp->task);
+        }
         else if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
 
@@ -96,7 +103,11 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     else
     {
         if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
+        {
             rp->completed = true;
+            if(NULL != rp->task)
+                KeUnblockTask(rp->task);
+        }
         else if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
         rp->completed = true;

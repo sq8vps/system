@@ -12,56 +12,36 @@ static struct IoRpQueue *rpQueue = NULL;
 
 static void AcpiProcessRp(struct IoRp *rp)
 {
-    STATUS status = OK;
-    if(IoGetCurrentRpPosition(rp) == rp->device)
+    switch(rp->code)
     {
-        switch(rp->code)
-        {
-            case IO_RP_ENUMERATE:
-                if(ACPI_FAILURE(DriverEnumerate(rp->device->driverObject, rp->device)))
-                {
-                    status = IO_RP_PROCESSING_FAILED;
-                }
-                break;
-            case IO_RP_GET_DEVICE_LOCATION:
-                status = AcpiGetDeviceLocation(rp);
-                break;
-            case IO_RP_GET_DEVICE_RESOURCES:
-                status = AcpiGetDeviceResources(rp);
-                break;
-            case IO_RP_GET_DEVICE_ID:
-                status = AcpiGetDeviceId(rp);
-                break;
-            default:
-                    status = IO_RP_CODE_UNKNOWN;
-                break;
-        }
+        case IO_RP_ENUMERATE:
+            if(ACPI_FAILURE(DriverEnumerate(rp->device->driverObject, rp->device)))
+                rp->status  = IO_RP_PROCESSING_FAILED;
+            else
+                rp->status = OK;
+            break;
+        case IO_RP_GET_DEVICE_LOCATION:
+            rp->status = AcpiGetDeviceLocation(rp);
+            break;
+        case IO_RP_GET_DEVICE_RESOURCES:
+            rp->status = AcpiGetDeviceResources(rp);
+            break;
+        case IO_RP_GET_DEVICE_ID:
+            rp->status = AcpiGetDeviceId(rp);
+            break;
+        default:
+            rp->status = IO_RP_CODE_UNKNOWN;
+            break;
     }
-    else
-        status = IO_RP_PROCESSING_FAILED;
-    rp->status = status;
     IoFinalizeRp(rp);
 }
 
 static STATUS AcpiDispatch(struct IoRp *rp)
 {
-    // switch(rp->code)
-    // {
-    //     case IO_RP_ENUMERATE:
-    //         return IoStartRp(rpQueue, rp, NULL);
-    //         break;
-    //     case IO_RP_GET_BUS_CONFIGURATION:
-    //         return IoStartRp(rpQueue, rp, NULL);
-    //         break;
-    //     default:
-    //         return IoSendRpDown(rp->device, rp);
-    //         break;
-    // }
-    AcpiProcessRp(rp);
-    return OK;
+    return IoStartRp(rpQueue, rp, NULL);
 }
 
-static STATUS DriverInit(struct ExDriverObject *driverObject)
+static STATUS AcpiInit(struct ExDriverObject *driverObject)
 {
     STATUS ret = OK;
     if(OK != (ret = IoCreateRpQueue(AcpiProcessRp, &rpQueue)))
@@ -73,16 +53,17 @@ static STATUS DriverInit(struct ExDriverObject *driverObject)
     return OK;
 } 
 
-static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
+static STATUS AcpiAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
+    //should never be called, there are no MDOs for ACPI
     return OK;
 }
 
 STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
 {
-    driverObject->init = DriverInit;
+    driverObject->init = AcpiInit;
     driverObject->dispatch = AcpiDispatch;
-    driverObject->addDevice = DriverAddDevice;
+    driverObject->addDevice = AcpiAddDevice;
     driverObject->name = driverName;
     driverObject->vendor = driverVendor;
     driverObject->version = driverVersion;

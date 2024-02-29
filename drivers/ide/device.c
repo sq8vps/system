@@ -18,22 +18,17 @@
 void IdeProcessRequest(struct IoRp *rp)
 {
     STATUS status = OK;
-    struct IdeDriveData *info = rp->device->privateData;
-    if((IDE_SUBDEVICE_DRIVE != info->type)
-        || NULL == rp->payload.readWrite.memory)
-    {
-        rp->status = NOT_COMPATIBLE;
-        IoFinalizeRp(rp);
-        return;
-    }
+    struct IdeDriveData *info = &(((struct IdeDeviceData*)(IoGetCurrentRpPosition(rp)->privateData))->drive);
 
     info->controller->channel[info->channel].rp = rp;
 
     switch(rp->code)
     {
         case IO_RP_READ:
+            status = IdeReadWrite(info, false, rp->payload.read.offset, rp->size, rp->payload.read.memory);
+            break;
         case IO_RP_WRITE:
-            status = IdeReadWrite(info, (IO_RP_WRITE == rp->code), rp->payload.readWrite.offset, rp->size, rp->payload.readWrite.memory);
+            status = IdeReadWrite(info, true, rp->payload.write.offset, rp->size, rp->payload.write.memory);
             break;
         default:
             status = IO_RP_CODE_UNKNOWN;
@@ -42,6 +37,7 @@ void IdeProcessRequest(struct IoRp *rp)
     
     if(OK != status)
     {
+        //finalize immediately on failure
         rp->status = status;
         IoFinalizeRp(rp);
     }
@@ -60,23 +56,24 @@ static void IdeFinalizeRequest(void *context)
  * 
  * This function is called when the IDE controller is enumerating the bus
 */
-STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct IoDeviceObject *enumerator, struct ExDriverObject *driver)
+STATUS IdeCreateDriveDevice(struct IdeDeviceData *deviceData, struct IoDeviceObject *enumerator, struct ExDriverObject *driver)
 {
-    if((NULL == drive) || (NULL == driver))
+    if((NULL == deviceData) || (NULL == driver))
         return NULL_POINTER_GIVEN;
-    if(0 == drive->present)
-        return DEVICE_NOT_AVAILABLE;
 
     STATUS status;
-    //create subdevice for new device
+    
     struct IoDeviceObject *dev;
     if(OK != (status = IoCreateDevice(driver, IO_DEVICE_TYPE_DISK, IO_DEVICE_FLAG_DIRECT_IO, &dev)))
     {
         return status;
     }
 
+    struct IdeDriveData *drive = &(deviceData->drive);
+
     dev->blockSize = drive->sectorSize;
     dev->alignment = IDE_DMA_REQUIRED_ALIGNMENT;
+    dev->flags |= IO_DEVICE_FLAG_DIRECT_IO;
 
     //register new device in OS
     if(OK != (status = IoRegisterDevice(dev, enumerator)))
@@ -86,23 +83,21 @@ STATUS IdeCreateDriveDevice(struct IdeDriveData *drive, struct IoDeviceObject *e
 
     LOG(SYSLOG_INFO, "Registered disk drive (%s)", drive->model);
 
-    dev->privateData = drive;
-    drive->type = IDE_SUBDEVICE_DRIVE;
-
+    dev->privateData = deviceData;
 
     return OK;
 }
 
 STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct IoDeviceObject *dev, struct ExDriverObject *driver)
 {
-    if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER]), dev, driver);
-    if(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE]), dev, driver);
-    if(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER]), dev, driver);
-    if(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE].present)
-        IdeCreateDriveDevice(&(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE]), dev, driver);
+    if(NULL != info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER])
+        IdeCreateDriveDevice(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_MASTER], dev, driver);
+    if(NULL != info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE])
+        IdeCreateDriveDevice(info->channel[PCI_IDE_CHANNEL_PRIMARY].drive[PCI_IDE_SLOT_SLAVE], dev, driver);
+    if(NULL != info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER])
+        IdeCreateDriveDevice(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_MASTER], dev, driver);
+    if(NULL != info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE])
+        IdeCreateDriveDevice(info->channel[PCI_IDE_CHANNEL_SECONDARY].drive[PCI_IDE_SLOT_SLAVE], dev, driver);
     return OK;
 }
 
@@ -269,11 +264,11 @@ STATUS IdeIsr(void *context)
                     //TODO: this was actually not tested
                     if(info->channel[i].operation.remaining > 0)
                     {
-                        IdeStartReadWrite(&(info->channel[i].drive[info->channel[i].operation.slot]),
+                        IdeStartReadWrite(&(info->channel[i].drive[info->channel[i].operation.slot]->drive),
                             info->channel[i].operation.write, 
                             info->channel[i].operation.lba
                                 + ((info->channel[i].operation.size - info->channel[i].operation.remaining) 
-                                    / info->channel[i].drive[info->channel[i].operation.slot].sectorSize),
+                                    / info->channel[i].drive[info->channel[i].operation.slot]->drive.sectorSize),
                             info->channel[i].operation.remaining,
                             &(info->channel[i].operation.memory)
                         );
@@ -312,32 +307,40 @@ STATUS IdeIsr(void *context)
 STATUS IdeGetDeviceId(struct IoRp *rp)
 {
     struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
-    if(NULL != dev->privateData)
+
+    struct IdeDeviceData *t = dev->privateData;
+    //if it is a MDO, then it is the controller. Ask BDO for device ID
+    if(t->isController)
     {
-        struct IdeDriveData *info = dev->privateData;
-        char *deviceId, **compatibleIds;
-
-        deviceId = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, info->model);
-
-        if(NULL == deviceId)
-        {
-            rp->status = OUT_OF_RESOURCES;
-            return OUT_OF_RESOURCES;
-        }
-
-        compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
-        if(NULL == compatibleIds)
-        {
-            MmFreeKernelHeap(deviceId);
-            rp->status = OUT_OF_RESOURCES;
-            return OUT_OF_RESOURCES;
-        }
-
-        compatibleIds[0] = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, IDE_DEVICE_ID_GENERIC);
-
-        rp->payload.deviceId.mainId = deviceId;
-        rp->payload.deviceId.compatibleId = compatibleIds;
-        return OK;
+        return IoSendRpDown(rp);
     }
-    return IO_RP_PROCESSING_FAILED;
+    struct IdeDriveData *info = &(t->drive);
+
+    char *deviceId, **compatibleIds;
+
+    deviceId = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, info->model);
+
+    if(NULL == deviceId)
+    {
+        rp->status = OUT_OF_RESOURCES;
+        goto _IdeGetDeviceIdLeave;
+    }
+
+    compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
+    if(NULL == compatibleIds)
+    {
+        MmFreeKernelHeap(deviceId);
+        rp->status = OUT_OF_RESOURCES;
+        goto _IdeGetDeviceIdLeave;
+    }
+
+    compatibleIds[0] = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, IDE_DEVICE_ID_GENERIC);
+
+    rp->payload.deviceId.mainId = deviceId;
+    rp->payload.deviceId.compatibleId = compatibleIds;
+    rp->status = OK;
+
+_IdeGetDeviceIdLeave:
+    IoFinalizeRp(rp);
+    return OK;
 }

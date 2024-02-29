@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "defines.h"
 #include "io/dev/dev.h"
-#include "io/dev/types.h"
 
 EXPORT
 /**
@@ -13,25 +12,7 @@ EXPORT
 enum StorOperations
 {
     STOR_NONE = 0,
-    STOR_READ,
-    STOR_WRITE,
     STOR_GET_GEOMETRY,
-};
-
-EXPORT
-/**
- * @brief Transfer operation structure for storage controller devices
-*/
-struct StorTransfer
-{
-    struct IoDeviceObject *target;
-    struct IoMemoryDescriptor *memory;
-    void *buffer;
-    uint64_t offset;
-    uint64_t size;
-    IoCompletionCallback completionCallback;
-    void *completionContext;
-    IoCancelRpCallback cancellationCallback;
 };
 
 EXPORT
@@ -52,12 +33,26 @@ EXPORT
 struct StorGeometry
 {
     uint32_t sectorSize;
-    uint64_t sectorCount;
+    
     uint64_t firstAddressableSector;
-    struct StorChs chsGeometry;
+    uint64_t sectorCount;
+
     struct StorChs firstAddressableChs;
+    struct StorChs lastAddressableChs;
+    uint32_t cylinderCount;
+    uint32_t tracksPerCylinder;
+    uint32_t sectorsPerTrack;
 };
 
+EXPORT
+/**
+ * @brief Get disk device geometry
+ * @param *target Target disk device BDO
+ * @param **geometry Returned geometry structure, allocated by the driver
+ * @return Status code
+ * @attention This function is always synchronous
+*/
+EXTERN STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geometry);
 
 
 #endif

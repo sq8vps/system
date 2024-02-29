@@ -282,22 +282,27 @@ ACPI_STATUS AcpiFillResourceList(ACPI_HANDLE device, struct AcpiDeviceInfo *info
 
     info->resourceCount += AcpiGetResourceCount(device);
 
-    info->resource = MmAllocateKernelHeapZeroed(info->resourceCount * sizeof(*(info->resource)));
-    if(NULL == info->resource)
+    if(0 != info->resourceCount)
     {
-        info->resourceCount = 0;
-        return AE_NO_MEMORY;
-    }
+        info->resource = MmAllocateKernelHeapZeroed(info->resourceCount * sizeof(*(info->resource)));
+        if(NULL == info->resource)
+        {
+            info->resourceCount = 0;
+            return AE_NO_MEMORY;
+        }
 
-    //get resources
-    uint32_t i = 0;
-    //if this is a PCI host bridge, invoke PRT method to get IRQ map
-    if(ACPI_IS_PCI_HOST_BRIDGE(info->pnpId))
-    {
-        if(ACPI_SUCCESS(AcpiGetPciIrqTree(device, &(info->resource[i].irqMap))))
-            info->resource[i].type = IO_RESOURCE_IRQ_MAP;
-        i++;
-    }
+        //get resources
+        uint32_t i = 0;
+        //if this is a PCI host bridge, invoke PRT method to get IRQ map
+        if(ACPI_IS_PCI_HOST_BRIDGE(info->pnpId))
+        {
+            if(ACPI_SUCCESS(AcpiGetPciIrqTree(device, &(info->resource[i].irqMap))))
+                info->resource[i].type = IO_RESOURCE_IRQ_MAP;
+            i++;
+        }
 
-    return AcpiGetIrq(device, &(info->resource[i]));
+        return AcpiGetIrq(device, &(info->resource[i]));
+    }
+    else
+        return OK;
 }

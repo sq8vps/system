@@ -73,7 +73,7 @@ INTERNAL void KePerformPreemptedTaskSwitch(void);
 /**
  * @brief Block task (remove from ready-to-run queue)
  * @param *tcb Task Control Block
- * @param reson Reason for task block
+ * @param reason Reason for task block
  */
 void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
 

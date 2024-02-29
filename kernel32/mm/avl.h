@@ -33,7 +33,15 @@ struct MmAvlNode
 };
 
 /**
- * @brief Insert node to AVL tree
+ * @brief Insert existing node to AVL tree
+ * @param *parent Parent node
+ * @param *node Node to be inserted
+ * @return Parent node after insertion
+*/
+struct MmAvlNode* MmAvlInsertExisting(struct MmAvlNode *parent, struct MmAvlNode *node);
+
+/**
+ * @brief Insert new node to AVL tree
  * @param **root Root of the tree
  * @param key Key for the new node
  * @return Created node or NULL on failure

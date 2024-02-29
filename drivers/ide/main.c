@@ -11,9 +11,9 @@ static char driverVersion[] = "1.0.0";
 /**
  * @brief Request dispatch routine
 */
-static STATUS DriverDispatch(struct IoRp *rp)
+static STATUS IdeDispatch(struct IoRp *rp)
 {
-    STATUS status;
+    STATUS status = OK;
 
     struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
 
@@ -21,69 +21,66 @@ static STATUS DriverDispatch(struct IoRp *rp)
     {
         //enumerate drives connected to a controller
         case IO_RP_ENUMERATE:
-            if((NULL != dev->privateData) 
-                && (IDE_SUBDEVICE_CONTROLLER == ((struct IdeControllerData*)dev->privateData)->type))
+            if(((struct IdeDeviceData*)dev->privateData)->isController)
             {
-                if(OK == (status = IdeDetectAllDrives(dev->privateData)))
+                struct IdeControllerData *info = &(((struct IdeDeviceData*)dev->privateData)->controller);
+                if(OK == (status = IdeDetectAllDrives(info)))
                 {
-                    status = IdeCreateAllDriveDevices(dev->privateData, dev, dev->driverObject);
+                    status = IdeCreateAllDriveDevices(info, dev, dev->driverObject);
                 }
-                rp->status = status;
-                IoFinalizeRp(rp);
-                return status;
             }
             break;
         //read or write
         case IO_RP_READ:
         case IO_RP_WRITE:
-            if((NULL != dev->privateData)
-                && (IDE_SUBDEVICE_DRIVE == ((struct IdeDriveData*)dev->privateData)->type))
+            if(!((struct IdeDeviceData*)dev->privateData)->isController)
             {
-                struct IdeDriveData *info = dev->privateData;
+                struct IdeDriveData *info = &(((struct IdeDeviceData*)dev->privateData)->drive);
                 return IoStartRp(info->controller->channel[info->channel].queue, rp, NULL);
             }
             break;
         case IO_RP_GET_DEVICE_ID:
-            status = IdeGetDeviceId(rp);
-            IoFinalizeRp(rp);
-            return status;
+            IdeGetDeviceId(rp);
             break;
         default:
+            rp->status = IO_RP_PROCESSING_FAILED;
+            IoFinalizeRp(rp);
+            break;
     }
-
-    return IoSendRpDown(rp);
+    return OK;
 }
 
-static STATUS DriverInit(struct ExDriverObject *driverObject)
+static STATUS IdeInit(struct ExDriverObject *driverObject)
 {
     return OK;
 } 
 
 /**
- * @brief Add IDE controller device object
+ * @brief Add IDE controller device object (MDO)
  * 
  * This function is called on the IDE controller object to create a main device.
  * It is not called for disk devices.
 */
-static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
+static STATUS IdeAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
     struct IoDeviceObject *device;
     STATUS status;
     if(OK != (status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_STORAGE, 0, &device)))
         return status;
     
-    if(NULL == (device->privateData = MmAllocateKernelHeap(sizeof(struct IdeControllerData))))
+    if(NULL == (device->privateData = MmAllocateKernelHeap(sizeof(struct IdeDeviceData))))
         return OUT_OF_RESOURCES;
     
-    CmMemset(device->privateData, 0, sizeof(struct IdeControllerData));
+    CmMemset(device->privateData, 0, sizeof(struct IdeDeviceData));
     
     IoAttachDevice(device, baseDeviceObject);
     baseDeviceObject->driverObject->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
-    struct IdeControllerData *info = device->privateData;
+    ((struct IdeDeviceData*)device->privateData)->isController = 1;
+    
+    struct IdeControllerData *info = &(((struct IdeDeviceData*)device->privateData)->controller);
     CmMemset(info, 0, sizeof(*info));
     info->enumerator = baseDeviceObject;
-    info->type = IDE_SUBDEVICE_CONTROLLER;
         
     return IdeConfigureController(baseDeviceObject, device, info);
 }
@@ -93,9 +90,9 @@ static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoDevi
 */
 STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
 {
-    driverObject->init = DriverInit;
-    driverObject->dispatch = DriverDispatch;
-    driverObject->addDevice = DriverAddDevice;
+    driverObject->init = IdeInit;
+    driverObject->dispatch = IdeDispatch;
+    driverObject->addDevice = IdeAddDevice;
     driverObject->name = driverName;
     driverObject->vendor = driverVendor;
     driverObject->version = driverVersion;

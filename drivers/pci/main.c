@@ -8,7 +8,7 @@ static char driverName[] = "Generic PCI bus driver";
 static char driverVendor[] = "Standard drivers";
 static char driverVersion[] = "1.0.0";
 
-static STATUS DriverDispatch(struct IoRp *rp)
+static STATUS PciDispatch(struct IoRp *rp)
 {
     STATUS status;
 
@@ -57,29 +57,26 @@ static STATUS DriverDispatch(struct IoRp *rp)
             status = PciGetSystemDeviceId(rp);
             break;
         default:
+            rp->status = IO_RP_PROCESSING_FAILED;
             break;
     }
 
     rp->status = status;
     IoFinalizeRp(rp);
-    return status;
+    return OK;
 }
 
-static STATUS DriverInit(struct ExDriverObject *driverObject)
+static STATUS PciInit(struct ExDriverObject *driverObject)
 {
     return OK;
 } 
 
-static STATUS DriverAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
-{
-    return PciAddDevice(driverObject, baseDeviceObject);
-}
 
 STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
 {
-    driverObject->init = DriverInit;
-    driverObject->dispatch = DriverDispatch;
-    driverObject->addDevice = DriverAddDevice;
+    driverObject->init = PciInit;
+    driverObject->dispatch = PciDispatch;
+    driverObject->addDevice = PciAddDevice;
     driverObject->name = driverName;
     driverObject->vendor = driverVendor;
     driverObject->version = driverVersion;

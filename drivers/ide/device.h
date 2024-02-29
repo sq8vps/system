@@ -43,20 +43,14 @@ struct IdePrdTable
     uint32_t physical;
 };
 
-enum IdeSubdeviceType
-{
-    IDE_SUBDEVICE_CONTROLLER = 1,
-    IDE_SUBDEVICE_DRIVE = 2,
-};
-
 struct IdeControllerData;
+struct IdeDeviceData;
 
 /**
  * @brief IDE drive structure
 */
 struct IdeDriveData
 {
-    enum IdeSubdeviceType type;
     char serial[ATA_DRIVE_SERIAL_NUMBER_SIZE + 1]; /**< Serial number in ATA standard */
     char model[ATA_DRIVE_MODEL_NUMBER_SIZE + 1]; /**< Model number in ATA standard */
     uint8_t present : 1; /**< Is drive present? If not, this structure is invalid */
@@ -90,7 +84,6 @@ struct IdeDriveData
 */
 struct IdeControllerData
 {
-    enum IdeSubdeviceType type; /**< Structure type to distinguish between controller and drive */
     struct IoDeviceObject *enumerator; /**< Reference to enumerating device */
     bool initialized; /**< Is controller fully initialized? */
     bool busMaster; /**< Does the controller support Bus Mastering? If not, it is not usable here */
@@ -124,8 +117,18 @@ struct IdeControllerData
 
         KeSpinlock lock;
 
-        struct IdeDriveData drive[2];
+        struct IdeDeviceData *drive[2];
     } channel[2];
+};
+
+struct IdeDeviceData
+{
+    uint8_t isController : 1;
+    union
+    {
+        struct IdeControllerData controller;
+        struct IdeDriveData drive;
+    };
 };
 
 /**

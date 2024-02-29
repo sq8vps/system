@@ -119,11 +119,11 @@ STATUS PciReadConfigurationSpace(union IoBusId address, struct IoRp *rp)
 {
 	if(0 == rp->size)
 		return OK;
-	if(NULL == (rp->buffer = MmAllocateKernelHeap(rp->size)))
+	if(NULL == (rp->payload.configSpace.buffer = MmAllocateKernelHeap(rp->size)))
 	{
 		return OUT_OF_RESOURCES;
 	}
-	uint8_t *d = (uint8_t*)rp->buffer;
+	uint8_t *d = (uint8_t*)rp->payload.configSpace.buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{
 		d[i] = PciConfigReadByte(address, rp->payload.configSpace.offset + i);
@@ -135,9 +135,9 @@ STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoRp *rp)
 {
 	if(0 == rp->size)
 		return OK;
-	if(NULL == rp->buffer)
+	if(NULL == rp->payload.configSpace.buffer)
 		return NULL_POINTER_GIVEN;
-	uint8_t *d = (uint8_t*)rp->buffer;
+	uint8_t *d = (uint8_t*)rp->payload.configSpace.buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{
 		PciConfigWriteByte(address, rp->payload.configSpace.offset + i, d[i]);
