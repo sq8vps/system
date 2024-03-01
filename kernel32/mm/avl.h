@@ -28,7 +28,11 @@ struct MmAvlNode
     
     struct MmAvlNode *left, *right; //children pointers
     struct MmAvlNode *buddy; //buddy pointer (address-size pair)
-    uintptr_t val; //additional value
+    union
+    {
+        uintptr_t val; //additional value
+        void *ptr;
+    };
     int height; //node height
     bool dynamic; //was this node dynamically allocated?
 };
@@ -67,28 +71,28 @@ struct MmAvlNode* MmAvlInsertPair(struct MmAvlNode **rootA, struct MmAvlNode **r
 void MmAvlDelete(struct MmAvlNode **root, struct MmAvlNode *node);
  
 /**
- * @brief Find best-fitting free memory block in AVL tree
- * @param *root Tree root (sorted by size)
- * @param size Requested region size
+ * @brief Find node with lowest possible key, but greater or equal to given key
+ * @param *root Tree root
+ * @param key Key
  * @return Best-fitting node or NULL if unavailable
 */
-struct MmAvlNode* MmAvlFindFreeMemory(struct MmAvlNode *root, uintptr_t size);
+struct MmAvlNode* MmAvlFindGreaterOrEqual(struct MmAvlNode *root, uintptr_t key);
 
 /**
- * @brief Find memory block by address (exact match)
- * @param *root Tree root (sorted by address)
- * @param address Block address to match
- * @return Block node or NULL if not found
+ * @brief Find node
+ * @param *root Tree root
+ * @param key Key
+ * @return Node or NULL if not found
 */
-struct MmAvlNode* MmAvlFindMemoryByAddress(struct MmAvlNode *root, uintptr_t address);
+struct MmAvlNode* MmAvlFindExactMatch(struct MmAvlNode *root, uintptr_t key);
 
 /**
- * @brief Find memory block with the highest address but below the given limit
- * @param *root Tree root (sorted by address)
- * @param address Address limit, that is the returned block must start below this address
- * @return Matching block node or NULL if not found
+ * @brief Find node with greatest possible key, but less than given key
+ * @param *root Tree root
+ * @param key Key
+ * @return Best-fitting node or NULL if not found
 */
-struct MmAvlNode* MmAvlFindHighestMemoryByAddressLimit(struct MmAvlNode *root, uintptr_t address);
+struct MmAvlNode* MmAvlFindLess(struct MmAvlNode *root, uintptr_t key);
 
 /**
  * @}

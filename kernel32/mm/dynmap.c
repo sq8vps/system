@@ -19,7 +19,7 @@ void *MmReserveDynamicMemory(uintptr_t n)
     
     KeAcquireSpinlock(&dynamicAllocatorMutex);
 
-    struct MmAvlNode *region = MmAvlFindFreeMemory(MM_DYNAMIC_SIZE_FREE_TREE, n);
+    struct MmAvlNode *region = MmAvlFindGreaterOrEqual(MM_DYNAMIC_SIZE_FREE_TREE, n);
     if(NULL == region) //no fitting region available
     {
         KeReleaseSpinlock(&dynamicAllocatorMutex);
@@ -66,7 +66,7 @@ uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
     ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE);
 
     KeAcquireSpinlock(&dynamicAllocatorMutex);
-    struct MmAvlNode *this = MmAvlFindMemoryByAddress(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
+    struct MmAvlNode *this = MmAvlFindExactMatch(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
     if(NULL == this)
     {
         KeReleaseSpinlock(&dynamicAllocatorMutex);
@@ -78,7 +78,7 @@ uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
     MmAvlDelete(&MM_DYNAMIC_ADDRESS_USED_TREE, this);
 
     //check if there is an adjacent free region with higher address
-    struct MmAvlNode *node = MmAvlFindMemoryByAddress(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr + n);
+    struct MmAvlNode *node = MmAvlFindExactMatch(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr + n);
     if(NULL != node)
     {
         n += node->buddy->key; //sum size
@@ -86,7 +86,7 @@ uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
         MmAvlDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, node);
     }
     //check if there is an adjacent preceeding free region
-    node = MmAvlFindHighestMemoryByAddressLimit(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr);
+    node = MmAvlFindLess(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr);
     if(NULL != node)
     {
         n += node->buddy->key; //sum size

@@ -3,6 +3,7 @@
 #include "defines.h"
 #include "../cdefines.h"
 #include "heap.h"
+#include "assert.h"
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
  
@@ -57,12 +58,14 @@ struct MmAvlNode* MmAvlInsertExisting(struct MmAvlNode *parent, struct MmAvlNode
     if(NULL == parent)
         return node;
     
-    if (node->key < parent->key)
+    if(node->key < parent->key)
     {
+        ASSERT(parent != parent->left);
         parent->left = MmAvlInsertExisting(parent->left, node);
     }
     else
     {
+        ASSERT(parent != parent->right);
         parent->right = MmAvlInsertExisting(parent->right, node);
     }
 
@@ -105,11 +108,20 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, struct MmAvlNod
         return root;
  
     if(node->key < root->key)
+    {
+        ASSERT(root != root->left);
         root->left = mmAvlDeleteNode(root->left, node);
+    }
     else if(node->key > root->key)
+    {
+        ASSERT(root != root->right);
         root->right = mmAvlDeleteNode(root->right, node);
+    }
     else if(node != root)
+    {
+        ASSERT(root != root->right);
         root->right = mmAvlDeleteNode(root->right, node);
+    }
     else
     {
         //1 or 0 children
@@ -178,85 +190,85 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, struct MmAvlNod
 
 
  
-struct MmAvlNode* MmAvlFindFreeMemory(struct MmAvlNode *root, uintptr_t size)
+struct MmAvlNode* MmAvlFindGreaterOrEqual(struct MmAvlNode *root, uintptr_t key)
 {
-    struct MmAvlNode *bestRegion = NULL; //best fitting region
+    struct MmAvlNode *best = NULL;
 
     while(NULL != root)
     {   
-        if(root->key >= size) //the region is free and big enough
+        if(root->key >= key)
         {
-            if((NULL == bestRegion) || 
-            (bestRegion && (root->key < bestRegion->key))) //and at the same time it is smaller that the previous best fit
-                bestRegion = root; //store it as new best fit
+            if((NULL == best) || 
+            (best && (root->key < best->key))) //smaller that the previous best fit, but still fitting
+                best = root;
         }
         
-        if(root->key > size)
+        if(root->key > key)
         {
             root = root->left;
         }
-        else //if(root->key <= size)
+        else //if(root->key <= key)
         {
             root = root->right;
         }
     }
 
-    if(NULL != bestRegion) //return best fitting region if available
+    if(NULL != best)
     {
-        return bestRegion;
+        return best;
     }
-    //else no region found
+
     return NULL;
 }
 
-struct MmAvlNode* MmAvlFindMemoryByAddress(struct MmAvlNode *root, uintptr_t address)
+struct MmAvlNode* MmAvlFindExactMatch(struct MmAvlNode *root, uintptr_t key)
 {
     while(NULL != root)
     {       
-        if(root->key > address)
+        if(root->key > key)
         {
             root = root->left;
         }
-        else if(root->key < address)
+        else if(root->key < key)
         {
             root = root->right;
         }
-        else //if(root->key == address)
+        else //if(root->key == key)
             return root;
     }
 
-    //else no region found
+    //else no node found
     return NULL;
 }
 
-struct MmAvlNode* MmAvlFindHighestMemoryByAddressLimit(struct MmAvlNode *root, uintptr_t address)
+struct MmAvlNode* MmAvlFindLess(struct MmAvlNode *root, uintptr_t key)
 {
-    struct MmAvlNode *bestRegion = NULL; //best fitting region
+    struct MmAvlNode *best = NULL;
 
     while(NULL != root)
     {   
-        if(root->key < address)
+        if(root->key < key)
         {
-            if((NULL == bestRegion) || 
-            (bestRegion && (root->key > bestRegion->key)))
-                bestRegion = root; //store it as new best fit
+            if((NULL == best) || 
+            (best && (root->key > best->key)))
+                best = root; //store it as new best fit
         }
         
-        if(root->key > address)
+        if(root->key > key)
         {
             root = root->left;
         }
-        else //if(root->key <= address)
+        else //if(root->key <= key)
         {
             root = root->right;
         }
     }
 
-    if(NULL != bestRegion) //return best fitting region if available
+    if(NULL != best)
     {
-        return bestRegion;
+        return best;
     }
-    //else no region found
+    
     return NULL;
 }
 
