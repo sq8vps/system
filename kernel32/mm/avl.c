@@ -93,21 +93,23 @@ struct MmAvlNode* MmAvlInsertExisting(struct MmAvlNode *parent, struct MmAvlNode
 
 static struct MmAvlNode* mmAvlLowestNode(struct MmAvlNode* node)
 {
-    while (NULL != node->left)
+    while(NULL != node->left)
         node = node->left;
  
     return node;
 }
  
-static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, uintptr_t key)
+static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, struct MmAvlNode *node)
 {
-    if (NULL == root)
+    if(NULL == root)
         return root;
  
-    if (key < root->key)
-        root->left = mmAvlDeleteNode(root->left, key);
-    else if(key > root->key)
-        root->right = mmAvlDeleteNode(root->right, key);
+    if(node->key < root->key)
+        root->left = mmAvlDeleteNode(root->left, node);
+    else if(node->key > root->key)
+        root->right = mmAvlDeleteNode(root->right, node);
+    else if(node != root)
+        root->right = mmAvlDeleteNode(root->right, node);
     else
     {
         //1 or 0 children
@@ -127,7 +129,8 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, uintptr_t key)
                     root->buddy->buddy = root; //update buddy of the other node
             }
 
-            MmFreeKernelHeap(child);
+            if(child->dynamic)
+                MmFreeKernelHeap(child);
         }
         else //2 children
         {
@@ -140,7 +143,7 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, uintptr_t key)
             if(NULL != child->buddy)
                 child->buddy->buddy = root; //update buddy of the other node
 
-            root->right = mmAvlDeleteNode(root->right, child->key);
+            root->right = mmAvlDeleteNode(root->right, child);
         }
     }
 
@@ -269,6 +272,7 @@ struct MmAvlNode* MmAvlInsert(struct MmAvlNode **root, uintptr_t key)
     node->left = NULL;
     node->right = NULL;
     node->buddy = NULL;
+    node->dynamic = true;
 
     *root = MmAvlInsertExisting(*root, node);
 
@@ -294,5 +298,5 @@ struct MmAvlNode* MmAvlInsertPair(struct MmAvlNode **rootA, struct MmAvlNode **r
 
 void MmAvlDelete(struct MmAvlNode **root, struct MmAvlNode *node)
 {
-    *root = mmAvlDeleteNode(*root, node->key);
+    *root = mmAvlDeleteNode(*root, node);
 }

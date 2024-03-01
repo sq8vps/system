@@ -30,6 +30,7 @@ struct MmAvlNode
     struct MmAvlNode *buddy; //buddy pointer (address-size pair)
     uintptr_t val; //additional value
     int height; //node height
+    bool dynamic; //was this node dynamically allocated?
 };
 
 /**

@@ -42,7 +42,7 @@ static STATUS DiskPerformTransaction(struct IoRp *original)
         return status;
     rp->code = original->code;
     rp->device = original->device->attachedTo;
-    rp->payload.readWrite = original->payload.readWrite;
+    //rp->payload.readWrite = original->payload.readWrite;
     rp->size = original->size;
     rp->completionCallback = DiskFinalizeTransaction;
     rp->completionContext = original;
@@ -89,24 +89,24 @@ STATUS DiskReadWrite(struct IoRp *rp)
 
         if(info->bdo->flags & IO_DEVICE_FLAG_DIRECT_IO) //prefer direct I/O on the drive side
         {
-            if(NULL != rp->payload.readWrite.memory) //memory descriptor provided for direct I/O?
-            {
-                //do full direct I/O, but alignment might be the problem
-                if(rp->payload.readWrite.offset % info->bdo->blockSize)
-                    return BAD_ALIGNMENT;
-                if(OK != (
-                    status = DiskVerifyMemoryTable(rp->payload.readWrite.memory, info->bdo->alignment, 
-                            rp->size, info->bdo->blockSize)))
-                    return status;
+            // if(NULL != rp->payload.readWrite.memory) //memory descriptor provided for direct I/O?
+            // {
+            //     //do full direct I/O, but alignment might be the problem
+            //     if(rp->payload.readWrite.offset % info->bdo->blockSize)
+            //         return BAD_ALIGNMENT;
+            //     if(OK != (
+            //         status = DiskVerifyMemoryTable(rp->payload.readWrite.memory, info->bdo->alignment, 
+            //                 rp->size, info->bdo->blockSize)))
+            //         return status;
                 
-                return DiskPerformTransaction(rp);
-            }
-            else if(NULL != rp->payload.readWrite.systemBuffer) //buffer provided?
-            {
+            //     return DiskPerformTransaction(rp);
+            // }
+            // else if(NULL != rp->payload.readWrite.systemBuffer) //buffer provided?
+            // {
                 
-            }
-            else
-                return NULL_POINTER_GIVEN; //no memory description was given
+            // }
+            // else
+            //     return NULL_POINTER_GIVEN; //no memory description was given
         }
         else if(info->bdo->flags & IO_DEVICE_FLAG_BUFFERED_IO)
         {

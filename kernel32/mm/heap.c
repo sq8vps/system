@@ -4,10 +4,11 @@
 #include "ke/core/mutex.h"
 #include "common.h"
 #include "avl.h"
+#include "assert.h"
 
 #define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
 #define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
-#define MM_KERNEL_HEAP_ALIGNMENT 8 //required kernel heap block address alignment
+#define MM_KERNEL_HEAP_ALIGNMENT 16 //required kernel heap block address alignment
 #define MM_KERNEL_HEAP_DEALLOCATION_THRESHOLD 0x100000 //free heap memory deallocation threshold
 
 static uintptr_t MmKernelHeapTop = MM_KERNEL_HEAP_START; //current kernel heap top
@@ -19,7 +20,7 @@ struct MmHeapBlock
 {
     bool free; //is block free?
     uintptr_t size; //block size, not including structure size
-    //using linked list, the freeing is fast (we get the address and the structure is at this address)
+    //using linked list, freeing is fast (we get the address and the structure is at this address)
     //however, allocation might be very slow if memory is fragmented
     //use AVL tree to store free blocks to reduce allocation time
     struct MmAvlNode avl;
@@ -90,9 +91,9 @@ static struct MmHeapBlock *mmAllocateHeapBlock(struct MmHeapBlock *previous, uin
     * There is the problem that the low-level memory allocator allocates only multiples of page size
     * When block size is not a multiple of page size the remainder should be stored as a free block
     * to avoid memory waste.
-    * Anyway drop it if remaining space is smaller than metadata size
+    * Anyway drop it if remaining space is smaller than metadata size + alignment
     */
-    if(remainder >= META_SIZE)
+    if(remainder >= (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
     {
         struct MmHeapBlock *nextBlock = (void*)MmKernelHeapTop; //get metadata block pointer
         nextBlock->free = true;
@@ -139,11 +140,11 @@ static struct MmHeapBlock *mmSplitHeapBlock(struct MmHeapBlock *block, uint32_t 
         return NULL;
 
     uint32_t remainder = block->size - n; //how many bytes are left after resizing the block
-    if(remainder <= META_SIZE)
-        return block; //only the header and 1 byte would fit, no point in splitting. Return original block
+    if(remainder < (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
+        return block;
      
     //create new block after the block being resized
-    struct MmHeapBlock *nextBlock = (struct MmHeapBlock*)((uintptr_t)(block + 1) + n);
+    struct MmHeapBlock *nextBlock = (struct MmHeapBlock*)((uintptr_t)(block) + META_SIZE + n);
     block->size = n; //resize exisiting block
     nextBlock->free = 1;
     nextBlock->size = remainder - META_SIZE;
@@ -237,8 +238,6 @@ void *MmAllocateKernelHeap(uintptr_t n)
     return (void*)((uintptr_t)block + META_SIZE);
 }
 
-
-
 void MmFreeKernelHeap(const void *ptr)
 {
     if((uintptr_t)ptr < (MM_KERNEL_HEAP_START + META_SIZE) || ((uintptr_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - META_SIZE)))
@@ -280,27 +279,10 @@ void *MmAllocateKernelHeapZeroed(uintptr_t n)
     return p;
 }
 
-// void *MmReallocateKernelHeap(void *ptr, uintptr_t n)
-// {
-//     if(0 == n)
-//     {
-//         MmFreeKernelHeap(ptr);
-//         return NULL;
-//     }
-//     void *m = MmAllocateKernelHeap(n);
-//     if(NULL == m)
-//         return NULL;
-//     if(NULL == ptr)
-//         return m;
-//     struct MmHeapBlock *block = (struct MmHeapBlock*)((uintptr_t)ptr - META_SIZE);
-//     CmMemcpy(m, ptr, block->size);
-//     return m;
-// }
-
 #if MM_KERNEL_HEAP_START & (MM_KERNEL_HEAP_ALIGNMENT - 1)
     #error Kernel heap start address is not aligned
 #endif
 
-#if (MM_KERNEL_HEAP_ALIGNMENT & 0xF) || (MM_KERNEL_HEAP_ALIGNMENT == 0)
-    #error Kernel heap must be aligned to a non-zero multiple of 16 bytes
+#if (MM_KERNEL_HEAP_ALIGNMENT & 0x3) || (MM_KERNEL_HEAP_ALIGNMENT == 0)
+    #error Kernel heap must be aligned to a non-zero multiple of 8 bytes
 #endif

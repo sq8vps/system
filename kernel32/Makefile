@@ -25,8 +25,8 @@ all: $(NAME)
 
 $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
-	objcopy --only-keep-debug $@ ${@:.elf=.sym}
-	objcopy --strip-debug $@
+#	objcopy --only-keep-debug $@ ${@:.elf=.sym}
+#	objcopy --strip-debug $@
 	cp $@ ../output/
 	cp ${@:.elf=.sym} ../symbols/
 	

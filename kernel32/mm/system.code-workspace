@@ -1,0 +1,49 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../drivers/acpi"
+		},
+		{
+			"path": "../../drivers/pci"
+		},
+		{
+			"path": "../../drivers/ide"
+		},
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../drivers/disk"
+		},
+		{
+			"path": "../../drivers/partmgr"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.cpp": "cpp",
+			"kernel.h": "c",
+			"defines.h": "c",
+			"cdefines.h": "c",
+			"device.h": "c",
+			"kdrv.h": "c",
+			"task.h": "c",
+			"dpc.h": "c",
+			"acpi.h": "c",
+			"dev.h": "c",
+			"stdbool.h": "c",
+			"palloc.h": "c",
+			"dynmap.h": "c",
+			"interrupt.h": "c",
+			"mm.h": "c",
+			"stdint.h": "c",
+			"config.h": "c",
+			"heap.h": "c",
+			"mutex.h": "c",
+			"mmio.h": "c"
+		}
+	}
+}
