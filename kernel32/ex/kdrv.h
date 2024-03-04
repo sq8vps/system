@@ -33,16 +33,13 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 EXPORT
 struct ExDriverObject
 {
+    uint32_t type;
+
     uint32_t index;
     struct IoDeviceObject *deviceObject; //linked list of devices created by the driver
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
-    char *fileName;
-    char *name;
-    char *vendor;
-    char *version;
-    void *driverData;
     STATUS (*init)(struct ExDriverObject *driverObject);
     STATUS (*unload)(struct ExDriverObject *driverObject);
     STATUS (*dispatch)(struct IoRp *rp);

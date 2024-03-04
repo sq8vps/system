@@ -7,8 +7,18 @@
 #include "devfs.h"
 
 #define IO_VFS_MAX_SYMLINK_DEPTH 40
+#define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 200
 
-static struct IoVfsNode *root = NULL; //filesystem root
+/**
+ * @brief Filesystem root node
+*/
+static struct IoVfsNode *root = NULL;
+
+/**
+ * @brief Maximum file name length
+*/
+static uint32_t IoVfsMaxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH;
+
 
 struct IoVfsNode* IoVfsCreateNode(char *name)
 {
@@ -19,6 +29,11 @@ struct IoVfsNode* IoVfsCreateNode(char *name)
     CmStrcpy(node->name, name);
 
     return node;
+}
+
+uint32_t IoVfsGetMaxFileNameLength(void)
+{
+    return IoVfsMaxFileNameLength;
 }
 
 void IoVfsDestroyNode(struct IoVfsNode *node)

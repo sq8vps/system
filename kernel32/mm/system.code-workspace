@@ -43,7 +43,8 @@
 			"config.h": "c",
 			"heap.h": "c",
 			"mutex.h": "c",
-			"mmio.h": "c"
+			"mmio.h": "c",
+			"fstypedefs.h": "c"
 		}
 	}
 }

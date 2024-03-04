@@ -205,7 +205,7 @@ EXPORT
  * @param val Value to be aligned
  * @param align Alignment value
 */
-#define ALIGN_UP(val, align) (val + ((val & (align - 1)) ? (align - (val & (align - 1))) : 0))
+#define ALIGN_UP(val, align) ((val) + (((val) & ((align) - 1)) ? ((align) - ((val) & ((align) - 1))) : 0))
 
 EXPORT
 /**

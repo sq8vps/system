@@ -64,6 +64,8 @@ EXPORT
 */
 struct KeTaskControlBlock
 {
+    uint32_t objectType;
+
     uintptr_t esp; //stack pointer
     uintptr_t esp0; //kernel stack pointer for privilege level change
     uintptr_t cr3; //task page directory address

@@ -17,6 +17,8 @@ EXPORT
 EXPORT
 struct IoVolumeNode
 {
+    uint32_t objectType;
+
     char label[IO_VOLUME_MAX_LABEL_LENGTH + 1]; /**< Volume label */
     IoDeviceFlags flags; /**< Common volume flags */
     struct IoDeviceObject *fsdo; /**< FS Device Object */

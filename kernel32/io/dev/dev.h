@@ -41,6 +41,8 @@ EXPORT
 */
 struct IoDeviceNode
 {
+    uint32_t objectType;
+    
     char name[IO_DEVICE_MAX_NAME_LENGTH + 1]; /**< User-friendly name of the device */
     IoDeviceFlags flags; /**< Common device flags */
     struct IoDeviceObject *bdo; /**< Base Device Object */
@@ -56,6 +58,8 @@ struct IoDeviceNode
 EXPORT
 struct IoDeviceObject
 {
+    uint32_t objectType;
+
     enum IoDeviceType type; /**< Device type */
     void *privateData; /**< Private device data pointer */
     IoDeviceFlags flags; /**< Device flags */

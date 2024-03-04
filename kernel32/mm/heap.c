@@ -3,31 +3,21 @@
 #include <stdbool.h>
 #include "ke/core/mutex.h"
 #include "common.h"
-#include "avl.h"
 #include "assert.h"
 
-//do not enable, AVL trees do not work with heap for now
-//#define USE_AVL_TREES
-
-#define MM_KERNEL_HEAP_START 0xD8000000 //kernel heap start address
-#define MM_KERNEL_HEAP_MAX_SIZE 0x10000000 //kernel heap max size
-#define MM_KERNEL_HEAP_ALIGNMENT 16 //required kernel heap block address alignment
-#define MM_KERNEL_HEAP_DEALLOCATION_THRESHOLD 0x100000 //free heap memory deallocation threshold
+#define MM_KERNEL_HEAP_START 0xD8000000                // kernel heap start address
+#define MM_KERNEL_HEAP_MAX_SIZE 0x10000000             // kernel heap max size
+#define MM_KERNEL_HEAP_ALIGNMENT 16                    // required kernel heap block address alignment
+#define MM_KERNEL_HEAP_DEALLOCATION_THRESHOLD 0x100000 // free heap memory deallocation threshold
 
 /**
  * @brief A heap block metadata (header) structure
-*/
+ */
 struct MmHeapBlock
 {
-    bool free; //is block free?
-    uintptr_t size; //block size, not including structure size
-#ifdef USE_AVL_TREES
-    //using linked list, freeing is fast (we get the address and the structure is at this address)
-    //however, allocation might be very slow if memory is fragmented
-    //use AVL tree to store free blocks to reduce allocation time
-    struct MmAvlNode avl;
-#endif
-    //pointer to neighboring blocks, either free or not
+    bool free;      // is block free?
+    uintptr_t size; // block size, not including structure size
+    // pointer to neighboring blocks, either free or not
     struct MmHeapBlock *previous;
     struct MmHeapBlock *next;
 };
@@ -35,16 +25,15 @@ struct MmHeapBlock
 
 /**
  * @brief Block metadata linked list head
-*/
+ */
 static struct MmHeapBlock *MmHeapBlockHead = NULL;
 static struct MmHeapBlock *MmHeapBlockTail = NULL;
-
 
 #ifdef USE_AVL_TREES
 
 /**
  * @brief Free block AVL tree
-*/
+ */
 static struct MmAvlNode *MmFreeHeapBlockTree = NULL;
 
 static void mmInsertFreeHeapBlock(struct MmHeapBlock *block)
@@ -60,301 +49,242 @@ static void mmInsertFreeHeapBlock(struct MmHeapBlock *block)
 }
 #endif
 
-/**
- * @brief Create new or extend exisiting heap block
- * @param previous Previous block pointer
- * @param n Count of bytes to allocate
- * @param expand 0 - new block creation mode, 1 - extension mode
-*/
-static struct MmHeapBlock *mmAllocateHeapBlock(struct MmHeapBlock *previous, uint32_t n, bool expand)
+static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
 {
-    if(!expand) //new block allocation mode
-        n += META_SIZE; //update required size with metadata block size
-
     uintptr_t heapTop = MM_KERNEL_HEAP_START;
-    if(NULL != MmHeapBlockTail)
+    if (NULL != MmHeapBlockTail)
     {
-        if((MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - 
-            (MmHeapBlockTail->size + (uintptr_t)MmHeapBlockTail)) < n) //check if there is enough memory on the heap
-        {
-            return NULL;
-        }
-        heapTop = MmHeapBlockTail->size + (uintptr_t)MmHeapBlockTail + META_SIZE;
+        heapTop = (uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE;
     }
+    uintptr_t alignedStart = ALIGN_UP(heapTop + META_SIZE, align);
+    uintptr_t padding = alignedStart - (heapTop + META_SIZE);
 
-    uint32_t remainder = MM_PAGE_SIZE - (n % MM_PAGE_SIZE); //calculate remainder to the next page boundary
+    uintptr_t bytesToAllocate = ALIGN_UP(n + META_SIZE + padding, 4096);
+    uintptr_t pageRemainder = bytesToAllocate - (n + META_SIZE + padding);
 
-    if(OK != MmAllocateMemory(heapTop, n + remainder, MM_PAGE_FLAG_WRITABLE)) //try to allocate pages and map them to kernel heap space
-    {
+    if (bytesToAllocate > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - heapTop))
         return NULL;
-    }
 
-    struct MmHeapBlock *block = (struct MmHeapBlock*)heapTop; //get metadata block pointer
-    
-    if(!expand) //new block allocation mode
+    if (OK != MmAllocateMemory(heapTop, bytesToAllocate, 0))
+        return NULL;
+
+    struct MmHeapBlock *block = (struct MmHeapBlock *)(alignedStart - META_SIZE);
+    block->next = NULL;
+    block->free = false;
+
+    if (NULL != MmHeapBlockTail)
     {
-        //fill new block header
-        block->free = false;
-        block->next = NULL;
-        block->previous = previous;
-        block->size = n - META_SIZE;
-        if(NULL != previous) //if there was some previous block, update its "next" pointer
-        {
-            previous->next = block;
-        }
+        MmHeapBlockTail->size += padding;
+        MmHeapBlockTail->next = block;
+
+        block->previous = MmHeapBlockTail;
+        if (MmHeapBlockHead == MmHeapBlockTail)
+            MmHeapBlockHead = block;
         MmHeapBlockTail = block;
     }
-    else //block expansion mode
-    {
-        //update block header
-        previous->size += n;
-    }
-
-    /*
-    * There is the problem that the low-level memory allocator allocates only multiples of page size
-    * When block size is not a multiple of page size the remainder should be stored as a free block
-    * to avoid memory waste.
-    * Anyway drop it if remaining space is smaller than metadata size + alignment
-    */
-    if(remainder >= (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
-    {
-        struct MmHeapBlock *nextBlock = 
-            (struct MmHeapBlock*)((uintptr_t)MmHeapBlockTail + META_SIZE + MmHeapBlockTail->size); //get metadata block pointer
-        nextBlock->free = true;
-        nextBlock->size = remainder - META_SIZE;
-        nextBlock->next = NULL;
-#ifdef USE_AVL_TREES
-        mmInsertFreeHeapBlock(nextBlock);
-#endif
-        MmHeapBlockTail = nextBlock;
-        if(!expand) //new block allocation mode
-        {
-            block->next = nextBlock;
-            nextBlock->previous = block;
-        }
-        else //block expansion mode
-        {
-            previous->next = nextBlock;
-            nextBlock->previous = previous;
-        }
-    }
-
-    if(!expand) //new block allocation mode
-        return block;
-    
-    return previous;
-}
-
-/**
- * @brief Split existing heap block
- * 
- * This function takes an existing block of size N and a number n,
- * checks if splitting this block makes sense, resizes exisiting block to n bytes
- * and creates new block header of size N-n-sizeof(header) and adds it to the list.
- * @param block Block to be split. Must be free
- * @param n Count of bytes required
- * @return Block of size n
-*/
-static struct MmHeapBlock *mmSplitHeapBlock(struct MmHeapBlock *block, uint32_t n)
-{
-    if(NULL == block)
-        return NULL;
-
-    if(!block->free)
-        return NULL;
-
-    if(block->size < n)
-        return NULL;
-
-    uint32_t remainder = block->size - n; //how many bytes are left after resizing the block
-    if(remainder < (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
-        return block;
-    
-#ifdef USE_AVL_TREES
-    MmAvlDelete(&MmFreeHeapBlockTree, &(block->avl));
-#endif
-
-    //create new block after the block being resized
-    struct MmHeapBlock *nextBlock = (struct MmHeapBlock*)((uintptr_t)(block) + META_SIZE + n);
-    block->size = n; //resize exisiting block
-    nextBlock->free = true;
-    nextBlock->size = remainder - META_SIZE;
-    nextBlock->next = block->next; //update list pointers
-    if(NULL != block->next)
-        block->next->previous = nextBlock;
     else
-        MmHeapBlockTail = nextBlock;
-    nextBlock->previous = block;
-    block->next = nextBlock;
-#ifdef USE_AVL_TREES
-    mmInsertFreeHeapBlock(nextBlock);
-#endif
+    {
+        block->previous = NULL;
+        MmHeapBlockTail = block;
+        MmHeapBlockHead = block;
+    }
+
+    if (pageRemainder >= (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
+    {
+        block->size = n;
+
+        struct MmHeapBlock *next = (struct MmHeapBlock *)((uintptr_t)block + n + META_SIZE);
+        next->free = true;
+        next->size = pageRemainder - META_SIZE;
+        next->previous = block;
+        next->next = NULL;
+        MmHeapBlockTail = next;
+        block->next = next;
+    }
+    else
+        block->size = n + pageRemainder;
+
     return block;
 }
 
-/**
- * @brief Find first free and matching block that was allocated before
- * @param previous Previous block handle will be returned here
- * @param n Block size (in bytes)
- * @return Block metadata or NULL if no previously allocated block available
-*/
-static struct MmHeapBlock *mmFindPreallocatedHeapBlock(struct MmHeapBlock **previous, uint32_t n)
+static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, uintptr_t align)
 {
-#ifdef USE_AVL_TREES
-    struct MmAvlNode *node = NULL;
-    if(NULL != MmFreeHeapBlockTree)
+    if (NULL == block->previous)
     {
-        node = MmAvlFindGreaterOrEqual(MmFreeHeapBlockTree, n);
-        if(NULL != node)
+        if (((uintptr_t)block + META_SIZE) & (align - 1))
         {
-            //split block if it's to big and return the new block
-            return mmSplitHeapBlock(node->ptr, n);
-        }
-    }
-
-    return NULL;
-#else
-    struct MmHeapBlock *b = MmHeapBlockHead; //start from head
-
-    //run down the list
-    while(b)
-    {
-        if(b->free) //is this block free?
-        {
-            if(b->size >= n) //is it big enough?
-                break;
-            
-            if(NULL == b->next) //if block is free and it is the last block, even if it's too small, it can be expanded
-            {
-                return mmAllocateHeapBlock(b, n - b->size, 1);
-            }
-        }
-        //this block is not free, look for the next block
-        
-        *previous = b; //store this block address
-        b = b->next; //get next block address
-    }
-    //there is either a block metadata returned when found or NULL when there is no available block or the list is empty
-    return mmSplitHeapBlock(b, n); //split block if it's too big
-#endif
-}
-
-static KeSpinlock heapAllocatorMutex = KeSpinlockInitializer;
-
-void *MmAllocateKernelHeap(uintptr_t n)
-{
-    if(n == 0)
-        return NULL;
-    
-    struct MmHeapBlock *block;
-
-    n = ALIGN_UP(n, MM_KERNEL_HEAP_ALIGNMENT);
-
-    KeAcquireSpinlock(&heapAllocatorMutex);
-    
-    if(NULL == MmHeapBlockHead) //first call, there was nothing allocated before
-    {
-        block = mmAllocateHeapBlock(NULL, n, false); //allocate new heap block
-        if(NULL == block)
-        {
-            KeReleaseSpinlock(&heapAllocatorMutex);
+            // this is the first block, but is not aligned correctly
+            // in such case, a new block must be allocated, so return here
             return NULL;
         }
-        
-        MmHeapBlockHead = block; //update head
     }
-    else //not the first call
+
+    uintptr_t alignedStart = ALIGN_UP((uintptr_t)block + META_SIZE, align);
+    uintptr_t padding = alignedStart - ((uintptr_t)block + META_SIZE);
+    uintptr_t remaining = block->size - padding;
+
+    if ((block->size - padding) < n)
+        return NULL;
+
+    struct MmHeapBlock original = *block;
+
+    if (0 != padding)
     {
-        struct MmHeapBlock *previous = MmHeapBlockHead;
+        // get new aligned block
+        block = (struct MmHeapBlock *)(alignedStart - META_SIZE);
+        *block = original;
+        if (NULL != block->next)
+            block->next->previous = block;
+        block->previous->next = block;
+        block->size -= padding;
 
-        block = mmFindPreallocatedHeapBlock(&previous, n); //look if there is any preallocated block available
-        if(block) //found free block?
-        {
-            block->free = false;
-        }
-        else //not found?
-        {
-            block = mmAllocateHeapBlock(previous, n, false);
-            if(NULL == block) //failure
-            {
-                KeReleaseSpinlock(&heapAllocatorMutex);
-                return NULL;
-            }
-        }
-
+        // resize previous block
+        block->previous->size += padding;
     }
-    KeReleaseSpinlock(&heapAllocatorMutex);
-    return (void*)((uintptr_t)block + META_SIZE);
-}
 
-void MmFreeKernelHeap(const void *ptr)
-{
-    if((uintptr_t)ptr < (MM_KERNEL_HEAP_START + META_SIZE) || ((uintptr_t)ptr > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - META_SIZE)))
-        return;
-
-    struct MmHeapBlock *block = (struct MmHeapBlock*)((uintptr_t)ptr - META_SIZE); //get block header
-
-    KeAcquireSpinlock(&heapAllocatorMutex);
-
-    block->free = true; //mark block as free
-
-    if((NULL != block->next) && (block->next->free))
+    if ((remaining - n) >= (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
     {
-#ifdef USE_AVL_TREES
-        MmAvlDelete(&MmFreeHeapBlockTree, &(block->next->avl));
-#endif
-        block->size += block->next->size + META_SIZE;
-        if(NULL != block->next->next)
-        {
-            block->next->next->previous = block;
-            block->next = block->next->next;
-        }
+        struct MmHeapBlock *newBlock = (struct MmHeapBlock *)((uintptr_t)block + META_SIZE + n);
+        newBlock->free = true;
+        newBlock->size = remaining - n - META_SIZE;
+        newBlock->previous = block;
+        newBlock->next = block->next;
+        if (NULL == newBlock->next)
+            MmHeapBlockTail = newBlock;
         else
-        {
-            MmHeapBlockTail = block;
-            block->next = NULL;
-        }
-    }
-    //at this point, the next block, if free, is concatenated with current block
-
-    if((NULL != block->previous) && (block->previous->free))
-    {
-#ifdef USE_AVL_TREES
-        MmAvlDelete(&MmFreeHeapBlockTree, &(block->previous->avl));
-#endif
-        block->previous->size += block->size + META_SIZE;
-        if(NULL != block->next)
-            block->next->previous = block->previous;
-        else
-            MmHeapBlockTail = block->previous;
-
-        block->previous->next = block->next;
-#ifdef USE_AVL_TREES
-            mmInsertFreeHeapBlock(block->previous);
-#endif
+            newBlock->next->previous = newBlock;
+        block->next = newBlock;
+        block->size = n;
     }
     else
     {
-#ifdef USE_AVL_TREES
-            mmInsertFreeHeapBlock(block);
-#endif
+        if (NULL != block->next)
+            MmHeapBlockTail = block;
+        block->size = remaining;
     }
 
-    KeReleaseSpinlock(&heapAllocatorMutex);
+    block->free = false;
+    return block;
+}
+
+static bool MmHeapExtendLastBlock(uintptr_t n)
+{
+    uintptr_t heapTop = (uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE;
+    uintptr_t bytesToAllocate = ALIGN_UP(n - MmHeapBlockTail->size, 4096);
+
+    if (bytesToAllocate > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - heapTop))
+        return false;
+
+    if (OK != MmAllocateMemory(heapTop, bytesToAllocate, 0))
+        return false;
+
+    MmHeapBlockTail->size += bytesToAllocate;
+    return true;
+}
+
+void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
+{
+    struct MmHeapBlock *ret;
+
+    n = ALIGN_UP(n, MM_KERNEL_HEAP_ALIGNMENT);
+
+    if (align < MM_KERNEL_HEAP_ALIGNMENT)
+        align = MM_KERNEL_HEAP_ALIGNMENT;
+
+    if (1 != __builtin_popcountll(align))
+        return NULL;
+
+    if (NULL != MmHeapBlockHead)
+    {
+        struct MmHeapBlock *block = MmHeapBlockHead;
+        while (block)
+        {
+            if (block->free)
+            {
+                if (block->size >= n)
+                {
+                    ret = MmSplitBlock(block, n, align);
+                    if (NULL != ret)
+                        return (void *)((uintptr_t)ret + META_SIZE);
+                }
+            }
+            block = block->next;
+        }
+
+        // no block of proper size found
+        if (MmHeapBlockTail->free)
+        {
+            uintptr_t padding = ALIGN_UP((uintptr_t)MmHeapBlockTail + META_SIZE, align) - ((uintptr_t)MmHeapBlockTail + META_SIZE);
+
+            if (MmHeapExtendLastBlock(n + padding))
+            {
+                ret = MmSplitBlock(MmHeapBlockTail, n, align);
+                if (NULL != ret)
+                    return (void *)((uintptr_t)ret + META_SIZE);
+            }
+        }
+    }
+
+    ret = MmHeapAllocateNewBlock(n, align);
+    if (NULL != ret)
+        return (void *)((uintptr_t)ret + META_SIZE);
+    else
+        return NULL;
+}
+
+void *MmAllocateKernelHeap(uintptr_t n)
+{
+    return MmAllocateKernelHeapAligned(n, MM_KERNEL_HEAP_ALIGNMENT);
 }
 
 void *MmAllocateKernelHeapZeroed(uintptr_t n)
 {
-    void *p = MmAllocateKernelHeap(n);
-    if(NULL != p)
-        CmMemset(p, 0, n);
-    return p;
+    void *ptr = MmAllocateKernelHeap(n);
+    if (NULL != ptr)
+        CmMemset(ptr, 0, n);
+
+    return ptr;
+}
+
+void MmFreeKernelHeap(const void *ptr)
+{
+    if(NULL == ptr)
+        return;
+        
+    struct MmHeapBlock *block = (struct MmHeapBlock *)((uintptr_t)ptr - META_SIZE);
+    block->free = true;
+
+    if ((NULL != block->next) && (block->next->free))
+    {
+        block->size += block->next->size + META_SIZE;
+        block->next = block->next->next;
+        if (NULL != block->next)
+        {
+            block->next->previous = block;
+        }
+        else
+        {
+            MmHeapBlockTail = block;
+        }
+    }
+
+    if ((NULL != block->previous) && (block->previous->free))
+    {
+        block->previous->size += block->size + META_SIZE;
+        block->previous->next = block->next;
+        if (NULL == block->next)
+        {
+            MmHeapBlockTail = block->previous;
+        }
+        else
+            block->next->previous = block->previous;
+    }
 }
 
 #if MM_KERNEL_HEAP_START & (MM_KERNEL_HEAP_ALIGNMENT - 1)
-    #error Kernel heap start address is not aligned
+#error Kernel heap start address is not aligned
 #endif
 
 #if (MM_KERNEL_HEAP_ALIGNMENT & 0x3) || (MM_KERNEL_HEAP_ALIGNMENT == 0)
-    #error Kernel heap must be aligned to a non-zero multiple of 8 bytes
+#error Kernel heap must be aligned to a non-zero multiple of 8 bytes
 #endif

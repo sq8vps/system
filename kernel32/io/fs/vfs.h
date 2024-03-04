@@ -7,10 +7,6 @@
 #include "ke/core/mutex.h"
 #include "fstypedefs.h"
 
-#define IO_VFS_MAX_LEVELS 256 //maximum directory levels in filesystem
-#define IO_VFS_MAX_FILE_NAME_LENGTH 1024 //maximum file name length
-#define IO_VFS_MAX_PATH_LENGTH (IO_VFS_MAX_LEVELS * (IO_VFS_MAX_FILE_NAME_LENGTH + 1)) //maximum path length
-
 /**
  * @brief VFS node types
 */
@@ -43,12 +39,13 @@ enum IoVfsFsType
 EXPORT
 union IoVfsReference
 {
-    void *pv;
-    char *pc;
+    void *p;
     uint64_t u64;
     int64_t i64;
     uint32_t u32;
     int32_t i32;
+    uint16_t u16;
+    int16_t i16;
     uint8_t u8;
     int8_t i8;
 };
@@ -58,6 +55,8 @@ union IoVfsReference
 */
 struct IoVfsNode
 {
+    uint32_t objectType; /**< Object type = OBJECT_VFS_NODE */
+
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
     IoVfsFlags flags; /**< Node flags */
@@ -74,8 +73,15 @@ struct IoVfsNode
     struct IoVfsNode *next; /**< Same level next node in linked list */
     struct IoVfsNode *previous; /**< Same level previous node in linked list */
 
-    char name[]; /**< Node name (flexible member) */
+    char name[]; /**< Node name, length can be obtained using \a IoVfsGetMaxFileNameLength() */
 };
+
+EXPORT
+/**
+ * @brief Get maximum file name length
+ * @return Maximum file name length, excluding terminator
+*/
+EXTERN uint32_t IoVfsGetMaxFileNameLength(void);
 
 /**
  * @brief Initialize Virtual File System and set up core entries

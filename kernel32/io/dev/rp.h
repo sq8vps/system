@@ -50,6 +50,8 @@ enum IoRpCode
 EXPORT
 struct IoRp
 {
+    uint32_t objectType;
+
     struct IoDeviceObject *device; /**< Target device for this request */
     struct IoVfsNode *vfsNode; /**< VFS node associated with this request */
     enum IoRpCode code; /**< Request code */
