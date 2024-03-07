@@ -132,6 +132,11 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
 {
     ASSERT(rootDeviceId);
     STATUS ret = OK;
+
+    ret = IoInitializeRpCache();
+    if(OK != ret)
+        return ret;
+
     struct ExDriverObjectList *drivers = NULL;
     uint16_t driverCount = 0;
     
@@ -227,10 +232,9 @@ STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compati
     *deviceId = NULL;
     *compatibleIds = NULL;
     STATUS status;
-    struct IoRp *rp;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_ID;
     rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
@@ -247,6 +251,7 @@ STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compati
             status = rp->status;
         }
     }
+    IoFreeRp(rp);
     return status;
 }
 
@@ -258,10 +263,9 @@ STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t s
 
     STATUS status = OK;
 
-    struct IoRp *rp;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
     
     rp->device = dev;
     rp->code = IO_RP_GET_CONFIG_SPACE;
@@ -278,7 +282,7 @@ STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t s
     else if(NULL != rp->payload.configSpace.buffer)
         MmFreeKernelHeap(rp->payload.configSpace.buffer);
 
-    MmFreeKernelHeap(rp);
+    IoFreeRp(rp);
 
     return status;
 }
@@ -289,10 +293,9 @@ STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t 
 
     STATUS status = OK;
 
-    struct IoRp *rp;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
     
     rp->device = dev;
     rp->code = IO_RP_SET_CONFIG_SPACE;
@@ -306,7 +309,7 @@ STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t 
         status = rp->status;
     }
 
-    MmFreeKernelHeap(rp);
+    IoFreeRp(rp);
     
     return status;
 }
@@ -319,10 +322,9 @@ STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource 
 
     STATUS status = OK;
 
-    struct IoRp *rp;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
     
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_RESOURCES;
@@ -335,7 +337,7 @@ STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource 
         *count = rp->payload.resource.count;
     }
 
-    MmFreeKernelHeap(rp);
+    IoFreeRp(rp);
     
     return status;    
 }
@@ -346,10 +348,9 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
 
     STATUS status = OK;
 
-    struct IoRp *rp;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
     
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_LOCATION;
@@ -362,7 +363,7 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
         *location = rp->payload.location.id;
     }
 
-    MmFreeKernelHeap(rp);
+    IoFreeRp(rp);
     
     return status;       
 }

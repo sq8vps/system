@@ -10,6 +10,14 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 /**
+ * @brief Allocate aligned memory on kernel heap
+ * @param n Count of bytes to allocate
+ * @param align Alignment in bytes, must be a power of 2
+ * @return Pointer to allocated memory or NULL on failure
+*/
+void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
+
+/**
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure

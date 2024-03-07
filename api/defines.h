@@ -110,6 +110,9 @@ typedef enum
     IO_VOLUME_ALREADY_MOUNTED,
     IO_DEVICE_INCOMPATIBLE,
 
+    OB_UNKOWN_OBJECT_TYPE = 0x00006000,
+    OB_OBJECT_TYPE_ALREADY_REGISTERED,
+
     MP_FLOATING_POINTER_TABLE_NOT_FOUND = 0x01000000,
     MP_CONFIGURATION_TABLE_NOT_FOUND,
     MP_CONFIGURATION_TABLE_BROKEN,
@@ -172,7 +175,7 @@ typedef char Utf8_t;
  * @param val Value to be aligned
  * @param align Alignment value
 */
-#define ALIGN_UP(val, align) (val + ((val & (align - 1)) ? (align - (val & (align - 1))) : 0))
+#define ALIGN_UP(val, align) ((val) + (((val) & ((align) - 1)) ? ((align) - ((val) & ((align) - 1))) : 0))
 
 /**
  * @brief Align value down

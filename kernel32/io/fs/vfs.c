@@ -7,7 +7,7 @@
 #include "devfs.h"
 
 #define IO_VFS_MAX_SYMLINK_DEPTH 40
-#define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 200
+#define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 127
 
 /**
  * @brief Filesystem root node

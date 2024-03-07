@@ -13,7 +13,7 @@ EXPORT
 
 EXPORT
 /**
- * @brief Acquire mutex when possible. Wait otherwise
+ * @brief Acquire mutex when possible. Wait otherwise (indefinitely).
 */
 #define KE_MUTEX_NORMAL 0xFFFFFFFFFFFFFFFF
 
@@ -41,7 +41,6 @@ EXPORT
 */
 typedef struct _KeMutex
 {
-    //WARNING! Keep queueTop, queueBottom and spinlock at the beginning of each semaphore-like structure
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
     KeSpinlock spinlock;
@@ -61,7 +60,6 @@ EXPORT
 */
 typedef struct _KeSemaphore
 {
-    //WARNING! Keep queueTop, queueBottom and spinlock at the beginning of each semaphore-like structure
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
     KeSpinlock spinlock;

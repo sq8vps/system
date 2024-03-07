@@ -35,18 +35,18 @@ static STATUS DiskFinalizeTransaction(struct IoRp *rp, void *context)
 
 static STATUS DiskPerformTransaction(struct IoRp *original)
 {
-    STATUS status;
-    struct IoRp *rp;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
-    rp->code = original->code;
-    rp->device = original->device->attachedTo;
-    //rp->payload.readWrite = original->payload.readWrite;
-    rp->size = original->size;
-    rp->completionCallback = DiskFinalizeTransaction;
-    rp->completionContext = original;
-    return IoSendRp(rp->device, rp);
+    // STATUS status;
+    // struct IoRp *rp;
+    // status = IoCreateRp(&rp);
+    // if(OK != status)
+    //     return status;
+    // rp->code = original->code;
+    // rp->device = original->device->attachedTo;
+    // //rp->payload.readWrite = original->payload.readWrite;
+    // rp->size = original->size;
+    // rp->completionCallback = DiskFinalizeTransaction;
+    // rp->completionContext = original;
+    // return IoSendRp(rp->device, rp);
 }
 
 STATUS DiskReadWrite(struct IoRp *rp)

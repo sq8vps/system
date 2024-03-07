@@ -26,6 +26,7 @@ enum IoSyslogMessageType
 */
 struct IoSyslogHandle
 {
+    uint32_t objectType;
     struct IoFileHandle *file;
     char *name;
 };

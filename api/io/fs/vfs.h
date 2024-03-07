@@ -14,15 +14,22 @@ extern "C"
 #include "fstypedefs.h"
 union IoVfsReference
 {
-    void *pv;
-    char *pc;
+    void *p;
     uint64_t u64;
     int64_t i64;
     uint32_t u32;
     int32_t i32;
+    uint16_t u16;
+    int16_t i16;
     uint8_t u8;
     int8_t i8;
 };
+
+/**
+ * @brief Get maximum file name length
+ * @return Maximum file name length, excluding terminator
+*/
+extern uint32_t IoVfsGetMaxFileNameLength(void);
 
 
 #ifdef __cplusplus

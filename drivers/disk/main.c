@@ -2,10 +2,6 @@
 #include "logging.h"
 #include "disk.h"
 
-static char driverName[] = "Generic disk driver";
-static char driverVendor[] = "Standard drivers";
-static char driverVersion[] = "1.0.0";
-
 static STATUS DiskDispatch(struct IoRp *rp)
 {
     if(IoGetCurrentRpPosition(rp) == rp->device)
@@ -61,9 +57,6 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
     driverObject->init = DiskInit;
     driverObject->dispatch = DiskDispatch;
     driverObject->addDevice = DiskAddDevice;
-    driverObject->name = driverName;
-    driverObject->vendor = driverVendor;
-    driverObject->version = driverVersion;
     DiskLoggingInit();
     return OK;
 }

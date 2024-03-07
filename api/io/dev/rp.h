@@ -10,7 +10,6 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "dev.h"
-#include "typedefs.h"
 #include "ke/core/mutex.h"
 #include "types.h"
 #include "hal/interrupt.h"
@@ -138,11 +137,22 @@ struct IoRpQueue
 };
 
 /**
- * @brief Create empty Request Packet
- * @param **rp Output Request Packet pointer (the memory is allocated by the function)
+ * @brief Initialize RP slab cache
  * @return Status code
 */
-extern STATUS IoCreateRp(struct IoRp **rp);
+INTERNAL STATUS IoInitializeRpCache(void);
+
+/**
+ * @brief Create empty Request Packet
+ * @return Created Request Packet pointer or NULL on failure
+*/
+extern struct IoRp *IoCreateRp(void);
+
+/**
+ * @brief Free Request Packet
+ * @param *rp Request Packet pointer obtained from \a IoCreateRp()
+*/
+extern void IoFreeRp(struct IoRp *rp);
 
 /**
  * @brief Create Request Packet queue

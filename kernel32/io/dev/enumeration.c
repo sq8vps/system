@@ -43,14 +43,14 @@ static void IoEnumeratorThread(void *unused)
                 if((IO_DEVICE_TYPE_BUS == t->node->mdo->type)
                     || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
                 {
-                    struct IoRp *rp;
-                    if(OK == IoCreateRp(&rp))
+                    struct IoRp *rp = IoCreateRp();
+                    if(NULL != rp)
                     {
                         rp->code = IO_RP_ENUMERATE;
                         rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
                         IoSendRp(t->node->mdo, rp);
                         
-                        MmFreeKernelHeap(rp);
+                        IoFreeRp(rp);
                     }
                 }
                 // if(t->device->type == IO_DEVICE_TYPE_DISK)

@@ -4,9 +4,6 @@
 #include "logging.h"
 #include "device.h"
 
-static char driverName[] = "Generic ACPI system driver";
-static char driverVendor[] = "Standard drivers";
-static char driverVersion[] = "1.0.0";
 
 static struct IoRpQueue *rpQueue = NULL;
 
@@ -64,9 +61,6 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
     driverObject->init = AcpiInit;
     driverObject->dispatch = AcpiDispatch;
     driverObject->addDevice = AcpiAddDevice;
-    driverObject->name = driverName;
-    driverObject->vendor = driverVendor;
-    driverObject->version = driverVersion;
     AcpiLoggingInit();
     return OK;
 }

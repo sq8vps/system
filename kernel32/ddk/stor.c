@@ -46,10 +46,9 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
     if(IO_DEVICE_TYPE_STORAGE != target->type)
         return IO_DEVICE_INCOMPATIBLE;
     
-    struct IoRp *rp = NULL;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-        return status;
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
     
     rp->code = IO_RP_STORAGE_CONTROL;
     rp->payload.deviceControl.code = STOR_GET_GEOMETRY;
@@ -60,6 +59,8 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
 
     if(OK == status)
         *geometry = rp->payload.deviceControl.data;
+    
+    IoFreeRp(rp);
     
     return status;
 }

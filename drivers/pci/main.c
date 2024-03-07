@@ -4,10 +4,6 @@
 #include "utils.h"
 #include "bridge.h"
 
-static char driverName[] = "Generic PCI bus driver";
-static char driverVendor[] = "Standard drivers";
-static char driverVersion[] = "1.0.0";
-
 static STATUS PciDispatch(struct IoRp *rp)
 {
     STATUS status;
@@ -77,9 +73,6 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
     driverObject->init = PciInit;
     driverObject->dispatch = PciDispatch;
     driverObject->addDevice = PciAddDevice;
-    driverObject->name = driverName;
-    driverObject->vendor = driverVendor;
-    driverObject->version = driverVersion;
     PciLoggingInit();
     return OK;
 }

@@ -50,8 +50,6 @@ enum IoRpCode
 EXPORT
 struct IoRp
 {
-    uint32_t objectType;
-
     struct IoDeviceObject *device; /**< Target device for this request */
     struct IoVfsNode *vfsNode; /**< VFS node associated with this request */
     enum IoRpCode code; /**< Request code */
@@ -140,11 +138,24 @@ struct IoRpQueue
 
 EXPORT
 /**
- * @brief Create empty Request Packet
- * @param **rp Output Request Packet pointer (the memory is allocated by the function)
+ * @brief Initialize RP slab cache
  * @return Status code
 */
-EXTERN STATUS IoCreateRp(struct IoRp **rp);
+INTERNAL STATUS IoInitializeRpCache(void);
+
+EXPORT
+/**
+ * @brief Create empty Request Packet
+ * @return Created Request Packet pointer or NULL on failure
+*/
+EXTERN struct IoRp *IoCreateRp(void);
+
+EXPORT
+/**
+ * @brief Free Request Packet
+ * @param *rp Request Packet pointer obtained from \a IoCreateRp()
+*/
+EXTERN void IoFreeRp(struct IoRp *rp);
 
 EXPORT
 /**

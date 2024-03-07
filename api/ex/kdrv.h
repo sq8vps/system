@@ -26,11 +26,6 @@ struct ExDriverObject
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
-    char *fileName;
-    char *name;
-    char *vendor;
-    char *version;
-    void *driverData;
     STATUS (*init)(struct ExDriverObject *driverObject);
     STATUS (*unload)(struct ExDriverObject *driverObject);
     STATUS (*dispatch)(struct IoRp *rp);

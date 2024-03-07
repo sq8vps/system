@@ -301,15 +301,6 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
 		goto loadKernelDriverFailure;
     }
 
-    object->fileName = MmAllocateKernelHeap(CmStrlen(CmGetFileName(path)) + 1);
-    if(NULL == object->fileName)
-    {
-        MmFreeMemory(object->address, object->size);
-        ret = OUT_OF_RESOURCES;
-		goto loadKernelDriverFailure;
-    }
-    CmStrcpy(object->fileName, CmGetFileName(path));
-
     *driverObject = object;
     
     KeReleaseMutex(&kernelDriverListMutex);

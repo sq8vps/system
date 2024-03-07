@@ -9,7 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "dev.h"
-#include "typedefs.h"
+#include "types.h"
 /**
  * @brief Maximum length of volume label
 */

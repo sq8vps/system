@@ -52,8 +52,8 @@ static void printPanic(uintptr_t ip, uintptr_t code)
     struct ExDriverObject *t = ExFindDriverByAddress(&addr);
     if(NULL != t)
     {
-        BootVgaPrintString(t->fileName);
-        BootVgaPrintString(", base at: ");
+        //BootVgaPrintString(t->fileName);
+        BootVgaPrintString("??, base at: ");
         printHex(addr);
     }
     else

@@ -10,8 +10,6 @@
 
 struct KeDpcObject
 {
-    uint32_t objectType;
-    
     //caller provided data
     enum KeDpcPriority priority; //DPC priority
     KeDpcCallback callback; //DPC entry point

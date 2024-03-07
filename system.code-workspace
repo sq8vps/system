@@ -1,24 +1,31 @@
 {
 	"folders": [
 		{
+			"name": "system",
 			"path": "."
 		},
 		{
+			"name": "kernel32",
 			"path": "kernel32"
 		},
 		{
+			"name": "ide",
 			"path": "drivers/ide"
 		},
 		{
+			"name": "acpi",
 			"path": "drivers/acpi"
 		},
 		{
+			"name": "pci",
 			"path": "drivers/pci"
 		},
 		{
+			"name": "disk",
 			"path": "drivers/disk"
 		},
 		{
+			"name": "partmgr",
 			"path": "drivers/partmgr"
 		}
 	],
@@ -62,7 +69,8 @@
 			"new": "c",
 			"rp.h": "c",
 			"bridge.h": "c",
-			"vfs.h": "c"
+			"vfs.h": "c",
+			"object.h": "c"
 		}
 	}
 }

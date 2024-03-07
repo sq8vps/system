@@ -55,8 +55,6 @@ union IoVfsReference
 */
 struct IoVfsNode
 {
-    uint32_t objectType; /**< Object type = OBJECT_VFS_NODE */
-
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
     IoVfsFlags flags; /**< Node flags */

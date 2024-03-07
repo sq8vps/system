@@ -137,7 +137,8 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
                 current->previous = NULL;
             }
             mutex->queueBottom = current;
-            current->timedExclusion.mutex = mutex;
+            current->semaphore = NULL;
+            current->mutex = mutex;
             KeReleaseSpinlock(&(mutex->spinlock));
             if(timeout < KE_MUTEX_NORMAL)
                 current->waitUntil = HalGetTimestamp() + timeout;
@@ -146,7 +147,7 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
             insertToList(current);
             KeTaskYield(); //suspend task and wait for an event
 
-            if(NULL != current->timedExclusion.mutex)
+            if(NULL != current->mutex)
                 return true;
             else
                 return false;
@@ -215,7 +216,8 @@ bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
                 current->previous = NULL;
             }
             sem->queueBottom = current;
-            current->timedExclusion.semaphore = sem;
+            current->semaphore = sem;
+            current->mutex = NULL;
             KeReleaseSpinlock(&(sem->spinlock));
             if(timeout < KE_MUTEX_NORMAL)
                 current->waitUntil = HalGetTimestamp() + timeout;
@@ -224,7 +226,7 @@ bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
             insertToList(current);
             KeTaskYield(); //suspend task and wait for an event
 
-            if(NULL != current->timedExclusion.semaphore)
+            if(NULL != current->semaphore)
             {
                 return true;
             }
@@ -278,19 +280,38 @@ void KeTimedExclusionRefresh(void)
             list = s->nextAux;
             s->nextAux = NULL;
             s->previousAux = NULL;
-            KeAcquireSpinlock(&(s->timedExclusion.mutex->spinlock));
-            if(s->previous)
-                s->previous->next = s->next;
-            else
-                s->timedExclusion.mutex->queueTop = s->next;
+            if(NULL != s->mutex)
+            {
+                KeAcquireSpinlock(&(s->mutex->spinlock));
+                if(s->previous)
+                    s->previous->next = s->next;
+                else
+                    s->mutex->queueTop = s->next;
 
-            if(s->next)
-                s->next->previous = s->previous;
-            else
-                s->timedExclusion.mutex->queueBottom = s->previous;
+                if(s->next)
+                    s->next->previous = s->previous;
+                else
+                    s->mutex->queueBottom = s->previous;
 
-            KeReleaseSpinlock(&(s->timedExclusion.mutex->spinlock));    
-            s->timedExclusion.mutex = NULL;
+                KeReleaseSpinlock(&(s->mutex->spinlock));
+            }
+            else
+            {
+                KeAcquireSpinlock(&(s->semaphore->spinlock));
+                if(s->previous)
+                    s->previous->next = s->next;
+                else
+                    s->semaphore->queueTop = s->next;
+
+                if(s->next)
+                    s->next->previous = s->previous;
+                else
+                    s->semaphore->queueBottom = s->previous;
+
+                KeReleaseSpinlock(&(s->semaphore->spinlock));
+            }
+            s->mutex = NULL;
+            s->semaphore = NULL;
             KeUnblockTask(s);
         }
         else

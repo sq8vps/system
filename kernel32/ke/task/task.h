@@ -64,8 +64,6 @@ EXPORT
 */
 struct KeTaskControlBlock
 {
-    uint32_t objectType;
-
     uintptr_t esp; //stack pointer
     uintptr_t esp0; //kernel stack pointer for privilege level change
     uintptr_t cr3; //task page directory address
@@ -105,11 +103,9 @@ struct KeTaskControlBlock
 
     uint64_t waitUntil; //terminal time of sleep or timeout when acquiring mutex
 
-    union
-    {
-        struct _KeMutex *mutex;
-        struct _KeSemaphore *semaphore;
-    } timedExclusion;
+
+    struct _KeMutex *mutex;
+    struct _KeSemaphore *semaphore;
     struct KeTaskControlBlock *nextAux;
     struct KeTaskControlBlock *previousAux;
     

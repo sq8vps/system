@@ -51,8 +51,6 @@ EXPORT
 */
 typedef struct IoFileHandle
 {
-    uint32_t objectType;
-
     bool free; /**< Does this entry represent free handle range? */
     union
     {

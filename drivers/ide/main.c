@@ -4,10 +4,6 @@
 #include "ata.h"
 #include "config.h"
 
-static char driverName[] = "Generic PCI IDE storage driver";
-static char driverVendor[] = "Standard drivers";
-static char driverVersion[] = "1.0.0";
-
 /**
  * @brief Request dispatch routine
 */
@@ -93,9 +89,6 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
     driverObject->init = IdeInit;
     driverObject->dispatch = IdeDispatch;
     driverObject->addDevice = IdeAddDevice;
-    driverObject->name = driverName;
-    driverObject->vendor = driverVendor;
-    driverObject->version = driverVersion;
     IdeLoggingInit();
     return OK;
 }

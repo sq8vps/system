@@ -101,11 +101,9 @@ struct KeTaskControlBlock
 
     uint64_t waitUntil; //terminal time of sleep or timeout when acquiring mutex
 
-    union
-    {
-        struct _KeMutex *mutex;
-        struct _KeSemaphore *semaphore;
-    } timedExclusion;
+
+    struct _KeMutex *mutex;
+    struct _KeSemaphore *semaphore;
     struct KeTaskControlBlock *nextAux;
     struct KeTaskControlBlock *previousAux;
     

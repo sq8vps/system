@@ -4,15 +4,33 @@
 #include "common.h"
 #include "ke/core/panic.h"
 #include "ke/sched/sched.h"
+#include "mm/slab.h"
 
-STATUS IoCreateRp(struct IoRp **rp)
+#define IO_RP_CACHE_CHUNK_PER_SLAB 64
+static void *IoRpSlabCache = NULL;
+
+STATUS IoInitializeRpCache(void)
 {
-    *rp = MmAllocateKernelHeap(sizeof(**rp));
-    if(NULL == (*rp))
+    IoRpSlabCache = MmSlabCreate(sizeof(struct IoRp), IO_RP_CACHE_CHUNK_PER_SLAB);
+    if(NULL == IoRpSlabCache)
         return OUT_OF_RESOURCES;
     
-    CmMemset(*rp, 0, sizeof(**rp));
     return OK;
+}
+
+struct IoRp *IoCreateRp(void)
+{
+    struct IoRp *rp = MmSlabAllocate(IoRpSlabCache);
+    if(NULL == rp)
+        return NULL;
+    
+    CmMemset(rp, 0, sizeof(*rp));
+    return rp;
+}
+
+void IoFreeRp(struct IoRp *rp)
+{
+    MmSlabFree(IoRpSlabCache, rp);
 }
 
 STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)

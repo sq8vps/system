@@ -16,7 +16,7 @@ extern "C"
 #define KE_MUTEX_NO_WAIT 0
 
 /**
- * @brief Acquire mutex when possible. Wait otherwise
+ * @brief Acquire mutex when possible. Wait otherwise (indefinitely).
 */
 #define KE_MUTEX_NORMAL 0xFFFFFFFFFFFFFFFF
 
@@ -41,7 +41,6 @@ typedef struct _KeSpinlock
 */
 typedef struct _KeMutex
 {
-    //WARNING! Keep queueTop, queueBottom and spinlock at the beginning of each semaphore-like structure
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
     KeSpinlock spinlock;
@@ -59,7 +58,6 @@ typedef struct _KeMutex
 */
 typedef struct _KeSemaphore
 {
-    //WARNING! Keep queueTop, queueBottom and spinlock at the beginning of each semaphore-like structure
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
     KeSpinlock spinlock;

@@ -254,15 +254,6 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
         }
     }
 
-    struct IoRp *rp = NULL;
-    status = IoCreateRp(&rp);
-    if(OK != status)
-    {
-        LOG(SYSLOG_ERROR, "Creating RP failed with status 0x%X", status);
-        MmFreeKernelHeap(hdr);
-        return status;
-    }
-
     struct IoDeviceResource *resource;
     uint32_t resourceCount;
     status = IoGetDeviceResources(bdo, &resource, &resourceCount);
@@ -270,7 +261,6 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
     {
         LOG(SYSLOG_ERROR, "Getting bus configuration failed with status 0x%X", status);
         MmFreeKernelHeap(hdr);
-        MmFreeKernelHeap(rp);
         return status;
     }
 
@@ -318,7 +308,6 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
     {
         LOG(SYSLOG_ERROR, "Setting up IRQ failed with status 0x%X", status);
         MmFreeKernelHeap(hdr);
-        MmFreeKernelHeap(rp);
         return status;        
     }
 
@@ -328,7 +317,6 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
         HalDisableIrq(irqInput, IdeIsr);
         HalUnregisterIrq(irqInput, IdeIsr);
         MmFreeKernelHeap(hdr);
-        MmFreeKernelHeap(rp);
         return status;           
     }
 
@@ -338,11 +326,9 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
         HalDisableIrq(irqInput, IdeIsr);
         HalUnregisterIrq(irqInput, IdeIsr);
         MmFreeKernelHeap(hdr);
-        MmFreeKernelHeap(rp);
         return status;           
     }
 
-    MmFreeKernelHeap(rp);
     MmFreeKernelHeap(hdr);
 
     info->initialized = true;
