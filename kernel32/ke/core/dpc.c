@@ -27,8 +27,8 @@ static KeSpinlock flagMutex = KeSpinlockInitializer;
 
 STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context)
 {
-    if(HalGetProcessorPriority() == HAL_TASK_PRIORITY_PASSIVE)
-        KePanicEx(PRIORITY_LEVEL_TOO_LOW, HalGetProcessorPriority(), HAL_TASK_PRIORITY_PASSIVE + 1, 0, 0);
+    if(HalGetProcessorPriority() < HAL_TASK_PRIORITY_DPC)
+        KePanicIPEx(KE_CALLER_ADDRESS(), PRIORITY_LEVEL_TOO_LOW, HalGetProcessorPriority(), HAL_TASK_PRIORITY_DPC, 0, 0);
 
     uint8_t queueIndex = 0;
     switch(priority)
@@ -73,7 +73,6 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     KeAcquireSpinlock(&flagMutex);
     if(false == isProcessingOngoing)
         isPending = true;
-    HalSetTaskPriority(HAL_TASK_PRIORITY_DPC);
     KeReleaseSpinlock(&flagMutex);
     return OK;
 }
@@ -81,6 +80,7 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
 static void KeDpcProcess(void)
 {
     KeAcquireSpinlock(&flagMutex);
+    uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_DPC);
     isProcessingOngoing = true;
     isPending = false;
     KeReleaseSpinlock(&flagMutex);
@@ -102,14 +102,14 @@ static void KeDpcProcess(void)
     }
     KeAcquireSpinlock(&flagMutex);
     isProcessingOngoing = false;
-    HalSetTaskPriority(HAL_TASK_PRIORITY_PASSIVE);
+    HalLowerTaskPriority(lastPrio);
     KeReleaseSpinlock(&flagMutex);
 }
 
 void KeProcessDpcQueue(void)
 {
     KeAcquireSpinlock(&flagMutex);
-    if(isPending && (HalGetProcessorPriority() == HAL_TASK_PRIORITY_DPC))
+    if(isPending && (HalGetProcessorPriority() <= HAL_TASK_PRIORITY_DPC))
     {
         KeReleaseSpinlock(&flagMutex);
         KeDpcProcess();

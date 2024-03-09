@@ -70,7 +70,8 @@
 			"rp.h": "c",
 			"bridge.h": "c",
 			"vfs.h": "c",
-			"object.h": "c"
+			"object.h": "c",
+			"mbr.h": "c"
 		}
 	}
 }

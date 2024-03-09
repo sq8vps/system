@@ -16,16 +16,6 @@ struct IoEnumerationQueue
 static struct IoEnumerationQueue *IoEnumerationQueueHead = NULL;
 static KeSpinlock IoEnumerationQueueMutex = KeSpinlockInitializer;
 
-#include "mm/palloc.h"
-#include "mm/mmio.h"
-#include "io/dev/types.h"
-#include "common.h"
-STATUS cb(struct IoRp *rp, void *context)
-{
-    PRINT("JEST %X!!\n", ((uint8_t*)(((struct IoMemoryDescriptor*)context)->mapped))[511]);
-    return OK;
-}
-
 static void IoEnumeratorThread(void *unused)
 {
     while(1)
@@ -61,7 +51,7 @@ static void IoEnumeratorThread(void *unused)
                 //     rp->code = IO_RP_READ;
                 //     rp->flags = 0;
                 //     rp->completionCallback = cb;
-                //     struct IoMemoryDescriptor *mem;
+                //     struct MmMemoryDescriptor *mem;
                 //     mem = MmAllocateKernelHeap(sizeof(*mem));
                 //     mem->next = NULL;
                 //     MmAllocateContiguousPhysicalMemory(1024, &mem->physical, 2);

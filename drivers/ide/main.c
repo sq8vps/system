@@ -32,11 +32,15 @@ static STATUS IdeDispatch(struct IoRp *rp)
             if(!((struct IdeDeviceData*)dev->privateData)->isController)
             {
                 struct IdeDriveData *info = &(((struct IdeDeviceData*)dev->privateData)->drive);
+                IoMarkRpPending(rp);
                 return IoStartRp(info->controller->channel[info->channel].queue, rp, NULL);
             }
             break;
         case IO_RP_GET_DEVICE_ID:
             IdeGetDeviceId(rp);
+            break;
+        case IO_RP_STORAGE_CONTROL:
+            IdeStorageControl(rp);
             break;
         default:
             rp->status = IO_RP_PROCESSING_FAILED;

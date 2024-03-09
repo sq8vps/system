@@ -21,6 +21,58 @@
  * @{
 */
 
+EXPORT
+/**
+ * @brief A descriptor for physical memory region
+*/
+struct MmMemoryDescriptor
+{
+    uintptr_t physical;
+    void *mapped;
+    uint64_t size;
+
+    struct MmMemoryDescriptor *next;
+};
+
+/**
+ * @brief Initialize Memory Description cache allocator
+*/
+INTERNAL STATUS MmInitializeMemoryDescriptorAllocator(void);
+
+EXPORT
+/**
+ * @brief Allocate Memory Descriptor from cached pool
+ * @return Memory Descriptor pointer or NULL on failure
+*/
+EXTERN struct MmMemoryDescriptor* MmAllocateMemoryDescriptor(void);
+
+EXPORT
+/**
+ * @brief Free previously allocated Memory Descriptor
+ * @param *descriptor Memory descriptor allocated with \a MmAllocateMemoryDescriptor()
+ * @note This function is NULL safe
+*/
+EXTERN void MmFreeMemoryDescriptor(struct MmMemoryDescriptor *descriptor);
+
+EXPORT
+/**
+ * @brief Build Memory Descriptor list for provided virtual memory
+ * @param *memory Memory pointer
+ * @param size Memory size
+ * @return Memory Descriptor list pointer or NULL on failure
+ * @warning This function returns NULL if size is zero
+*/
+EXTERN struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t size);
+
+EXPORT
+/**
+ * @brief Free Memory Descriptor list
+ * @param *descriptor First descriptor, i.e, the list obtained from \a MmBuildMemoryDescriptorList()
+ * @note This function is NULL safe
+*/
+EXTERN void MmFreeMemoryDescriptorList(struct MmMemoryDescriptor *list);
+
+EXPORT
 /**
  * @brief Allocate and map memory
  * @param address Address to map the memory to
@@ -28,15 +80,16 @@
  * @param flags Page flags
  * @return Error code
 */
-STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags);
+EXTERN STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags);
 
+EXPORT
 /**
  * @brief Unmap and free  memory
  * @param address Address to unmap and free
  * @param size Memory size in bytes
  * @return Error code
 */
-STATUS MmFreeMemory(uintptr_t address, uintptr_t size);
+EXTERN STATUS MmFreeMemory(uintptr_t address, uintptr_t size);
 
 /**
  * @}

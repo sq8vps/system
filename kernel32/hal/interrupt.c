@@ -423,9 +423,25 @@ enum HalInterruptMethod HalGetInterruptHandlingMethod(void)
     return interruptMethod;
 }
 
-STATUS HalSetTaskPriority(uint8_t priority)
+uint8_t HalRaiseTaskPriority(uint8_t prio)
 {
-    return ApicSetTaskPriority(priority);
+    if(prio > HAL_TASK_PRIORITY_EXCLUSIVE)
+        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
+    uint8_t old = ApicGetTaskPriority();
+    if(prio < old)
+        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
+    ApicSetTaskPriority(prio);
+    return old;
+}
+
+void HalLowerTaskPriority(uint8_t prio)
+{
+    if(prio > HAL_TASK_PRIORITY_EXCLUSIVE)
+        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
+    uint8_t old = ApicGetTaskPriority();
+    if(prio > old)
+        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
+    ApicSetTaskPriority(prio);
 }
 
 uint8_t HalGetTaskPriority(void)

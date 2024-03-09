@@ -175,14 +175,6 @@ EXPORT
 #define PCI_HEADER_STATUS_SIGNALED_SYSTEM_ERROR 0x4000
 #define PCI_HEADER_STATUS_DETECTED_PARITY_ERROR 0x8000
 
-EXPORT
-struct IoMemoryDescriptor
-{
-    uintptr_t physical;
-    void *mapped;
-    uint64_t size;
 
-    struct IoMemoryDescriptor *next;
-};
 
 #endif

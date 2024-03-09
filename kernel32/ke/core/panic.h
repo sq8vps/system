@@ -20,6 +20,8 @@
  * @{
 */
 
+#define KE_CALLER_ADDRESS() (uintptr_t)__builtin_extract_return_addr(__builtin_return_address(0))
+
 EXPORT
 /**
  * @brief Main kernel panic error codes
@@ -42,6 +44,8 @@ enum KernelPanicCode
     PRIORITY_LEVEL_TOO_LOW,
     PRIORITY_LEVEL_TOO_HIGH,
     RP_FINALIZED_OUT_OF_LINE,
+    ILLEGAL_PRIORITY_LEVEL_CHANGE,
+    ILLEGAL_PRIORITY_LEVEL,
 };
 
 EXPORT

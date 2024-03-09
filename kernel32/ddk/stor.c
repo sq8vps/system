@@ -40,7 +40,7 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
 {
     STATUS status = OK;
 
-    if(!target || geometry)
+    if(!target || !geometry)
         return NULL_POINTER_GIVEN;
     
     if(IO_DEVICE_TYPE_STORAGE != target->type)

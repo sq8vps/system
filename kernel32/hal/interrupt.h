@@ -229,27 +229,41 @@ EXPORT
 */
 EXTERN enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
 
+EXPORT
 #define HAL_TASK_PRIORITY_PASSIVE 0
 #define HAL_TASK_PRIORITY_DPC 2
+#define HAL_TASK_PRIORITY_EXCLUSIVE 15
 
+EXPORT
 /**
- * @brief Set current task priority
- * @param priority New task priority (0-15)
- * @return Status code
+ * @brief Raise current task priority level
+ * @param prio New priority level
+ * @return Previous task priority level
+ * @warning If new priority level is lower than current priority level, a kernel panic occurs
 */
-INTERNAL STATUS HalSetTaskPriority(uint8_t priority);
+EXTERN uint8_t HalRaiseTaskPriority(uint8_t prio);
 
+EXPORT
+/**
+ * @brief Lower current task priority level
+ * @param prio Priority level returned from \a HalRaiseTaskPriority()
+ * @warning If the provided priority level is higher than current priority level, a kernel panic occurs
+*/
+EXTERN void HalLowerTaskPriority(uint8_t prio);
+
+EXPORT
 /**
  * @brief Get current task priority
  * @return Current task priority (0-15)
 */
-INTERNAL uint8_t HalGetTaskPriority(void);
+EXTERN uint8_t HalGetTaskPriority(void);
 
+EXPORT
 /**
  * @brief Get current processor priority
  * @return Current processor priority (0-15)
 */
-INTERNAL uint8_t HalGetProcessorPriority(void);
+EXTERN uint8_t HalGetProcessorPriority(void);
 
 /**
  * @}

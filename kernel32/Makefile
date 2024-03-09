@@ -4,7 +4,7 @@ LNK = i686-elf-gcc
 AR = i686-elf-ar
 ASM = nasm
 CC_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -Wall
-ASM_FLAGS = -f elf32 -D DEBUG
+ASM_FLAGS = -f elf32 -D DEBUG -g -F dwarf
 LNK_FLAGS = -g -nostdlib -T kernel.ld -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc
 

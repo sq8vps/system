@@ -156,6 +156,37 @@ extern STATUS HalClearInterruptFlag(uint32_t input);
 */
 extern enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
 
+#define HAL_TASK_PRIORITY_PASSIVE 0
+#define HAL_TASK_PRIORITY_DPC 2
+#define HAL_TASK_PRIORITY_EXCLUSIVE 15
+
+/**
+ * @brief Raise current task priority level
+ * @param prio New priority level
+ * @return Previous task priority level
+ * @warning If new priority level is lower than current priority level, a kernel panic occurs
+*/
+extern uint8_t HalRaiseTaskPriority(uint8_t prio);
+
+/**
+ * @brief Lower current task priority level
+ * @param prio Priority level returned from \a HalRaiseTaskPriority()
+ * @warning If the provided priority level is higher than current priority level, a kernel panic occurs
+*/
+extern void HalLowerTaskPriority(uint8_t prio);
+
+/**
+ * @brief Get current task priority
+ * @return Current task priority (0-15)
+*/
+extern uint8_t HalGetTaskPriority(void);
+
+/**
+ * @brief Get current processor priority
+ * @return Current processor priority (0-15)
+*/
+extern uint8_t HalGetProcessorPriority(void);
+
 
 #ifdef __cplusplus
 }

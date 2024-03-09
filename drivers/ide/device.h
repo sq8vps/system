@@ -5,6 +5,7 @@
 #include "io/dev/dev.h"
 #include "io/dev/rp.h"
 #include "ke/core/mutex.h"
+#include "mm/mm.h"
 #include <stdbool.h>
 
 struct IdeDriverData
@@ -98,7 +99,7 @@ struct IdeControllerData
 
         //buffer and PRD table
         struct IdePrdTable prdt;
-        struct IoMemoryDescriptor *buffer;
+        struct MmMemoryDescriptor *buffer;
 
         struct IoRpQueue *queue;
         struct IoRp *rp;
@@ -112,7 +113,7 @@ struct IdeControllerData
             uint64_t size;
             uint64_t remaining;
             uint8_t retries;
-            struct IoMemoryDescriptor memory;
+            struct MmMemoryDescriptor memory;
         } operation;
 
         KeSpinlock lock;
@@ -166,8 +167,15 @@ STATUS IdeIsr(void *context);
  * @return Status code
  * @attention This function returns fast. The operation is always asynchronous.
 */
-STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct IoMemoryDescriptor *buffer);
+STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct MmMemoryDescriptor *buffer);
 
 STATUS IdeGetDeviceId(struct IoRp *rp);
+
+/**
+ * @brief Process \a IO_RP_STORAGE_CONTROL request
+ * @param *rp Request Packet
+ * @return Status code
+*/
+STATUS IdeStorageControl(struct IoRp *rp);
 
 #endif

@@ -93,14 +93,16 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     {
         if((NULL == rp->queue->head) || (rp->queue->head != rp))
         {
-            KePanicIPEx((uintptr_t)__builtin_extract_return_addr(__builtin_return_address(0)), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
+            KePanicIPEx(KE_CALLER_ADDRESS(), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
             //no return
         }
         if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
         {
-            rp->completed = true;
-            if(NULL != rp->task)
+            uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+            if((NULL != rp->task) && rp->pending)
                 KeUnblockTask(rp->task);
+            rp->pending = false;
+            HalLowerTaskPriority(lastPrio);
         }
         else if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
@@ -122,13 +124,14 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     {
         if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
         {
-            rp->completed = true;
-            if(NULL != rp->task)
+            uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+            rp->pending = false;
+            if((NULL != rp->task) && rp->pending)
                 KeUnblockTask(rp->task);
+            HalLowerTaskPriority(lastPrio);
         }
         else if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
-        rp->completed = true;
     }
     return OK;
 }
@@ -168,4 +171,10 @@ struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp)
 {
     ASSERT(rp);
     return rp->device;
+}
+
+void IoMarkRpPending(struct IoRp *rp)
+{
+    ASSERT(rp);
+    rp->pending = true;
 }

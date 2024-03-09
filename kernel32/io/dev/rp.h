@@ -58,7 +58,7 @@ struct IoRp
     void *userBuffer; /**< User buffer in user space */
     uint64_t size; /**< Request data size */
     STATUS status; /**< Request status */
-    bool completed; /**< Completion flag */
+    bool pending; /**< Pending flag */
     struct KeTaskControlBlock *task; /**< Associated task */
     union
     {
@@ -92,7 +92,7 @@ struct IoRp
         struct 
         {
             uint64_t offset;
-            struct IoMemoryDescriptor *memory;
+            struct MmMemoryDescriptor *memory;
             void *systemBuffer;
         } read, write;
 
@@ -201,5 +201,16 @@ EXPORT
  * @return Current subdevice object
 */
 EXTERN struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
+
+EXPORT
+/**
+ * @brief Mark Request Packet as pending
+ * 
+ * This routine marks RP as pending in case when the driver is not able to finalize RP immediately,
+ * e.g. when it needs to wait for an IRQ. In such case, the driver should mark the RP as pending and return
+ * from the RP dispatch routine. The driver should not call this routine when passing RP to another driver.
+ * @param *rp Request Packet
+*/
+void IoMarkRpPending(struct IoRp *rp);
 
 #endif

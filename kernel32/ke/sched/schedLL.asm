@@ -115,8 +115,6 @@ KePerformTaskSwitch:
     mov eax,[nextTask]
     test eax,0xFFFFFFFF
     jz .returnFromSwitch
-    
-    cli
 
     sub esp,12 ;make room for EIP, CS and EFLAGS
 

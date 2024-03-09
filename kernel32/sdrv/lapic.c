@@ -266,7 +266,7 @@ void ApicStartSystemTimer(uint64_t time)
         counter += ((uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET));
         LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = time * frequency / (uint64_t)1000000;
     }
-    LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_LOCAL_MASK;
+    LAPIC(LAPIC_LVT_TIMER_OFFSET) &= ~LAPIC_LOCAL_MASK;
 }
 
 uint64_t ApicGetTimestamp(void)

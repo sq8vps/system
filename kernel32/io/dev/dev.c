@@ -191,23 +191,27 @@ STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
         return DEVICE_NOT_AVAILABLE;
 
     if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-    {
         rp->task = KeGetCurrentTask();
-        KeBlockTask(rp->task, TASK_BLOCK_IO);
-    }
 
     rp->device = dev;
     STATUS status = dev->driverObject->dispatch(rp);
     if(OK != status)
     {
-        //TODO: this is really not elegant
-        if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-            KeUnblockTask(rp->task);
         return status;
     }
-
+    
     if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-        KeTaskYield();
+    {
+        uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+        if(rp->pending)
+        {
+            KeBlockTask(rp->task, TASK_BLOCK_IO);
+            HalLowerTaskPriority(lastPrio);
+            KeTaskYield();
+        }
+        else
+            HalLowerTaskPriority(lastPrio);
+    }
 
     return OK;
 }

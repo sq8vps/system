@@ -18,6 +18,7 @@
  * @{
 */
 
+
 #define MAX_CPU_COUNT 64
 #define MAX_IOAPIC_COUNT 4
 

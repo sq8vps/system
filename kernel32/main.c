@@ -77,6 +77,7 @@ NORETURN static void KeInit(void)
 	MmGdtApplyFlat();
 	MmInitPhysicalAllocator(&kernelArgs);
 	MmInitVirtualAllocator();
+	MmInitializeMemoryDescriptorAllocator();
 	MmInitDynamicMemory(&kernelArgs);
 	//boot VGA driver can be initialized when dynamic memory allocator is available
 	if(OK != BootVgaInit())

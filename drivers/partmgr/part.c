@@ -56,7 +56,7 @@ STATUS PartmgrInitialize(struct PartmgrDriveData *info)
         return status;
     }
 
-    struct IoMemoryDescriptor *mem = MmAllocateKernelHeap(sizeof(*mem));
+    struct MmMemoryDescriptor *mem = MmAllocateKernelHeap(sizeof(*mem));
     if(NULL == mem)
     {
         MmFreePhysicalMemory(addr, size);

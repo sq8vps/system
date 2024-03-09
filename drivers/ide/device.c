@@ -64,7 +64,7 @@ STATUS IdeCreateDriveDevice(struct IdeDeviceData *deviceData, struct IoDeviceObj
     STATUS status;
     
     struct IoDeviceObject *dev;
-    if(OK != (status = IoCreateDevice(driver, IO_DEVICE_TYPE_DISK, IO_DEVICE_FLAG_DIRECT_IO, &dev)))
+    if(OK != (status = IoCreateDevice(driver, IO_DEVICE_TYPE_STORAGE, IO_DEVICE_FLAG_DIRECT_IO, &dev)))
     {
         return status;
     }
@@ -101,7 +101,7 @@ STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct IoDeviceO
     return OK;
 }
 
-static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t lba, uint64_t size, struct IoMemoryDescriptor *buffer)
+static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t lba, uint64_t size, struct MmMemoryDescriptor *buffer)
 {
     KeAcquireSpinlock(&(info->controller->channel[info->channel].lock));
     //clear Physical Region Descriptors
@@ -196,7 +196,7 @@ IdeStartReadWriteContinue:
     return OK;
 }
 
-STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct IoMemoryDescriptor *buffer)
+STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint64_t size, struct MmMemoryDescriptor *buffer)
 {
     //verify request
     if(!info->present || !info->usable)
@@ -211,7 +211,7 @@ STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint
     uint64_t availableMemory = 0;
     if(NULL != buffer)
     {
-        struct IoMemoryDescriptor *t = buffer;
+        struct MmMemoryDescriptor *t = buffer;
         while(t)
         {
             //block size must be a multiple of sector size and must be word aligned
@@ -343,4 +343,41 @@ STATUS IdeGetDeviceId(struct IoRp *rp)
 _IdeGetDeviceIdLeave:
     IoFinalizeRp(rp);
     return OK;
+}
+
+STATUS IdeStorageControl(struct IoRp *rp)
+{
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+
+    struct IdeDeviceData *t = dev->privateData;
+
+    switch(rp->payload.deviceControl.code)
+    {
+        case STOR_GET_GEOMETRY:
+            if(t->isController)
+            {
+                rp->status = IO_RP_PROCESSING_FAILED;
+                break;
+            }
+            struct IdeDriveData *info = &(t->drive);
+            rp->payload.deviceControl.data = MmAllocateKernelHeapZeroed(sizeof(struct StorGeometry));
+            if(NULL == rp->payload.deviceControl.data)
+            {
+                rp->status = OUT_OF_RESOURCES;
+                break;
+            }
+            struct StorGeometry *geo = rp->payload.deviceControl.data;
+            geo->sectorSize = info->sectorSize;
+            geo->sectorCount = info->sectors;
+            geo->firstAddressableSector = 0;
+            rp->status = OK;
+            break;
+        
+        default:
+            rp->status = IO_RP_CODE_UNKNOWN;
+            break;
+    }
+ 
+    IoFinalizeRp(rp);
+    return OK;    
 }
