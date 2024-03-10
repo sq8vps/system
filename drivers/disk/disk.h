@@ -18,7 +18,7 @@ struct DiskData
     uint8_t isPartition0 : 1; //this object is for partition 0 (flat disk)
     uint8_t isGpt : 1; //is this disk partitioned using GPT scheme
     uint8_t isMbr : 1; //is this disk partitioned using MBR scheme
-    struct IoDeviceData *part0device;
+    struct IoDeviceObject *part0device;
     struct Mbr *mbr;
     struct Gpt *gpt;
     struct

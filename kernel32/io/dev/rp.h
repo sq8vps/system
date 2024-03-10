@@ -211,6 +211,17 @@ EXPORT
  * from the RP dispatch routine. The driver should not call this routine when passing RP to another driver.
  * @param *rp Request Packet
 */
-void IoMarkRpPending(struct IoRp *rp);
+EXTERN void IoMarkRpPending(struct IoRp *rp);
+
+EXPORT
+/**
+ * @brief Wait for RP completion
+ * 
+ * This function blocks calling task and waits for RP completion.
+ * This function returns when the driver calls \a IoFinalizeRp().
+ * @param *rp Request Packet
+ * @warning This function must not be called when \a IoSendRp() was not successful.
+*/
+EXTERN void IoWaitForRpCompletion(struct IoRp *rp);
 
 #endif

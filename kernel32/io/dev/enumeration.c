@@ -18,6 +18,7 @@ static KeSpinlock IoEnumerationQueueMutex = KeSpinlockInitializer;
 
 static void IoEnumeratorThread(void *unused)
 {
+    STATUS status;
     while(1)
     {
         KeAcquireSpinlock(&IoEnumerationQueueMutex);
@@ -37,8 +38,17 @@ static void IoEnumeratorThread(void *unused)
                     if(NULL != rp)
                     {
                         rp->code = IO_RP_ENUMERATE;
-                        rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
-                        IoSendRp(t->node->mdo, rp);
+                        status = IoSendRp(t->node->mdo, rp);
+                        if(OK == status)
+                        {
+                            IoWaitForRpCompletion(rp);
+                            status = rp->status;
+                        }
+
+                        if(OK != status)
+                        {
+                            t->node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+                        }
                         
                         IoFreeRp(rp);
                     }

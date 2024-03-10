@@ -18,6 +18,12 @@ static STATUS DiskDispatch(struct IoRp *rp)
             case IO_RP_WRITE:
                 return DiskReadWrite(rp);
                 break;
+            case IO_RP_GET_DEVICE_ID:
+                if(info->isMdo) //is MDO of a partition 0, call BDO to get ID
+                    return IoSendRpDown(rp);
+                else //is BDO of partition x, call partition 0 MDO
+                    return IoSendRp(info->part0device, rp);
+                break;
             default:
                 rp->status = IO_RP_CODE_UNKNOWN;
                 IoFinalizeRp(rp);
@@ -46,7 +52,10 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         return status;
     
     if(NULL == (device->privateData = MmAllocateKernelHeapZeroed(sizeof(struct DiskData))))
+    {
+        IoDestroyDevice(device);
         return OUT_OF_RESOURCES;
+    }
 
     struct DiskData *info = device->privateData;
     info->isMdo = 1; //we definitely are a MDO
@@ -72,23 +81,28 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         if(OK != status)
         {
             MmFreeKernelHeap(device->privateData);
+            IoDestroyDevice(device);
             return status;
         }
         info->partition.start = geo->firstAddressableSector;
         info->partition.size = geo->sectorCount;
         info->partition.sectorSize = geo->sectorSize;
         MmFreeKernelHeap(geo);
-        status = DiskInitializeVolume(baseDeviceObject, info);
-        if(OK != status)
-            return status;
+
     }
     else //incorrect scenario
     {
         MmFreeKernelHeap(device->privateData);
+        IoDestroyDevice(device);
         return DEVICE_NOT_AVAILABLE;
     }
         
     IoAttachDevice(device, baseDeviceObject);
+
+    if(info->isPartition0)
+    {
+        DiskInitializeVolume(baseDeviceObject, device, info);
+    }
 
     return OK;
 }

@@ -30,6 +30,15 @@ STATUS IoCreateDevice(
     return OK;
 }
 
+STATUS IoDestroyDevice(struct IoDeviceObject *device)
+{
+    if(device->attachedTo || device->attachedDevice || device->node || (device->flags & IO_DEVICE_FLAG_PERSISTENT))
+        return OPERATION_NOT_ALLOWED;
+    
+    MmFreeKernelHeap(device);
+    return OK;
+}
+
 
 struct IoDeviceObject* IoAttachDevice(struct IoDeviceObject *attachee, struct IoDeviceObject *destination)
 {
@@ -190,30 +199,9 @@ STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
     if(NULL == dev->driverObject->dispatch)
         return DEVICE_NOT_AVAILABLE;
 
-    if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-        rp->task = KeGetCurrentTask();
-
+    rp->task = KeGetCurrentTask();
     rp->device = dev;
-    STATUS status = dev->driverObject->dispatch(rp);
-    if(OK != status)
-    {
-        return status;
-    }
-    
-    if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-    {
-        uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
-        if(rp->pending)
-        {
-            KeBlockTask(rp->task, TASK_BLOCK_IO);
-            HalLowerTaskPriority(lastPrio);
-            KeTaskYield();
-        }
-        else
-            HalLowerTaskPriority(lastPrio);
-    }
-
-    return OK;
+    return dev->driverObject->dispatch(rp);
 }
 
 STATUS IoSendRpDown(struct IoRp *rp)
@@ -241,10 +229,10 @@ STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compati
         return OUT_OF_RESOURCES;
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_ID;
-    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {
+        IoWaitForRpCompletion(rp);
         if(OK == rp->status)
         {
             *deviceId = rp->payload.deviceId.mainId;
@@ -273,17 +261,19 @@ STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t s
     
     rp->device = dev;
     rp->code = IO_RP_GET_CONFIG_SPACE;
-    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     rp->payload.configSpace.offset = offset;
     rp->size = size;
     rp->payload.configSpace.buffer = NULL;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {
-        *buffer = rp->payload.configSpace.buffer;
+        IoWaitForRpCompletion(rp);
         status = rp->status;
+        if(OK == status)
+            *buffer = rp->payload.configSpace.buffer;
     }
-    else if(NULL != rp->payload.configSpace.buffer)
+    
+    if(OK != status)
         MmFreeKernelHeap(rp->payload.configSpace.buffer);
 
     IoFreeRp(rp);
@@ -303,13 +293,13 @@ STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t 
     
     rp->device = dev;
     rp->code = IO_RP_SET_CONFIG_SPACE;
-    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     rp->payload.configSpace.offset = offset;
     rp->size = size;
     rp->payload.configSpace.buffer = buffer;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {
+        IoWaitForRpCompletion(rp);
         status = rp->status;
     }
 
@@ -332,13 +322,16 @@ STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource 
     
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_RESOURCES;
-    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {
+        IoWaitForRpCompletion(rp);
         status = rp->status;
-        *res = rp->payload.resource.res;
-        *count = rp->payload.resource.count;
+        if(OK == status)
+        {
+            *res = rp->payload.resource.res;
+            *count = rp->payload.resource.count;
+        }
     }
 
     IoFreeRp(rp);
@@ -358,13 +351,16 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
     
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_LOCATION;
-    rp->flags |= IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     status = IoSendRp(dev, rp);
     if(OK == status)
     {
+        IoWaitForRpCompletion(rp);
         status = rp->status;
-        *type = rp->payload.location.type;
-        *location = rp->payload.location.id;
+        if(OK == status)
+        {
+            *type = rp->payload.location.type;
+            *location = rp->payload.location.id;
+        }
     }
 
     IoFreeRp(rp);

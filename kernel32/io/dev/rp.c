@@ -96,15 +96,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
             KePanicIPEx(KE_CALLER_ADDRESS(), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
             //no return
         }
-        if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-        {
-            uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
-            if((NULL != rp->task) && rp->pending)
-                KeUnblockTask(rp->task);
-            rp->pending = false;
-            HalLowerTaskPriority(lastPrio);
-        }
-        else if(NULL != rp->completionCallback)
+        if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
 
         KeAcquireSpinlock(&(rp->queue->queueLock));
@@ -122,17 +114,16 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     }
     else
     {
-        if(rp->flags & IO_DRIVER_RP_FLAG_SYNCHRONOUS)
-        {
-            uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
-            rp->pending = false;
-            if((NULL != rp->task) && rp->pending)
-                KeUnblockTask(rp->task);
-            HalLowerTaskPriority(lastPrio);
-        }
-        else if(NULL != rp->completionCallback)
+        if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
     }
+
+    uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+    if((NULL != rp->task) && rp->pending)
+        KeUnblockTask(rp->task);
+    rp->pending = false;
+    HalLowerTaskPriority(lastPrio);
+
     return OK;
 }
 
@@ -177,4 +168,23 @@ void IoMarkRpPending(struct IoRp *rp)
 {
     ASSERT(rp);
     rp->pending = true;
+}
+
+void IoWaitForRpCompletion(struct IoRp *rp)
+{
+    while(1)
+    {
+        uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+        if(rp->pending)
+        {
+            KeBlockTask(rp->task, TASK_BLOCK_IO);
+            HalLowerTaskPriority(lastPrio);
+            KeTaskYield();
+        }
+        else
+        {
+            HalLowerTaskPriority(lastPrio);
+            break;
+        }
+    }
 }

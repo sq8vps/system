@@ -78,6 +78,7 @@ STATUS IdeCreateDriveDevice(struct IdeDeviceData *deviceData, struct IoDeviceObj
     //register new device in OS
     if(OK != (status = IoRegisterDevice(dev, enumerator)))
     {
+        IoDestroyDevice(dev);
         return status;
     }
 

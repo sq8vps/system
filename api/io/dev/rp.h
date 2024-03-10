@@ -202,7 +202,17 @@ extern struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
  * from the RP dispatch routine. The driver should not call this routine when passing RP to another driver.
  * @param *rp Request Packet
 */
-void IoMarkRpPending(struct IoRp *rp);
+extern void IoMarkRpPending(struct IoRp *rp);
+
+/**
+ * @brief Wait for RP completion
+ * 
+ * This function blocks calling task and waits for RP completion.
+ * This function returns when the driver calls \a IoFinalizeRp().
+ * @param *rp Request Packet
+ * @warning This function must not be called when \a IoSendRp() was not successful.
+*/
+extern void IoWaitForRpCompletion(struct IoRp *rp);
 
 
 #ifdef __cplusplus

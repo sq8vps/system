@@ -52,14 +52,17 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
     
     rp->code = IO_RP_STORAGE_CONTROL;
     rp->payload.deviceControl.code = STOR_GET_GEOMETRY;
-    rp->flags = IO_DRIVER_RP_FLAG_SYNCHRONOUS;
     rp->payload.deviceControl.data = NULL;
     
-    status = IoSendRp(target, rp);  
-
+    status = IoSendRp(target, rp);
     if(OK == status)
-        *geometry = rp->payload.deviceControl.data;
-    
+    {
+        IoWaitForRpCompletion(rp);
+        status = rp->status;
+        if(OK == status)
+            *geometry = rp->payload.deviceControl.data;
+    }
+
     IoFreeRp(rp);
     
     return status;

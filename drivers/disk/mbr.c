@@ -30,12 +30,13 @@ struct RawMbr
     uint16_t bootSignature;
 } PACKED;
 
-STATUS DiskMbrParse(const void *data, struct Mbr *mbr)
+bool DiskMbrParse(const void *data, struct Mbr *mbr)
 {
     ASSERT(data && mbr);
     const struct RawMbr *rmbr = data;
+    if(rmbr->bootSignature != MBR_BOOT_SIGNATURE)
+        return false;
     mbr->signature = rmbr->signature;
-    mbr->bootable = (rmbr->bootSignature == MBR_BOOT_SIGNATURE);
     mbr->copyProtection = (rmbr->copyProtectionFlag == MBR_COPY_PROTECTION_FLAG);
     for(uint8_t i = 0; i < 4; i++)
     {
@@ -63,5 +64,21 @@ STATUS DiskMbrParse(const void *data, struct Mbr *mbr)
             mbr->partition[i].lastChs.sector = rmbr->partition[i].lastChs.sectorCylinderHi & 0x3F;
         }
     }
-    return OK;
+    return true;
+}
+
+bool DiskMbrIsPartitionUsable(struct MbrPartition *part)
+{
+    if(!part->used)
+        return false;
+    switch(part->type)
+    {
+        case MBR_PARTITION_TYPE_EMPTY:
+        case MBR_PARTITION_TYPE_PROTECTIVE:
+            return false;
+            break;
+        default:
+            return true;
+            break;
+    }
 }

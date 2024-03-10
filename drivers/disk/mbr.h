@@ -12,24 +12,27 @@
 #define MBR_PARTITION_TYPE_EMPTY 0x00
 #define MBR_PARTITION_TYPE_PROTECTIVE 0xEE
 
+struct MbrPartition
+{
+    uint8_t used : 1;
+    uint8_t bootable : 1;
+    struct StorChs firstChs;
+    uint8_t type;
+    struct StorChs lastChs;
+    uint32_t lba;
+    uint32_t sectors;
+};
+
 struct Mbr
 {
     uint32_t signature;
-    struct
-    {
-        uint8_t used : 1;
-        uint8_t bootable : 1;
-        struct StorChs firstChs;
-        uint8_t type;
-        struct StorChs lastChs;
-        uint32_t lba;
-        uint32_t sectors;
-    } partition[4];
+    struct MbrPartition partition[4];
     uint8_t copyProtection : 1;
-    uint8_t bootable : 1;
 };
 
 
-STATUS DiskMbrParse(const void *data, struct Mbr *mbr);
+bool DiskMbrParse(const void *data, struct Mbr *mbr);
+
+bool DiskMbrIsPartitionUsable(struct MbrPartition *part);
 
 #endif

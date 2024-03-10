@@ -151,6 +151,7 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         if(NULL != private->resource)
             MmFreeKernelHeap(private->resource);
         AcpiOsFree(private);
+        IoDestroyDevice(dev);
         return AE_OK;
     }
 
@@ -160,6 +161,7 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         if(NULL != private->resource)
             MmFreeKernelHeap(private->resource);
         AcpiOsFree(private);
+        IoDestroyDevice(dev);
         return AE_OK;
     }
 

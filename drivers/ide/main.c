@@ -69,7 +69,10 @@ static STATUS IdeAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
         return status;
     
     if(NULL == (device->privateData = MmAllocateKernelHeap(sizeof(struct IdeDeviceData))))
+    {
+        IoDestroyDevice(device);
         return OUT_OF_RESOURCES;
+    }
     
     CmMemset(device->privateData, 0, sizeof(struct IdeDeviceData));
     

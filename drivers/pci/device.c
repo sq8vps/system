@@ -124,7 +124,10 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
 
 
         if(NULL == (dev->privateData = MmAllocateKernelHeapZeroed(sizeof(struct PciDeviceData))))
+        {   
+            IoDestroyDevice(dev);
             return OUT_OF_RESOURCES;
+        }
 
 
         LOG(SYSLOG_INFO, "Device %X/%X found at %u:%u:%u", vid, did, address.pci.bus, address.pci.device, address.pci.function);
@@ -176,6 +179,7 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
 
         if(OK != (status = IoRegisterDevice(dev, enumerator)))
         {
+            IoDestroyDevice(dev);
             return status;
         }
 
@@ -219,11 +223,12 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *
     STATUS status;
     if(OK != (status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_OTHER, 0, &device)))
         return status;
-    
-    //TODO: device destruction on failure
 
     if(NULL == (device->privateData = MmAllocateKernelHeapZeroed(sizeof(struct PciDeviceData))))
+    {
+        IoDestroyDevice(device);
         return OUT_OF_RESOURCES;
+    }
     
     struct PciDeviceData *deviceInfo = device->privateData;
     deviceInfo->thisBridge = NULL;
@@ -298,6 +303,7 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *
     return OK;
 _PciAddDeviceFailure:
     MmFreeKernelHeap(device->privateData);
+    IoDestroyDevice(device);
     return status;
 }
 

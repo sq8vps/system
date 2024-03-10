@@ -90,6 +90,17 @@ extern STATUS IoCreateDevice(
     struct IoDeviceObject **device);
 
 /**
+ * @brief Destroy device object
+ * 
+ * Destroy device object, e.g., on initialization failure.
+ * This function fails when the device is already a part of a device stack.
+ * @param *device Device to be destroyed
+ * @return Status code
+ * @attention This function destroys only unattached devices
+*/
+extern STATUS IoDestroyDevice(struct IoDeviceObject *device);
+
+/**
  * @brief Attach device to the top of the device stack
  * @param *attachee Device object to be attached
  * @param *destination Any device object in given device stack
