@@ -26,7 +26,6 @@
 EXPORT
 #define HAL_INTERRUPT_INPUT_ANY UINT32_MAX
 
-
 EXPORT
 enum HalInterruptMethod
 {
@@ -229,10 +228,17 @@ EXPORT
 */
 EXTERN enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
 
+
 EXPORT
-#define HAL_TASK_PRIORITY_PASSIVE 0
-#define HAL_TASK_PRIORITY_DPC 2
-#define HAL_TASK_PRIORITY_EXCLUSIVE 15
+/**
+ * @brief Type representing task/processor priority level
+*/
+typedef uint8_t PRIO;
+
+EXPORT
+#define HAL_PRIORITY_LEVEL_PASSIVE 0
+#define HAL_PRIORITY_LEVEL_DPC 2
+#define HAL_PRIORITY_LEVEL_EXCLUSIVE 15
 
 EXPORT
 /**
@@ -241,29 +247,42 @@ EXPORT
  * @return Previous task priority level
  * @warning If new priority level is lower than current priority level, a kernel panic occurs
 */
-EXTERN uint8_t HalRaiseTaskPriority(uint8_t prio);
+EXTERN PRIO HalRaisePriorityLevel(PRIO prio);
 
 EXPORT
 /**
  * @brief Lower current task priority level
- * @param prio Priority level returned from \a HalRaiseTaskPriority()
+ * @param prio Priority level returned from \a HalRaisePriorityLevel()
  * @warning If the provided priority level is higher than current priority level, a kernel panic occurs
 */
-EXTERN void HalLowerTaskPriority(uint8_t prio);
+EXTERN void HalLowerPriorityLevel(PRIO prio);
 
 EXPORT
 /**
  * @brief Get current task priority
- * @return Current task priority (0-15)
+ * @return Current task priority
 */
-EXTERN uint8_t HalGetTaskPriority(void);
+EXTERN PRIO HalGetTaskPriority(void);
 
 EXPORT
 /**
  * @brief Get current processor priority
- * @return Current processor priority (0-15)
+ * @return Current processor priority
 */
-EXTERN uint8_t HalGetProcessorPriority(void);
+EXTERN PRIO HalGetProcessorPriority(void);
+
+EXPORT
+/**
+ * @brief Check if current priority level is within the specified range
+ * 
+ * This function checks if current priority level is within the given range,
+ * that is, if \a lower <= \a current <= \a upper, and causes kernel panic if it is not.
+ * Otherwise nothing happens.
+ * @param lower Lower inclusive bound
+ * @param upper Upper inclusive bound
+ * @note On panic, this function passes the address of the caller of the caller of this function.
+*/
+EXTERN void HalCheckPriorityLevel(PRIO lower, PRIO upper);
 
 /**
  * @}

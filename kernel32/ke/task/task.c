@@ -26,6 +26,8 @@ struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, 
     
     CmMemset((void*)tcb, 0, sizeof(*tcb));
 
+    ObInitializeObjectHeader(tcb);
+
     tcb->mathState = HalCreateMathStateBuffer();
     if(NULL == tcb->mathState)
     {
@@ -33,18 +35,18 @@ struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, 
         return NULL;
     }
 
-    tcb->cr3 = pageDir;
-    tcb->esp = stack;
-    tcb->esp0 = kernelStack;
+    tcb->cpu.cr3 = pageDir;
+    tcb->cpu.esp = stack;
+    tcb->cpu.esp0 = kernelStack;
     
     if(PL_KERNEL == pl)
-        tcb->ds = MmGdtGetFlatPrivilegedDataOffset();
+        tcb->cpu.ds = MmGdtGetFlatPrivilegedDataOffset();
     else
-        tcb->ds = MmGdtGetFlatUnprivilegedDataOffset();
+        tcb->cpu.ds = MmGdtGetFlatUnprivilegedDataOffset();
 
-    tcb->es = tcb->ds;
-    tcb->fs = tcb->ds;
-    tcb->gs = tcb->ds;
+    tcb->cpu.es = tcb->cpu.ds;
+    tcb->cpu.fs = tcb->cpu.ds;
+    tcb->cpu.gs = tcb->cpu.ds;
 
     tcb->pl = pl;
 
@@ -125,7 +127,7 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
 
     (*tcb)->stackSize = KE_PROCESS_INITIAL_STACK_SIZE;
 
-    uint32_t *stack = (uint32_t*)((*tcb)->esp); //get kernel stack
+    uint32_t *stack = (uint32_t*)((*tcb)->cpu.esp); //get kernel stack
     //start task in kernel mode initially and allow it to load the process image on its own
     //this requires an appropriate stack layout to perform iret on task switch
     //the stack layout is as follows (top to bottom):
@@ -144,8 +146,8 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t p
     stack[-3] = TCB_EFLAGS_IF | TCB_EFLAGS_RESERVED;
     stack[-4] = MmGdtGetFlatPrivilegedCodeOffset();
     stack[-5] = (uintptr_t)entry;
-    stack[-12] = (*tcb)->esp; //set EBP
-    (*tcb)->esp -= (12 * sizeof(uint32_t)); //update ESP
+    stack[-12] = (*tcb)->cpu.esp; //set EBP
+    (*tcb)->cpu.esp -= (12 * sizeof(uint32_t)); //update ESP
 
     (*tcb)->pid = (*tcb)->tid;
 

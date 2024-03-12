@@ -6,6 +6,10 @@
 #include "defines.h"
 #include "ke/core/mutex.h"
 #include "fstypedefs.h"
+#include "ob/ob.h"
+
+EXPORT
+struct ObObjectHeader;
 
 /**
  * @brief VFS node types
@@ -55,6 +59,7 @@ union IoVfsReference
 */
 struct IoVfsNode
 {
+    struct ObObjectHeader objectHeader;
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
     IoVfsFlags flags; /**< Node flags */

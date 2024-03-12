@@ -25,6 +25,7 @@ struct IoRp *IoCreateRp(void)
         return NULL;
     
     CmMemset(rp, 0, sizeof(*rp));
+    ObInitializeObjectHeader(rp);
     return rp;
 }
 
@@ -93,7 +94,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     {
         if((NULL == rp->queue->head) || (rp->queue->head != rp))
         {
-            KePanicIPEx(KE_CALLER_ADDRESS(), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
+            KePanicIPEx(KE_GET_CALLER_ADDRESS(0), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
             //no return
         }
         if(NULL != rp->completionCallback)
@@ -118,11 +119,11 @@ STATUS IoFinalizeRp(struct IoRp *rp)
             rp->completionCallback(rp, rp->completionContext);
     }
 
-    uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+    PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
     if((NULL != rp->task) && rp->pending)
         KeUnblockTask(rp->task);
     rp->pending = false;
-    HalLowerTaskPriority(lastPrio);
+    HalLowerPriorityLevel(lastPrio);
 
     return OK;
 }
@@ -174,16 +175,16 @@ void IoWaitForRpCompletion(struct IoRp *rp)
 {
     while(1)
     {
-        uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_EXCLUSIVE);
+        PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
         if(rp->pending)
         {
             KeBlockTask(rp->task, TASK_BLOCK_IO);
-            HalLowerTaskPriority(lastPrio);
+            HalLowerPriorityLevel(lastPrio);
             KeTaskYield();
         }
         else
         {
-            HalLowerTaskPriority(lastPrio);
+            HalLowerPriorityLevel(lastPrio);
             break;
         }
     }

@@ -1,8 +1,12 @@
 ;struct KeTaskControlBlock *currentTask
 extern currentTask
+;void *KeCurrentCpuState
+extern KeCurrentCpuState
 
 ;struct KeTaskControlBlock *nextTask
 extern nextTask
+;void *KeNextCpuState
+extern KeNextCpuState
 
 ;void KeSchedule(void)
 ;This is the callback function that should provide scheduling,
@@ -41,9 +45,11 @@ KeStoreTaskContext:
 
     push edi ;save original edi
 
+    mov edi,[KeCurrentCpuState]
+    mov [edi + CPUState.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
+    add DWORD [edi + CPUState.esp],4 ;omit locally pushed EDI
+
     mov edi,[currentTask]
-    mov [edi + TCB.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
-    add DWORD [edi + TCB.esp],4 ;omit locally pushed EDI
 
     push eax
     push edi
@@ -65,22 +71,26 @@ KeSwitchToTask:
     mov esi,[nextTask]
     mov [currentTask],esi
     mov [nextTask],DWORD 0
-    mov esp,[esi + TCB.esp] ;update kernel stack ESP
+
+    push esi
+    call HalRestoreMathState
+    add esp,4
+
+    mov esi,[KeNextCpuState]
+    mov [KeCurrentCpuState],esi
+    mov [KeNextCpuState],DWORD 0
+    mov esp,[esi + CPUState.esp] ;update kernel stack ESP
 
     mov eax,cr3 ;get current CR3
-    mov edx,[esi + TCB.cr3] ;get task CR3
+    mov edx,[esi + CPUState.cr3] ;get task CR3
     cmp eax,edx ;compare current CR3 and task CR3
     je .skipCR3switch ;skip if both CR3 are the same - avoid TLB flush
     mov cr3,edx
 
     .skipCR3switch:
 
-    push esi
-    call HalRestoreMathState
-    add esp,4
-
     ;update ESP0 in TSS for privilege level switches
-    mov eax,[esi + TCB.esp0] 
+    mov eax,[esi + CPUState.esp0] 
     ;push arguments
     push eax ;esp0
     push 0 ;cpu number
@@ -88,13 +98,13 @@ KeSwitchToTask:
     add esp,8 ;remove arguments
 
     ; restore segment registers
-    mov ax,[esi + TCB.ds]
+    mov ax,[esi + CPUState.ds]
     mov ds,ax
-    mov ax,[esi + TCB.es]
+    mov ax,[esi + CPUState.es]
     mov es,ax
-    mov ax,[esi + TCB.fs]
+    mov ax,[esi + CPUState.fs]
     mov fs,ax
-    mov ax,[esi + TCB.gs]
+    mov ax,[esi + CPUState.gs]
     mov gs,ax 
 
     pop ebp
@@ -143,7 +153,7 @@ KePerformTaskSwitch:
     ret
 
 
-struc TCB
+struc CPUState
     .esp resd 1
     .esp0 resd 1
 
@@ -153,6 +163,4 @@ struc TCB
     .es resw 1
     .fs resw 1
     .gs resw 1
-
-    .math resd 1
 endstruc

@@ -24,7 +24,8 @@ static const char *panicStrings[] =
     PANIC_STRING(PRIORITY_LEVEL_TOO_HIGH),
     PANIC_STRING(RP_FINALIZED_OUT_OF_LINE),
     PANIC_STRING(ILLEGAL_PRIORITY_LEVEL_CHANGE),
-    PANIC_STRING(ILLEGAL_PRIORITY_LEVEL)
+    PANIC_STRING(ILLEGAL_PRIORITY_LEVEL),
+    PANIC_STRING(OBJECT_LOCK_UNAVAILABLE),
 };
 
 static void printHex(uintptr_t x)
@@ -67,7 +68,7 @@ static void printPanic(uintptr_t ip, uintptr_t code)
 
 NORETURN void KePanicInternal(uintptr_t ip, uintptr_t code)
 {
-    ItDisableInterrupts();
+    HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
     printPanic(ip, code);
     while(1)
         ;
@@ -75,7 +76,7 @@ NORETURN void KePanicInternal(uintptr_t ip, uintptr_t code)
 
 NORETURN void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
-    ItDisableInterrupts();
+    HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
     printPanic(ip, code);
     BootVgaPrintString("Additional informations: ");
     printHex(arg1);

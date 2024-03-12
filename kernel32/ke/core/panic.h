@@ -20,7 +20,12 @@
  * @{
 */
 
-#define KE_CALLER_ADDRESS() (uintptr_t)__builtin_extract_return_addr(__builtin_return_address(0))
+/**
+ * @brief Get nth caller address
+ * @param n Caller level: 0 - the caller of the given function
+ * @warning This macro is GCC-specific and is unsafe for n>0
+*/
+#define KE_GET_CALLER_ADDRESS(n) (uintptr_t)__builtin_extract_return_addr(__builtin_return_address(n))
 
 EXPORT
 /**
@@ -46,6 +51,7 @@ enum KernelPanicCode
     RP_FINALIZED_OUT_OF_LINE,
     ILLEGAL_PRIORITY_LEVEL_CHANGE,
     ILLEGAL_PRIORITY_LEVEL,
+    OBJECT_LOCK_UNAVAILABLE,
 };
 
 EXPORT

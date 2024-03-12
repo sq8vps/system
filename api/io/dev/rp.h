@@ -16,6 +16,7 @@ extern "C"
 #include "io/fs/vfs.h"
 #include "res.h"
 #include "ke/task/task.h"
+#include "ob/ob.h"
 struct IoRp;
 struct IoRpQueue;
 struct IoDeviceObject;
@@ -51,6 +52,7 @@ enum IoRpCode
 
 struct IoRp
 {
+    struct ObObjectHeader objectHeader;
     struct IoDeviceObject *device; /**< Target device for this request */
     struct IoVfsNode *vfsNode; /**< VFS node associated with this request */
     enum IoRpCode code; /**< Request code */

@@ -89,26 +89,6 @@ STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, union IoVfsReference ref, 
     if(IoVfsCheckIfNodeExists(devfsNode, name))
         return IO_FILE_ALREADY_EXISTS;
 
-    // else
-    // {
-    //     //TODO: get device data from some database to always give the same name for the same device
-    //     do
-    //     {
-    //         //condition for next loop iterations to remove name string if the node exists
-    //         if(NULL != name)
-    //             MmFreeKernelHeap(name);
-
-    //         //generate name
-    //         name = IoMakeGenericDeviceFileName(dev);
-
-    //         //NULL is returned on memory allocation failure or when all device names are already used
-    //         if(NULL == name)
-    //             return OUT_OF_RESOURCES;
-    //     }
-    //     //loop until a unique name is found
-    //     while(IoVfsCheckIfNodeExists(devfsNode, name));
-    // }
-
     struct IoVfsNode *node = IoVfsCreateNode(name);
     if(NULL == node)
     {

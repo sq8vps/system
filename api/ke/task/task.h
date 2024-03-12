@@ -11,6 +11,9 @@ extern "C"
 #include "defines.h"
 #include "io/fs/fs.h"
 #include "ke/core/mutex.h"
+#include "ob/ob.h"
+struct ObObjectHeader;
+
 /**
  * @brief Task states
 */
@@ -62,6 +65,8 @@ enum KeTaskBlockReason
 */
 struct KeTaskControlBlock
 {
+    struct ObObjectHeader objectHeader;
+
     uintptr_t esp; //stack pointer
     uintptr_t esp0; //kernel stack pointer for privilege level change
     uintptr_t cr3; //task page directory address

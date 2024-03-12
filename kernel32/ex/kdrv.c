@@ -201,6 +201,8 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
         return OUT_OF_RESOURCES;
     }
 
+    ObInitializeObjectHeader(object);
+
     object->size = imageSize + bssSize;
 
     KeAcquireMutex(&kernelDriverListMutex);

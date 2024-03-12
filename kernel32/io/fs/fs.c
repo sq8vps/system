@@ -32,6 +32,8 @@ static STATUS open(char *file, IoFileOpenMode mode, IoFileFlags flags, struct Io
     *handle = MmAllocateKernelHeap(sizeof(struct IoFileHandle));
     if(NULL == *handle)
          return OUT_OF_RESOURCES;
+        
+    ObInitializeObjectHeader(*handle);
 
     CmMemset(*handle, 0, sizeof(**handle));
     (*handle)->type.fileHandle.node = fileNode;

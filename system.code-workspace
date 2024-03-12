@@ -71,7 +71,9 @@
 			"bridge.h": "c",
 			"vfs.h": "c",
 			"object.h": "c",
-			"mbr.h": "c"
+			"mbr.h": "c",
+			"ob.h": "c",
+			"fstypedefs.h": "c"
 		}
 	}
 }

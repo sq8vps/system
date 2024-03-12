@@ -26,6 +26,8 @@ struct IoVfsNode* IoVfsCreateNode(char *name)
     if(NULL == node)
         return NULL;
     
+    ObInitializeObjectHeader(node);
+    
     CmStrcpy(node->name, name);
 
     return node;

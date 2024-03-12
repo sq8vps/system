@@ -5,17 +5,6 @@
 #include "defines.h"
 #include "ke/task/task.h"
 
-/**
- * @brief Temporarily disable scheduling - increment task switch postponement counter
-*/
-void KeSchedulerIncrementPostponeCounter(void);
-
-/**
- * @brief Allow scheduler to be enabled again - decrement task switch postponement counter
- * @warning The scheduler waits for the counter to become zero, so it might not be enabled immidiately
-*/
-void KeSchedulerDecrementPostponeCounter(void);
-
 EXPORT
 /**
  * @brief Change task major priority/scheduling policy

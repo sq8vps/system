@@ -11,6 +11,7 @@ extern "C"
 #include "defines.h"
 #include "io/dev/dev.h"
 #include <stdarg.h>
+#include "ob/ob.h"
 struct ExDriverObject;
 struct IoDeviceObject;
 struct IoDeviceObject;
@@ -21,6 +22,7 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 
 struct ExDriverObject
 {
+    struct ObObjectHeader objectHeader;
     uint32_t index;
     struct IoDeviceObject *deviceObject; //linked list of devices created by the driver
     uint32_t flags;

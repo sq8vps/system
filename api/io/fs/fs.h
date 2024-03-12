@@ -12,7 +12,9 @@ extern "C"
 #include "defines.h"
 #include "vfs.h"
 #include "fstypedefs.h"
+#include "ob/ob.h"
 struct KeTaskControlBlock;
+struct ObObjectHeader;
 
 /**
  * @brief File operation flags
@@ -51,6 +53,7 @@ typedef enum
 */
 typedef struct IoFileHandle
 {
+    struct ObObjectHeader objectHeader;
     bool free; /**< Does this entry represent free handle range? */
     union
     {

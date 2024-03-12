@@ -15,6 +15,8 @@ extern "C"
 #include "io/fs/vfs.h"
 #include "vol.h"
 #include "res.h"
+#include "ke/core/mutex.h"
+#include "ob/ob.h"
 enum IoDeviceType
 {
     IO_DEVICE_TYPE_NONE = 0, //dummy driver
@@ -42,6 +44,7 @@ struct IoVolumeNode;
 */
 struct IoDeviceNode
 {
+    struct ObObjectHeader objectHeader;
     char name[IO_DEVICE_MAX_NAME_LENGTH + 1]; /**< User-friendly name of the device */
     IoDeviceFlags flags; /**< Common device flags */
     struct IoDeviceObject *bdo; /**< Base Device Object */
@@ -53,6 +56,7 @@ struct IoDeviceNode
 
 struct IoDeviceObject
 {
+    struct ObObjectHeader objectHeader;
     enum IoDeviceType type; /**< Device type */
     void *privateData; /**< Private device data pointer */
     IoDeviceFlags flags; /**< Device flags */

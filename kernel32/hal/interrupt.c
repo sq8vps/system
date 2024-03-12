@@ -92,9 +92,10 @@ STATUS HalInitInterruptController(void)
             PRINT("LAPIC address seems to be zero\n");
     }
     IoPrint("Cannot continue: Local APIC is not available on this PC. Boot failed.\n");
+    HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
     while(1)
     {
-        ItDisableInterrupts();
+        
     }
 }
 
@@ -423,33 +424,45 @@ enum HalInterruptMethod HalGetInterruptHandlingMethod(void)
     return interruptMethod;
 }
 
-uint8_t HalRaiseTaskPriority(uint8_t prio)
+PRIO HalRaisePriorityLevel(PRIO prio)
 {
-    if(prio > HAL_TASK_PRIORITY_EXCLUSIVE)
-        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
-    uint8_t old = ApicGetTaskPriority();
+    if(prio > HAL_PRIORITY_LEVEL_EXCLUSIVE)
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
+    PRIO old = ApicGetTaskPriority();
     if(prio < old)
-        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
     ApicSetTaskPriority(prio);
     return old;
 }
 
-void HalLowerTaskPriority(uint8_t prio)
+void HalLowerPriorityLevel(PRIO prio)
 {
-    if(prio > HAL_TASK_PRIORITY_EXCLUSIVE)
-        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
-    uint8_t old = ApicGetTaskPriority();
+    if(prio > HAL_PRIORITY_LEVEL_EXCLUSIVE)
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
+    PRIO old = ApicGetTaskPriority();
     if(prio > old)
-        KePanicIPEx(KE_CALLER_ADDRESS(), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
     ApicSetTaskPriority(prio);
 }
 
-uint8_t HalGetTaskPriority(void)
+PRIO HalGetTaskPriority(void)
 {
     return ApicGetTaskPriority();
 }
 
-uint8_t HalGetProcessorPriority(void)
+PRIO HalGetProcessorPriority(void)
 {
     return ApicGetProcessorPriority();
+}
+
+void HalCheckPriorityLevel(PRIO lower, PRIO upper)
+{
+    PRIO current = HalGetProcessorPriority();
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
+    if(current < lower)
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(1), PRIORITY_LEVEL_TOO_LOW, current, lower, 0, 0);
+    if(current > upper)
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(1), PRIORITY_LEVEL_TOO_HIGH, current, upper, 0, 0);
+#pragma GCC diagnostic pop
 }

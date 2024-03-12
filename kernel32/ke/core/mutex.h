@@ -3,7 +3,10 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "ke/task/task.h"
+#include "hal/interrupt.h"
+
+EXPORT
+struct KeTaskControlBlock;
 
 EXPORT
 /**
@@ -25,14 +28,14 @@ EXPORT
 typedef struct _KeSpinlock
 {
     uint16_t lock;
-    uint32_t eflags;
+    PRIO priority;
 } KeSpinlock;
 
 EXPORT
 /**
  * @brief Spinlock initializer. Use it when creating spinlocks.
 */
-#define KeSpinlockInitializer {.lock = 0, .eflags = 0}
+#define KeSpinlockInitializer {.lock = 0}
 
 EXPORT
 /**

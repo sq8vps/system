@@ -156,9 +156,14 @@ extern STATUS HalClearInterruptFlag(uint32_t input);
 */
 extern enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
 
-#define HAL_TASK_PRIORITY_PASSIVE 0
-#define HAL_TASK_PRIORITY_DPC 2
-#define HAL_TASK_PRIORITY_EXCLUSIVE 15
+/**
+ * @brief Type representing task/processor priority level
+*/
+typedef uint8_t PRIO;
+
+#define HAL_PRIORITY_LEVEL_PASSIVE 0
+#define HAL_PRIORITY_LEVEL_DPC 2
+#define HAL_PRIORITY_LEVEL_EXCLUSIVE 15
 
 /**
  * @brief Raise current task priority level
@@ -166,26 +171,38 @@ extern enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
  * @return Previous task priority level
  * @warning If new priority level is lower than current priority level, a kernel panic occurs
 */
-extern uint8_t HalRaiseTaskPriority(uint8_t prio);
+extern PRIO HalRaisePriorityLevel(PRIO prio);
 
 /**
  * @brief Lower current task priority level
- * @param prio Priority level returned from \a HalRaiseTaskPriority()
+ * @param prio Priority level returned from \a HalRaisePriorityLevel()
  * @warning If the provided priority level is higher than current priority level, a kernel panic occurs
 */
-extern void HalLowerTaskPriority(uint8_t prio);
+extern void HalLowerPriorityLevel(PRIO prio);
 
 /**
  * @brief Get current task priority
- * @return Current task priority (0-15)
+ * @return Current task priority
 */
-extern uint8_t HalGetTaskPriority(void);
+extern PRIO HalGetTaskPriority(void);
 
 /**
  * @brief Get current processor priority
- * @return Current processor priority (0-15)
+ * @return Current processor priority
 */
-extern uint8_t HalGetProcessorPriority(void);
+extern PRIO HalGetProcessorPriority(void);
+
+/**
+ * @brief Check if current priority level is within the specified range
+ * 
+ * This function checks if current priority level is within the given range,
+ * that is, if \a lower <= \a current <= \a upper, and causes kernel panic if it is not.
+ * Otherwise nothing happens.
+ * @param lower Lower inclusive bound
+ * @param upper Upper inclusive bound
+ * @note On panic, this function passes the address of the caller of the caller of this function.
+*/
+extern void HalCheckPriorityLevel(PRIO lower, PRIO upper);
 
 
 #ifdef __cplusplus

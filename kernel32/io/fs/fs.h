@@ -6,9 +6,11 @@
 #include "defines.h"
 #include "vfs.h"
 #include "fstypedefs.h"
+#include "ob/ob.h"
 
 EXPORT
 struct KeTaskControlBlock;
+struct ObObjectHeader;
 
 EXPORT
 /**
@@ -51,6 +53,7 @@ EXPORT
 */
 typedef struct IoFileHandle
 {
+    struct ObObjectHeader objectHeader;
     bool free; /**< Does this entry represent free handle range? */
     union
     {

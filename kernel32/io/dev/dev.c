@@ -19,6 +19,8 @@ STATUS IoCreateDevice(
     if(NULL == *device)
         return OUT_OF_RESOURCES;
     
+    ObInitializeObjectHeader(*device);
+    
     (*device)->driverObject = driver;
     (*device)->flags |= flags;
     (*device)->type = type;
@@ -61,6 +63,8 @@ STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enume
     struct IoDeviceNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
     if(NULL == node)
         return OUT_OF_RESOURCES;
+    
+    ObInitializeObjectHeader(node);
         
     node->next = node;
     node->previous = node;

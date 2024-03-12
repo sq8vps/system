@@ -10,6 +10,7 @@
 #include "io/fs/vfs.h"
 #include "res.h"
 #include "ke/task/task.h"
+#include "ob/ob.h"
 
 EXPORT
 struct IoRp;
@@ -50,6 +51,7 @@ enum IoRpCode
 EXPORT
 struct IoRp
 {
+    struct ObObjectHeader objectHeader;
     struct IoDeviceObject *device; /**< Target device for this request */
     struct IoVfsNode *vfsNode; /**< VFS node associated with this request */
     enum IoRpCode code; /**< Request code */

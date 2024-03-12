@@ -28,7 +28,7 @@ EXPORT
  * @param callback DPC function pointer
  * @param *context Context to be passed to the worker function
  * @return Status code
- * @attention Processor priority must be > HAL_TASK_PRIORITY_PASSIVE, otherwise the kernel panic occurs.
+ * @attention Processor priority must be > HAL_PRIORITY_LEVEL_PASSIVE, otherwise the kernel panic occurs.
 */
 EXTERN STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context);
 

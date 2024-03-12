@@ -11,15 +11,9 @@ static KeSpinlock listLock = KeSpinlockInitializer;
 
 void KeAcquireSpinlock(KeSpinlock *spinlock)
 {
-    KeSchedulerIncrementPostponeCounter(); //postpone task switchtes
-
 #ifndef SMP
-    ASM("pushfd");
-    ASM("pop eax");
-    ASM("and eax,0x200"); //store only the IF bit state
-    ASM("mov %0,eax" : "=m" (spinlock->eflags) : : "eax", "memory");
-    ItDisableInterrupts();
-    if(spinlock->lock)
+    spinlock->priority = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
+    if(0 != spinlock->lock)
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 1;
 #else
@@ -54,6 +48,7 @@ void KeReleaseSpinlock(KeSpinlock *spinlock)
     if(0 == spinlock->lock)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 0;
+
 #else
     uint16_t *lock = &(spinlock->lock);
     asm volatile("lock btr WORD [%0],0" : "=m" (lock) : ); //check if bit was clear previously
@@ -63,13 +58,7 @@ void KeReleaseSpinlock(KeSpinlock *spinlock)
     asm volatile("call KePanic");
     asm volatile(".IRQrelease:");
 #endif
-    ASM("pushfd" : : : "memory");
-    ASM("pop eax" : : : "eax", "memory");
-    ASM("mov edx,%0" : : "m" (spinlock->eflags) : "eax", "edx", "memory");
-    ASM("or edx,eax" : : : "edx", "eax");
-    ASM("push edx" : : : "edx", "memory");
-    ASM("popfd" : : : "flags", "memory");
-    KeSchedulerDecrementPostponeCounter();
+    HalLowerPriorityLevel(spinlock->priority);
 }
 
 static void insertToList(struct KeTaskControlBlock *tcb)

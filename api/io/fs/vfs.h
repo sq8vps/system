@@ -12,6 +12,9 @@ extern "C"
 #include "defines.h"
 #include "ke/core/mutex.h"
 #include "fstypedefs.h"
+#include "ob/ob.h"
+struct ObObjectHeader;
+
 union IoVfsReference
 {
     void *p;

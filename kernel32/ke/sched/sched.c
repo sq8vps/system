@@ -12,9 +12,6 @@
 
 #define KE_SCHEDULER_TIME_SLICE 10000 //microseconds
 
-uint32_t KeSchedPostponeCounter = 0; //count of scheduler task switch postponement events
-bool KeSchedTaskSwitchPending = false; //is there a task switch to perform?
-
 static bool dpcTaskSwitchPending = false;
 static KeSpinlock dpcTaskSwitchFlagMutex = KeSpinlockInitializer;
 
@@ -29,7 +26,9 @@ struct KeSchedulerQueue
     struct KeTaskControlBlock *queue[MAX_CPU_COUNT][PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1];
 #else
     struct KeTaskControlBlock *currentTask; //current task TCB
+    void *KeCurrentCpuState;
     struct KeTaskControlBlock *nextTask = NULL; //next task TCB planned to be switched after DPC processing
+    void *KeNextCpuState = NULL;
     static struct KeTaskControlBlock *readyToRun[PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1]; //next ready to run task
     static struct KeTaskControlBlock *terminated; //next task to be terminated
 #endif
@@ -160,6 +159,7 @@ static void KeSchedule(void)
             {
                 //get next task from queue
                 nextTask = readyToRun[major][minor];
+                KeNextCpuState = &(readyToRun[major][minor]->cpu);
                 //update state
                 nextTask->state = TASK_RUNNING;
                 KeReleaseSpinlock(&schedulerMutex);
@@ -171,28 +171,6 @@ static void KeSchedule(void)
     //should never reach this point
     KePanic(NO_EXECUTABLE_TASK);
 }
-
-void KeSchedulerIncrementPostponeCounter(void)
-{
-    ASM("lock inc %0" : "=m" (KeSchedPostponeCounter) : );
-}
-
-void KeSchedulerDecrementPostponeCounter(void)
-{
-    if(0 == KeSchedPostponeCounter)
-        return;
-
-    ASM("lock dec %0" : "=m" (KeSchedPostponeCounter) : );
-    ASM("jnz .stillPostponed");
-    if(KeSchedTaskSwitchPending) //counter is 0 and there is a postponed task switch?
-    {
-        KeSchedTaskSwitchPending = false;
-        HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
-        KeTaskYield();
-    }
-    ASM(".stillPostponed:");
-}
-
 
 void KeSchedulerStart(void)
 {
@@ -222,6 +200,7 @@ void KeSchedulerStart(void)
     KeEnableTask(tcb);
 
     currentTask = tcb;
+    KeCurrentCpuState = &(tcb->cpu);
 
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
@@ -298,8 +277,8 @@ struct KeTaskControlBlock* KeGetCurrentTask(void)
 
 void KeTaskYield(void)
 {
-    if(HalGetProcessorPriority() > HAL_TASK_PRIORITY_PASSIVE)
-        KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_TASK_PRIORITY_PASSIVE, 0, 0);
+    if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE)
+        KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_PRIORITY_LEVEL_PASSIVE, 0, 0);
     KeSchedule();
     KePerformTaskSwitch();
 }

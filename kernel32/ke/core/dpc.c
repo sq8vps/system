@@ -7,9 +7,11 @@
 #include "mutex.h"
 #include "panic.h"
 #include "ke/sched/sched.h"
+#include "ob/ob.h"
 
 struct KeDpcObject
 {
+    struct ObObjectHeader objectHeader;
     //caller provided data
     enum KeDpcPriority priority; //DPC priority
     KeDpcCallback callback; //DPC entry point
@@ -27,8 +29,7 @@ static KeSpinlock flagMutex = KeSpinlockInitializer;
 
 STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context)
 {
-    if(HalGetProcessorPriority() < HAL_TASK_PRIORITY_DPC)
-        KePanicIPEx(KE_CALLER_ADDRESS(), PRIORITY_LEVEL_TOO_LOW, HalGetProcessorPriority(), HAL_TASK_PRIORITY_DPC, 0, 0);
+    HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_DPC, HAL_PRIORITY_LEVEL_EXCLUSIVE);
 
     uint8_t queueIndex = 0;
     switch(priority)
@@ -51,6 +52,8 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     if(NULL == dpc)
         return OUT_OF_RESOURCES;
     
+    ObInitializeObjectHeader(dpc);
+
     dpc->callback = callback;
     dpc->context = context;
     dpc->priority = priority;
@@ -80,7 +83,7 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
 static void KeDpcProcess(void)
 {
     KeAcquireSpinlock(&flagMutex);
-    uint8_t lastPrio = HalRaiseTaskPriority(HAL_TASK_PRIORITY_DPC);
+    PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
     isProcessingOngoing = true;
     isPending = false;
     KeReleaseSpinlock(&flagMutex);
@@ -102,14 +105,14 @@ static void KeDpcProcess(void)
     }
     KeAcquireSpinlock(&flagMutex);
     isProcessingOngoing = false;
-    HalLowerTaskPriority(lastPrio);
+    HalLowerPriorityLevel(lastPrio);
     KeReleaseSpinlock(&flagMutex);
 }
 
 void KeProcessDpcQueue(void)
 {
     KeAcquireSpinlock(&flagMutex);
-    if(isPending && (HalGetProcessorPriority() <= HAL_TASK_PRIORITY_DPC))
+    if(isPending && (HalGetProcessorPriority() <= HAL_PRIORITY_LEVEL_DPC))
     {
         KeReleaseSpinlock(&flagMutex);
         KeDpcProcess();

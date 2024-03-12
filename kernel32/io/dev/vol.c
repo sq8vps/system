@@ -3,9 +3,10 @@
 #include "mm/heap.h"
 #include "io/fs/vfs.h"
 #include "ke/core/mutex.h"
+#include "ke/core/panic.h"
 
-static struct IoVolumeNode *volumeList = NULL;
-static KeSpinlock volumeListLock = KeSpinlockInitializer;
+static struct IoVolumeNode *IoVolumeList = NULL;
+static KeSpinlock IoVolumeListLock = KeSpinlockInitializer;
 
 // STATUS IoMountVolume(char *devPath, char *path)
 // {
@@ -55,3 +56,39 @@ static KeSpinlock volumeListLock = KeSpinlockInitializer;
 
     
 // }
+
+STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
+{
+    if(dev->type != IO_DEVICE_TYPE_DISK)
+        return NOT_COMPATIBLE;
+    
+    if(NULL != dev->associatedVolume)
+        return IO_VOLUME_ALREADY_EXISTS;
+    
+    struct IoVolumeNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
+    if(NULL == node)
+        return OUT_OF_RESOURCES;
+    
+    ObInitializeObjectHeader(node);
+    
+    node->pdo = dev;
+    node->flags = flags;
+    dev->associatedVolume = node;
+
+    KeAcquireSpinlock(&IoVolumeListLock);
+    if(NULL == IoVolumeList)
+        IoVolumeList = node;
+    else
+    {
+        struct IoVolumeNode *t = IoVolumeList;
+        while(NULL != t->next)
+        {
+            t = t->next;
+        }
+        t->next = node;
+        node->previous = t;
+    }
+    KeReleaseSpinlock(&IoVolumeListLock);
+
+    return OK;
+}
