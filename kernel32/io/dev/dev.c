@@ -4,6 +4,9 @@
 #include "assert.h"
 #include "enumeration.h"
 #include "ke/sched/sched.h"
+#include "io/dev/vol.h"
+#include "ex/kdrv.h"
+#include "io/dev/rp.h"
 
 //root device (ACPI or MP) node
 static struct IoDeviceNode rootNode = {};

@@ -29,6 +29,7 @@
 #include "ke/sched/sleep.h"
 #include "sdrv/fpu.h"
 #include "sdrv/sse.h"
+#include "io/dev/dev.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 

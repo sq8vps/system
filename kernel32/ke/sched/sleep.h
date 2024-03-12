@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "ke/task/task.h"
+
+EXPORT
+struct KeTaskControlBlock;
 
 EXPORT
 /**

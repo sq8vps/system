@@ -2,6 +2,7 @@
 #include "sdrv/fpu.h"
 #include "sdrv/sse.h"
 #include "sdrv/dcpuid.h"
+#include "ke/task/task.h"
 
 static bool HalSseAvailable = false;
 

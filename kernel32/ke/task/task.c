@@ -9,6 +9,7 @@
 #include "ke/sched/sched.h"
 #include "ke/core/mutex.h"
 #include "ex/load.h"
+#include "io/fs/fs.h"
 
 #define KE_KERNEL_STACK_TOP (MM_KERNEL_ADDRESS)
 #define KE_KERNEL_INITIAL_STACK_SIZE 4096

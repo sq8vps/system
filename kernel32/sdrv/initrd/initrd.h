@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/fs/vfs.h"
+
 
 #define INITRD_MAX_FILE_NAME_LENGTH 64
 #define INITRD_MOUNT_POINT "initrd"

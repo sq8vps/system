@@ -1,5 +1,6 @@
 #include "stor.h"
 #include "io/dev/rp.h"
+#include "io/dev/dev.h"
 #include "mm/heap.h"
 #include "assert.h"
 

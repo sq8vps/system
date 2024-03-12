@@ -9,7 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "types.h"
+#include "bus.h"
 #include "hal/interrupt.h"
 /**
  * @brief IRQ entry

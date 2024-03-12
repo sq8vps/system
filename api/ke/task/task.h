@@ -9,10 +9,11 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/fs/fs.h"
-#include "ke/core/mutex.h"
 #include "ob/ob.h"
 struct ObObjectHeader;
+struct _KeSemaphore;
+struct _KeMutex;
+struct IoFileHandle;
 
 /**
  * @brief Task states
@@ -67,13 +68,16 @@ struct KeTaskControlBlock
 {
     struct ObObjectHeader objectHeader;
 
-    uintptr_t esp; //stack pointer
-    uintptr_t esp0; //kernel stack pointer for privilege level change
-    uintptr_t cr3; //task page directory address
-    uint16_t ds; //task data segment register
-    uint16_t es; //task extra segment register
-    uint16_t fs; //task extra segment register
-    uint16_t gs; //task extra segment register
+    struct
+    {
+        uintptr_t esp; //stack pointer
+        uintptr_t esp0; //kernel stack pointer for privilege level change
+        uintptr_t cr3; //task page directory address
+        uint16_t ds; //task data segment register
+        uint16_t es; //task extra segment register
+        uint16_t fs; //task extra segment register
+        uint16_t gs; //task extra segment register
+    } cpu;
 
     void *mathState;
 

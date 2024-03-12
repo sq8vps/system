@@ -4,6 +4,8 @@
 #include "mm/heap.h"
 #include "common.h"
 #include "io/fs/fs.h"
+#include "io/dev/dev.h"
+#include "io/dev/rp.h"
 #include "ke/core/mutex.h"
 #include "mm/mm.h"
 #include "ksym.h"

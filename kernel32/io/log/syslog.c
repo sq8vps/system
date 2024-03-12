@@ -1,6 +1,7 @@
 #include "syslog.h"
 #include "mm/heap.h"
 #include "io/disp/print.h"
+#include "io/fs/fs.h"
 
 struct IoSyslogHandle* IoOpenSyslog(const char *name)
 {

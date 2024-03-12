@@ -2,8 +2,7 @@
 #define IO_DEV_VOL_H_
 
 #include <stdint.h>
-#include "dev.h"
-#include "types.h"
+#include "io/dev/dev.h"
 #include "ob/ob.h"
 
 EXPORT

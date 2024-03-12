@@ -1,5 +1,4 @@
 #include "disk.h"
-#include "io/dev/types.h"
 #include "mm/palloc.h"
 
 static STATUS DiskVerifyMemoryTable(struct MmMemoryDescriptor *mem, uint64_t align, uint64_t requiredSize, uint64_t blockSize)

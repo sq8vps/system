@@ -13,7 +13,9 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
-#include "ke/task/task.h"
+
+EXPORT
+struct KeTaskControlBlock;
 
 /**
  * @addtogroup hal

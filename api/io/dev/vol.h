@@ -8,8 +8,7 @@ extern "C"
 #endif
 
 #include <stdint.h>
-#include "dev.h"
-#include "types.h"
+#include "io/dev/dev.h"
 #include "ob/ob.h"
 /**
  * @brief Maximum length of volume label

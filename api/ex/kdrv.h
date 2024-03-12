@@ -9,11 +9,9 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/dev/dev.h"
 #include <stdarg.h>
 #include "ob/ob.h"
 struct ExDriverObject;
-struct IoDeviceObject;
 struct IoDeviceObject;
 struct IoRp;
 

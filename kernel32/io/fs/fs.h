@@ -5,12 +5,11 @@
 #include <stdbool.h>
 #include "defines.h"
 #include "vfs.h"
-#include "fstypedefs.h"
 #include "ob/ob.h"
 
 EXPORT
 struct KeTaskControlBlock;
-struct ObObjectHeader;
+
 
 EXPORT
 /**

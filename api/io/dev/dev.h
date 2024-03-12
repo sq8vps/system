@@ -9,14 +9,21 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "ex/kdrv.h"
-#include "rp.h"
-#include "types.h"
-#include "io/fs/vfs.h"
-#include "vol.h"
-#include "res.h"
-#include "ke/core/mutex.h"
+#include "bus.h"
 #include "ob/ob.h"
+#define IO_MAX_COMPATIBLE_DEVICE_IDS 8
+
+typedef uint32_t IoDeviceFlags;
+#define IO_DEVICE_FLAG_INITIALIZED 0x1
+#define IO_DEVICE_FLAG_READY_TO_RUN 0x2
+#define IO_DEVICE_FLAG_INITIALIZATION_FAILURE 0x4
+#define IO_DEVICE_FLAG_FS_MOUNTED 0x8
+#define IO_DEVICE_FLAG_BUFFERED_IO 0x1000
+#define IO_DEVICE_FLAG_DIRECT_IO 0x2000
+#define IO_DEVICE_FLAG_PERSISTENT 0x80000000
+#define IO_DEVICE_FLAG_REMOVABLE_MEDIA 0x40000000
+#define IO_DEVICE_FLAG_ENUMERATION_CAPABLE 0x20000000
+
 enum IoDeviceType
 {
     IO_DEVICE_TYPE_NONE = 0, //dummy driver
@@ -33,6 +40,9 @@ enum IoDeviceType
 
 struct IoDeviceObject;
 struct IoVolumeNode;
+struct IoDeviceResource;
+struct ExDeviceObject;
+struct IoRp;
 
 /**
  * @brief Maximum length of device name

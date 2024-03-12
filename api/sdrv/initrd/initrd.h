@@ -9,7 +9,6 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/fs/vfs.h"
 
 #ifdef __cplusplus
 }

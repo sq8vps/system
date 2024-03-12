@@ -9,7 +9,8 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/dev/dev.h"
+struct IoDeviceObject;
+
 /**
  * @brief Type specific operations for storage controller devices
 */

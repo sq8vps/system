@@ -2,6 +2,7 @@
 #include "sched.h"
 #include "hal/time.h"
 #include "ke/core/mutex.h"
+#include "ke/task/task.h"
 
 static struct KeTaskControlBlock *list = NULL;
 

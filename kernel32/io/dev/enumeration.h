@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/dev/dev.h"
+
+EXPORT
+struct IoDeviceNode;
 
 /**
  * @brief Start device enumerating kernel thread

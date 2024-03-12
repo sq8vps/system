@@ -9,21 +9,20 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "dev.h"
-#include "ke/core/mutex.h"
-#include "types.h"
-#include "hal/interrupt.h"
-#include "io/fs/vfs.h"
-#include "res.h"
-#include "ke/task/task.h"
+#include "bus.h"
 #include "ob/ob.h"
 struct IoRp;
 struct IoRpQueue;
 struct IoDeviceObject;
+struct IoVfsNode;
+struct IoDeviceResource;
+struct KeTaskControlBlock;
 
 typedef STATUS (*IoCompletionCallback)(struct IoRp *rp, void *context);
 typedef void (*IoProcessRpCallback)(struct IoRp *rp);
 typedef void (*IoCancelRpCallback)(struct IoRp *rp);
+
+typedef uint32_t IoRpFlags;
 
 enum IoRpCode
 {

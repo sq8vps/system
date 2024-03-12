@@ -7,6 +7,8 @@
 #include "io/dev/dev.h"
 #include "io/dev/rp.h"
 #include "bridge.h"
+#include "class.h"
+#include "io/dev/res.h"
 
 struct PciDeviceData
 {

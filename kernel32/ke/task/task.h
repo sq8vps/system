@@ -3,12 +3,13 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/fs/fs.h"
-#include "ke/core/mutex.h"
 #include "ob/ob.h"
 
 EXPORT
 struct ObObjectHeader;
+struct _KeSemaphore;
+struct _KeMutex;
+struct IoFileHandle;
 
 EXPORT
 /**

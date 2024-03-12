@@ -11,10 +11,8 @@ extern "C"
 #include <stdbool.h>
 #include "defines.h"
 #include "vfs.h"
-#include "fstypedefs.h"
 #include "ob/ob.h"
 struct KeTaskControlBlock;
-struct ObObjectHeader;
 
 /**
  * @brief File operation flags

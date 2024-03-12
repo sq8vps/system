@@ -9,7 +9,8 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "ke/task/task.h"
+struct KeTaskControlBlock;
+
 /**
  * @brief Put arbitrary task to sleep for a given time
  * @param *tcb Task Control Block

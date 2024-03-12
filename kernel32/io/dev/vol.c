@@ -4,6 +4,7 @@
 #include "io/fs/vfs.h"
 #include "ke/core/mutex.h"
 #include "ke/core/panic.h"
+#include "dev.h"
 
 static struct IoVolumeNode *IoVolumeList = NULL;
 static KeSpinlock IoVolumeListLock = KeSpinlockInitializer;

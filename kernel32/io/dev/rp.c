@@ -5,6 +5,10 @@
 #include "ke/core/panic.h"
 #include "ke/sched/sched.h"
 #include "mm/slab.h"
+#include "io/fs/vfs.h"
+#include "res.h"
+#include "ke/task/task.h"
+#include "dev.h"
 
 #define IO_RP_CACHE_CHUNK_PER_SLAB 64
 static void *IoRpSlabCache = NULL;

@@ -1,6 +1,6 @@
 //This header file is generated automatically
-#ifndef EXPORTED___API__IO_DEV_TYPES_H_
-#define EXPORTED___API__IO_DEV_TYPES_H_
+#ifndef EXPORTED___API__IO_DEV_BUS_H_
+#define EXPORTED___API__IO_DEV_BUS_H_
 
 #ifdef __cplusplus
 extern "C" 
@@ -8,23 +8,7 @@ extern "C"
 #endif
 
 #include "defines.h"
-#include "hal/interrupt.h"
 #include <stdint.h>
-#define IO_MAX_COMPATIBLE_DEVICE_IDS 8
-
-typedef uint32_t IoDeviceFlags;
-#define IO_DEVICE_FLAG_INITIALIZED 0x1
-#define IO_DEVICE_FLAG_READY_TO_RUN 0x2
-#define IO_DEVICE_FLAG_INITIALIZATION_FAILURE 0x4
-#define IO_DEVICE_FLAG_FS_MOUNTED 0x8
-#define IO_DEVICE_FLAG_BUFFERED_IO 0x1000
-#define IO_DEVICE_FLAG_DIRECT_IO 0x2000
-#define IO_DEVICE_FLAG_PERSISTENT 0x80000000
-#define IO_DEVICE_FLAG_REMOVABLE_MEDIA 0x40000000
-#define IO_DEVICE_FLAG_ENUMERATION_CAPABLE 0x20000000
-
-typedef uint32_t IoRpFlags;
-
 enum IoBusType
 {
     IO_BUS_TYPE_UNKNOWN = 0,

@@ -3,9 +3,10 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/dev/dev.h"
 #include "io/fs/vfs.h"
-#include "fstypedefs.h"
+
+EXPORT
+struct IoDeviceObject;
 
 /**
  * @brief Initialize "/dev" filesystem

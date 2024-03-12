@@ -9,9 +9,9 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/dev/dev.h"
 #include "io/fs/vfs.h"
-#include "fstypedefs.h"
+struct IoDeviceObject;
+
 /**
  * @brief Create device file
  * @param *dev Device object

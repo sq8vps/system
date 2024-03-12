@@ -73,7 +73,12 @@
 			"object.h": "c",
 			"mbr.h": "c",
 			"ob.h": "c",
-			"fstypedefs.h": "c"
+			"fstypedefs.h": "c",
+			"panic.h": "c",
+			"sched.h": "c",
+			"dpc.h": "c",
+			"sleep.h": "c",
+			"hal.h": "c"
 		}
 	}
 }
