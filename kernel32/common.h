@@ -176,6 +176,25 @@ EXPORT
 EXTERN char *CmGetFileName(char *path);
 
 EXPORT
+/**
+ * @brief Allocate table of strings
+ * @param countInTable Number of strings in a table
+ * @param countToAllocate Number of string to allocate (starting from the first string)
+ * @param length Length of each string to be allocated
+ * @return Allocated table pointer or NULL on failure
+ * @note If either \a countToAllocate or \a length is zero, then no string is allocated.
+*/
+EXTERN char** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, uint32_t length);
+
+EXPORT
+/**
+ * @brief Free table of strings
+ * @param **table Table of strings
+ * @param count Number of strings in table
+*/
+EXTERN void CmFreeStringTable(char **table, uint32_t count);
+
+EXPORT
 #ifdef DEBUG
     #include "io/disp/print.h"
     /**
@@ -187,7 +206,7 @@ EXPORT
      * @attention This function should not be used except for
      * early boot stage messaging and debugging
     */
-    #define PRINT(...) IoPrintDebug(__VA_ARGS__)
+    #define PRINT(...) IoPrint(__VA_ARGS__)
     /**
      * @brief Print error message (file name + line numer + additional data) to currently available console
      * @param ... printf-like argument list
@@ -197,7 +216,7 @@ EXPORT
      * @attention This function should not be used except for
      * early boot stage messaging and debugging
     */
-    #define ERROR(...) IoPrintDebug(__FILE__ ":" STRINGIFY(__LINE__) ": " __VA_ARGS__)
+    #define ERROR(...) IoPrint(__FILE__ ":" STRINGIFY(__LINE__) ": " __VA_ARGS__)
 #else
     #define PRINT(...)
     #define ERROR(...)

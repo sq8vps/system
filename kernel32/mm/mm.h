@@ -67,10 +67,18 @@ EXTERN struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uint
 EXPORT
 /**
  * @brief Free Memory Descriptor list
- * @param *descriptor First descriptor, i.e, the list obtained from \a MmBuildMemoryDescriptorList()
+ * @param *list First descriptor, i.e, the list obtained from \a MmBuildMemoryDescriptorList()
  * @note This function is NULL safe
 */
 EXTERN void MmFreeMemoryDescriptorList(struct MmMemoryDescriptor *list);
+
+EXPORT
+/**
+ * @brief Get size of memory described by the Memory Descriptor list
+ * @param *list First descriptor, i.e, the list obtained from \a MmBuildMemoryDescriptorList()
+ * @return Size of memory descibed by the list
+*/
+EXTERN uint64_t MmGetMemoryDescriptorListSize(struct MmMemoryDescriptor *list);
 
 EXPORT
 /**

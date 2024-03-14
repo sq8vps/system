@@ -37,9 +37,26 @@ struct IoVolumeNode
  * @param *dev Associated device
  * @param flags Volume node flags
  * @return Status code
- * @attention Priority level must be <= \a HAL_PRIORITY_LEVEL_DPC
 */
 extern STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
+
+/**
+ * @brief Set volume serial number
+ * @param *dev Device object with associated volume
+ * @param serial Serial number
+ * @return Status code
+ * @note This function fails when there is no associated volume
+*/
+extern STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial);
+
+/**
+ * @brief Set volume label
+ * @param *dev Device object with associated volume
+ * @param *label Volume label (length <= \a IO_VOLUME_MAX_LABEL_LENGTH)
+ * @return Status code
+ * @note This function fails when there is no associated volume
+*/
+extern STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
 
 
 #ifdef __cplusplus

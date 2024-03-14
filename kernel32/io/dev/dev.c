@@ -105,7 +105,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     ASSERT(node);
 
     STATUS ret;
-    char *deviceId, *compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS];
+    char *deviceId, **compatibleIds;
     
     if(OK != (ret = IoGetDeviceId(node->bdo, &deviceId, (char***)&compatibleIds)))
     {
@@ -123,6 +123,9 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
         MmFreeKernelHeap(drivers);
         return ret;
     }
+
+    CmFreeStringTable(compatibleIds, IO_MAX_COMPATIBLE_DEVICE_IDS);
+    MmFreeKernelHeap(deviceId);
 
     //invoke AddDevice routine for all drivers to form a device stack
     struct ExDriverObjectList *d = drivers;
@@ -225,7 +228,7 @@ STATUS IoSendRpDown(struct IoRp *rp)
     return DEVICE_NOT_AVAILABLE;
 }
 
-STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS])
+STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char ***compatibleIds)
 {
     ASSERT(dev);
     *deviceId = NULL;

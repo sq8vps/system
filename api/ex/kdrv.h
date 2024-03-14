@@ -49,14 +49,6 @@ struct ExDriverObjectList
 */
 extern struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
 
-/**
- * @brief Make OS-compatible device ID
- * @param count Count of string parameters
- * @param ... Device ID parts (char*)
- * @return Allocated and filled output string
-*/
-extern char* ExMakeDeviceId(uint8_t count, ...);
-
 
 #ifdef __cplusplus
 }

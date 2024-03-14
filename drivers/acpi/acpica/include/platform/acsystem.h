@@ -1,6 +1,8 @@
 #ifndef __ACSYSTEM_H__
 #define __ACSYSTEM_H__
 
+#define DISABLE_KERNEL_STDLIB
+
 #include "kernel.h"
 // #define memcpy CmMemcpy
 // #define memset CmMemset

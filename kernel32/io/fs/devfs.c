@@ -5,10 +5,12 @@
 #include "mm/mm.h"
 #include "common.h"
 
-/**
- * @brief Devfs root node
-*/
-static struct IoVfsNode *devfsNode = NULL;
+static struct
+{
+    struct IoVfsNode *root;
+}
+IoDevfsState = {.root = NULL};
+
 
 // /**
 //  * @brief Max number of registed device files for given type
@@ -83,10 +85,10 @@ static struct IoVfsNode *devfsNode = NULL;
 STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, union IoVfsReference ref, IoVfsFlags flags, char *name)
 {
     ASSERT(dev);
-    ASSERT(devfsNode);
+    ASSERT(IoDevfsState.root);
     ASSERT(name);
 
-    if(IoVfsCheckIfNodeExists(devfsNode, name))
+    if(IoVfsCheckIfNodeExists(IoDevfsState.root, name))
         return IO_FILE_ALREADY_EXISTS;
 
     struct IoVfsNode *node = IoVfsCreateNode(name);
@@ -98,22 +100,21 @@ STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, union IoVfsReference ref, 
     node->fsType = IO_VFS_FS_PHYSICAL;
     node->flags |= flags | IO_VFS_FLAG_NO_CACHE;
 
-    IoVfsInsertNode(devfsNode, node);
-    MmFreeKernelHeap(name);
+    IoVfsInsertNode(IoDevfsState.root, node);
     return OK;
 }
 
 STATUS IoInitDeviceFs(struct IoVfsNode *root)
 {
-    devfsNode = IoVfsCreateNode("dev");
-    if(NULL == devfsNode)
+    IoDevfsState.root = IoVfsCreateNode("dev");
+    if(NULL == IoDevfsState.root)
         return OUT_OF_RESOURCES;
     
-    devfsNode->flags = IO_VFS_FLAG_PERSISTENT;
-    devfsNode->type = IO_VFS_DIRECTORY;
-    devfsNode->fsType = IO_VFS_FS_VIRTUAL;
+    IoDevfsState.root->flags = IO_VFS_FLAG_PERSISTENT;
+    IoDevfsState.root->type = IO_VFS_DIRECTORY;
+    IoDevfsState.root->fsType = IO_VFS_FS_VIRTUAL;
     
-    IoVfsInsertNode(devfsNode, root);
+    IoVfsInsertNode(IoDevfsState.root, root);
     
     return OK;
 }

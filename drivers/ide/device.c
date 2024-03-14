@@ -316,18 +316,17 @@ STATUS IdeGetDeviceId(struct IoRp *rp)
         return IoSendRpDown(rp);
     }
     struct IdeDriveData *info = &(t->drive);
-
+        
     char *deviceId, **compatibleIds;
 
-    deviceId = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, info->model);
-
+    deviceId = MmAllocateKernelHeap(128);
     if(NULL == deviceId)
     {
         rp->status = OUT_OF_RESOURCES;
         goto _IdeGetDeviceIdLeave;
     }
 
-    compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
+    compatibleIds = CmAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, 1, 128);
     if(NULL == compatibleIds)
     {
         MmFreeKernelHeap(deviceId);
@@ -335,7 +334,8 @@ STATUS IdeGetDeviceId(struct IoRp *rp)
         goto _IdeGetDeviceIdLeave;
     }
 
-    compatibleIds[0] = ExMakeDeviceId(2, IDE_DEVICE_ID_PREFIX, IDE_DEVICE_ID_GENERIC);
+    snprintf(deviceId, 128, IDE_DEVICE_ID_PREFIX "/%s", info->model);
+    snprintf(compatibleIds[0], 128, IDE_DEVICE_ID_PREFIX "/" IDE_DEVICE_ID_GENERIC);
 
     rp->payload.deviceId.mainId = deviceId;
     rp->payload.deviceId.compatibleId = compatibleIds;

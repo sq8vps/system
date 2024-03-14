@@ -30,6 +30,7 @@
 #include "sdrv/fpu.h"
 #include "sdrv/sse.h"
 #include "io/dev/dev.h"
+#include "ke/core/dpc.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
@@ -92,6 +93,7 @@ NORETURN static void KeInit(void)
 	ItInit(); //initialize interrupts and exceptions
 	IoVfsInit();
 	IoFsInit();
+	KeDpcInitialize();
 	
 	if(0 == kernelArgs.initrdSize)
 	{
@@ -132,7 +134,7 @@ NORETURN static void KeInit(void)
 
 	while(1)
 	{
-		KeTaskYield();
+		//KeTaskYield();
 	}
 }
 

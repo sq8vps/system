@@ -2,47 +2,49 @@
 #include "common.h"
 #include "io/dev/dev.h"
 #include "sdrv/initrd/initrd.h"
-#include "mm/heap.h"
 #include "assert.h"
 #include "devfs.h"
+#include "mm/slab.h"
 
 #define IO_VFS_MAX_SYMLINK_DEPTH 40
 #define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 127
+#define IO_VFS_CHUNKS_PER_SLAB 16
 
-/**
- * @brief Filesystem root node
-*/
-static struct IoVfsNode *root = NULL;
-
-/**
- * @brief Maximum file name length
-*/
-static uint32_t IoVfsMaxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH;
+static struct
+{
+    struct IoVfsNode *root; /**< Root node */
+    void *slabHandle; /**< VFS node slab allocator handle */
+    uint32_t maxFileNameLength; /**< Max file name length */
+} 
+IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH};
 
 
 struct IoVfsNode* IoVfsCreateNode(char *name)
 {
-    struct IoVfsNode *node = MmAllocateKernelHeapZeroed(sizeof(*node) + CmStrlen(name) + 1);
+    if(CmStrlen(name) > IoVfsState.maxFileNameLength)
+        return NULL;
+        
+    struct IoVfsNode *node = MmSlabAllocate(IoVfsState.slabHandle);
     if(NULL == node)
         return NULL;
     
     ObInitializeObjectHeader(node);
     
-    CmStrcpy(node->name, name);
+    CmStrncpy(node->name, name, IoVfsState.maxFileNameLength);
 
     return node;
 }
 
 uint32_t IoVfsGetMaxFileNameLength(void)
 {
-    return IoVfsMaxFileNameLength;
+    return IoVfsState.maxFileNameLength;
 }
 
 void IoVfsDestroyNode(struct IoVfsNode *node)
 {
     ASSERT(node);
     
-    MmFreeKernelHeap(node);
+    MmSlabFree(IoVfsState.slabHandle, node);
 }
 
 static STATUS purgeCache(struct IoVfsNode *node)
@@ -52,17 +54,21 @@ static STATUS purgeCache(struct IoVfsNode *node)
 
 STATUS IoVfsInit(void)
 {
-    root = IoVfsCreateNode("");
-    if(NULL == root)
+    IoVfsState.slabHandle = MmSlabCreate(sizeof(struct IoVfsNode) + IoVfsState.maxFileNameLength + 1, IO_VFS_CHUNKS_PER_SLAB);
+    if(NULL == IoVfsState.slabHandle)
+        return OUT_OF_RESOURCES;
+
+    IoVfsState.root = IoVfsCreateNode("");
+    if(NULL == IoVfsState.root)
         return IO_VFS_INITIALIZATION_FAILED;
 
     //prepare root node
-    root->type = IO_VFS_DIRECTORY;
-    root->child = NULL;
-    root->flags = IO_VFS_FLAG_PERSISTENT;
-    root->fsType = IO_VFS_FS_VIRTUAL;
+    IoVfsState.root->type = IO_VFS_DIRECTORY;
+    IoVfsState.root->child = NULL;
+    IoVfsState.root->flags = IO_VFS_FLAG_PERSISTENT;
+    IoVfsState.root->fsType = IO_VFS_FS_VIRTUAL;
 
-    return IoInitDeviceFs(root);
+    return IoInitDeviceFs(IoVfsState.root);
 }
 
 char* IoVfsDetachFileName(char *path)
@@ -299,11 +305,11 @@ struct IoVfsNode *IoVfsGetNode(struct IoVfsNode *parent, char *name)
 
 struct IoVfsNode *IoVfsGetNodeByPath(char *path)
 {
-    struct IoVfsNode *node = root;
+    struct IoVfsNode *node = IoVfsState.root;
 
     //treat empty string as root
     if('\0' == path[0])
-        return root;
+        return IoVfsState.root;
 
     //every path must start from root
     if('/' != path[0])

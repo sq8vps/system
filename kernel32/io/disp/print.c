@@ -1,40 +1,64 @@
 #include "print.h"
-#include "common/stdio.h"
+#include "common/vprintf.h"
+
+int IoVprint(const char *format, va_list args)
+{
+    struct VPrintfConfig c;
+    c.toFile = true;
+    c.useMax = false;
+    int ret = CmVprintf(c, format, args);
+    return ret;
+}
 
 __attribute__ ((format (printf, 1, 2)))
 int IoPrint(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-    int ret = CmVprintf(format, args);
+    int ret = IoVprint(format, args);
     va_end(args);
     return ret;
 }
 
-__attribute__ ((format (printf, 1, 2)))
-int IoPrintDebug(const char *format, ...)
+__attribute__ ((format (printf, 2, 3)))
+int IoPrintN(size_t n, const char *format, ...)
 {
-#ifdef DEBUG
+    struct VPrintfConfig c;
+    c.toFile = true;
+    c.useMax = true;
+    c.max = n;
 	va_list args;
 	va_start(args, format);
-    int ret = CmVprintf(format, args);
+    int ret = CmVprintf(c, format, args);
     va_end(args);
     return ret;
-#else
-    return 0;
-#endif
 }
 
-int IoVprint(const char *format, va_list args)
+__attribute__ ((format (printf, 2, 3)))
+int IoSprint(char *s, const char *format, ...)
 {
-    return CmVprintf(format, args);
+    struct VPrintfConfig c;
+    c.toFile = false;
+    c.buffer = s;
+    c.useMax = false;
+	va_list args;
+	va_start(args, format);
+    int ret = CmVprintf(c, format, args);
+    va_end(args);
+    return ret;
 }
 
-int IoVprintDebug(const char *format, va_list args)
+__attribute__ ((format (printf, 3, 4)))
+int IoSprintN(char *s, size_t n, const char *format, ...)
 {
-#ifdef DEBUG
-    return CmVprintf(format, args);
-#else
-    return 0;
-#endif
+    struct VPrintfConfig c;
+    c.toFile = false;
+    c.buffer = s;
+    c.useMax = true;
+    c.max = n - 1;
+	va_list args;
+	va_start(args, format);
+    int ret = CmVprintf(c, format, args);
+    va_end(args);
+    return ret;
 }

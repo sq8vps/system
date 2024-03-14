@@ -2,6 +2,13 @@
 #include "logging.h"
 #include "disk.h"
 #include "part.h"
+#include <stdatomic.h>
+
+static struct 
+{
+    uint32_t diskCount;
+} 
+DiskDriverState = {.diskCount = 0};
 
 static STATUS DiskDispatch(struct IoRp *rp)
 {
@@ -87,8 +94,8 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         info->partition.start = geo->firstAddressableSector;
         info->partition.size = geo->sectorCount;
         info->partition.sectorSize = geo->sectorSize;
+        info->index = atomic_fetch_add(&(DiskDriverState.diskCount), 1);
         MmFreeKernelHeap(geo);
-
     }
     else //incorrect scenario
     {

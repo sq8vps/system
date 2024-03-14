@@ -12,18 +12,6 @@ struct AcpiDeviceInfo
     char *path;
 };
 
-static void PciVenDevToString(uint16_t n, char *s)
-{
-    for(uint8_t i = 0; i < 4; i++)
-    {
-        uint8_t k = (n >> (i * 4)) & 0xF;
-        if(k < 10)
-            s[3 - i] = k + '0';
-        else
-            s[3 - i] = k - 10 + 'A'; 
-    }
-}
-
 // #define ACPI_DEVICE_ID_PREFIX "ACPI"
 // static char* makeDeviceId(char *hid)
 // {
@@ -315,38 +303,16 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
     {
         struct PciDeviceData *info = dev->privateData;
         char *deviceId, **compatibleIds;
+        uint8_t compatibleIdCount = 0;
 
-        char vidS[5], didS[5];
-        PciVenDevToString(info->vendor, vidS);
-        vidS[4] = '\0';
-        PciVenDevToString(info->device, didS);
-        didS[4] = '\0';
-
-        deviceId = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, vidS, didS);
-
-        if(NULL == deviceId)
-        {
-            rp->status = OUT_OF_RESOURCES;
-            return OUT_OF_RESOURCES;
-        }
-
-        compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
-        if(NULL == compatibleIds)
-        {
-            MmFreeKernelHeap(deviceId);
-            rp->status = OUT_OF_RESOURCES;
-            return OUT_OF_RESOURCES;
-        }
         switch(info->class)
         {
             case STORAGE:
                 switch(info->subclass)
                 {
                     case STORAGE_IDE:
-                        compatibleIds[0] = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, "STORAGE", "IDE");
-                        break;
                     case STORAGE_SATA:
-                        compatibleIds[0] = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, "STORAGE", "AHCI");
+                        compatibleIdCount = 1;
                         break;
                     default:
                         break;
@@ -357,7 +323,69 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
                 {
                     case BRIDGE_PCI:
                     case BRIDGE_PCI_2:
-                        compatibleIds[0] = ExMakeDeviceId(3, PCI_DEVICE_ID_PREFIX, "BUS", "PCI");
+                        compatibleIdCount = 1;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case NETWORK:
+            case DISPLAY:
+            case MULTIMEDIA:
+            case MEMORY:
+            case SIMPLE_COMM:
+            case SYSTEM_PERIPH:
+            case INPUT_DEVICE:
+            case DOCKING_STATION:
+            case PROCESSOR:
+            case SERIAL_BUS:
+            case WIRELESS:
+            case INTELLIGENT:
+            case SATELLITE_COMM:
+            case ENCRYPTION:
+            case SIGNAL_PROCESSING:
+            default:
+                break;
+        }
+
+        deviceId = MmAllocateKernelHeap(128);
+        if(NULL == deviceId)
+        {
+            rp->status = OUT_OF_RESOURCES;
+            return OUT_OF_RESOURCES;
+        }
+
+        compatibleIds = CmAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
+        if(NULL == compatibleIds)
+        {
+            MmFreeKernelHeap(deviceId);
+            rp->status = OUT_OF_RESOURCES;
+            return OUT_OF_RESOURCES;
+        }
+
+        snprintf(deviceId, 128, PCI_DEVICE_ID_PREFIX "/%X/%X", info->vendor, info->device);
+
+        switch(info->class)
+        {
+            case STORAGE:
+                switch(info->subclass)
+                {
+                    case STORAGE_IDE:
+                        snprintf(compatibleIds[0], 128, "STORAGE/IDE");
+                        break;
+                    case STORAGE_SATA:
+                        snprintf(compatibleIds[0], 128, "STORAGE/AHCI");
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case BRIDGE:
+                switch(info->subclass)
+                {
+                    case BRIDGE_PCI:
+                    case BRIDGE_PCI_2:
+                        snprintf(compatibleIds[0], 128, "BUS/PCI");
                         break;
                     default:
                         break;

@@ -82,15 +82,6 @@ EXPORT
 */
 EXTERN struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
 
-EXPORT
-/**
- * @brief Make OS-compatible device ID
- * @param count Count of string parameters
- * @param ... Device ID parts (char*)
- * @return Allocated and filled output string
-*/
-EXTERN char* ExMakeDeviceId(uint8_t count, ...);
-
 /**
  * @}
 */

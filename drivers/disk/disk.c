@@ -1,54 +1,81 @@
 #include "disk.h"
-#include "mm/palloc.h"
-
-static STATUS DiskVerifyMemoryTable(struct MmMemoryDescriptor *mem, uint64_t align, uint64_t requiredSize, uint64_t blockSize)
-{
-    // if(align <= 1)
-    //     return OK;
-    
-    // if(requiredSize % blockSize)
-    //     return BAD_ALIGNMENT;
-
-    // uint64_t size = 0;
-
-    // uint64_t mask = ((uint64_t)1 << (align - 1)) - 1;
-    // while(NULL != mem)
-    // {
-    //     if((mem->physical & mask) || (mem->size & mask))
-    //         return BAD_ALIGNMENT;
-    //     size += mem->size;
-    //     mem = mem->next;
-    // }
-    
-    // if(size < requiredSize)
-    //     return OUT_OF_RESOURCES;
-
-    // return OK;
-}
-
-static STATUS DiskFinalizeTransaction(struct IoRp *rp, void *context)
-{
-    IoFinalizeRp((struct IoRp*)context);
-    return OK;
-}
-
-static STATUS DiskPerformTransaction(struct IoRp *original)
-{
-    // STATUS status;
-    // struct IoRp *rp;
-    // status = IoCreateRp(&rp);
-    // if(OK != status)
-    //     return status;
-    // rp->code = original->code;
-    // rp->device = original->device->attachedTo;
-    // //rp->payload.readWrite = original->payload.readWrite;
-    // rp->size = original->size;
-    // rp->completionCallback = DiskFinalizeTransaction;
-    // rp->completionContext = original;
-    // return IoSendRp(rp->device, rp);
-}
+#include "mm/mm.h"
 
 STATUS DiskReadWrite(struct IoRp *rp)
 {
+    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
+    struct DiskData *info = dev->privateData;
+    if(info->isMdo && info->isPartition0)
+    {
+        //we are the MDO of partition 0
+        //assume this request is already prepared
+        //a) by the kernel if a flat disk operation is requested
+        //b) by the higher level driver when a partition operation is requested
+        //just forward the request to the drive controller
+        return IoSendRpDown(rp);
+    }
+    else if(!info->isMdo && !info->isPartition0)
+    {
+        //we are the BDO of partition n
+        //add appropriate offsets to work on given partition
+        //also check if the request fits in the partition
+        if(IO_RP_READ == rp->code)
+        {
+            uint64_t size;
+            if(dev->flags & IO_DEVICE_FLAG_DIRECT_IO)
+            {
+                size = MmGetMemoryDescriptorListSize(rp->payload.read.memory);
+            }
+            else if(dev->flags & IO_DEVICE_FLAG_BUFFERED_IO)
+            {
+                size = rp->size;
+            }
 
+            if(size < info->partition.sizeBytes)
+            {
+                //won't fit
+                rp->status = IO_VOLUME_TOO_SMALL;
+                IoFinalizeRp(rp);
+                return OK;
+            }
+            rp->payload.read.offset += info->partition.startBytes;
+        }
+        else if(IO_RP_WRITE == rp->code)
+        {
+            uint64_t size;
+            if(dev->flags & IO_DEVICE_FLAG_DIRECT_IO)
+            {
+                size = MmGetMemoryDescriptorListSize(rp->payload.write.memory);
+            }
+            else if(dev->flags & IO_DEVICE_FLAG_BUFFERED_IO)
+            {
+                size = rp->size;
+            }
+
+            if(size < info->partition.sizeBytes)
+            {
+                //won't fit
+                rp->status = IO_VOLUME_TOO_SMALL;
+                IoFinalizeRp(rp);
+                return OK;
+            }
+            rp->payload.write.offset += info->partition.startBytes;
+        }
+        else
+        {
+            rp->status = IO_RP_PROCESSING_FAILED;
+            IoFinalizeRp(rp);
+            return OK;
+        }
+        
+        //everything is fine, forward RP
+        return IoSendRp(info->part0device, rp);
+    }
+    else
+    {
+        //bad disk configuration, should not happen
+        rp->status = IO_RP_PROCESSING_FAILED;
+        IoFinalizeRp(rp);
+        return OK;
+    }
 }

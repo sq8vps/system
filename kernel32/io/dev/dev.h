@@ -184,7 +184,7 @@ EXPORT
  * @param **compatbileIds[] List of compatbile IDs. This buffer is allocated by the driver.
  * @return Status code. On failure the returned IDs are NULL.
 */
-EXTERN STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS]);
+EXTERN STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char ***compatibleIds);
 
 EXPORT
 /**

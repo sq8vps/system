@@ -14,6 +14,8 @@
 //it can be the BDO and MDO simultaneously for other partitions
 struct DiskData
 {
+    uint32_t index; //object index for generating device file names
+    uint32_t childCount; //count of children devices (partitions)
     uint8_t isMdo : 1; //this object is a MDO, so it represents a partition
     uint8_t isPartition0 : 1; //this object is for partition 0 (flat disk)
     uint8_t isGpt : 1; //is this disk partitioned using GPT scheme
@@ -26,6 +28,9 @@ struct DiskData
         uint64_t start;
         uint64_t size;
         uint64_t sectorSize;
+
+        uint64_t startBytes;
+        uint64_t sizeBytes;
     } partition;
 };
 

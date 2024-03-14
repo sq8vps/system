@@ -19,6 +19,8 @@ enum KeDpcPriority
     KE_DPC_PRIORITY_NORMAL = 0,
     KE_DPC_PRIORITY_LOW,
     KE_DPC_PRIORITY_HIGH,
+
+    _KE_DPC_PRIORITY_LIMIT = KE_DPC_PRIORITY_HIGH,
 };
 
 EXPORT
@@ -36,5 +38,11 @@ EXTERN STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback,
  * @brief Process all Deferred Procedure Calls if priority level is low enough
 */
 INTERNAL void KeProcessDpcQueue(void);
+
+/**
+ * @brief Initialize Deffered Procedure Call module
+ * @return Status code
+*/
+INTERNAL STATUS KeDpcInitialize(void);
 
 #endif

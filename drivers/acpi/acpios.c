@@ -1,3 +1,5 @@
+#define DISABLE_KERNEL_STDLIB
+
 #include "kernel.h"
 #include "acpica/include/acpi.h"
 #include "logging.h"

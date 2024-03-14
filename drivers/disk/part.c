@@ -1,7 +1,27 @@
 #include "part.h"
 #include "mm/heap.h"
 #include "mm/mm.h"
+#include "ke/core/mutex.h"
+#include <stdatomic.h>
 
+#define DISK_DEVICE_FILE_NAME_PREFIX "hd"
+
+static STATUS DiskCreateDeviceFile(struct IoDeviceObject *dev, struct DiskData *info)
+{
+    char name[5] = DISK_DEVICE_FILE_NAME_PREFIX;
+
+    if(!info->isPartition0)
+    {
+        uint32_t parentIndex = ((struct DiskData*)(info->part0device->privateData))->index;
+        if(parentIndex > 25)
+            return OUT_OF_RESOURCES;
+        
+
+    }
+
+    
+            
+}
 
 static STATUS DiskReadSync(struct IoDeviceObject *bdo, uint64_t offset, uint64_t size, void **buffer)
 {
@@ -138,6 +158,10 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
                 partitionInfo->partition.start = info->mbr->partition[i].lba;
                 partitionInfo->partition.size = info->mbr->partition[i].sectors;
                 partitionInfo->partition.sectorSize = dev->blockSize;
+                partitionInfo->index = atomic_fetch_add(&(info->childCount), 1);
+
+                partitionInfo->partition.startBytes = info->mbr->partition[i].lba * dev->blockSize;
+                partitionInfo->partition.sizeBytes = info->mbr->partition[i].sectors * dev->blockSize;
 
                 status = IoRegisterDevice(partitionDev, dev);
                 if(OK != status)

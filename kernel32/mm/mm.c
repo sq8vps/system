@@ -97,6 +97,17 @@ void MmFreeMemoryDescriptorList(struct MmMemoryDescriptor *list)
     }
 }
 
+uint64_t MmGetMemoryDescriptorListSize(struct MmMemoryDescriptor *list)
+{
+    uint64_t size = 0;
+    while(NULL != list)
+    {
+        size += list->size;
+        list = list->next;
+    }
+    return size;
+}
+
 STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags)
 {
     STATUS ret = OK;

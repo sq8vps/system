@@ -1,19 +1,15 @@
-# Prerequisites
 *.d
 
-# Object files
 *.o
 *.ko
 *.obj
 *.elf
 *.sym
 
-# Linker output
 *.ilk
 *.map
 *.exp
 
-# Precompiled Headers
 *.gch
 *.pch
 
@@ -23,22 +19,18 @@
 *.la
 *.lo
 
-# Shared objects (inc. Windows DLLs)
 *.dll
 *.so
 *.so.*
 *.dylib
+*.sym
 
-# Executables
 *.exe
 *.out
 *.hex
 *.elf
 *.drv
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
 .tmp_versions/
 modules.order
 Module.symvers
@@ -49,3 +41,4 @@ elf/
 __pycache__/
 *.bat
 *.vmdk
+symbols/

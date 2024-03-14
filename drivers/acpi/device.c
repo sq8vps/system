@@ -1,6 +1,7 @@
 #include "device.h"
 #include "kernel.h"
 #include "logging.h"
+#include "common.h"
 
 static bool alreadyEnumerated = false;
 static bool pciHostBridgeFound = false; //allow only one PCI/PCI-E host bridge
@@ -187,24 +188,39 @@ STATUS AcpiGetDeviceId(struct IoRp *rp)
     if(NULL != rp->device->privateData)
     {
         struct AcpiDeviceInfo *info = IoGetCurrentRpPosition(rp)->privateData;
+
         char *deviceId, **compatibleIds;
-        deviceId = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, info->pnpId);
+        uint8_t compatibleIdCount = 0;
+
+        switch(info->type)
+        {
+            case IO_BUS_TYPE_PCI:
+                compatibleIdCount = 1;
+                break;
+            default:
+                break;
+        }
+
+        deviceId = MmAllocateKernelHeap(128);
         if(NULL == deviceId)
         {
             rp->status = OUT_OF_RESOURCES;
             return OUT_OF_RESOURCES;
         }
-        compatibleIds = MmAllocateKernelHeapZeroed(IO_MAX_COMPATIBLE_DEVICE_IDS * sizeof(*compatibleIds));
+
+        compatibleIds = CmAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
         if(NULL == compatibleIds)
         {
             MmFreeKernelHeap(deviceId);
             rp->status = OUT_OF_RESOURCES;
             return OUT_OF_RESOURCES;
         }
+
+        IoSprintN(deviceId, 128, ACPI_DEVICE_ID_PREFIX "/%s", info->pnpId);
         
         if(IO_BUS_TYPE_PCI == info->type)
         {
-            compatibleIds[0] = ExMakeDeviceId(2, ACPI_DEVICE_ID_PREFIX, "PCI");
+            IoSprintN(compatibleIds[0], 128, "BUS/PCI");
         }
 
         rp->payload.deviceId.mainId = deviceId;

@@ -349,38 +349,3 @@ struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address)
     KeReleaseMutex(&kernelDriverListMutex);
     return t;
 }
-
-char* ExMakeDeviceId(uint8_t count, ...)
-{
-    if(0 == count)
-        return NULL;
-    
-    va_list args;
-    va_start(args, count);
-    uint32_t size = 0;
-    for(uint8_t i = 0; i < count; i++)
-        size += (CmStrlen(va_arg(args, char*)) + 1);
-
-    char *r = MmAllocateKernelHeap(size);
-    if(NULL == r)
-        return r;
-    r[0] = '\0';
-
-    va_start(args, count);
-    for(uint8_t i = 0; i < count; i++)
-    {
-        CmStrcat(r, va_arg(args, char*));
-        if(i != (count - 1))
-            CmStrcat(r, "/");
-    }
- 
-    va_end(args);
-
-    for(uint32_t i = 0; i < CmStrlen(r); i++)
-    {
-        if(' ' == r[i])
-            r[i] = '_';
-    }
-
-    return r;
-}

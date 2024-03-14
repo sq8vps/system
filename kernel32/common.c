@@ -1,6 +1,7 @@
 #include "common.h"
 #include "defines.h"
 #include <stdarg.h>
+#include "mm/heap.h"
 
 uint32_t CmStrlen(const char *str)
 {
@@ -189,4 +190,48 @@ uint64_t CmPow10(uint16_t x)
         y *= 10;
     }
     return y;
+}
+
+char ** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, uint32_t length)
+{
+    if(0 == countInTable)
+        return NULL;
+
+    char **t = MmAllocateKernelHeapZeroed(sizeof(char*) * countInTable);
+    if(NULL == t)
+        return NULL;
+    
+    if(0 == length)
+        return t;
+    
+    if(countToAllocate > countInTable)
+        countToAllocate = countInTable;
+
+    for(uint32_t i = 0; i < countToAllocate; i++)
+    {
+        t[i] = MmAllocateKernelHeap(length);
+        if(NULL == t)
+        {
+            for(uint32_t k = 0; k < i; k++)
+                MmFreeKernelHeap(t[k]);
+            MmFreeKernelHeap(t);
+            return NULL;
+        }
+        t[i][0] = '\0';
+    }
+    return t;
+}
+
+void CmFreeStringTable(char **table, uint32_t count)
+{
+    if(NULL == table)
+        return;
+
+    for(uint32_t i = 0; i < count; i++)
+    {
+        if(NULL != table[i])
+            MmFreeKernelHeap(table[i]);
+    }
+
+    MmFreeKernelHeap(table);
 }

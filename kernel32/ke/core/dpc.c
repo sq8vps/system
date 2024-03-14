@@ -1,17 +1,17 @@
 #include "dpc.h"
 #include <stdbool.h>
-#include "mm/heap.h"
 #include "common.h"
 #include "hal/time.h"
 #include "hal/interrupt.h"
 #include "mutex.h"
 #include "panic.h"
 #include "ke/sched/sched.h"
-#include "ob/ob.h"
+#include "mm/slab.h"
+
+#define KE_DPC_CHUNK_PER_SLAB 64
 
 struct KeDpcObject
 {
-    struct ObObjectHeader objectHeader;
     //caller provided data
     enum KeDpcPriority priority; //DPC priority
     KeDpcCallback callback; //DPC entry point
@@ -21,11 +21,16 @@ struct KeDpcObject
     struct KeDpcObject *next; //next DPC on the list
 };
 
-static struct KeDpcObject *queue[3] = {NULL, NULL, NULL};
-static KeSpinlock queueMutex = KeSpinlockInitializer;
-
-static bool isProcessingOngoing = false, isPending = false;
-static KeSpinlock flagMutex = KeSpinlockInitializer;
+static struct
+{
+    void *slabHandle;
+    struct KeDpcObject *queue[_KE_DPC_PRIORITY_LIMIT + 1];
+    bool isPending;
+    bool isOngoing;
+    KeSpinlock lock;
+} 
+KeDpcState = {.slabHandle = NULL, .queue[0] = NULL, .queue[1] = NULL, .queue[2] = NULL, 
+                .isPending = false, .isOngoing = false, .lock = KeSpinlockInitializer};
 
 STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context)
 {
@@ -48,23 +53,21 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
             break;
     }
 
-    struct KeDpcObject *dpc = MmAllocateKernelHeap(sizeof(struct KeDpcObject));
+    struct KeDpcObject *dpc = MmSlabAllocate(KeDpcState.slabHandle);
     if(NULL == dpc)
         return OUT_OF_RESOURCES;
-    
-    ObInitializeObjectHeader(dpc);
 
     dpc->callback = callback;
     dpc->context = context;
     dpc->priority = priority;
     dpc->next = NULL;
     
-    KeAcquireSpinlock(&queueMutex);
-    if(NULL == queue[queueIndex])
-        queue[queueIndex] = dpc;
+    KeAcquireSpinlock(&(KeDpcState.lock));
+    if(NULL == KeDpcState.queue[queueIndex])
+        KeDpcState.queue[queueIndex] = dpc;
     else
     {
-        struct KeDpcObject *t = queue[queueIndex];
+        struct KeDpcObject *t = KeDpcState.queue[queueIndex];
         while(NULL != t->next)
         {
             t = t->next;
@@ -72,53 +75,55 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
         t->next = dpc;
     }
     dpc->time = HalGetTimestamp();
-    KeReleaseSpinlock(&queueMutex);
-    KeAcquireSpinlock(&flagMutex);
-    if(false == isProcessingOngoing)
-        isPending = true;
-    KeReleaseSpinlock(&flagMutex);
+    if(false == KeDpcState.isOngoing)
+        KeDpcState.isPending = true;
+    KeReleaseSpinlock(&(KeDpcState.lock));
     return OK;
 }
 
 static void KeDpcProcess(void)
 {
-    KeAcquireSpinlock(&flagMutex);
-    PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
-    isProcessingOngoing = true;
-    isPending = false;
-    KeReleaseSpinlock(&flagMutex);
-    for(uint8_t i = 0; i < sizeof(queue) / sizeof(*queue); i++)
+    KeAcquireSpinlock(&(KeDpcState.lock));
+    KeDpcState.isOngoing = true;
+    KeDpcState.isPending = false;
+    for(uint8_t i = 0; i < (_KE_DPC_PRIORITY_LIMIT + 1); i++)
     {
-        KeAcquireSpinlock(&queueMutex);
-        struct KeDpcObject *t = queue[i];
-        while(NULL != queue[i])
+        struct KeDpcObject *t = KeDpcState.queue[i];
+        while(NULL != KeDpcState.queue[i])
         {
-            t = queue[i];
-            KeReleaseSpinlock(&queueMutex);
+            t = KeDpcState.queue[i];
+            KeReleaseSpinlock(&(KeDpcState.lock));
             t->time = HalGetTimestamp() - t->time;
             t->callback(t->context);
-            KeAcquireSpinlock(&queueMutex);
-            queue[i] = t->next;
-            MmFreeKernelHeap(t);
+            KeAcquireSpinlock(&(KeDpcState.lock));
+            KeDpcState.queue[i] = t->next;
+            MmSlabFree(KeDpcState.slabHandle, t);
         }
-        KeReleaseSpinlock(&queueMutex);
     }
-    KeAcquireSpinlock(&flagMutex);
-    isProcessingOngoing = false;
-    HalLowerPriorityLevel(lastPrio);
-    KeReleaseSpinlock(&flagMutex);
+    KeDpcState.isOngoing = false;
+    KeReleaseSpinlock(&(KeDpcState.lock));
 }
 
 void KeProcessDpcQueue(void)
 {
-    KeAcquireSpinlock(&flagMutex);
-    if(isPending && (HalGetProcessorPriority() <= HAL_PRIORITY_LEVEL_DPC))
+    if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_DPC)
+        return;
+    KeAcquireSpinlock(&(KeDpcState.lock));
+    if(KeDpcState.isPending)
     {
-        KeReleaseSpinlock(&flagMutex);
+        KeReleaseSpinlock(&(KeDpcState.lock));
         KeDpcProcess();
         KePerformPreemptedTaskSwitch();
         return;
     }
-    KeReleaseSpinlock(&flagMutex);
+    KeReleaseSpinlock(&(KeDpcState.lock));
 }
 
+STATUS KeDpcInitialize(void)
+{
+    KeDpcState.slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
+    if(NULL == KeDpcState.slabHandle)
+        return OUT_OF_RESOURCES;
+    
+    return OK;
+}
