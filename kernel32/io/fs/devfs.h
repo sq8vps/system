@@ -19,11 +19,10 @@ EXPORT
 /**
  * @brief Create device file
  * @param *dev Device object
- * @param ref File reference value for driver
  * @param flags VFS flags
  * @param *name File name, must be unique in \a /dev
  * @return Status code
 */
-EXTERN STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, union IoVfsReference ref, IoVfsFlags flags, char *name);
+EXTERN STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsFlags flags, char *name);
 
 #endif

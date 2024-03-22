@@ -111,6 +111,7 @@ typedef enum
     IO_VOLUME_ALREADY_MOUNTED,
     IO_VOLUME_TOO_SMALL,
     IO_DEVICE_INCOMPATIBLE,
+    IO_UNKNOWN_FILE_SYSTEM,
 
     OB_UNKOWN_OBJECT_TYPE = 0x00006000,
     OB_OBJECT_TYPE_ALREADY_REGISTERED,
@@ -175,16 +176,23 @@ typedef char Utf8_t;
 /**
  * @brief Align value up
  * @param val Value to be aligned
+ * @param mask Alignment bitmask
+*/
+#define ALIGN_UP_MASK(val, mask) (((val) + (mask)) & ~(mask))
+
+/**
+ * @brief Align value up
+ * @param val Value to be aligned
  * @param align Alignment value
 */
-#define ALIGN_UP(val, align) ((val) + (((val) & ((align) - 1)) ? ((align) - ((val) & ((align) - 1))) : 0))
+#define ALIGN_UP(val, align) ALIGN_UP_MASK(val, (typeof(val))(align) - 1)
 
 /**
  * @brief Align value down
  * @param val Value to be aligned
  * @param align Alignment value
 */
-#define ALIGN_DOWN(val, align) ((val - ((val & (align - 1)) ? (val & (align - 1)) : 0)))
+#define ALIGN_DOWN(val, align) ((val) & ~((typeof(val))(align) - 1))
 
 /**
  * @brief Macro for inline assembly
@@ -211,6 +219,25 @@ typedef char Utf8_t;
  * @return Value in nanoseconds
 */
 #define MS_TO_NS(ms) (((uint64_t)1000000) * (ms))
+
+/**
+ * @brief Unique Identifier structure
+*/
+union UID
+{
+    struct
+    {
+        struct
+        {
+            uint32_t high;
+            uint16_t low;
+        } time PACKED;
+        uint16_t reserved;
+        uint8_t family;
+        uint8_t node[7];
+    } PACKED;
+    uint8_t raw[16];
+} PACKED;
 
 
 #ifdef __cplusplus

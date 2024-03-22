@@ -23,7 +23,10 @@ struct IoVfsNode* IoVfsCreateNode(char *name)
 {
     if(CmStrlen(name) > IoVfsState.maxFileNameLength)
         return NULL;
-        
+    
+    if(!CmCheckFileName(name))
+        return NULL;
+
     struct IoVfsNode *node = MmSlabAllocate(IoVfsState.slabHandle);
     if(NULL == node)
         return NULL;
@@ -223,6 +226,16 @@ char* IoVfsDetachFileName(char *path)
 //     return NULL;
 // }
 
+STATUS IoVfsOpenNode(struct IoVfsNode *node)
+{
+    ASSERT(node);
+
+    if(IO_VFS_FS_PHYSICAL != node->fsType)
+        return IO_BAD_FILE_TYPE;
+    
+    
+}
+
 struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
 {
     ASSERT(node);
@@ -395,7 +408,7 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path)
         return IO_FILE_NOT_FOUND;
     }
     
-    if((IO_VFS_DIRECTORY != target->type) && (IO_VFS_DISK != target->type))
+    if((IO_VFS_DIRECTORY != target->type) && (IO_VFS_MOUNT_POINT != target->type))
         return IO_NOT_A_DIRECTORY;
     
     if(NULL == target->child)

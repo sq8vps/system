@@ -158,6 +158,13 @@ extern char *CmGetFileName(char *path);
 */
 extern char** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, uint32_t length);
 
+/**
+ * @brief Free table of strings
+ * @param **table Table of strings
+ * @param count Number of strings in table
+*/
+extern void CmFreeStringTable(char **table, uint32_t count);
+
 #ifdef DEBUG
     #include "io/disp/print.h"
     /**

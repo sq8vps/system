@@ -37,11 +37,12 @@ struct ExDriverObject
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
+    uint32_t referenceCount;
     STATUS (*init)(struct ExDriverObject *driverObject);
     STATUS (*unload)(struct ExDriverObject *driverObject);
     STATUS (*dispatch)(struct IoRp *rp);
     STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject);
-    STATUS (*fsCheck)(struct ExDriverObject *driverObject, char *path);
+    STATUS (*mount)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk);
 
     struct ExDriverObject *next;
     struct ExDriverObject *previous;

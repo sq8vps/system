@@ -20,7 +20,7 @@ STATUS InitrdInit(uintptr_t address)
     if(NULL == device)
         return OUT_OF_RESOURCES;
 
-    device->type = IO_VFS_DISK;
+    device->type = IO_VFS_MOUNT_POINT;
     device->fsType = IO_VFS_FS_INITRD;
     device->flags = IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
     
@@ -28,7 +28,7 @@ STATUS InitrdInit(uintptr_t address)
     if(OK != (ret = IoVfsInsertNodeByPath(device, "/dev/")))
         return ret;
     
-    if(OK != (ret = IoMountVolume("/dev/" INITRD_DEVICE_NAME, INITRD_MOUNT_POINT)))
+    if(OK != (ret = IoMountVolumeDep("/dev/" INITRD_DEVICE_NAME, INITRD_MOUNT_POINT)))
         return ret;
 
     return OK;

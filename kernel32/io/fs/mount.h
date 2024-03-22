@@ -11,7 +11,7 @@
  * @param *mountPointName Destination mount point name (under \a /), A-Z,a-z,0-9,_,-
  * @return Status code
 */
-STATUS IoMountVolume(char *device, char *mountPointName);
+STATUS IoMountVolumeDep(char *device, char *mountPointName);
 
 /**
  * @brief Unmount volume

@@ -13,11 +13,6 @@
 
 #define KDRV_MAX_DRIVER_COUNT 200
 
-//list of loaded kernel drivers
-// static struct ExDriverObject *kernelDriverList[KDRV_MAX_DRIVER_COUNT];
-// //next sequential driver index (starting from 1)
-// static uint32_t kernelDriverNextSeqIndex = 1;
-
 static struct ExDriverObject *kernelDriverListHead = NULL;
 static KeMutex kernelDriverListMutex = KeMutexInitializer;
 
@@ -93,89 +88,6 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
     
     return IO_FILE_NOT_FOUND;
 }
-
-//#define KDRV_INITIAL_INDEX 0
-// KDRV_INDEX_T nextDriverIndex = KDRV_INITIAL_INDEX;
-
-// struct KDrv_DriverListEntry
-// {
-//     KDRV_INDEX_T index; //driver index
-//     DDK_KDrvMetadata_t *meta; //driver metadata
-//     void (*entry)(KDRV_INDEX_T index); //driver entry point (only for initialization)
-//     uintptr_t *vaddr; //driver virtual address
-//     uintptr_t size; //driver memory size (heap not included)
-//     uint8_t started : 1; //is driver started?
-
-//     DDK_KDrvGeneralCallbacks_t *generalCallbacks; //general driver callbacks
-//     KDrv_Callbacks_t *specializedCallbacks; //specialized driver callbacks
-    
-//     struct KDrv_DriverListEntry *next; //next driver in linked list
-// };
-
-// struct KDrv_DriverListEntry *kernelModeDriverList = NULL;
-
-// static void initKernelModeDriverEntry(struct KDrv_DriverListEntry *e)
-// {
-//     e->entry = NULL;
-//     e->vaddr = NULL;
-//     e->size = 0;
-//     e->started = 0;
-//     e->meta = NULL;
-//     e->index = 0;
-//     e->generalCallbacks = NULL;
-// }
-
-// static struct KDrv_DriverListEntry* getLastKernelModeDriverEntry(void)
-// {
-//     struct KDrv_DriverListEntry *t = kernelModeDriverList;
-//     if(NULL == t)
-//         return NULL;
-
-//     while(NULL != t->next)
-//     {
-//         t++;
-//     }
-
-//     return t;
-// }
-
-// static struct KDrv_DriverListEntry* getKernelModeDriverEntry(const KDRV_INDEX_T index)
-// {
-//     struct KDrv_DriverListEntry *t = kernelModeDriverList;
-//     if(NULL == t)
-//         return NULL;
-
-//     while(index != t->index)
-//     {
-//         if(NULL == t->next)
-//             return NULL;
-//         t++;
-//     }
-
-//     return t;
-// }
-
-// static STATUS pushDriverMetadata(const struct KDrv_DriverListEntry *e)
-// {
-//     struct KDrv_DriverListEntry *m = MmAllocateKernelHeap(sizeof(struct KDrv_DriverListEntry)); //allocate memory for entry
-//     if(NULL == m)
-//         return EXEC_MALLOC_FAILED;
-    
-//     CmMemcpy(m, e, sizeof(*m)); //copy entry
-
-//     m->next = NULL; //just to be sure
-
-//     if(NULL == kernelModeDriverList) //initialize head if not initialized
-//     {
-//         kernelModeDriverList = m;
-//     }
-//     else //head initialized, update last entry
-//     {
-//         getLastKernelModeDriverEntry()->next = m;
-//     }
-    
-//     return OK;
-// }
 
 STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
 {

@@ -235,3 +235,18 @@ void CmFreeStringTable(char **table, uint32_t count)
 
     MmFreeKernelHeap(table);
 }
+
+bool CmCheckFileName(char *name)
+{
+    uint32_t length = CmStrlen(name);
+    for(uint32_t i = 0; i < length; i++)
+    {
+        if(('/' == name[i]) || ('|' == name[i]) || ('\\' == name[i]) || ('*' == name[i]) || ('?' == name[i]) || (':' == name[i]))
+            return false;
+    }
+
+    if(0 == length)
+        return false;
+    else
+        return true;
+}

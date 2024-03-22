@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdarg.h>
+#include <stdbool.h>
 
 /**
  * @file common.h
@@ -193,6 +194,14 @@ EXPORT
  * @param count Number of strings in table
 */
 EXTERN void CmFreeStringTable(char **table, uint32_t count);
+
+EXPORT
+/**
+ * @brief Check correctness of a file name
+ * @param *name File name (not path!)
+ * @return True if correct, false if not
+*/
+EXTERN bool CmCheckFileName(char *name);
 
 EXPORT
 #ifdef DEBUG

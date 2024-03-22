@@ -16,7 +16,7 @@ static STATUS open(char *file, IoFileOpenMode mode, IoFileFlags flags, struct Io
     if(NULL == fileNode)
         return IO_FILE_NOT_FOUND;
 
-    if(IO_VFS_FILE != fileNode->type)
+    if((IO_VFS_FILE != fileNode->type) && (IO_VFS_DEVICE != fileNode->type))
         return IO_BAD_FILE_TYPE;
 
     if((mode & (IO_FILE_WRITE | IO_FILE_WRITE_ATTRIBUTES | IO_FILE_APPEND)) && (fileNode->flags & IO_VFS_FLAG_READ_ONLY))

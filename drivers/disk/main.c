@@ -38,7 +38,7 @@ static STATUS DiskDispatch(struct IoRp *rp)
                 break;
         }
     }
-    return OK;
+    return IO_RP_PROCESSING_FAILED;
 }
 
 static STATUS DiskInit(struct ExDriverObject *driverObject)
@@ -67,6 +67,7 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
     struct DiskData *info = device->privateData;
     info->isMdo = 1; //we definitely are a MDO
 
+    ObLockObject(baseDeviceObject);
     device->alignment = baseDeviceObject->alignment;
     device->blockSize = baseDeviceObject->blockSize;
     if(baseDeviceObject->flags & IO_DEVICE_FLAG_BUFFERED_IO)
@@ -77,11 +78,13 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
     //we were enumerated by a disk BDO, so we are a partition
     if(IO_DEVICE_TYPE_DISK == baseDeviceObject->type)
     {
+        ObUnlockObject(baseDeviceObject);
         info->isPartition0 = 0;
         //represent a dummy pass-through device and pass RPs to underlying BDO
     }
     else if(IO_DEVICE_TYPE_STORAGE == baseDeviceObject->type) //if enumerated by the storage driver, then we are a partition 0 (flat disk)
     {
+        ObUnlockObject(baseDeviceObject);
         info->isPartition0 = 1;
         struct StorGeometry *geo;
         status = StorGetGeometry(baseDeviceObject, &geo);
@@ -96,9 +99,18 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         info->partition.sectorSize = geo->sectorSize;
         info->index = atomic_fetch_add(&(DiskDriverState.diskCount), 1);
         MmFreeKernelHeap(geo);
+
+        status = DiskCreateDeviceFile(device, info);
+        if(OK != status)
+            LOG(SYSLOG_ERROR, "Failed to create device file for partition 0 on disk %lu with status 0x%X", info->index, status);
+        
+        status = IoRegisterVolume(device, 0);
+        if(OK != status)
+            LOG(SYSLOG_ERROR, "Failed to register volume for partition 0 on disk %lu with status 0x%X", info->index, status);
     }
     else //incorrect scenario
     {
+        ObUnlockObject(baseDeviceObject);
         MmFreeKernelHeap(device->privateData);
         IoDestroyDevice(device);
         return DEVICE_NOT_AVAILABLE;

@@ -23,6 +23,9 @@
 		{
 			"name": "disk",
 			"path": "drivers/disk"
+		},
+		{
+			"path": "drivers/fat"
 		}
 	],
 	"settings": {
@@ -76,7 +79,9 @@
 			"sleep.h": "c",
 			"hal.h": "c",
 			"part.h": "c",
-			"stdarg.h": "c"
+			"stdarg.h": "c",
+			"stdatomic.h": "c",
+			"op.h": "c"
 		}
 	}
 }

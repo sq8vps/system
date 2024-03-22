@@ -58,6 +58,15 @@ extern STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t seria
 */
 extern STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
 
+/**
+ * @brief Register filesystem for given volume
+ * @param *disk Volume device object (type = \a IO_DEVICE_TYPE_DISK)
+ * @param *fs Filesystem device object (type = \a IO_DEVICE_TYPE_FS)
+ * @param volumeFlags Flags to be ORed with volume node flags
+ * @return Status code
+*/
+extern STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
+
 
 #ifdef __cplusplus
 }

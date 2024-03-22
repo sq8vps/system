@@ -31,6 +31,7 @@
 #include "sdrv/sse.h"
 #include "io/dev/dev.h"
 #include "ke/core/dpc.h"
+#include "common/order.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
@@ -73,6 +74,7 @@ void task2(void *c)
 
 NORETURN static void KeInit(void)
 {	
+	CmDetectEndianness();
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
 	MmGdtInit();

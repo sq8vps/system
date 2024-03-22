@@ -4,7 +4,7 @@
 #include "common.h"
 #include "mm/heap.h"
 
-STATUS IoMountVolume(char *device, char *mountPointName)
+STATUS IoMountVolumeDep(char *device, char *mountPointName)
 {
     ASSERT(device && mountPointName);
 
@@ -28,7 +28,7 @@ STATUS IoMountVolume(char *device, char *mountPointName)
         return IO_FILE_NOT_FOUND;
     }
     
-    if(IO_VFS_DISK != dev->type)
+    if(IO_VFS_MOUNT_POINT != dev->type)
         return IO_NOT_DISK_DEVICE_FILE;
     
     //prepare mount point path
@@ -40,7 +40,7 @@ STATUS IoMountVolume(char *device, char *mountPointName)
     mountPointPath[0] = '/';
     PRINT("Mounted volume %s to %s\n", device, mountPointPath);
     
-    STATUS ret = IoVfsCreateLink(mountPointPath, device, IO_VFS_FLAG_MOUNT_POINT);
+    STATUS ret = IoVfsCreateLink(mountPointPath, device, 0);
     MmFreeKernelHeap(mountPointPath);
     return ret;
 }

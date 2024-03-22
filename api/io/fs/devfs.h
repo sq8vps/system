@@ -15,12 +15,11 @@ struct IoDeviceObject;
 /**
  * @brief Create device file
  * @param *dev Device object
- * @param ref File reference value for driver
  * @param flags VFS flags
  * @param *name File name, must be unique in \a /dev
  * @return Status code
 */
-extern STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, union IoVfsReference ref, IoVfsFlags flags, char *name);
+extern STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsFlags flags, char *name);
 
 
 #ifdef __cplusplus

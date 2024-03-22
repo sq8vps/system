@@ -18,6 +18,7 @@ typedef uint32_t IoDeviceFlags;
 #define IO_DEVICE_FLAG_READY_TO_RUN 0x2
 #define IO_DEVICE_FLAG_INITIALIZATION_FAILURE 0x4
 #define IO_DEVICE_FLAG_FS_MOUNTED 0x8
+#define IO_DEVICE_FLAG_FS_ASSOCIATED 0x10
 #define IO_DEVICE_FLAG_BUFFERED_IO 0x1000
 #define IO_DEVICE_FLAG_DIRECT_IO 0x2000
 #define IO_DEVICE_FLAG_PERSISTENT 0x80000000
@@ -158,7 +159,7 @@ extern STATUS IoSendRpDown(struct IoRp *rp);
  * @param **compatbileIds[] List of compatbile IDs. This buffer is allocated by the driver.
  * @return Status code. On failure the returned IDs are NULL.
 */
-extern STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **compatibleIds[IO_MAX_COMPATIBLE_DEVICE_IDS]);
+extern STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char ***compatibleIds);
 
 /**
  * @brief Read device configuration space
