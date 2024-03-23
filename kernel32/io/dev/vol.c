@@ -5,7 +5,7 @@
 #include "ke/core/mutex.h"
 #include "dev.h"
 #include "common.h"
-#include "ex/fsdrv.h"
+#include "ex/kdrv/fsdrv.h"
 
 static struct
 {

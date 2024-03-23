@@ -7,7 +7,7 @@
 #include "../cdefines.h"
 #include "ex/exec.h"
 #include "common.h"
-#include "ex/kdrv.h"
+#include "ex/kdrv/kdrv.h"
 #include "mm/gdt.h"
 #include "mm/dynmap.h"
 #include "hal/hal.h"

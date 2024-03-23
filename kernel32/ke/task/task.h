@@ -175,16 +175,4 @@ EXTERN STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel
 */
 INTERNAL uintptr_t KeGetHighestAvailableMemory(void);
 
-/**
- * @brief Assign task ID
- * @return Assigned task ID
-*/
-INTERNAL uint16_t KeAssignTid(void);
-
-/**
- * @brief Free task ID
- * @param tid Task ID to be freed
-*/
-INTERNAL void KeFreeTid(uint16_t tid);
-
 #endif

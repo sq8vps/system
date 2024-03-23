@@ -81,7 +81,8 @@
 			"part.h": "c",
 			"stdarg.h": "c",
 			"stdatomic.h": "c",
-			"op.h": "c"
+			"op.h": "c",
+			"dynmap.h": "c"
 		}
 	}
 }

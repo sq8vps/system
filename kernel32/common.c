@@ -245,8 +245,5 @@ bool CmCheckFileName(char *name)
             return false;
     }
 
-    if(0 == length)
-        return false;
-    else
-        return true;
+    return true;
 }

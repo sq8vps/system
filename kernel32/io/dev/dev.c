@@ -5,7 +5,7 @@
 #include "enumeration.h"
 #include "ke/sched/sched.h"
 #include "io/dev/vol.h"
-#include "ex/kdrv.h"
+#include "ex/kdrv/kdrv.h"
 #include "io/dev/rp.h"
 
 //root device (ACPI or MP) node

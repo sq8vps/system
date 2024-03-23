@@ -1,29 +1,37 @@
 NAME = kernel32.elf
-CC = i686-elf-gcc
-LNK = i686-elf-gcc
+C = i686-elf-gcc
+CPP = i686-elf-g++
+LNK = i686-elf-g++
 AR = i686-elf-ar
 ASM = nasm
-CC_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -Wall
+C_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -Wall
+CPP_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -Wall
 ASM_FLAGS = -f elf32 -D DEBUG -g -F dwarf
 LNK_FLAGS = -g -nostdlib -T kernel.ld -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc
 
-CC_SOURCES = $(wildcard **/*.c) $(wildcard *.c) $(wildcard **/**/*.c)
-CC_HEADERS = $(wildcard **/*.h) $(wildcard *.h) $(wildcard **/**/*.h)
+C_SOURCES = $(wildcard **/*.c) $(wildcard *.c) $(wildcard **/**/*.c)
+CPP_SOURCES = $(wildcard **/*.cpp) $(wildcard *.cpp) $(wildcard **/**/*.cpp)
+C_HEADERS = $(wildcard **/*.h) $(wildcard *.h) $(wildcard **/**/*.h)
+CPP_HEADERS = $(wildcard **/*.hpp) $(wildcard *.hpp) $(wildcard **/**/*.hpp)
 ASM_SOURCES = $(wildcard **/*.asm) $(wildcard *.asm) $(wildcard **/**/*.asm)
 ASM_INCLUDES = $(wildcard **/*.inc) $(wildcard *.inc) $(wildcard **/**/*.inc)
-CC_OBJ = ${CC_SOURCES:.c=.o}
+C_OBJ = ${C_SOURCES:.c=.o}
+CPP_OBJ = ${CPP_SOURCES:.cpp=.o}
 ASM_OBJ = ${ASM_SOURCES:.asm=.o}
 
 all: $(NAME)
 
-%.o : %.c $(CC_HEADERS)
-	$(CC) $(CC_FLAGS) -o $@ $< 
-	
+%.o : %.c $(C_HEADERS)
+	$(C) $(C_FLAGS) -o $@ $< 
+
+%.o : %.cpp $(CPP_HEADERS)
+	$(CPP) $(CPP_FLAGS) -o $@ $< 
+
 %.o : %.asm $(ASM_INCLUDES)
 	$(ASM) $< -o $@ $(ASM_FLAGS)
 
-$(NAME) : $(CC_OBJ) $(ASM_OBJ)
+$(NAME) : $(C_OBJ) $(CPP_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
 	objcopy --only-keep-debug $@ ${@:.elf=.sym}
 	objcopy --strip-debug $@
@@ -31,5 +39,5 @@ $(NAME) : $(CC_OBJ) $(ASM_OBJ)
 	cp ${@:.elf=.sym} ../symbols/
 	
 clean:
-	rm -rf $(CC_OBJ) $(ASM_OBJ) *.gch $(NAME)
+	rm -rf $(C_OBJ) $(CPP_OBJ) $(ASM_OBJ) *.gch $(NAME)
 

@@ -10,6 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include <stdarg.h>
+#include <stdbool.h>
 /**
  * @brief Get string length
  * @param str Input string
@@ -164,6 +165,13 @@ extern char** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAlloc
  * @param count Number of strings in table
 */
 extern void CmFreeStringTable(char **table, uint32_t count);
+
+/**
+ * @brief Check correctness of a file name
+ * @param *name File name (not path!)
+ * @return True if correct, false if not
+*/
+extern bool CmCheckFileName(char *name);
 
 #ifdef DEBUG
     #include "io/disp/print.h"

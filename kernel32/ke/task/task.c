@@ -19,6 +19,9 @@
 #define KE_PROCESS_INITIAL_STACK_SIZE 4096
 #define KE_PROCESS_MAX_STACK_SIZE 65536
 
+uint16_t KeAssignTid(void);
+void KeFreeTid(uint16_t tid);
+
 struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, uintptr_t pageDir, PrivilegeLevel_t pl, const char *name, const char *path)
 {
     struct KeTaskControlBlock *tcb = MmAllocateKernelHeap(sizeof(struct KeTaskControlBlock));

@@ -1,6 +1,6 @@
 #include "panic.h"
 #include "sdrv/bootvga/bootvga.h"
-#include "ex/kdrv.h"
+#include "ex/kdrv/kdrv.h"
 #include "it/it.h"
 
 #define PANIC_STRING(code) [code] = STRINGIFY(code)

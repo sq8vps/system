@@ -18,7 +18,6 @@ typedef uint32_t IoVfsFlags;
 #define IO_VFS_FLAG_VIRTUAL 0x8
 #define IO_VFS_FLAG_DIRTY 0x10 //data for this entry changed in cache, must be send to disk first
 #define IO_VFS_FLAG_VFS_DIRECTORY 0x10000000
-#define IO_VFS_FLAG_MOUNT_POINT 0x20000000
 #define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
 
 typedef uint32_t IoVfsOperationFlags;

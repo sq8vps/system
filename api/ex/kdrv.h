@@ -9,7 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include <stdarg.h>
+#include <stdbool.h>
 #include "ob/ob.h"
 struct ExDriverObject;
 struct IoDeviceObject;
@@ -21,11 +21,13 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 struct ExDriverObject
 {
     struct ObObjectHeader objectHeader;
+    bool free;
     uint32_t index;
     struct IoDeviceObject *deviceObject; //linked list of devices created by the driver
     uint32_t flags;
     uintptr_t address;
     uintptr_t size;
+    uint32_t referenceCount;
     STATUS (*init)(struct ExDriverObject *driverObject);
     STATUS (*unload)(struct ExDriverObject *driverObject);
     STATUS (*dispatch)(struct IoRp *rp);
