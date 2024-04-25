@@ -29,7 +29,7 @@ struct MmMemoryDescriptor
 {
     uintptr_t physical;
     void *mapped;
-    uint64_t size;
+    uintptr_t size;
 
     struct MmMemoryDescriptor *next;
 };
@@ -79,6 +79,21 @@ EXPORT
  * @return Size of memory descibed by the list
 */
 EXTERN uint64_t MmGetMemoryDescriptorListSize(struct MmMemoryDescriptor *list);
+
+EXPORT
+/**
+ * @brief Map memory described by the Memory Descriptor list
+ * @param *list First descriptor, i.e., the list obtained from \a MmBuildMemoryDescriptorList()
+ * @return Pointer to mapped dynamic memory or NULL on failure
+*/
+EXTERN void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list);
+
+EXPORT
+/**
+ * @brief Unmap memory previously mapped using Memory Descriptor list
+ * @param *memory Virtual memory pointer
+*/
+EXTERN void MmUnmapMemoryDescriptorList(void *memory);
 
 EXPORT
 /**

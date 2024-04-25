@@ -5,8 +5,14 @@
 #include "assert.h"
 #include "devfs.h"
 #include "mm/slab.h"
+#include "ke/core/mutex.h"
+#include "io/dev/rp.h"
+#include "ddk/fs.h"
+#include "mm/heap.h"
+#include "ke/task/task.h"
+#include "ke/sched/sched.h"
 
-#define IO_VFS_MAX_SYMLINK_DEPTH 40
+#define IO_VFS_MAX_SYMLINK_DEPTH 10
 #define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 127
 #define IO_VFS_CHUNKS_PER_SLAB 16
 
@@ -15,8 +21,9 @@ static struct
     struct IoVfsNode *root; /**< Root node */
     void *slabHandle; /**< VFS node slab allocator handle */
     uint32_t maxFileNameLength; /**< Max file name length */
+    KeSpinlock lock; /**< Global VFS tree spinlock */
 } 
-IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH};
+IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH, .lock = KeSpinlockInitializer};
 
 
 struct IoVfsNode* IoVfsCreateNode(char *name)
@@ -50,11 +57,6 @@ void IoVfsDestroyNode(struct IoVfsNode *node)
     MmSlabFree(IoVfsState.slabHandle, node);
 }
 
-static STATUS purgeCache(struct IoVfsNode *node)
-{
-    return OK;
-}
-
 STATUS IoVfsInit(void)
 {
     IoVfsState.slabHandle = MmSlabCreate(sizeof(struct IoVfsNode) + IoVfsState.maxFileNameLength + 1, IO_VFS_CHUNKS_PER_SLAB);
@@ -82,7 +84,7 @@ char* IoVfsDetachFileName(char *path)
     {
         if('/' == *c)
         {
-            *c = 0;
+            *c = '\0';
             return c + 1;
         }
         c--;
@@ -91,149 +93,137 @@ char* IoVfsDetachFileName(char *path)
     return path;
 }
 
-// /**
-//  * @brief Resolve element: resolve link or load uncached element if required
-//  * @param *target Target node. If NULL, then \a *targetName is used
-//  * @param *targetName Target name string. Used when no \a *target is provided.
-//  * @param *parent Parent node of the target
-//  * @return Resolved element
-//  * @note This function should be used to resolve all entries
-// */
-// static inline struct IoVfsNode* resolveElement(struct IoVfsNode *target, char *targetName, struct IoVfsNode *parent)
-// {
-//     ASSERT(target || targetName);
-    
-//     if(target) //there is a target node provided
-//     {
-//         //resolve symbolic links
-//         if(IO_VFS_LINK == target->type)
-//         {
-//             uint16_t i = 0;
-//             while(i < IO_VFS_MAX_SYMLINK_DEPTH)
-//             {
-//                 if(IO_VFS_LINK != target->type)
-//                 {
-//                     return resolveElement(target, target->name, target->parent);
-//                 }
-//                 target = target->linkDestination;
-//                 if(NULL == target)
-//                     return NULL;
-//                 i++;
-//             }
-//             //max symbolic link resolution depth reached
-//             return NULL;
-//         }
-//         //else just return unchanged target
-//         return target;
-//     }
-//     else //target node not provided
-//     {
-//         if(NULL == parent)
-//             return NULL;
-        
-//         uint64_t size = 0;
-//         uint64_t ref = 0; 
-//         switch(parent->majorType)
-//         {
-//             case IO_VFS_FS_INITRD:
-//                 ref = InitrdGetFileReference(targetName, &size);
-//                 if(0 != ref)
-//                 {
-//                     struct IoVfsNode *newNode = IoVfsCreateNode(targetName);
-//                     if(NULL == newNode)
-//                         return NULL;
 
-//                     newNode->ref.u64 = ref;
-//                     newNode->flags = IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
-//                     newNode->majorType = IO_VFS_FS_INITRD;
-//                     newNode->type = IO_VFS_FILE;
-//                     newNode->size = size;
-//                     return IoVfsInsertNode(newNode, parent);
-//                 }
-//                 break;
-//             case IO_VFS_FS_TASKFS:
-                
-//                 break;
-//         }
 
-//         return NULL;
-//     }
-// }
-
-// struct IoVfsNode* IoVfsGetNode(char *path)
-// {
-//     ASSERT(path);
-//     uint32_t limit = IO_VFS_MAX_PATH_LENGTH;
-//     struct IoVfsNode *node = &root;
-//     char *element = NULL;
-
-//     //resolve "" and "/", which point to the root
-//     if('\0' == *path)
-//         return &root;
-    
-//     if('/' == *path)
-//     {
-//         path++;
-
-//         if('\0' == *path)
-//             return node;
-//     }
-
-//     //resolve longer paths
-//     element = path;
-//     while(1)
-//     {
-//         if(('/' == *path) || ('\0' == *path))
-//         {
-//             //string passed to resolveElement() must be NULL-terminated
-//             //save original character and replace it with NULL
-//             char t = *path;
-//             *path = 0;
-//             //get child
-//             node = resolveElement(node->child, element, node);
-//             *path = t;
-//             //find matching child
-//             while(NULL != node)
-//             {
-//                 if(0 == CmStrncmp(element, node->name, (int)(path - element)))
-//                 {
-//                     //matching child found
-
-//                     //this is the end of the path (either with or without '/')
-//                     if((0 == *path) || (('/' == *path) && (0 == path[1])))
-//                         return node;
-
-//                     path++;
-//                     element = path;
-//                     break;
-//                 }
-//                 *path = 0;
-//                 node = resolveElement(node->next, element, node->parent);
-//                 *path = t;
-//             }
-
-//             if(NULL == node) //child not found
-//             {
-//                 return NULL;
-//             }
-//         }
-//         path++;
-
-//         if(0 == limit) //path length limit reached
-//             return NULL;
-//         limit--;   
-//     }
-//     return NULL;
-// }
-
-STATUS IoVfsOpenNode(struct IoVfsNode *node)
+STATUS IoVfsOpenNode(struct IoVfsNode *node, bool write, IoVfsFlags flags)
 {
     ASSERT(node);
+    STATUS status = OK;
 
-    if(IO_VFS_FS_PHYSICAL != node->fsType)
-        return IO_BAD_FILE_TYPE;
-    
-    
+    struct KeTaskControlBlock *task = KeGetCurrentTask();
+
+    ObLockObject(node);
+    //check if file is in use for writing
+    if(NULL != node->currentTask)
+    {
+        if(flags & IO_VFS_FLAG_NO_WAIT)
+        {
+            ObUnlockObject(node);
+            return IO_FILE_LOCKED;
+        }
+
+        struct KeTaskControlBlock *t = node->taskQueue;
+        if(NULL == t)
+        {
+            node->taskQueue = task;
+            KeBlockTask(task, TASK_BLOCK_IO);
+            ObUnlockObject(node);
+            KeTaskYield();
+        }
+        else
+        {
+            while(NULL != t)
+            {
+                ObLockObject(t);
+                if(NULL == t->nextAux)
+                {
+                    t->nextAux = task;
+                    task->previousAux = t;
+                    KeBlockTask(task, TASK_BLOCK_IO);
+                    ObUnlockObject(t);
+                    ObUnlockObject(node);
+                    KeTaskYield();
+                    break;
+                }
+                struct KeTaskControlBlock *n = t->nextAux;
+                ObUnlockObject(t);
+                t = n;
+            }
+        }
+    }
+    if(write)
+    {
+        node->currentTask = task;
+    }
+    else
+        node->references.readers++;
+
+    ObUnlockObject(node);
+
+    switch(node->fsType)
+    {
+        case IO_VFS_FS_PHYSICAL:
+        case IO_VFS_FS_VIRTUAL:
+            struct IoRp *rp = IoCreateRp();
+            if(NULL != rp)
+            {
+                rp->code = IO_RP_OPEN;
+                rp->vfsNode = node;
+                status = IoSendRp(node->device, rp);
+                if(OK == status)
+                {
+                    IoWaitForRpCompletion(rp);
+                    status = rp->status;
+                }
+                IoFreeRp(rp);
+            }
+            else
+                status = OUT_OF_RESOURCES;
+            break;
+        case IO_VFS_FS_TASKFS:
+        case IO_VFS_FS_INITRD:
+            break;
+        default:
+            status = IO_BAD_FILE_TYPE;
+            break;
+    }
+
+    if(OK != status)
+    {
+        ObLockObject(node);
+        if(write)
+            node->currentTask = NULL;
+        else
+            node->references.readers--;
+        
+        //TODO: process queue
+    }
+    return status;
+}
+
+STATUS IoVfsClose(struct IoVfsNode *node)
+{
+    ASSERT(node);
+    STATUS status = OK;
+
+    switch(node->fsType)
+    {
+        case IO_VFS_FS_PHYSICAL:
+        case IO_VFS_FS_VIRTUAL:
+            struct IoRp *rp = IoCreateRp();
+            if(NULL != rp)
+            {
+                rp->code = IO_RP_CLOSE;
+                rp->vfsNode = node;
+                status = IoSendRp(node->device, rp);
+                if(OK == status)
+                {
+                    IoWaitForRpCompletion(rp);
+                    status = rp->status;
+                }
+                IoFreeRp(rp);
+            }
+            else
+                status = OUT_OF_RESOURCES;
+            break;
+        case IO_VFS_FS_TASKFS:
+        case IO_VFS_FS_INITRD:
+            break;
+        default:
+            status = IO_BAD_FILE_TYPE;
+            break;
+    }
+    return status;
 }
 
 struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
@@ -265,6 +255,7 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
 struct IoVfsNode *IoVfsGetNode(struct IoVfsNode *parent, char *name)
 {
     ASSERT(parent && name);
+    STATUS status = OK;
 
     //"." file, which points to the same directory
     if(0 == CmStrcmp(name, "."))
@@ -290,6 +281,48 @@ struct IoVfsNode *IoVfsGetNode(struct IoVfsNode *parent, char *name)
     union IoVfsReference ref; 
     switch(parent->fsType)
     {
+        case IO_VFS_FS_PHYSICAL:
+            struct IoRp *rp = IoCreateRp();
+            if(NULL != rp)
+            {
+                union FsGetRequest *req = MmAllocateKernelHeap(sizeof(*req));
+                if(NULL != req)
+                {
+                    req->getNode.name = name;
+                    req->getNode.parent = parent;
+                    rp->code = IO_RP_FILESYSTEM_CONTROL;
+                    rp->payload.deviceControl.code = FS_GET_NODE;
+                    rp->payload.deviceControl.data = req;
+
+                    status = IoSendRp(parent->device, rp);
+                    if(OK == status)
+                    {
+                        IoWaitForRpCompletion(rp);
+                        status = rp->status;
+                        if(OK == status)
+                            node = req->getNode.node;
+                        else
+                            node = NULL;
+                    }
+
+                    MmFreeKernelHeap(req);
+                }
+                else
+                    status = OUT_OF_RESOURCES;
+
+                IoFreeRp(rp);
+            }
+            else 
+                status = OUT_OF_RESOURCES;
+
+            if(OK == status)
+            {
+                IoVfsInsertNode(node, parent);
+                return node;
+            }
+            else
+                return NULL;
+            break;
         case IO_VFS_FS_INITRD:
             ref.u64 = InitrdGetFileReference(name, &size);
             if(0 != ref.u64)
@@ -461,7 +494,43 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node)
     return OK;
 }
 
-STATUS IoVfsRead(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
+{
+    ASSERT(node && buffer && callback);
+
+    if((IO_VFS_FILE != node->type) && (IO_VFS_DEVICE != node->type))
+        return IO_BAD_FILE_TYPE;
+
+    if(0 == size)
+    {
+        callback(OK, 0, context);
+        return OK;
+    }
+
+    switch(node->fsType)
+    {
+        /* File operations on initial ramdisk are handled differently.
+        The initrd driver is a static (standard compiled-in) driver 
+        that does not provide standard driver interface 
+        Initrd flag implies no caching and no writing.
+        */
+        case IO_VFS_FS_INITRD:
+            callback(OK, InitrdReadFile(node->ref.u64, buffer, size, offset), context);
+            return OK;
+            break;
+        case IO_VFS_FS_PHYSICAL:
+        case IO_VFS_FS_VIRTUAL:
+            return IoReadWrite(false, node->device, node, offset, size, buffer, callback, context);
+            break;
+        default:
+            return IO_BAD_FILE_TYPE;
+            break;
+    }
+
+    return IO_BAD_FILE_TYPE;
+}
+
+STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
 {
     ASSERT(node && buffer && actualSize);
     if(0 == size)
@@ -469,44 +538,12 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer
         *actualSize = 0;
         return OK;
     }
-    if(IO_VFS_FILE == node->type)
-    {
-        switch(node->fsType)
-        {
-            /* File operations on initial ramdisk are handled differently.
-            The initrd driver is a static (standard compiled-in) driver 
-            that does not provide standard driver interface 
-            Initrd flag implies no caching and no writing.
-            */
-            case IO_VFS_FS_INITRD:
-                *actualSize = InitrdReadFile(node->ref.u64, buffer, size, offset);
-                return OK;
-        }
-    }
-    else if(IO_VFS_DEVICE == node->type)
-    {
-        *actualSize = 0;
-        return NOT_IMPLEMENTED;
-    }
 
     *actualSize = 0;
     return IO_BAD_FILE_TYPE;
 }
 
-STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
-{
-    ASSERT(node && buffer && actualSize);
-    if(0 == size)
-    {
-        *actualSize = 0;
-        return OK;
-    }
-
-    *actualSize = 0;
-    return IO_BAD_FILE_TYPE;
-}
-
-STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsFlags flags)
+STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
 {
     ASSERT(path && linkDestination);
     if(IoVfsCheckIfNodeExistsByPath(path))

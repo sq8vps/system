@@ -175,7 +175,7 @@ static error_t loadToInitrd(char *name)
 	loadToInitrd("pci.drv");
 	loadToInitrd("ide.drv");
 	loadToInitrd("disk.drv");
-	loadToInitrd("partmgr.drv");
+	loadToInitrd("fat.drv");
 
 	//fill kernel entry parameters structure
 	struct KernelEntryArgs kernelArgs;

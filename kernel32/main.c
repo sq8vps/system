@@ -32,6 +32,7 @@
 #include "io/dev/dev.h"
 #include "ke/core/dpc.h"
 #include "common/order.h"
+#include "io/dev/vol.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
@@ -133,6 +134,9 @@ NORETURN static void KeInit(void)
 	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
 	KeEnableTask(t1);
 	KeEnableTask(t2);
+
+	KeSleep(MS_TO_NS(7000));
+	IoMountVolume("/dev/hda0", "disk1");
 
 	while(1)
 	{

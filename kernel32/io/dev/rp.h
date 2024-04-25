@@ -15,9 +15,9 @@ struct IoDeviceResource;
 struct KeTaskControlBlock;
 
 EXPORT
-typedef STATUS (*IoCompletionCallback)(struct IoRp *rp, void *context);
+typedef STATUS (*IoRpCompletionCallback)(struct IoRp *rp, void *context);
 typedef void (*IoProcessRpCallback)(struct IoRp *rp);
-typedef void (*IoCancelRpCallback)(struct IoRp *rp);
+typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
 EXPORT
 typedef uint32_t IoRpFlags;
@@ -30,6 +30,7 @@ enum IoRpCode
     IO_RP_READ, /**< Read file */
     IO_RP_WRITE, /**< Write file */
     IO_RP_OPEN, /**< Open file */
+    IO_RP_CLOSE, /**< Close file */
     IO_RP_IOCTL, /**< Driver-defined I/O control */
     //PnP requests
     IO_RP_START_DEVICE = 0x1000,
@@ -45,7 +46,7 @@ enum IoRpCode
 
     //device type specific control requests
     IO_RP_STORAGE_CONTROL = 0x2000,
-
+    IO_RP_FILESYSTEM_CONTROL,
 };
 
 EXPORT
@@ -64,6 +65,9 @@ struct IoRp
     struct KeTaskControlBlock *task; /**< Associated task */
     union
     {
+        /**
+         * @brief \a IO_RP_GET_DEVICE_RESOURCES
+        */
         struct
         {
             uint32_t count; /**< Count of resource entries */
@@ -122,8 +126,8 @@ struct IoRp
         } deviceControl;
 
     } payload;
-    IoCompletionCallback completionCallback;
-    IoCancelRpCallback cancelCallback;
+    IoRpCompletionCallback completionCallback;
+    IoRpCancelCallback cancelCallback;
     void *completionContext;
     struct IoRp *next, *previous;
     struct IoRpQueue *queue;
@@ -176,7 +180,7 @@ EXPORT
  * @param cancelCb Callback function required for RP cancelling; called after RP is removed from the queue. NULL if not used.
  * @return Status code
 */
-EXTERN STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoCancelRpCallback cancelCb);
+EXTERN STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb);
 
 EXPORT
 /**

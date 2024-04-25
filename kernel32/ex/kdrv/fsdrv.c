@@ -7,8 +7,8 @@
 struct
 {
     struct ExDriverObject *list;
-    KeSpinlock lock;
-} static ExFsDriverState = {.list = NULL, .lock = KeSpinlockInitializer};
+    KeMutex mutex;
+} static ExFsDriverState = {.list = NULL, .mutex = KeMutexInitializer};
 
 
 STATUS ExMountVolume(struct IoDeviceObject *disk)
@@ -16,11 +16,10 @@ STATUS ExMountVolume(struct IoDeviceObject *disk)
     STATUS status = OK;
 
     struct ExDriverObject *drv = NULL;
-    KeAcquireSpinlock(&(ExFsDriverState.lock));
+    KeAcquireMutex(&(ExFsDriverState.mutex));
     if(NULL != ExFsDriverState.list)
     {
         drv = ExFsDriverState.list;
-        KeReleaseSpinlock(&(ExFsDriverState.lock));
         ObLockObject(drv);
         while(drv)
         {
@@ -36,6 +35,7 @@ STATUS ExMountVolume(struct IoDeviceObject *disk)
                 if(OK == status)
                 {
                     ObUnlockObject(drv);
+                    KeReleaseMutex(&(ExFsDriverState.mutex));
                     return OK;
                 }
             }
@@ -48,13 +48,28 @@ STATUS ExMountVolume(struct IoDeviceObject *disk)
     }
     else
     {
-        KeReleaseSpinlock(&(ExFsDriverState.lock));
-
         status = ExLoadKernelDriver("/initrd/fat.drv", &drv);
         if(OK != status)
+        {
+            KeReleaseMutex(&(ExFsDriverState.mutex));
             return status;
+        }
         
         ObLockObject(drv);
         drv->referenceCount++;
+        ObUnlockObject(drv);
+
+        status = drv->mount(drv, disk);
+
+        ObLockObject(drv);
+        drv->referenceCount--;
+        if(OK == status)
+        {
+            ExFsDriverState.list = drv;
+        }
+        ObUnlockObject(drv);
     }
+
+    KeReleaseMutex(&(ExFsDriverState.mutex));
+    return status;
 }

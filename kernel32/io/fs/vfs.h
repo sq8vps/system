@@ -5,9 +5,10 @@
 #include <stdbool.h>
 #include "defines.h"
 #include "ob/ob.h"
+#include "io/dev/op.h"
 
 EXPORT
-typedef uint32_t IoVfsFlags;
+typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_READ_ONLY 0x1 //file/directory is read only
 #define IO_VFS_FLAG_LOCK 0x2 //node is locked, for example during write - VFS does not check this flag
 #define IO_VFS_FLAG_NO_CACHE 0x4 //do not cache this entry
@@ -17,14 +18,15 @@ typedef uint32_t IoVfsFlags;
 #define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
 
 EXPORT
-typedef uint32_t IoVfsOperationFlags;
+typedef uint32_t IoVfsFlags;
 
 EXPORT
-#define IO_VFS_OPERATION_FLAG_SYNCHRONOUS 1 //synchronous read/write, that is do no return until completed
-#define IO_VFS_OPERATION_FLAG_DIRECT 2 //force unbuffered read/write
-#define IO_VFS_OPERATION_FLAG_NO_WAIT 4 //do not wait if file is locked
-#define IO_VFS_OPERATION_FLAG_CREATE 8 //create file if doesn't exist
+#define IO_VFS_FLAG_SYNCHRONOUS 1 //synchronous read/write, that is do no return until completed
+#define IO_VFS_FLAG_DIRECT 2 //force unbuffered read/write
+#define IO_VFS_FLAG_NO_WAIT 4 //do not wait if file is locked
+#define IO_VFS_FLAG_CREATE 8 //create file if doesn't exist
 
+EXPORT
 /**
  * @brief VFS node types
 */
@@ -38,6 +40,7 @@ enum IoVfsEntryType
     IO_VFS_LINK, //symbolic link, might exist physically or not
 };
 
+EXPORT
 /**
  * @brief VFS filesystem type
 */
@@ -51,10 +54,10 @@ enum IoVfsFsType
     IO_VFS_FS_INITRD, //initial ramdisk filesystem
 };
 
+EXPORT
 /**
  * @brief VFS node reference value type
 */
-EXPORT
 union IoVfsReference
 {
     void *p;
@@ -68,6 +71,10 @@ union IoVfsReference
     int8_t i8;
 };
 
+EXPORT
+struct KeTaskControlBlock;
+
+EXPORT
 /**
  * @brief Main VFS node structure
 */
@@ -76,14 +83,22 @@ struct IoVfsNode
     struct ObObjectHeader objectHeader;
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
-    IoVfsFlags flags; /**< Node flags */
+    IoVfsNodeFlags flags; /**< Node flags */
     Time_t lastUse; /**< Last node use timestamp */
-    uint32_t referenceCount; /**< Count of references to this object, including symlinks */
+    
+    struct
+    {
+        uint32_t readers; /**< Number of readers */
+    } references;
+    
 
     enum IoVfsFsType fsType; /**< VFS filesystem type this node belongs to */
     struct IoDeviceObject *device; /**< Associated device */
     struct IoVfsNode *linkDestination; /**< Symbolic link destination */
     union IoVfsReference ref; /**< Reference value for the driver (LBA, inode number etc.) */
+
+    struct KeTaskControlBlock *currentTask; /**< Task currently owning the file (writer) */
+    struct KeTaskControlBlock *taskQueue; /**< Queue of tasks waiting for access */
 
     struct IoVfsNode *parent; /**< Higher level (parent) node */
     struct IoVfsNode *child; /**< First lower level (child) node */
@@ -171,7 +186,7 @@ void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent);
  * @return Status code
  * @warning Link destination must exist
 */
-STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsFlags flags);
+STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags);
 
 /**
  * @brief Remove symbolic link
@@ -199,7 +214,7 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node);
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
-STATUS IoVfsRead(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
 
 /**
  * @brief Write to given file
@@ -211,7 +226,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
-STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsOperationFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
 /**
  * @brief Create VFS node with given name

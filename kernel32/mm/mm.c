@@ -1,6 +1,7 @@
 #include "mm.h"
 #include "palloc.h"
 #include "slab.h"
+#include "dynmap.h"
 
 static void *MmMemoryDescriptorSlabHandle = NULL;
 #define MM_MEMORY_DESCRIPTOR_CACHE_CHUNKS_PER_SLAB 128
@@ -106,6 +107,66 @@ uint64_t MmGetMemoryDescriptorListSize(struct MmMemoryDescriptor *list)
         list = list->next;
     }
     return size;
+}
+
+void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
+{
+    if(NULL == list)
+        return NULL;
+    
+    struct MmMemoryDescriptor first = list[0];
+    uintptr_t offset = first.physical - ALIGN_DOWN(first.physical, MM_PAGE_SIZE);
+    first.physical -= offset;
+    first.size += offset;
+    first.size = ALIGN_UP(first.size, MM_PAGE_SIZE);
+
+    uint64_t size = 0;
+
+    if(NULL != first.next)
+        size = ALIGN_UP(MmGetMemoryDescriptorListSize(first.next) + first.size, MM_PAGE_SIZE);
+    else
+        size = first.size;
+
+    void *ret = MmReserveDynamicMemory(size);
+    void *m = ret;
+    if(NULL == m)
+        return NULL;
+    
+    if(OK != MmMapMemoryEx((uintptr_t)m, first.physical, first.size, 0))
+    {
+        MmFreeDynamicMemoryReservation(ret);
+        return NULL;
+    }
+    m = (void*)((uintptr_t)m + first.size);
+
+    struct MmMemoryDescriptor *l = first.next;
+    while(NULL != l)
+    {
+        if(OK != MmMapMemoryEx((uintptr_t)m, l->physical, l->size, 0))
+        {
+            //failure, unmap everything
+            MmUnmapMemoryEx((uintptr_t)ret, first.size);
+            struct MmMemoryDescriptor *k = list;
+            m = ret;
+            while(k != l)
+            {
+                MmUnmapMemoryEx((uintptr_t)m, k->size);
+                k = k->next;
+                m = (void*)((uintptr_t)m + k->size);
+            }
+            MmFreeDynamicMemoryReservation(ret);
+            return NULL;
+        }
+        l = l->next;
+        m = (void*)((uintptr_t)m + l->size);
+    }
+
+    return (void*)((uintptr_t)ret + offset);
+}
+
+void MmUnmapMemoryDescriptorList(void *memory)
+{
+    MmUnmapDynamicMemory(memory);
 }
 
 STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags)

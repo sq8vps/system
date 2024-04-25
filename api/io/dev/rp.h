@@ -18,9 +18,9 @@ struct IoVfsNode;
 struct IoDeviceResource;
 struct KeTaskControlBlock;
 
-typedef STATUS (*IoCompletionCallback)(struct IoRp *rp, void *context);
+typedef STATUS (*IoRpCompletionCallback)(struct IoRp *rp, void *context);
 typedef void (*IoProcessRpCallback)(struct IoRp *rp);
-typedef void (*IoCancelRpCallback)(struct IoRp *rp);
+typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
 typedef uint32_t IoRpFlags;
 
@@ -46,7 +46,7 @@ enum IoRpCode
 
     //device type specific control requests
     IO_RP_STORAGE_CONTROL = 0x2000,
-
+    IO_RP_FILESYSTEM_CONTROL,
 };
 
 struct IoRp
@@ -122,8 +122,8 @@ struct IoRp
         } deviceControl;
 
     } payload;
-    IoCompletionCallback completionCallback;
-    IoCancelRpCallback cancelCallback;
+    IoRpCompletionCallback completionCallback;
+    IoRpCancelCallback cancelCallback;
     void *completionContext;
     struct IoRp *next, *previous;
     struct IoRpQueue *queue;
@@ -170,7 +170,7 @@ extern STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **q
  * @param cancelCb Callback function required for RP cancelling; called after RP is removed from the queue. NULL if not used.
  * @return Status code
 */
-extern STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoCancelRpCallback cancelCb);
+extern STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb);
 
 /**
  * @brief Finalize Request Packet processing

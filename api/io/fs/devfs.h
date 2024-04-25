@@ -19,7 +19,7 @@ struct IoDeviceObject;
  * @param *name File name, must be unique in \a /dev
  * @return Status code
 */
-extern STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsFlags flags, char *name);
+extern STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name);
 
 
 #ifdef __cplusplus

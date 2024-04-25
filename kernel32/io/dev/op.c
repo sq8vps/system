@@ -5,6 +5,301 @@
 #include "mm/heap.h"
 #include "common.h"
 
+struct IoReadWriteCallbackContext
+{
+    struct IoDeviceObject *dev;
+    struct IoVfsNode *node;
+    struct MmMemoryDescriptor *list; //Physical Memory Descriptor list for caller buffer
+    struct MmMemoryDescriptor *alignedList;
+    uint64_t alignedOffset; //aligned buffer offset
+    uint8_t *alignedBuffer; //aligned buffer
+    uint64_t alignedSize;
+    uint64_t size;
+    uint64_t offset;
+    bool fullDirect;
+    bool useDirectIo;
+    bool write;
+    bool firstWriteStep;
+
+    IoReadWriteCompletionCallback callback;
+    void *context;
+};
+
+static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
+{
+    STATUS status = rp->status;
+    struct IoReadWriteCallbackContext *ctx = context;
+
+    if(!ctx->firstWriteStep)
+    {
+        //operation was not fully direct, an intermediate buffer was used
+        if(!ctx->fullDirect)
+        {
+            if(!ctx->write)
+            {
+                //map caller buffer and copy data
+                void *buffer = MmMapMemoryDescriptorList(ctx->list);
+                if(NULL != buffer)
+                {
+                    CmMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
+                    MmUnmapMemoryDescriptorList(buffer);
+                }
+                else
+                    status = OUT_OF_RESOURCES;
+            }
+        }
+        goto _IoReadWriteCallbackExit;
+    }
+    else
+    {
+        if(OK != status)
+        {
+            goto _IoReadWriteCallbackExit;
+        }
+        else
+        {
+            //map caller buffer and copy data
+            void *buffer = MmMapMemoryDescriptorList(ctx->list);
+            if(NULL != buffer)
+            {
+                CmMemcpy(&(ctx->alignedBuffer[ctx->offset]), buffer, ctx->size);
+                MmUnmapMemoryDescriptorList(buffer);
+            }
+            else
+            {
+                status = OUT_OF_RESOURCES;
+                rp->size = 0;
+                goto _IoReadWriteCallbackExit;
+            }
+
+            //perfrom aligned write
+            status = _IoPerformReadWrite(true, ctx->dev, ctx->node, ctx->offset, ctx->size, ctx->alignedOffset, ctx->alignedSize,
+                ctx->alignedBuffer, ctx->list, ctx->alignedList, ctx->useDirectIo, ctx->fullDirect, false, ctx->callback, ctx->context);
+            if(OK != status)
+            {
+                goto _IoReadWriteCallbackExit;
+            }
+            return OK;
+        }
+    }
+
+_IoReadWriteCallbackExit:
+    if(!ctx->fullDirect)
+    {
+        if(ctx->useDirectIo)
+        {
+            MmFreeMemoryDescriptorList(ctx->alignedList);
+        }
+
+        MmFreeKernelHeap(ctx->alignedBuffer);
+    }
+
+    MmFreeMemoryDescriptorList(ctx->list);
+    ctx->callback(status, rp->size, ctx->context);
+
+    MmFreeKernelHeap(ctx);
+    return OK;
+}
+
+static STATUS _IoPerformReadWrite(bool write,
+                    struct IoDeviceObject *dev, struct IoVfsNode *node,
+                    uint64_t offset, uint64_t size, uint64_t alignedOffset, uint64_t alignedSize,
+                    void *alignedBuffer,
+                    struct MemoryDescriptorList *list, struct MemoryDescriptorList *alignedList,
+                    bool useDirectIo, bool fullDirect, bool firstWriteStep,
+                    IoReadWriteCompletionCallback callback, void *context)
+{
+    STATUS status = OK;
+    struct IoRp *rp = NULL;
+    rp = IoCreateRp();
+    if(NULL == rp)
+    {
+        status = OUT_OF_RESOURCES;
+        goto __IoPerformReadWriteFailure;
+    }
+
+    if(write)
+    {
+        if(useDirectIo)
+        {
+            if(fullDirect)
+                rp->payload.write.memory = list;
+            else
+                rp->payload.write.memory = alignedList;
+            rp->payload.write.systemBuffer = NULL;
+        }
+        else
+        {
+            rp->payload.write.memory = NULL;
+            rp->payload.write.systemBuffer = alignedBuffer;   
+        }
+    }
+    else
+    {
+        if(useDirectIo)
+        {
+            if(fullDirect)
+                rp->payload.read.memory = list;
+            else
+                rp->payload.read.memory = alignedList;
+            rp->payload.read.systemBuffer = NULL;
+        }
+        else
+        {
+            rp->payload.read.memory = NULL;
+            rp->payload.read.systemBuffer = alignedBuffer;   
+        }
+    }
+    
+    struct IoReadWriteCallbackContext *ctx = MmAllocateKernelHeap(ctx);
+    if(NULL == ctx)
+    {
+        IoFreeRp(rp);
+        status = OUT_OF_RESOURCES;
+        goto __IoPerformReadWriteFailure;
+    }
+    ctx->alignedBuffer = alignedBuffer;
+    ctx->alignedList = alignedList;
+    ctx->list = list;
+    ctx->size = size;
+    ctx->alignedOffset = alignedOffset;
+    ctx->offset = offset;
+    ctx->callback = callback;
+    ctx->context = context;
+    ctx->write = write;
+    ctx->useDirectIo = useDirectIo;
+    ctx->fullDirect = fullDirect;
+    ctx->firstWriteStep = firstWriteStep;
+
+    if(write)
+        rp->code = IO_RP_WRITE;
+    else
+        rp->code = IO_RP_READ;
+    rp->vfsNode = node;
+    rp->payload.read.offset = alignedOffset;
+    rp->size = alignedSize;
+    rp->completionCallback = IoReadWriteCallback;
+    
+    status = IoSendRp(dev, rp);
+    if(OK == status)
+        return OK;
+    else
+    {
+        IoFreeRp(rp);
+        MmFreeKernelHeap(ctx);
+    }
+
+__IoPerformReadWriteFailure:
+    if(!fullDirect)
+    {
+        if(useDirectIo)
+            MmFreeMemoryDescriptorList(alignedList);
+        MmFreeKernelHeap(alignedBuffer);
+    }
+    MmFreeMemoryDescriptorList(list);
+    return status; 
+}
+
+STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
+                IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo)
+{
+    STATUS status = OK; //operation status
+    struct MmMemoryDescriptor *list = NULL; //Physical Memory Descriptoor list for caller buffer
+    struct MmMemoryDescriptor *alignedList = NULL; //Physical Memory Descriptor list for intermediate (aligned) buffer
+    struct IoRp *rp = NULL; //Request Packet
+    bool useDirectIo = !!(dev->flags & IO_DEVICE_FLAG_DIRECT_IO); //use direct IO flag, depends on device capabilities
+    uintptr_t alignment = (dev->alignment > dev->blockSize) 
+                ? dev->alignment : dev->blockSize; //required alignment: device-provided alignment requirement or block size, whichever is bigger
+    uint64_t alignedSize = 0; //aligned buffer size
+    uint64_t alignedOffset = 0; //aligned buffer offset
+    uint8_t *alignedBuffer = NULL; //aligned buffer
+    bool fullDirect = false; //full direct flag, that is, do not use intermediate buffering
+    
+    //check device capabilities, align offset and size
+    if(0 == (dev->flags & (IO_DEVICE_FLAG_DIRECT_IO | IO_DEVICE_FLAG_BUFFERED_IO)))
+        return OPERATION_NOT_ALLOWED;
+
+    if(0 == alignment)
+        alignment = 1;
+    
+    alignedOffset = ALIGN_DOWN(offset, alignment);
+
+    if(dev->blockSize >= 1)
+        alignedSize = ALIGN_UP(size + (offset - alignedOffset), dev->blockSize);
+
+    if(forceDirectIo && !useDirectIo)
+        return OPERATION_NOT_ALLOWED;
+
+    if(forceDirectIo && ((alignedOffset != offset) || (alignedSize != size)))
+        return BAD_ALIGNMENT;
+    
+    //everything seems to be fine
+    //prepare memory descriptors for caller buffer
+    //caller buffer may be context-dependent, so we must get physical pages' addresses for this buffer
+    list = MmBuildMemoryDescriptorList(buffer, size);
+    if(NULL == list)
+        return OUT_OF_RESOURCES;
+    //TODO: lock pages
+
+    //check if direct IO is available and the provided buffer is already correctly aligned
+    if(useDirectIo
+        && (alignedOffset == offset) 
+        && (alignedSize == size) 
+        && (0 == (list[0].physical & (alignedOffset - 1))))
+    {
+        //if so, everything is easy, just do a direct read/write
+        alignedBuffer = buffer;
+        alignedList = list;
+        fullDirect = true;
+    }
+    else
+    {
+        //if buffer is not aligned correctly or the device does not support direct IO,
+        //we need to provide an additional aligned buffer
+        fullDirect = false;
+        alignedBuffer = MmAllocateKernelHeapAligned(alignedSize, alignment);
+        if(NULL == alignedBuffer)
+            return OUT_OF_RESOURCES;
+        
+        //build memory descriptor list for the aligned buffer if direct IO is used
+        if(useDirectIo)
+        {
+            alignedList = MmBuildMemoryDescriptorList(alignedBuffer, alignedSize);
+            if(NULL == alignedList)
+            {
+                MmFreeKernelHeap(alignedBuffer);
+                MmFreeMemoryDescriptorList(list);
+                return OUT_OF_RESOURCES;
+            }
+        }
+        
+        //at this point we are using the intermediate buffer either because the device does not support direct I/O
+        //or the caller buffer is not aligned properly
+        //in the latter case, when writing the aligned buffer, we would actually overwrite the data
+        //that fell in the buffer area because of the alignment
+        //then it is necessary to read data first and then replace only the part of the data,
+        //and write it
+        if(write)
+        {
+            if((alignedOffset != offset) || (alignedSize != size))
+            {
+                //perform aligned read
+                status = _IoPerformReadWrite(false, dev, node, offset, size, alignedOffset, alignedSize,
+                    alignedBuffer, list, alignedList, useDirectIo, fullDirect, true, callback, context);
+                return status;
+            }
+            else
+            {
+                CmMemcpy(alignedBuffer, buffer, size);
+            }
+        }
+    }
+
+    status = _IoPerformReadWrite(write, dev, node, offset, size, alignedOffset, alignedSize,
+        alignedBuffer, list, alignedList, useDirectIo, fullDirect, false, callback, context);
+    return status;
+}
+
 STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer)
 {
     STATUS status = OK;

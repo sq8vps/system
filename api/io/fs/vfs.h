@@ -11,7 +11,7 @@ extern "C"
 #include <stdbool.h>
 #include "defines.h"
 #include "ob/ob.h"
-typedef uint32_t IoVfsFlags;
+typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_READ_ONLY 0x1 //file/directory is read only
 #define IO_VFS_FLAG_LOCK 0x2 //node is locked, for example during write - VFS does not check this flag
 #define IO_VFS_FLAG_NO_CACHE 0x4 //do not cache this entry
@@ -20,7 +20,7 @@ typedef uint32_t IoVfsFlags;
 #define IO_VFS_FLAG_VFS_DIRECTORY 0x10000000
 #define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
 
-typedef uint32_t IoVfsOperationFlags;
+typedef uint32_t IoVfsFlags;
 
 #define IO_VFS_OPERATION_FLAG_SYNCHRONOUS 1 //synchronous read/write, that is do no return until completed
 #define IO_VFS_OPERATION_FLAG_DIRECT 2 //force unbuffered read/write

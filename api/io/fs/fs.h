@@ -17,7 +17,7 @@ struct KeTaskControlBlock;
 /**
  * @brief File operation flags
 */
-#define IoFileFlags IoVfsOperationFlags
+#define IoFileFlags IoVfsFlags
 
 /**
  * @brief Use synchronous (blocking) operations

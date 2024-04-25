@@ -23,6 +23,6 @@ EXPORT
  * @param *name File name, must be unique in \a /dev
  * @return Status code
 */
-EXTERN STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsFlags flags, char *name);
+EXTERN STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name);
 
 #endif

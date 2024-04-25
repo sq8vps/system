@@ -15,7 +15,7 @@ EXPORT
 /**
  * @brief File operation flags
 */
-#define IoFileFlags IoVfsOperationFlags
+#define IoFileFlags IoVfsFlags
 
 EXPORT
 /**

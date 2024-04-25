@@ -11,7 +11,7 @@ static struct
 }
 IoDevfsState = {.root = NULL};
 
-STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsFlags flags, char *name)
+STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name)
 {
     ASSERT(dev);
     ASSERT(IoDevfsState.root);
@@ -28,6 +28,7 @@ STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsFlags flags, char *na
     node->type = IO_VFS_DEVICE;
     node->fsType = IO_VFS_FS_PHYSICAL;
     node->flags |= flags | IO_VFS_FLAG_NO_CACHE;
+    node->device = dev;
 
     IoVfsInsertNode(node, IoDevfsState.root);
     return OK;

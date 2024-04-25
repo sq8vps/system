@@ -2,10 +2,17 @@
 #define DEV_OP_H_
 
 #include "defines.h"
-#include <stdint.h>
+#include <stdbool.h>
 
 EXPORT
 struct IoDeviceObject;
+struct IoVfsNode;
+
+EXPORT
+typedef void (*IoReadWriteCompletionCallback)(STATUS status, uint64_t actualSize, void *context);
+
+STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
+                IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo);
 
 EXPORT
 /**

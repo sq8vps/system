@@ -55,7 +55,7 @@ STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
     return OK;
 }
 
-STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoCancelRpCallback cancelCb)
+STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb)
 {
     ASSERT(NULL != rp);
     ASSERT(NULL != queue);
@@ -128,6 +128,9 @@ STATUS IoFinalizeRp(struct IoRp *rp)
         KeUnblockTask(rp->task);
     rp->pending = false;
     HalLowerPriorityLevel(lastPrio);
+
+    if(NULL != rp->completionCallback)
+        IoFreeRp(rp);
 
     return OK;
 }

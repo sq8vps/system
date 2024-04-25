@@ -15,4 +15,5 @@ void ExFreeDriverId(uint32_t id)
 {
     ExKernelDriverIdDispenser.free(id);
 }
+
 }

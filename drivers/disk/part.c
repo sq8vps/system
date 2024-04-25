@@ -158,6 +158,9 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
                     partitionDev->flags |= IO_DEVICE_FLAG_DIRECT_IO;
                 if(dev->flags & IO_DEVICE_FLAG_BUFFERED_IO)
                     partitionDev->flags |= IO_DEVICE_FLAG_BUFFERED_IO;
+
+                partitionDev->blockSize = bdo->blockSize;
+                partitionDev->alignment = bdo->alignment;
                 
                 partitionDev->privateData = MmAllocateKernelHeapZeroed(sizeof(struct DiskData));
                 if(NULL == partitionDev->privateData)

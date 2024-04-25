@@ -31,7 +31,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
                 size = rp->size;
             }
 
-            if(size < info->partition.sizeBytes)
+            if(size > info->partition.sizeBytes)
             {
                 //won't fit
                 rp->status = IO_VOLUME_TOO_SMALL;
@@ -52,7 +52,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
                 size = rp->size;
             }
 
-            if(size < info->partition.sizeBytes)
+            if(size > info->partition.sizeBytes)
             {
                 //won't fit
                 rp->status = IO_VOLUME_TOO_SMALL;

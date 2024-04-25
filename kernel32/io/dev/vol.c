@@ -71,8 +71,6 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     
     if(OK != status)
     {
-        ObUnlockObject(dev);
-        ObUnlockObject(devNode);
         return status;
     }
 
@@ -83,37 +81,17 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     mountPointNode = IoVfsCreateNode(mountPoint);
     if(NULL == mountPointNode)
     {
-        ObUnlockObject(dev);
-        ObUnlockObject(devNode);
         return OUT_OF_RESOURCES;
     }
 
+    ObLockObject(dev);
+    mountPointNode->type = IO_VFS_MOUNT_POINT;
+    mountPointNode->fsType = IO_VFS_FS_PHYSICAL;
+    mountPointNode->device = dev->associatedVolume->fsdo;
+
     dev->associatedVolume->mountPoint = mountPointNode;
     dev->referenceCount++;
-
-    KeAcquireSpinlock(&(IoVolumeState.lock));
-    if(NULL == IoVolumeState.list)
-        IoVolumeState.list = dev->associatedVolume;
-    else
-    {
-        struct IoVolumeNode *n = IoVolumeState.list;
-        ObLockObject(n);
-        while(n->next)
-        {
-            struct IoVolumeNode *next = n->next;
-            ObUnlockObject(n);
-            n = next;
-            ObLockObject(n);
-        }
-
-        n->next = dev->associatedVolume;
-        ObUnlockObject(n);
-        dev->associatedVolume->previous = n;
-    }
-    KeReleaseSpinlock(&(IoVolumeState.lock));
-
     ObUnlockObject(dev);
-    ObUnlockObject(devNode);
 
     return IoVfsInsertNodeByPath(mountPointNode, "/");
 }

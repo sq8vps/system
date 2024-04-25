@@ -30,6 +30,15 @@ struct IoVolumeNode
 
 EXPORT
 /**
+ * @brief Mount volume
+ * @param *devPath Volume device path
+ * @param *mountPoint Mount point name
+ * @return Status code
+*/
+EXTERN STATUS IoMountVolume(char *devPath, char *mountPoint);
+
+EXPORT
+/**
  * @brief Register volume associated with a device
  * 
  * Register new volume associated with given the device. The target device

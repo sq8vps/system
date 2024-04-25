@@ -61,7 +61,7 @@ MmMapDynamicMemoryFail:
     return NULL;
 }
 
-uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
+static uintptr_t MmFreeDynamicMemoryReservationEx(void *ptr, bool unmap)
 {
     ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE);
 
@@ -97,8 +97,17 @@ uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
 
     //TODO: should be handled somehow if NULL returned
     MmAvlInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, n, (uintptr_t)ptr);
+
+    if(unmap && (0 != originalSize))
+        MmUnmapMemoryEx((uintptr_t)ptr, originalSize);
+
     KeReleaseSpinlock(&dynamicAllocatorMutex);
     return originalSize;
+}
+
+uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
+{
+    return MmFreeDynamicMemoryReservationEx(ptr, false);
 }
 
 void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
@@ -121,9 +130,7 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
 
 void MmUnmapDynamicMemory(void *ptr)
 {
-    uintptr_t n = MmFreeDynamicMemoryReservation(ptr);
-    if(0 != n)
-        MmUnmapMemoryEx((uintptr_t)ptr, n);
+    MmFreeDynamicMemoryReservationEx(ptr, true);
 }
 
 void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)

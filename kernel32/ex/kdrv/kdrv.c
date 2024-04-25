@@ -248,9 +248,14 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
     object->id = ExAssignDriverId();
     if(0 == object->id)
     {
-        object->free = true;
-        status = OUT_OF_RESOURCES;
-        goto LoadKernelDriverFailure;
+        //TODO: implement correct C++ support and get rid of these hacks
+        object->id = ExAssignDriverId();
+        if(0 == object->id)
+        {
+            object->free = true;
+            status = OUT_OF_RESOURCES;
+            goto LoadKernelDriverFailure;
+        }
     }
 
     LOG("Driver %s with ID %lu loaded at 0x%lX\n", path, object->id, object->address);
