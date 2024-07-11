@@ -25,87 +25,13 @@ struct IoReadWriteCallbackContext
     void *context;
 };
 
-static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
-{
-    STATUS status = rp->status;
-    struct IoReadWriteCallbackContext *ctx = context;
+static STATUS IoReadWriteCallback(struct IoRp *rp, void *context);
 
-    if(!ctx->firstWriteStep)
-    {
-        //operation was not fully direct, an intermediate buffer was used
-        if(!ctx->fullDirect)
-        {
-            if(!ctx->write)
-            {
-                //map caller buffer and copy data
-                void *buffer = MmMapMemoryDescriptorList(ctx->list);
-                if(NULL != buffer)
-                {
-                    CmMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
-                    MmUnmapMemoryDescriptorList(buffer);
-                }
-                else
-                    status = OUT_OF_RESOURCES;
-            }
-        }
-        goto _IoReadWriteCallbackExit;
-    }
-    else
-    {
-        if(OK != status)
-        {
-            goto _IoReadWriteCallbackExit;
-        }
-        else
-        {
-            //map caller buffer and copy data
-            void *buffer = MmMapMemoryDescriptorList(ctx->list);
-            if(NULL != buffer)
-            {
-                CmMemcpy(&(ctx->alignedBuffer[ctx->offset]), buffer, ctx->size);
-                MmUnmapMemoryDescriptorList(buffer);
-            }
-            else
-            {
-                status = OUT_OF_RESOURCES;
-                rp->size = 0;
-                goto _IoReadWriteCallbackExit;
-            }
-
-            //perfrom aligned write
-            status = _IoPerformReadWrite(true, ctx->dev, ctx->node, ctx->offset, ctx->size, ctx->alignedOffset, ctx->alignedSize,
-                ctx->alignedBuffer, ctx->list, ctx->alignedList, ctx->useDirectIo, ctx->fullDirect, false, ctx->callback, ctx->context);
-            if(OK != status)
-            {
-                goto _IoReadWriteCallbackExit;
-            }
-            return OK;
-        }
-    }
-
-_IoReadWriteCallbackExit:
-    if(!ctx->fullDirect)
-    {
-        if(ctx->useDirectIo)
-        {
-            MmFreeMemoryDescriptorList(ctx->alignedList);
-        }
-
-        MmFreeKernelHeap(ctx->alignedBuffer);
-    }
-
-    MmFreeMemoryDescriptorList(ctx->list);
-    ctx->callback(status, rp->size, ctx->context);
-
-    MmFreeKernelHeap(ctx);
-    return OK;
-}
-
-static STATUS _IoPerformReadWrite(bool write,
+static STATUS IoPerformReadWrite(bool write,
                     struct IoDeviceObject *dev, struct IoVfsNode *node,
                     uint64_t offset, uint64_t size, uint64_t alignedOffset, uint64_t alignedSize,
                     void *alignedBuffer,
-                    struct MemoryDescriptorList *list, struct MemoryDescriptorList *alignedList,
+                    struct MmMemoryDescriptor *list, struct MmMemoryDescriptor *alignedList,
                     bool useDirectIo, bool fullDirect, bool firstWriteStep,
                     IoReadWriteCompletionCallback callback, void *context)
 {
@@ -115,7 +41,7 @@ static STATUS _IoPerformReadWrite(bool write,
     if(NULL == rp)
     {
         status = OUT_OF_RESOURCES;
-        goto __IoPerformReadWriteFailure;
+        goto IoPerformReadWriteFailure;
     }
 
     if(write)
@@ -151,12 +77,12 @@ static STATUS _IoPerformReadWrite(bool write,
         }
     }
     
-    struct IoReadWriteCallbackContext *ctx = MmAllocateKernelHeap(ctx);
+    struct IoReadWriteCallbackContext *ctx = MmAllocateKernelHeap(sizeof(ctx));
     if(NULL == ctx)
     {
         IoFreeRp(rp);
         status = OUT_OF_RESOURCES;
-        goto __IoPerformReadWriteFailure;
+        goto IoPerformReadWriteFailure;
     }
     ctx->alignedBuffer = alignedBuffer;
     ctx->alignedList = alignedList;
@@ -189,7 +115,7 @@ static STATUS _IoPerformReadWrite(bool write,
         MmFreeKernelHeap(ctx);
     }
 
-__IoPerformReadWriteFailure:
+IoPerformReadWriteFailure:
     if(!fullDirect)
     {
         if(useDirectIo)
@@ -200,13 +126,90 @@ __IoPerformReadWriteFailure:
     return status; 
 }
 
+
+static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
+{
+    STATUS status = rp->status;
+    struct IoReadWriteCallbackContext *ctx = context;
+
+    if(!ctx->firstWriteStep)
+    {
+        //operation was not fully direct, an intermediate buffer was used
+        if(!ctx->fullDirect)
+        {
+            if(!ctx->write)
+            {
+                //map caller buffer and copy data
+                void *buffer = MmMapMemoryDescriptorList(ctx->list);
+                if(NULL != buffer)
+                {
+                    CmMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
+                    MmUnmapMemoryDescriptorList(buffer);
+                }
+                else
+                    status = OUT_OF_RESOURCES;
+            }
+        }
+        goto IoReadWriteCallbackExit;
+    }
+    else
+    {
+        if(OK != status)
+        {
+            goto IoReadWriteCallbackExit;
+        }
+        else
+        {
+            //map caller buffer and copy data
+            void *buffer = MmMapMemoryDescriptorList(ctx->list);
+            if(NULL != buffer)
+            {
+                CmMemcpy(&(ctx->alignedBuffer[ctx->offset]), buffer, ctx->size);
+                MmUnmapMemoryDescriptorList(buffer);
+            }
+            else
+            {
+                status = OUT_OF_RESOURCES;
+                rp->size = 0;
+                goto IoReadWriteCallbackExit;
+            }
+
+            //perfrom aligned write
+            status = IoPerformReadWrite(true, ctx->dev, ctx->node, ctx->offset, ctx->size, ctx->alignedOffset, ctx->alignedSize,
+                ctx->alignedBuffer, ctx->list, ctx->alignedList, ctx->useDirectIo, ctx->fullDirect, false, ctx->callback, ctx->context);
+            if(OK != status)
+            {
+                goto IoReadWriteCallbackExit;
+            }
+            return OK;
+        }
+    }
+
+IoReadWriteCallbackExit:
+    if(!ctx->fullDirect)
+    {
+        if(ctx->useDirectIo)
+        {
+            MmFreeMemoryDescriptorList(ctx->alignedList);
+        }
+
+        MmFreeKernelHeap(ctx->alignedBuffer);
+    }
+
+    MmFreeMemoryDescriptorList(ctx->list);
+    ctx->callback(status, rp->size, ctx->context);
+
+    MmFreeKernelHeap(ctx);
+    return OK;
+}
+
+
 STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
                 IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo)
 {
     STATUS status = OK; //operation status
     struct MmMemoryDescriptor *list = NULL; //Physical Memory Descriptoor list for caller buffer
     struct MmMemoryDescriptor *alignedList = NULL; //Physical Memory Descriptor list for intermediate (aligned) buffer
-    struct IoRp *rp = NULL; //Request Packet
     bool useDirectIo = !!(dev->flags & IO_DEVICE_FLAG_DIRECT_IO); //use direct IO flag, depends on device capabilities
     uintptr_t alignment = (dev->alignment > dev->blockSize) 
                 ? dev->alignment : dev->blockSize; //required alignment: device-provided alignment requirement or block size, whichever is bigger
@@ -284,7 +287,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
             if((alignedOffset != offset) || (alignedSize != size))
             {
                 //perform aligned read
-                status = _IoPerformReadWrite(false, dev, node, offset, size, alignedOffset, alignedSize,
+                status = IoPerformReadWrite(false, dev, node, offset, size, alignedOffset, alignedSize,
                     alignedBuffer, list, alignedList, useDirectIo, fullDirect, true, callback, context);
                 return status;
             }
@@ -295,7 +298,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
         }
     }
 
-    status = _IoPerformReadWrite(write, dev, node, offset, size, alignedOffset, alignedSize,
+    status = IoPerformReadWrite(write, dev, node, offset, size, alignedOffset, alignedSize,
         alignedBuffer, list, alignedList, useDirectIo, fullDirect, false, callback, context);
     return status;
 }

@@ -31,7 +31,7 @@ EXPORT
  * and the Request Packet should have the \a IO_FILE_NOT_FOUND status.
  * When the operation code is \a FS_GET_NODE_CHILDREN, then the kernel provides a pointer \a *node to the directory VFS node
  * and expects the driver to list all children nodes (files) in given directory, that is, create a linked list of
- * VFS nodes for all files and provide a pointer to the first child using \a *children. If there is no children,
+ * VFS nodes for all files and provide a pointer to the first child using \a *children. If there are no children,
  * it is set to NULL.
 */
 union FsGetRequest

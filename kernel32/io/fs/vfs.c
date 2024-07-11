@@ -5,7 +5,6 @@
 #include "assert.h"
 #include "devfs.h"
 #include "mm/slab.h"
-#include "ke/core/mutex.h"
 #include "io/dev/rp.h"
 #include "ddk/fs.h"
 #include "mm/heap.h"
@@ -21,9 +20,9 @@ static struct
     struct IoVfsNode *root; /**< Root node */
     void *slabHandle; /**< VFS node slab allocator handle */
     uint32_t maxFileNameLength; /**< Max file name length */
-    KeSpinlock lock; /**< Global VFS tree spinlock */
+    KeRwLock lock; /**< Global VFS tree RW lock */
 } 
-IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH, .lock = KeSpinlockInitializer};
+IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH, .lock = KeRwLockInitializer};
 
 
 struct IoVfsNode* IoVfsCreateNode(char *name)
@@ -41,6 +40,8 @@ struct IoVfsNode* IoVfsCreateNode(char *name)
     ObInitializeObjectHeader(node);
     
     CmStrncpy(node->name, name, IoVfsState.maxFileNameLength);
+
+    node->lock = (KeRwLock)KeRwLockInitializer;
 
     return node;
 }
@@ -72,6 +73,7 @@ STATUS IoVfsInit(void)
     IoVfsState.root->child = NULL;
     IoVfsState.root->flags = IO_VFS_FLAG_PERSISTENT;
     IoVfsState.root->fsType = IO_VFS_FS_VIRTUAL;
+    IoVfsState.root->open = true;
 
     return IoInitDeviceFs(IoVfsState.root);
 }
@@ -93,7 +95,49 @@ char* IoVfsDetachFileName(char *path)
     return path;
 }
 
+// /**
+//  * @brief Process VFS node task queue after releasing a file after writing
+//  * @param *node VFS node
+//  * @attention VFS node \a *node must be locked, otherwise very bad things may happen
+//  */
+// static STATUS IoVfsProcessTaskQueue(struct IoVfsNode *node)
+// {
+//     if(NULL != node->taskQueue)
+//     {
+//         if((0 == node->references.readers) && node->taskQueue->blockParameters.file.write)
+//         {
+//             node->currentTask = node->taskQueue;
+//             KeUnblockTask(node->taskQueue);
+//         }
+//         else
+//         {
+//             struct KeTaskControlBlock *t = node->taskQueue;
+//             while(NULL != t)
+//             {
+//                 ObLockObject(t);
+//                 if(t->blockParameters.file.write)
+//                 {
+//                     ObUnlockObject(t);
+//                     break;
+//                 }
 
+//                 if(NULL != t->nextAux)
+//                     t->nextAux->previous = NULL;
+                
+//                 node->taskQueue = t->nextAux;
+//                 t->previousAux = NULL;
+//                 t->nextAux = NULL;
+
+//                 ObUnlockObject(t);
+//                 KeUnblockTask(t);
+
+//                 node->references.readers++;
+//                 t = node->taskQueue;
+//             }
+//         }
+//     }
+//     return OK;
+// }
 
 STATUS IoVfsOpenNode(struct IoVfsNode *node, bool write, IoVfsFlags flags)
 {
@@ -104,6 +148,7 @@ STATUS IoVfsOpenNode(struct IoVfsNode *node, bool write, IoVfsFlags flags)
 
     ObLockObject(node);
     //check if file is in use for writing
+    //if so, then we must wait
     if(NULL != node->currentTask)
     {
         if(flags & IO_VFS_FLAG_NO_WAIT)
@@ -112,12 +157,14 @@ STATUS IoVfsOpenNode(struct IoVfsNode *node, bool write, IoVfsFlags flags)
             return IO_FILE_LOCKED;
         }
 
+        //try to instert process to the waiting list
         struct KeTaskControlBlock *t = node->taskQueue;
         if(NULL == t)
         {
+            task->blockParameters.file.write = write;
             node->taskQueue = task;
-            KeBlockTask(task, TASK_BLOCK_IO);
             ObUnlockObject(node);
+            KeBlockTask(task, TASK_BLOCK_IO);
             KeTaskYield();
         }
         else
@@ -127,11 +174,14 @@ STATUS IoVfsOpenNode(struct IoVfsNode *node, bool write, IoVfsFlags flags)
                 ObLockObject(t);
                 if(NULL == t->nextAux)
                 {
+                    task->blockParameters.file.write = write;
                     t->nextAux = task;
                     task->previousAux = t;
+                    ObUnlockObject(node);
                     KeBlockTask(task, TASK_BLOCK_IO);
                     ObUnlockObject(t);
-                    ObUnlockObject(node);
+                    //process inserted to the waiting list,
+                    //now yield and wait for the process to be rescheduled when the file is unlocked
                     KeTaskYield();
                     break;
                 }
@@ -141,53 +191,69 @@ STATUS IoVfsOpenNode(struct IoVfsNode *node, bool write, IoVfsFlags flags)
             }
         }
     }
-    if(write)
-    {
-        node->currentTask = task;
-    }
     else
-        node->references.readers++;
-
-    ObUnlockObject(node);
-
-    switch(node->fsType)
     {
-        case IO_VFS_FS_PHYSICAL:
-        case IO_VFS_FS_VIRTUAL:
-            struct IoRp *rp = IoCreateRp();
-            if(NULL != rp)
-            {
-                rp->code = IO_RP_OPEN;
-                rp->vfsNode = node;
-                status = IoSendRp(node->device, rp);
-                if(OK == status)
+        if(write)
+            node->currentTask = task;
+        else
+            node->references.readers++;
+        
+        ObUnlockObject(node);
+    }
+
+    ObLockObject(node);
+    if(!node->open)
+    {
+        ObUnlockObject(node);
+        //ask filesystem to open the file
+        switch(node->fsType)
+        {
+            case IO_VFS_FS_PHYSICAL:
+            case IO_VFS_FS_VIRTUAL:
+                struct IoRp *rp = IoCreateRp();
+                if(NULL != rp)
                 {
-                    IoWaitForRpCompletion(rp);
-                    status = rp->status;
+                    rp->code = IO_RP_OPEN;
+                    rp->vfsNode = node;
+                    status = IoSendRp(node->device, rp);
+                    if(OK == status)
+                    {
+                        IoWaitForRpCompletion(rp);
+                        status = rp->status;
+                    }
+                    IoFreeRp(rp);
                 }
-                IoFreeRp(rp);
-            }
-            else
-                status = OUT_OF_RESOURCES;
-            break;
-        case IO_VFS_FS_TASKFS:
-        case IO_VFS_FS_INITRD:
-            break;
-        default:
-            status = IO_BAD_FILE_TYPE;
-            break;
+                else
+                    status = OUT_OF_RESOURCES;
+                break;
+            case IO_VFS_FS_TASKFS:
+            case IO_VFS_FS_INITRD:
+                break;
+            default:
+                status = IO_BAD_FILE_TYPE;
+                break;
+        }
     }
 
     if(OK != status)
     {
+        //clean up on open failure
         ObLockObject(node);
         if(write)
             node->currentTask = NULL;
         else
             node->references.readers--;
-        
-        //TODO: process queue
+        ObUnlockObject(node);
+
+        IoVfsProcessTaskQueue(node);
     }
+    else
+    {
+        ObLockObject(node);
+        node->open = true;
+        ObUnlockObject(node);
+    }
+
     return status;
 }
 
@@ -195,34 +261,78 @@ STATUS IoVfsClose(struct IoVfsNode *node)
 {
     ASSERT(node);
     STATUS status = OK;
+    struct KeTaskControlBlock *task = KeGetCurrentTask();
 
-    switch(node->fsType)
+    ObLockObject(node);
+
+    if(node->flags & IO_VFS_FLAG_PERSISTENT)
     {
-        case IO_VFS_FS_PHYSICAL:
-        case IO_VFS_FS_VIRTUAL:
-            struct IoRp *rp = IoCreateRp();
-            if(NULL != rp)
-            {
-                rp->code = IO_RP_CLOSE;
-                rp->vfsNode = node;
-                status = IoSendRp(node->device, rp);
-                if(OK == status)
-                {
-                    IoWaitForRpCompletion(rp);
-                    status = rp->status;
-                }
-                IoFreeRp(rp);
-            }
-            else
-                status = OUT_OF_RESOURCES;
-            break;
-        case IO_VFS_FS_TASKFS:
-        case IO_VFS_FS_INITRD:
-            break;
-        default:
-            status = IO_BAD_FILE_TYPE;
-            break;
+        ObUnlockObject(node);
+        return IO_FILE_LOCKED;
     }
+
+    if(NULL != node->currentTask)
+    {
+        if(node->currentTask != task)
+        {
+            //file is open for writing, but this is not the task that requested the write - fail
+            ObUnlockObject(node);
+            return IO_FILE_IN_USE; 
+        }
+        node->currentTask = NULL;
+    }
+    else
+        node->references.readers--;
+
+    //check if there are other readers currently using this file or if there are any tasks waiting
+    //if not, then close the file
+    if((0 == node->references.readers) && (NULL == node->taskQueue))
+    {
+        ObUnlockObject(node);
+        switch(node->fsType)
+        {
+            case IO_VFS_FS_PHYSICAL:
+            case IO_VFS_FS_VIRTUAL:
+                struct IoRp *rp = IoCreateRp();
+                if(NULL != rp)
+                {
+                    rp->code = IO_RP_CLOSE;
+                    rp->vfsNode = node;
+                    status = IoSendRp(node->device, rp);
+                    if(OK == status)
+                    {
+                        IoWaitForRpCompletion(rp);
+                        status = rp->status;
+                    }
+                    IoFreeRp(rp);
+                }
+                else
+                    status = OUT_OF_RESOURCES;
+                break;
+            case IO_VFS_FS_TASKFS:
+            case IO_VFS_FS_INITRD:
+                break;
+            default:
+                status = IO_BAD_FILE_TYPE;
+                break;
+        }
+
+        if(OK == status)
+        {
+            ObLockObject(node);
+            node->open = false;
+            ObUnlockObject(node);
+        }
+
+        return status;
+    }
+    else
+        ObUnlockObject(node);
+
+    //else there are other tasks reading or there are some tasks waiting
+    
+    status = IoVfsProcessTaskQueue(node);
+
     return status;
 }
 
@@ -276,7 +386,10 @@ struct IoVfsNode *IoVfsGetNode(struct IoVfsNode *parent, char *name)
         node = node->next;
     }
 
-    //child not found in cached tree, ask driver to find it on the physical storage
+    //child not found in cached tree, must ask driver to find it on a physical storage
+    //assume that the caller has locked the tree
+    IoVfsUnlockTree();
+
     uint64_t size = 0;
     union IoVfsReference ref; 
     switch(parent->fsType)
@@ -411,7 +524,8 @@ struct IoVfsNode *IoVfsGetNodeByPath(char *path)
 void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent)
 {
     ASSERT(node && parent);
-    
+
+    ObLockObject(parent);
     node->parent = parent;
     node->previous = NULL;
 
@@ -429,6 +543,7 @@ void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent)
         parent->child = node;
 
     node->next = NULL;
+    ObUnlockObject(parent);
 }
 
 STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path)
@@ -444,10 +559,12 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path)
     if((IO_VFS_DIRECTORY != target->type) && (IO_VFS_MOUNT_POINT != target->type))
         return IO_NOT_A_DIRECTORY;
     
+    ObLockObject(target);
     if(NULL == target->child)
     {
         target->child = node;
         node->parent = target;
+        ObUnlockObject(target);
         return OK;
     }
 
@@ -460,6 +577,7 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path)
     target->next = node;
     node->previous = target;
     node->next = NULL;
+    ObUnlockObject(target);
     return OK;
 }
 
@@ -476,22 +594,28 @@ bool IoVfsCheckIfNodeExistsByPath(char *path)
 STATUS IoVfsRemoveNode(struct IoVfsNode *node)
 {
     ASSERT(node);
+    STATUS status = OK;
+    ObLockObject(node);
+
     if(node->flags & IO_VFS_FLAG_PERSISTENT)
-        return IO_FILE_IRREMOVABLE;
-    if(node->child)
-        return IO_DIRECTORY_NOT_EMPTY;
-    if(node->referenceCount)
-        return IO_FILE_IN_USE;
+        status = IO_FILE_IRREMOVABLE;
+    else if(node->child)
+        status = IO_DIRECTORY_NOT_EMPTY;
+    else if(node->references.readers || node->currentTask)
+        status = IO_FILE_IN_USE;
+    else
+    {
+        if(node->previous)
+            node->previous->next = node->next;
+        if(node->next)
+            node->next->previous = node->previous;
+        
+        if(node->parent && (node->parent->child == node))
+            node->parent->child = node->next;
+    }
     
-    if(node->previous)
-        node->previous->next = node->next;
-    if(node->next)
-        node->next->previous = node->previous;
-    
-    if(node->parent && (node->parent->child == node))
-        node->parent->child = node->next;
-    
-    return OK;
+    ObUnlockObject(node);
+    return status;
 }
 
 STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
@@ -575,7 +699,7 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
     link->flags = flags;
     link->type = IO_VFS_LINK;
     link->linkDestination = destination;
-    link->linkDestination->referenceCount++;
+    //link->linkDestination->referenceCount++;
 
     IoVfsInsertNode(link, parent);
 
@@ -596,8 +720,8 @@ STATUS IoVfsRemoveLink(char *path)
     if(OK != ret)
         return ret;
 
-    if(link->linkDestination && link->linkDestination->referenceCount)
-        link->linkDestination->referenceCount--;
+    // if(link->linkDestination && link->linkDestination->referenceCount)
+    //     link->linkDestination->referenceCount--;
         
     IoVfsDestroyNode(link);
     return OK;
@@ -616,3 +740,17 @@ STATUS IoVfsGetSize(char *path, uint64_t *size)
     return OK;
 }
 
+void IoVfsLockTreeForReading(void)
+{
+    KeAcquireRwLock(&(IoVfsState.lock), false);
+}
+
+void IoVfsLockTreeForWriting(void)
+{
+    KeAcquireRwLock(&(IoVfsState.lock), true);
+}
+
+void IoVfsUnlockTree(void)
+{
+    KeReleaseRwLock(&(IoVfsState.lock));
+}

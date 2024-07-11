@@ -3,6 +3,15 @@
 
 #define OB_HEADER_MAGIC (((uint32_t)'K') | ((uint32_t)'E' << 8) | ((uint32_t)'O' << 16) | ((uint32_t)'B' << 24))
 
+bool ObIsObjectLocked(void *object)
+{
+    struct ObObjectHeader *h = object;
+    if(OB_HEADER_MAGIC != h->magic)
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);
+    
+    return h->lock.lock ? true : false;
+}
+
 void ObLockObject(void *object)
 {
     struct ObObjectHeader *h = object;

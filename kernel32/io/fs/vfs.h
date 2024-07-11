@@ -6,6 +6,7 @@
 #include "defines.h"
 #include "ob/ob.h"
 #include "io/dev/op.h"
+#include "ke/core/mutex.h"
 
 EXPORT
 typedef uint32_t IoVfsNodeFlags;
@@ -85,12 +86,20 @@ struct IoVfsNode
     uint64_t size; /**< Size of underlying data, applies to files only */
     IoVfsNodeFlags flags; /**< Node flags */
     Time_t lastUse; /**< Last node use timestamp */
+    KeRwLock lock; /**< Readers-writers lock for the underlying data (file) */
+    struct
+    {
+        uint32_t open : 1; 
+        uint32_t scheduledForDeletion : 1; /**< Node scheduled for deletion, treat as non-existing */
+    } status;
     
+
     struct
     {
         uint32_t readers; /**< Number of readers */
+        uint32_t writers; /**< Number of writers (0 or 1) */
+        uint32_t links; /**< Number of symbolic links to this node */
     } references;
-    
 
     enum IoVfsFsType fsType; /**< VFS filesystem type this node belongs to */
     struct IoDeviceObject *device; /**< Associated device */
@@ -99,6 +108,7 @@ struct IoVfsNode
 
     struct KeTaskControlBlock *currentTask; /**< Task currently owning the file (writer) */
     struct KeTaskControlBlock *taskQueue; /**< Queue of tasks waiting for access */
+
 
     struct IoVfsNode *parent; /**< Higher level (parent) node */
     struct IoVfsNode *child; /**< First lower level (child) node */
@@ -248,5 +258,23 @@ void IoVfsDestroyNode(struct IoVfsNode *node);
  * @return Status code
 */
 STATUS IoVfsGetSize(char *path, uint64_t *size);
+
+EXPORT
+/**
+ * @brief Lock VFS tree for reading, that is, any operations involving traversing the tree
+ */
+EXTERN void IoVfsLockTreeForReading(void);
+
+EXPORT
+/**
+ * @brief Lock VFS tree for writing, that is, any operations involving modyfing the tree
+ */
+EXTERN void IoVfsLockTreeForWriting(void);
+
+EXPORT
+/**
+ * @brief Unlock VFS tree
+ */
+EXTERN void IoVfsUnlockTree(void);
 
 #endif

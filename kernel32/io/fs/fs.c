@@ -126,7 +126,6 @@ STATUS IoOpenFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct KeT
         freeHandle->next = handle;
     }
     
-    handle->type.fileHandle.node->referenceCount++;
     task->files.openFileCount++;
     //TODO: update last use and flags
 
@@ -196,9 +195,6 @@ STATUS IoCloseFile(struct KeTaskControlBlock *task, int handleNumber)
         freeHandle = freeHandle->next;
     }
 
-    if(handle->type.fileHandle.node->referenceCount)
-        handle->type.fileHandle.node->referenceCount--;
-
     if(false == foundFreeEntry) //free range entry not found, reuse file handle then
     {
         handle->free = true;
@@ -226,9 +222,6 @@ STATUS IoCloseKernelFile(struct IoFileHandle *handle)
 {
     if(NULL == handle)
         return IO_FILE_NOT_FOUND;
-    
-    if(handle->type.fileHandle.node->referenceCount)
-        handle->type.fileHandle.node->referenceCount--;
 
     MmFreeKernelHeap(handle);
     

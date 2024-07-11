@@ -78,6 +78,26 @@ EXPORT
 
 EXPORT
 /**
+ * @brief A read-write lock structure
+ * @attention Initialize with KeRwLockInitializer
+ */
+typedef struct KeRwLock
+{
+    uint32_t readers;
+    uint32_t writers;
+    struct KeTaskControlBlock *queueTop;
+    struct KeTaskControlBlock *queueBottom;
+    KeSpinlock lock;
+} KeRwLock;
+
+EXPORT
+/**
+ * @brief Read-write lock initializer. Use it when creating RW locks.
+*/
+#define KeRwLockInitializer {.readers = 0, .writers = 0, .queueTop = NULL, .queueBottom = NULL, .lock = KeSpinlockInitializer}
+
+EXPORT
+/**
  * @brief Acquire spinlock
  * @param *spinlock Spinlock structure
 */
@@ -136,6 +156,21 @@ EXPORT
  * @param *sem Semaphore structure
 */
 EXTERN void KeReleaseSemaphore(KeSemaphore *sem);
+
+EXPORT
+/**
+ * @brief Acquire read-write lock (yielding)
+ * @param *rwLock RW lock structure
+ * @param write True if writing, false if reading
+*/
+EXTERN void KeAcquireRwLock(KeRwLock *rwLock, bool write);
+
+EXPORT
+/**
+ * @brief Release read-write lock
+ * @param *rwLock RW lock structure
+*/
+EXTERN void KeReleaseRwLock(KeRwLock *rwLock);
 
 /**
  * @brief Check and unblock tasks waiting for timed mutex or spinlock

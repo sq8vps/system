@@ -308,3 +308,101 @@ void KeTimedExclusionRefresh(void)
     }
     KeReleaseSpinlock(&listLock);
 }
+
+void KeAcquireRwLock(KeRwLock *rwLock, bool write)
+{
+    struct KeTaskControlBlock *current = KeGetCurrentTask();
+    KeAcquireSpinlock(&(rwLock->lock));
+    if(rwLock->writers || (write && rwLock->readers))
+    {
+        ObLockObject(current);
+        KeBlockTask(current, TASK_BLOCK_MUTEX);
+        if(rwLock->queueTop)
+        {
+            rwLock->queueBottom->next = current;
+            current->previous = rwLock->queueBottom;
+        }
+        else
+        {
+            rwLock->queueTop = current;
+            current->previous = NULL;
+        }
+        rwLock->queueBottom = current;
+        current->semaphore = NULL;
+        current->mutex = NULL;
+        current->rwLock = rwLock;
+        current->blockParameters.rwLock.write = write;
+        ObUnlockObject(current);
+        KeReleaseSpinlock(&(rwLock->lock));
+        KeTaskYield(); //suspend task and wait for an event
+    }
+    else
+    {
+        if(write)
+            rwLock->writers = 1;
+        else
+            rwLock->readers++;
+
+        KeReleaseSpinlock(&(rwLock->lock));
+    }
+}
+
+void KeReleaseRwLock(KeRwLock *rwLock)
+{
+    KeAcquireSpinlock(&(rwLock->lock));
+
+    if((0 == rwLock->writers) && (0 == rwLock->readers))
+    {
+        KeReleaseSpinlock(&(rwLock->lock));
+        KePanicEx(UNACQUIRED_MUTEX_RELEASED, 3, (uintptr_t)rwLock, 0, 0);
+    }
+
+    if(rwLock->readers)
+        rwLock->readers--;
+    else
+        rwLock->writers = 0;
+
+    if((0 == rwLock->writers) && (0 == rwLock->readers))
+    {
+        struct KeTaskControlBlock *t = rwLock->queueTop;
+        while(NULL != t)
+        {
+            ObLockObject(t);
+            if(t->blockParameters.rwLock.write)
+            {
+                if(0 == rwLock->readers)
+                {
+                    rwLock->writers = 1;
+                    rwLock->queueTop = t->next;
+                    if(NULL != t->next)
+                        t->next->previous = NULL;
+                    else
+                        rwLock->queueBottom = NULL;
+                    
+                    ObUnlockObject(t);
+                    KeReleaseSpinlock(&(rwLock->lock));
+                    KeUnblockTask(t);
+                    return;
+                }
+                else
+                {
+                    KeReleaseSpinlock(&(rwLock->lock));
+                    return;
+                }
+            }
+
+            rwLock->readers++;
+
+            if(NULL != t->next)
+                t->next->previous = NULL;
+            else
+                rwLock->queueBottom = NULL;
+
+            rwLock->queueTop = t->next;
+            ObUnlockObject(t);
+            KeUnblockTask(t);
+            t = rwLock->queueTop;
+        }
+    }
+    KeReleaseSpinlock(&(rwLock->lock));
+}
