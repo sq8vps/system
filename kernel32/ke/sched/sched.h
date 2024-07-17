@@ -72,6 +72,13 @@ void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
 */
 void KeUnblockTask(struct KeTaskControlBlock *tcb);
 
+/**
+ * @brief Get task block state
+ * @param *tcb Task Control Block
+ * @return Block state/block reason
+ */
+enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb);
+
 EXPORT
 /**
  * @brief Get current task pointer

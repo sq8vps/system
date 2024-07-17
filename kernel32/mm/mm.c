@@ -87,6 +87,37 @@ _MmBuildMemoryDescriptorListFailure:
     return NULL;
 }
 
+struct MmMemoryDescriptor *MmCloneMemoryDescriptorList(struct MmMemoryDescriptor *list)
+{
+    if(NULL == list)
+        return NULL;
+
+    struct MmMemoryDescriptor *head = MmAllocateMemoryDescriptor(), *current;
+    if(NULL == head)
+        return NULL;
+    
+    current = head;
+    *current = *list;
+    current->next = NULL;
+    list = list->next;
+    
+    while(NULL != list)
+    {
+        current->next = MmAllocateMemoryDescriptor();
+        if(NULL == current->next)
+        {
+            MmFreeMemoryDescriptorList(head);
+            return NULL;
+        }
+        current = current->next;
+        *current = *list;
+        list = list->next;
+        if(NULL == list)
+            current->next = NULL;
+    }
+    return head;
+}
+
 void MmFreeMemoryDescriptorList(struct MmMemoryDescriptor *list)
 {
     struct MmMemoryDescriptor *t;
@@ -157,8 +188,8 @@ void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
             MmFreeDynamicMemoryReservation(ret);
             return NULL;
         }
-        l = l->next;
         m = (void*)((uintptr_t)m + l->size);
+        l = l->next;
     }
 
     return (void*)((uintptr_t)ret + offset);

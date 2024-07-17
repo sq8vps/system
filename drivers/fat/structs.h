@@ -86,6 +86,7 @@ struct IoDeviceObject;
 struct FatVolume
 {
     struct IoDeviceObject *disk;
+    struct IoDeviceObject *vol;
     enum FatType type;
     uint8_t sectorsPerCluster;
     uint16_t reservedSectors;
@@ -104,6 +105,56 @@ struct FatVolume
     //FAT32 specific
     uint32_t rootCluster;
     uint16_t fsInfoSector;
+
+    void *fat;
 };
+
+#define FAT_GET_OFFSET(vol, cluster) ((((cluster) - 2) * (vol)->sectorsPerCluster + (vol)->fatCount * (vol)->fatSize + (vol)->reservedSectors) * (vol)->disk->blockSize)
+
+struct FatDirectory
+{
+    char name[11];
+    uint8_t attributes;
+    uint8_t rsvd1;
+    uint8_t crtTimeTenth;
+    uint16_t crtTime;
+    uint16_t crtDate;
+    uint16_t lastAccDate;
+    uint16_t fstClusHi;
+    uint16_t wrtTime;
+    uint16_t wrtDate;
+    uint16_t fstClusLo;
+    uint32_t fileSize;
+} PACKED;
+
+#define FAT_ATTR_READ_ONLY 0x01
+#define FAT_ATTR_HIDDEN 0x02
+#define FAT_ATTR_SYSTEM 0x04
+#define FAT_ATTR_VOLUME_ID 0x08
+#define FAT_ATTR_DIRECTORY 0x10
+#define FAT_ATTR_ARCHIVE 0x20
+#define FAT_ATTR_LONG_NAME (FAT_ATTR_READ_ONLY | FAT_ATTR_HIDDEN | FAT_ATTR_SYSTEM | FAT_ATTR_VOLUME_ID)
+#define FAT_ATTR_LONG_NAME_MASK (FAT_ATTR_READ_ONLY | FAT_ATTR_HIDDEN | FAT_ATTR_SYSTEM | FAT_ATTR_VOLUME_ID | FAT_ATTR_DIRECTORY | FAT_ATTR_ARCHIVE)
+
+#define FAT_DIRECTORY_ENTRY_EMPTY 0xE5
+#define FAT_DIRECTORY_ENTRY_EMPTY_LAST 0x00
+
+
+struct FatLongFileNameEntry
+{
+    uint8_t ord;
+    char name1[10];
+    uint8_t attributes;
+    uint8_t type;
+    uint8_t checksum;
+    char name2[12];
+    uint16_t fstClusLo;
+    char name3[4];
+} PACKED;
+
+#define FAT_DIRECTORY_ENTRY_LAST_LONG_NAME_ENTRY 0x40
+#define FAT_DIRECTORY_ENTRY_LONG_NAME_ENTRY_MASK 0x1F
+
+#define FAT_MAX_LONG_FILE_NAME_ENTRIES 20
 
 #endif

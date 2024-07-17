@@ -31,6 +31,7 @@ enum IoRpCode
     IO_RP_READ, /**< Read file */
     IO_RP_WRITE, /**< Write file */
     IO_RP_OPEN, /**< Open file */
+    IO_RP_CLOSE, /**< Close file */
     IO_RP_IOCTL, /**< Driver-defined I/O control */
     //PnP requests
     IO_RP_START_DEVICE = 0x1000,
@@ -64,6 +65,9 @@ struct IoRp
     struct KeTaskControlBlock *task; /**< Associated task */
     union
     {
+        /**
+         * @brief \a IO_RP_GET_DEVICE_RESOURCES
+        */
         struct
         {
             uint32_t count; /**< Count of resource entries */
@@ -214,6 +218,13 @@ extern void IoMarkRpPending(struct IoRp *rp);
  * @warning This function must not be called when \a IoSendRp() was not successful.
 */
 extern void IoWaitForRpCompletion(struct IoRp *rp);
+
+/**
+ * @brief Clone exisiting RP
+ * @param *rp RP to clone
+ * @return New cloned RP or NULL on failure
+ */
+extern struct IoRp *IoCloneRp(struct IoRp *rp);
 
 
 #ifdef __cplusplus

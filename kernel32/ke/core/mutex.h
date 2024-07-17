@@ -159,6 +159,15 @@ EXTERN void KeReleaseSemaphore(KeSemaphore *sem);
 
 EXPORT
 /**
+ * @brief Acquire read-write (yielding), but with given timeout
+ * @param *rwLock RW lock structure
+ * @param timeout Timeout in ns or KE_MUTEX_NO_WAIT or KE_MUTEX_NORMAL
+ * @return True on successful acquistion, false on timeout
+*/
+EXTERN bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout);
+
+EXPORT
+/**
  * @brief Acquire read-write lock (yielding)
  * @param *rwLock RW lock structure
  * @param write True if writing, false if reading

@@ -196,3 +196,17 @@ void IoWaitForRpCompletion(struct IoRp *rp)
         }
     }
 }
+
+struct IoRp *IoCloneRp(struct IoRp *rp)
+{
+    if(NULL == rp)
+        return rp;
+
+    struct IoRp *n = IoCreateRp();
+    if(NULL == n)
+        return NULL;
+    
+    CmMemcpy(n, rp, sizeof(*rp));
+    ObInitializeObjectHeader(n);
+    return n;
+}

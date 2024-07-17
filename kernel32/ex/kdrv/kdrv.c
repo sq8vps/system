@@ -284,7 +284,7 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
     }
 
 	uint64_t actualSize = 0;
-	status = IoReadKernelFile(f, (void*)object->address, imageSize, 0, &actualSize);
+	status = IoReadKernelFileSync(f, (void*)object->address, imageSize, 0, &actualSize);
     if((OK != status) || (actualSize != imageSize))
 	{
 		IoCloseKernelFile(f);

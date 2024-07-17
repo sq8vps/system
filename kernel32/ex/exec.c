@@ -42,7 +42,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
         return OUT_OF_RESOURCES;
     }
 
-    if((OK != (ret = IoReadKernelFile(f, buf, sizeof(struct Elf32_Ehdr), 0, &actualSize)) || (actualSize != (uint64_t)sizeof(struct Elf32_Ehdr))))
+    if((OK != (ret = IoReadKernelFileSync(f, buf, sizeof(struct Elf32_Ehdr), 0, &actualSize)) || (actualSize != (uint64_t)sizeof(struct Elf32_Ehdr))))
     {
         MmFreeKernelHeap(buf);
         IoCloseKernelFile(f);
@@ -71,7 +71,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
         return OUT_OF_RESOURCES;
     }
 
-    if((OK != (ret = IoReadKernelFile(f, buf, sectionHeaderSize, sectionHeaderOffset, &actualSize)) || (actualSize != sectionHeaderSize)))
+    if((OK != (ret = IoReadKernelFileSync(f, buf, sectionHeaderSize, sectionHeaderOffset, &actualSize)) || (actualSize != sectionHeaderSize)))
     {
         MmFreeKernelHeap(buf);
         IoCloseKernelFile(f);

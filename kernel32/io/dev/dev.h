@@ -95,6 +95,15 @@ struct IoDeviceObject
 
 EXPORT
 /**
+ * @brief Get memory alignment required to perform direct I/O
+ * @param dev Target device
+ * @return Required alignment in bytes
+ * @warning Might return 0, which should be treated as 1 (any alignment)
+ */
+#define IO_DEV_REQUIRED_ALIGNMENT(dev) (((dev)->blockSize > (dev)->alignment) ? (dev)->blockSize : (dev)->alignment) 
+
+EXPORT
+/**
  * @brief Create device object from driver
  * @param *driver Driver object pointer
  * @param type Device type

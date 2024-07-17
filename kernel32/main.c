@@ -33,6 +33,7 @@
 #include "ke/core/dpc.h"
 #include "common/order.h"
 #include "io/dev/vol.h"
+#include "ddk/fs.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
@@ -105,6 +106,8 @@ NORETURN static void KeInit(void)
 			;
 	}
 
+	KeSchedulerStart();
+
 	STATUS ret = OK;
 	if(OK != (ret = InitrdInit(kernelArgs.initrdAddress)))
 	{
@@ -120,7 +123,7 @@ NORETURN static void KeInit(void)
 			;
 	}
 
-	KeSchedulerStart();
+
 	
 
 	if(OK != IoInitDeviceManager("ACPI"))
@@ -135,8 +138,15 @@ NORETURN static void KeInit(void)
 	KeEnableTask(t1);
 	KeEnableTask(t2);
 
-	KeSleep(MS_TO_NS(7000));
+	KeSleep(MS_TO_NS(4000));
 	IoMountVolume("/dev/hda0", "disk1");
+
+	struct IoFileHandle *h;
+	IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_READ | IO_FILE_BINARY, 0, &h);
+	char *t = MmAllocateKernelHeapAligned(8192, 512);
+	uint64_t actualSize = 0;
+	IoReadKernelFileSync(h, t, 7000, 400, &actualSize);
+	asm("nop");
 
 	while(1)
 	{

@@ -28,6 +28,7 @@ struct MmHeapBlock
  */
 static struct MmHeapBlock *MmHeapBlockHead = NULL;
 static struct MmHeapBlock *MmHeapBlockTail = NULL;
+static KeSpinlock MmHeapAllocatorLock = KeSpinlockInitializer;
 
 #ifdef USE_AVL_TREES
 
@@ -75,7 +76,9 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
     if (NULL != MmHeapBlockTail)
     {
         MmHeapBlockTail->size += padding;
+        ASSERT(MmHeapBlockTail->size != 0);
         MmHeapBlockTail->next = block;
+        ASSERT((NULL == block) || ((uintptr_t)block >= MM_KERNEL_HEAP_START));
 
         block->previous = MmHeapBlockTail;
         if (MmHeapBlockHead == MmHeapBlockTail)
@@ -96,6 +99,7 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
         struct MmHeapBlock *next = (struct MmHeapBlock *)((uintptr_t)block + n + META_SIZE);
         next->free = true;
         next->size = pageRemainder - META_SIZE;
+        ASSERT(next->size != 0);
         next->previous = block;
         next->next = NULL;
         MmHeapBlockTail = next;
@@ -103,6 +107,11 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
     }
     else
         block->size = n + pageRemainder;
+    
+    ASSERT(block->size != 0);
+
+    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
 
     return block;
 }
@@ -137,9 +146,11 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
             block->next->previous = block;
         block->previous->next = block;
         block->size -= padding;
+        ASSERT(block->size != 0);
 
         // resize previous block
         block->previous->size += padding;
+        ASSERT(block->previous->size != 0);
     }
 
     if ((remaining - n) >= (META_SIZE + MM_KERNEL_HEAP_ALIGNMENT))
@@ -147,8 +158,10 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
         struct MmHeapBlock *newBlock = (struct MmHeapBlock *)((uintptr_t)block + META_SIZE + n);
         newBlock->free = true;
         newBlock->size = remaining - n - META_SIZE;
+        ASSERT(newBlock->size != 0);
         newBlock->previous = block;
         newBlock->next = block->next;
+        ASSERT((NULL == newBlock->next) || ((uintptr_t)newBlock->next >= MM_KERNEL_HEAP_START));
         if (NULL == newBlock->next)
             MmHeapBlockTail = newBlock;
         else
@@ -158,10 +171,15 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
     }
     else
     {
-        if (NULL != block->next)
+        if (NULL == block->next)
             MmHeapBlockTail = block;
         block->size = remaining;
     }
+
+    ASSERT(block->size != 0);
+    ASSERT((NULL == block) || ((uintptr_t)block >= MM_KERNEL_HEAP_START));
+    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
 
     block->free = false;
     return block;
@@ -179,55 +197,100 @@ static bool MmHeapExtendLastBlock(uintptr_t n)
         return false;
 
     MmHeapBlockTail->size += bytesToAllocate;
+
+    ASSERT(MmHeapBlockTail->size != 0);
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
+
     return true;
 }
 
 void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
 {
+#ifdef DEBUG
+    if(n <= sizeof(uintptr_t))
+        PRINT("Suspicious heap allocation of %lu bytes\n", n);
+#endif
     struct MmHeapBlock *ret;
 
     n = ALIGN_UP(n, MM_KERNEL_HEAP_ALIGNMENT);
 
-    if (align < MM_KERNEL_HEAP_ALIGNMENT)
+    if(align < MM_KERNEL_HEAP_ALIGNMENT)
         align = MM_KERNEL_HEAP_ALIGNMENT;
 
-    if (1 != __builtin_popcountll(align))
+    if(1 != __builtin_popcountll(align))
         return NULL;
 
-    if (NULL != MmHeapBlockHead)
+    KeAcquireSpinlock(&MmHeapAllocatorLock);
+    if(NULL != MmHeapBlockHead)
     {
         struct MmHeapBlock *block = MmHeapBlockHead;
-        while (block)
+        while(block)
         {
-            if (block->free)
+            ASSERT((NULL == block) || ((uintptr_t)block >= MM_KERNEL_HEAP_START));
+            if(block->free)
             {
-                if (block->size >= n)
+                if(block->size >= n)
                 {
                     ret = MmSplitBlock(block, n, align);
+
                     if (NULL != ret)
+                    {
+                        if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
+                        ((NULL != ret->next) && (ret->next->previous != ret)))
+                        {
+                            asm("nop");
+                        }
+                        KeReleaseSpinlock(&(MmHeapAllocatorLock));
                         return (void *)((uintptr_t)ret + META_SIZE);
+                    }
                 }
+            }
+            if((NULL != block->next) && (block->next->size == 0))
+            {
+                asm("nop");
+            }
+            if(!((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START)))
+            {
+                asm("nop");
             }
             block = block->next;
         }
 
         // no block of proper size found
-        if (MmHeapBlockTail->free)
+        if(MmHeapBlockTail->free)
         {
             uintptr_t padding = ALIGN_UP((uintptr_t)MmHeapBlockTail + META_SIZE, align) - ((uintptr_t)MmHeapBlockTail + META_SIZE);
 
             if (MmHeapExtendLastBlock(n + padding))
             {
                 ret = MmSplitBlock(MmHeapBlockTail, n, align);
+                    if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
+                        ((NULL != ret->next) && (ret->next->previous != ret)))
+                    {
+                        asm("nop");
+                    }
                 if (NULL != ret)
+                {
+                    KeReleaseSpinlock(&(MmHeapAllocatorLock));
                     return (void *)((uintptr_t)ret + META_SIZE);
+                }
             }
         }
     }
 
     ret = MmHeapAllocateNewBlock(n, align);
+
+    
+    KeReleaseSpinlock(&(MmHeapAllocatorLock));
     if (NULL != ret)
+    {
+                            if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
+                        ((NULL != ret->next) && (ret->next->previous != ret)))
+                    {
+                        asm("nop");
+                    }
         return (void *)((uintptr_t)ret + META_SIZE);
+    }
     else
         return NULL;
 }
@@ -250,13 +313,28 @@ void MmFreeKernelHeap(const void *ptr)
 {
     if(NULL == ptr)
         return;
-        
+    
+    KeAcquireSpinlock(&(MmHeapAllocatorLock));
     struct MmHeapBlock *block = (struct MmHeapBlock *)((uintptr_t)ptr - META_SIZE);
     block->free = true;
+
+    if((uintptr_t)block == 0xd8014140)
+    {
+        asm("nop");
+    }
+
+    if(!((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START)) ||
+        ((NULL != block->next) && (block->next->previous != block)))
+    {
+        asm("nop");
+    }
+
+    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
 
     if ((NULL != block->next) && (block->next->free))
     {
         block->size += block->next->size + META_SIZE;
+        ASSERT(block->size != 0);
         block->next = block->next->next;
         if (NULL != block->next)
         {
@@ -271,6 +349,7 @@ void MmFreeKernelHeap(const void *ptr)
     if ((NULL != block->previous) && (block->previous->free))
     {
         block->previous->size += block->size + META_SIZE;
+        ASSERT(block->previous->size != 0);
         block->previous->next = block->next;
         if (NULL == block->next)
         {
@@ -279,6 +358,13 @@ void MmFreeKernelHeap(const void *ptr)
         else
             block->next->previous = block->previous;
     }
+
+    ASSERT(MmHeapBlockTail->next == NULL);
+    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
+
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
+
+    KeReleaseSpinlock(&MmHeapAllocatorLock);
 }
 
 #if MM_KERNEL_HEAP_START & (MM_KERNEL_HEAP_ALIGNMENT - 1)

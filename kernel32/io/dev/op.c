@@ -77,7 +77,7 @@ static STATUS IoPerformReadWrite(bool write,
         }
     }
     
-    struct IoReadWriteCallbackContext *ctx = MmAllocateKernelHeap(sizeof(ctx));
+    struct IoReadWriteCallbackContext *ctx = MmAllocateKernelHeap(sizeof(*ctx));
     if(NULL == ctx)
     {
         IoFreeRp(rp);
@@ -89,6 +89,7 @@ static STATUS IoPerformReadWrite(bool write,
     ctx->list = list;
     ctx->size = size;
     ctx->alignedOffset = alignedOffset;
+    ctx->alignedSize = alignedSize;
     ctx->offset = offset;
     ctx->callback = callback;
     ctx->context = context;
@@ -105,6 +106,7 @@ static STATUS IoPerformReadWrite(bool write,
     rp->payload.read.offset = alignedOffset;
     rp->size = alignedSize;
     rp->completionCallback = IoReadWriteCallback;
+    rp->completionContext = ctx;
     
     status = IoSendRp(dev, rp);
     if(OK == status)
@@ -181,6 +183,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
             {
                 goto IoReadWriteCallbackExit;
             }
+            IoFreeRp(rp);
             return OK;
         }
     }
@@ -197,9 +200,10 @@ IoReadWriteCallbackExit:
     }
 
     MmFreeMemoryDescriptorList(ctx->list);
-    ctx->callback(status, rp->size, ctx->context);
+    ctx->callback(status, ctx->size, ctx->context);
 
     MmFreeKernelHeap(ctx);
+    IoFreeRp(rp);
     return OK;
 }
 

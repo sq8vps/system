@@ -110,12 +110,27 @@ struct KeTaskControlBlock
 
     uint64_t waitUntil; //terminal time of sleep or timeout when acquiring mutex
 
-
     struct _KeMutex *mutex;
     struct _KeSemaphore *semaphore;
+    struct KeRwLock *rwLock;
     struct KeTaskControlBlock *nextAux;
     struct KeTaskControlBlock *previousAux;
     
+    union
+    {
+        struct
+        {
+            bool write;
+        } file;
+
+        struct
+        {
+            bool write;
+        } rwLock;
+        
+    } blockParameters;
+    
+
     struct KeTaskControlBlock *next; //next task in queue
     struct KeTaskControlBlock *previous; //previous task in queue
     struct KeTaskControlBlock **queue; //queue top handle

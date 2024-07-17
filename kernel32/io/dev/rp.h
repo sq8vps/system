@@ -230,4 +230,12 @@ EXPORT
 */
 EXTERN void IoWaitForRpCompletion(struct IoRp *rp);
 
+EXPORT
+/**
+ * @brief Clone exisiting RP
+ * @param *rp RP to clone
+ * @return New cloned RP or NULL on failure
+ */
+EXTERN struct IoRp *IoCloneRp(struct IoRp *rp);
+
 #endif

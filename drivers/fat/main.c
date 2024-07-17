@@ -1,6 +1,8 @@
 #include "kernel.h"
 #include "mount.h"
 #include "logging.h"
+#include "fsctrl.h"
+#include "read.h"
 
 static STATUS FatDispatch(struct IoRp *rp)
 {
@@ -8,9 +10,23 @@ static STATUS FatDispatch(struct IoRp *rp)
     {
         switch(rp->code)
         {
+            //handle filesystem requests
+            case IO_RP_FILESYSTEM_CONTROL:
+                return FatFsControl(rp);
+                break;
+            //handle open and close request
+            case IO_RP_OPEN:
+            case IO_RP_CLOSE:
+                //currently do nothing, just finalize
+                rp->status = OK;
+                IoFinalizeRp(rp);
+                return OK;
+                break;
+            //handle read and write requests
             case IO_RP_READ:
+                return FatRead(rp);
+                break;
             case IO_RP_WRITE:
-                
                 break;
             default:
                 rp->status = IO_RP_CODE_UNKNOWN;

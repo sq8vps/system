@@ -128,6 +128,7 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
             mutex->queueBottom = current;
             current->semaphore = NULL;
             current->mutex = mutex;
+            current->rwLock = NULL;
             KeReleaseSpinlock(&(mutex->spinlock));
             if(timeout < KE_MUTEX_NORMAL)
                 current->waitUntil = HalGetTimestamp() + timeout;
@@ -207,6 +208,7 @@ bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
             sem->queueBottom = current;
             current->semaphore = sem;
             current->mutex = NULL;
+            current->rwLock = NULL;
             KeReleaseSpinlock(&(sem->spinlock));
             if(timeout < KE_MUTEX_NORMAL)
                 current->waitUntil = HalGetTimestamp() + timeout;
@@ -284,7 +286,7 @@ void KeTimedExclusionRefresh(void)
 
                 KeReleaseSpinlock(&(s->mutex->spinlock));
             }
-            else
+            else if(s->semaphore)
             {
                 KeAcquireSpinlock(&(s->semaphore->spinlock));
                 if(s->previous)
@@ -299,6 +301,21 @@ void KeTimedExclusionRefresh(void)
 
                 KeReleaseSpinlock(&(s->semaphore->spinlock));
             }
+            else
+            {
+                KeAcquireSpinlock(&(s->rwLock->lock));
+                if(s->previous)
+                    s->previous->next = s->next;
+                else
+                    s->rwLock->queueTop = s->next;
+
+                if(s->next)
+                    s->next->previous = s->previous;
+                else
+                    s->rwLock->queueBottom = s->previous;
+
+                KeReleaseSpinlock(&(s->rwLock->lock));
+            }
             s->mutex = NULL;
             s->semaphore = NULL;
             KeUnblockTask(s);
@@ -309,32 +326,45 @@ void KeTimedExclusionRefresh(void)
     KeReleaseSpinlock(&listLock);
 }
 
-void KeAcquireRwLock(KeRwLock *rwLock, bool write)
+bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
 {
     struct KeTaskControlBlock *current = KeGetCurrentTask();
     KeAcquireSpinlock(&(rwLock->lock));
     if(rwLock->writers || (write && rwLock->readers))
     {
-        ObLockObject(current);
-        KeBlockTask(current, TASK_BLOCK_MUTEX);
-        if(rwLock->queueTop)
+        if(KE_MUTEX_NO_WAIT == timeout)
         {
-            rwLock->queueBottom->next = current;
-            current->previous = rwLock->queueBottom;
+            KeReleaseSpinlock(&(rwLock->lock));
+            return false;
         }
         else
         {
-            rwLock->queueTop = current;
-            current->previous = NULL;
+            ObLockObject(current);
+            KeBlockTask(current, TASK_BLOCK_MUTEX);
+            if(rwLock->queueTop)
+            {
+                rwLock->queueBottom->next = current;
+                current->previous = rwLock->queueBottom;
+            }
+            else
+            {
+                rwLock->queueTop = current;
+                current->previous = NULL;
+            }
+            rwLock->queueBottom = current;
+            current->semaphore = NULL;
+            current->mutex = NULL;
+            current->rwLock = rwLock;
+            current->blockParameters.rwLock.write = write;
+            KeReleaseSpinlock(&(rwLock->lock));
+            if(timeout < KE_MUTEX_NORMAL)
+                    current->waitUntil = HalGetTimestamp() + timeout;
+                else
+                    current->waitUntil = KE_MUTEX_NORMAL;
+            insertToList(current);
+            ObUnlockObject(current);
+            KeTaskYield(); //suspend task and wait for an event
         }
-        rwLock->queueBottom = current;
-        current->semaphore = NULL;
-        current->mutex = NULL;
-        current->rwLock = rwLock;
-        current->blockParameters.rwLock.write = write;
-        ObUnlockObject(current);
-        KeReleaseSpinlock(&(rwLock->lock));
-        KeTaskYield(); //suspend task and wait for an event
     }
     else
     {
@@ -345,6 +375,12 @@ void KeAcquireRwLock(KeRwLock *rwLock, bool write)
 
         KeReleaseSpinlock(&(rwLock->lock));
     }
+    return true;
+}
+
+void KeAcquireRwLock(KeRwLock *rwLock, bool write)
+{
+    KeAcquireRwLockWithTimeout(rwLock, write, KE_MUTEX_NORMAL);
 }
 
 void KeReleaseRwLock(KeRwLock *rwLock)
@@ -399,6 +435,7 @@ void KeReleaseRwLock(KeRwLock *rwLock)
                 rwLock->queueBottom = NULL;
 
             rwLock->queueTop = t->next;
+            removeFromList(t);
             ObUnlockObject(t);
             KeUnblockTask(t);
             t = rwLock->queueTop;

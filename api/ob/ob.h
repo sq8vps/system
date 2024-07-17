@@ -20,6 +20,16 @@ struct ObObjectHeader
 };
 
 /**
+ * @brief Check if object is locked
+ * 
+ * This function check if object is currently locked.
+ * @param *object Object to check the lock status of
+ * @warning This function causes kernel panic when object is not lockable
+ * @return True if object is locked, false if not
+*/
+extern bool ObIsObjectLocked(void *object);
+
+/**
  * @brief Lock object
  * 
  * This function locks the object, that is, acquires the associated spinlock.

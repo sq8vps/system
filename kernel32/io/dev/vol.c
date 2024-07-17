@@ -25,7 +25,7 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     STATUS status = OK;
 
     //get VFS node associated with disk device
-    struct IoVfsNode *devNode = IoVfsGetNodeByPath(devPath);
+    struct IoVfsNode *devNode = IoVfsGetNode(devPath);
     if(NULL == devNode)
         return IO_FILE_NOT_FOUND;
 
@@ -74,7 +74,7 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
         return status;
     }
 
-    if(IoVfsCheckIfNodeExistsByPath(mountPoint))
+    if(IoVfsCheckIfNodeExists(mountPoint))
         return IO_FILE_ALREADY_EXISTS;
     
     struct IoVfsNode *mountPointNode = NULL;

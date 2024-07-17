@@ -51,21 +51,19 @@ union FsGetRequest
 
 /**
  * @brief Get VFS node with given name and parent from the filesystem
- * @param *target Target filesystem device
  * @param *parent Parent VFS node
  * @param *name Node name
  * @param **node Output node or NULL if not found (check return code)
  * @return Status code
 */
-INTERNAL STATUS FsGetNode(struct IoDeviceObject *target, struct IoVfsNode *parent, char *name, struct IoVfsNode **node);
+INTERNAL STATUS FsGetNode(struct IoVfsNode *parent, char *name, struct IoVfsNode **node);
 
 /**
  * @brief Get VFS node children list
- * @param *target Target filesystem device
  * @param *node VFS node to find the children of
  * @param **children Output children list or NULL if no children (check return code)
  * @return Status code
 */
-INTERNAL STATUS FsGetNodeChildren(struct IoDeviceObject *target, struct IoVfsNode *node, struct IoVfsNode **children);
+INTERNAL STATUS FsGetNodeChildren(struct IoVfsNode *node, struct IoVfsNode **children);
 
 #endif

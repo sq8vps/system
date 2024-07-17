@@ -48,6 +48,7 @@ STATUS IdeClearPrdTable(struct IdePrdTable *t)
         return NULL_POINTER_GIVEN;
     
     CmMemset(t->table, 0, IDE_MAX_PRD_ENTRIES * sizeof(*(t->table)));
+    t->entries = 0;
     return OK;
 }
 
@@ -84,22 +85,16 @@ STATUS IdeInitializePrdTables(struct IdeControllerData *info)
 
 uint32_t IdeAddPrdEntry(struct IdePrdTable *table, uint32_t address, uint16_t size)
 {
-    for(uint32_t i = 0; i < IDE_MAX_PRD_ENTRIES; i++)
+    if(table->entries < IDE_MAX_PRD_ENTRIES)
     {
-        if(!(table->table[i].eot & IDE_PRD_ENTRY_EOT_FLAG))
-        {
-            if(address > 0)
-            {
-                table->table[i].address = address;
-                table->table[i].size = size;
-                table->table[i].eot = IDE_PRD_ENTRY_EOT_FLAG;
-                if(i > 0)
-                    table->table[i - 1].eot = 0;
-            }
-            return IDE_MAX_PRD_ENTRIES - i - 1;
-        }
+        table->table[table->entries].address = address;
+        table->table[table->entries].size = size;
+        table->table[table->entries].eot = IDE_PRD_ENTRY_EOT_FLAG;
+        if(table->entries > 0)
+            table->table[table->entries - 1].eot = 0;
+        table->entries++;
     }
-    return 0;
+    return IDE_MAX_PRD_ENTRIES - table->entries;
 }
 
 

@@ -2,7 +2,7 @@
 #define PCI_DEVICE_H_
 
 #include "defines.h"
-#include "ex/kdrv.h"
+#include "ex/kdrv/kdrv.h"
 #include "hal/interrupt.h"
 #include "io/dev/dev.h"
 #include "io/dev/rp.h"

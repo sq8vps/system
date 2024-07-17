@@ -36,15 +36,19 @@ static int _PrintPad(struct VPrintfConfig *config, uint32_t count, bool zeroPad,
 {
     if (config->toFile)
     {
-        char *t = MmAllocateKernelHeap(count);
-        if (NULL != t)
-        {
-            CmMemset(t, zeroPad ? '0' : ' ', count);
-            BootVgaPrintStringN(t, count);
-            MmFreeKernelHeap(t);
-            return count;
-        }
-        return 0;
+        // char *t = MmAllocateKernelHeap(count);
+        // if (NULL != t)
+        // {
+        //     CmMemset(t, zeroPad ? '0' : ' ', count);
+        //     BootVgaPrintStringN(t, count);
+        //     //MmFreeKernelHeap(t);
+        //     return count;
+        // }
+        //padding should not be that long, better allocate in on the stack
+        char t[count];
+        CmMemset(t, zeroPad ? '0' : ' ', count);
+        BootVgaPrintStringN(t, count);
+        return count;
     }
     else
     {
@@ -124,13 +128,14 @@ static int _PrintNumber(struct VPrintfConfig *config, uint64_t x, bool sign, uin
         }
     }
 
-    char *buf = NULL;
-    if (config->toFile)
-    {
-        buf = MmAllocateKernelHeap(length + leftPrecisionPadding + leftWidthPadding + rightPadding + prefixLength);
-        if (NULL == buf)
-            return 0;
-    }
+    char buf[length + leftPrecisionPadding + leftWidthPadding + rightPadding + prefixLength];
+    // char *buf = NULL;
+    // if (config->toFile)
+    // {
+    //     buf = MmAllocateKernelHeap(length + leftPrecisionPadding + leftWidthPadding + rightPadding + prefixLength);
+    //     if (NULL == buf)
+    //         return 0;
+    // }
 
     if ((0 != leftWidthPadding) && (0 != remainingSpace))
     {
@@ -267,7 +272,7 @@ static int _PrintNumber(struct VPrintfConfig *config, uint64_t x, bool sign, uin
     if (config->toFile)
     {
         BootVgaPrintStringN(buf, written);
-        MmFreeKernelHeap(buf);
+        //MmFreeKernelHeap(buf);
     }
 
     return written;

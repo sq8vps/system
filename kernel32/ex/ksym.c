@@ -29,7 +29,7 @@ STATUS ExLoadKernelSymbols(char *path)
     }
 
     uint64_t bytesRead;
-    if(OK != (ret = IoReadKernelFile(f, h, sizeof(*h), 0, &bytesRead)))
+    if(OK != (ret = IoReadKernelFileSync(f, h, sizeof(*h), 0, &bytesRead)))
     {
         IoCloseKernelFile(f);
         MmFreeKernelHeap(h);
@@ -67,7 +67,7 @@ STATUS ExLoadKernelSymbols(char *path)
     struct Elf32_Shdr *stringTabHdr = NULL;
     for(uint16_t i = 0; i < h->e_shnum; i++) //loop for all sections
 	{
-        if(OK != (ret = IoReadKernelFile(f, s, sizeof(*s), (uintptr_t)ExGetElf32SectionHeader(h, i) - (uintptr_t)h, &bytesRead)))
+        if(OK != (ret = IoReadKernelFileSync(f, s, sizeof(*s), (uintptr_t)ExGetElf32SectionHeader(h, i) - (uintptr_t)h, &bytesRead)))
             goto ExLoadKernelSymbolsFailed;
         
         if(bytesRead != sizeof(*s))
@@ -84,7 +84,7 @@ STATUS ExLoadKernelSymbols(char *path)
                 ret = OUT_OF_RESOURCES;
                 goto ExLoadKernelSymbolsFailed;
             }
-            if(OK != (ret = IoReadKernelFile(f, symbolTab, s->sh_size, s->sh_offset, &bytesRead)))
+            if(OK != (ret = IoReadKernelFileSync(f, symbolTab, s->sh_size, s->sh_offset, &bytesRead)))
                 goto ExLoadKernelSymbolsFailed;
 
             if(bytesRead != s->sh_size)
@@ -121,7 +121,7 @@ STATUS ExLoadKernelSymbols(char *path)
         goto ExLoadKernelSymbolsFailed;
     }
 
-    if(OK != (ret = IoReadKernelFile(f, s, sizeof(*s), (uintptr_t)stringTabHdr - (uintptr_t)h, &bytesRead)))
+    if(OK != (ret = IoReadKernelFileSync(f, s, sizeof(*s), (uintptr_t)stringTabHdr - (uintptr_t)h, &bytesRead)))
         goto ExLoadKernelSymbolsFailed;
     
     if(bytesRead != sizeof(*s))
@@ -137,7 +137,7 @@ STATUS ExLoadKernelSymbols(char *path)
         goto ExLoadKernelSymbolsFailed;
     }
 
-    if(OK != (ret = IoReadKernelFile(f, kernelSymbolStrings, s->sh_size, s->sh_offset, &bytesRead)))
+    if(OK != (ret = IoReadKernelFileSync(f, kernelSymbolStrings, s->sh_size, s->sh_offset, &bytesRead)))
         goto ExLoadKernelSymbolsFailed;
     
     if(bytesRead != s->sh_size)
@@ -148,7 +148,7 @@ STATUS ExLoadKernelSymbols(char *path)
 
     for(uint16_t i = 0; i < h->e_shnum; i++) //loop for all sections
 	{
-        if(OK != (ret = IoReadKernelFile(f, s, sizeof(*s), (uintptr_t)ExGetElf32SectionHeader(h, i) - (uintptr_t)h, &bytesRead)))
+        if(OK != (ret = IoReadKernelFileSync(f, s, sizeof(*s), (uintptr_t)ExGetElf32SectionHeader(h, i) - (uintptr_t)h, &bytesRead)))
             goto ExLoadKernelSymbolsFailed;
         
         if(bytesRead != sizeof(*s))
@@ -165,7 +165,7 @@ STATUS ExLoadKernelSymbols(char *path)
                 ret = OUT_OF_RESOURCES;
                 goto ExLoadKernelSymbolsFailed;
             }
-            if(OK != (ret = IoReadKernelFile(f, symbolTab, s->sh_size, s->sh_offset, &bytesRead)))
+            if(OK != (ret = IoReadKernelFileSync(f, symbolTab, s->sh_size, s->sh_offset, &bytesRead)))
                 goto ExLoadKernelSymbolsFailed;
 
             if(bytesRead != s->sh_size)

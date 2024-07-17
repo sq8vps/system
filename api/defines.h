@@ -96,6 +96,7 @@ typedef enum
     IO_NOT_A_DIRECTORY,
     IO_FILE_COUNT_LIMIT_REACHED,
     IO_BAD_FILE_TYPE,
+    IO_FILE_CLOSED,
     IO_FILE_LOCKED,
     IO_FILE_IRREMOVABLE,
     IO_DIRECTORY_NOT_EMPTY,
@@ -112,6 +113,9 @@ typedef enum
     IO_VOLUME_TOO_SMALL,
     IO_DEVICE_INCOMPATIBLE,
     IO_UNKNOWN_FILE_SYSTEM,
+    IO_FILE_BROKEN,
+    IO_FILE_BAD_MODE,
+    IO_FILE_TOO_SMALL,
 
     OB_UNKOWN_OBJECT_TYPE = 0x00006000,
     OB_OBJECT_TYPE_ALREADY_REGISTERED,
@@ -150,7 +154,7 @@ typedef enum PrivilegeLevel_t
 /**
  * @brief A common timestamp type
 */
-typedef uint64_t Time_t;
+typedef uint64_t time_t;
 
 /**
  * @brief A common character type (UTF-8)

@@ -97,6 +97,14 @@ EXTERN void MmUnmapMemoryDescriptorList(void *memory);
 
 EXPORT
 /**
+ * @brief Copy Memory Descriptor list
+ * @param *list List to be copied
+ * @return Cloned Memory Descriptor List
+ */
+EXTERN struct MmMemoryDescriptor *MmCloneMemoryDescriptorList(struct MmMemoryDescriptor *list);
+
+EXPORT
+/**
  * @brief Allocate and map memory
  * @param address Address to map the memory to
  * @param size Memory size in bytes

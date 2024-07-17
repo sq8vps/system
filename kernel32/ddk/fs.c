@@ -3,15 +3,16 @@
 #include "io/dev/dev.h"
 #include "mm/heap.h"
 #include "assert.h"
+#include "io/fs/vfs.h"
 
-STATUS FsGetNode(struct IoDeviceObject *target, struct IoVfsNode *parent, char *name, struct IoVfsNode **node)
+STATUS FsGetNode(struct IoVfsNode *parent, char *name, struct IoVfsNode **node)
 {
     STATUS status = OK;
 
     if(!node)
         return NULL_POINTER_GIVEN;
     
-    if(IO_DEVICE_TYPE_FS != target->type)
+    if(IO_DEVICE_TYPE_FS != parent->device->type)
         return IO_DEVICE_INCOMPATIBLE;
     
     struct IoRp *rp = IoCreateRp();
@@ -32,7 +33,7 @@ STATUS FsGetNode(struct IoDeviceObject *target, struct IoVfsNode *parent, char *
     req->getNode.parent = parent;
     req->getNode.name = name;
     
-    status = IoSendRp(target, rp);
+    status = IoSendRp(parent->device, rp);
     if(OK == status)
     {
         IoWaitForRpCompletion(rp);
@@ -46,14 +47,14 @@ STATUS FsGetNode(struct IoDeviceObject *target, struct IoVfsNode *parent, char *
     return status;
 }
 
-STATUS FsGetNodeChildren(struct IoDeviceObject *target, struct IoVfsNode *node, struct IoVfsNode **children)
+STATUS FsGetNodeChildren(struct IoVfsNode *node, struct IoVfsNode **children)
 {
     STATUS status = OK;
 
     if(!node)
         return NULL_POINTER_GIVEN;
     
-    if(IO_DEVICE_TYPE_FS != target->type)
+    if(IO_DEVICE_TYPE_FS != node->device->type)
         return IO_DEVICE_INCOMPATIBLE;
     
     struct IoRp *rp = IoCreateRp();
@@ -73,7 +74,7 @@ STATUS FsGetNodeChildren(struct IoDeviceObject *target, struct IoVfsNode *node, 
 
     req->getChildren.node = node;
     
-    status = IoSendRp(target, rp);
+    status = IoSendRp(node->device, rp);
     if(OK == status)
     {
         IoWaitForRpCompletion(rp);

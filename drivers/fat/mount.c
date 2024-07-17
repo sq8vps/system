@@ -41,6 +41,14 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         return status;
     }
 
+    if(disk->flags & IO_DEVICE_FLAG_DIRECT_IO)
+        dev->flags |= IO_DEVICE_FLAG_DIRECT_IO;
+    if(disk->flags & IO_DEVICE_FLAG_BUFFERED_IO)
+        dev->flags |= IO_DEVICE_FLAG_BUFFERED_IO;
+    
+    dev->alignment = disk->alignment;
+    dev->blockSize = disk->blockSize;
+
     dev->privateData = MmAllocateKernelHeapZeroed(sizeof(struct FatVolume));
     if(NULL == dev->privateData)
     {
@@ -69,6 +77,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         info->type = FAT32;
     
     info->disk = disk;
+    info->vol = dev;
 
     info->clusters = clusterCount;
     info->fatCount = bpb->fatCount;
@@ -123,6 +132,17 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
 
             MmFreeKernelHeap(fsInfo);
         }
+    }
+
+    info->fat = NULL;
+
+    status = IoReadDeviceSync(disk, info->reservedSectors * disk->blockSize, info->fatSize * disk->blockSize, &(info->fat));
+    if(OK != status)
+    {
+        IoDestroyDevice(disk);
+        MmFreeKernelHeap(info->fat);
+        MmFreeKernelHeap(info);
+        return status;
     }
 
     LOG(SYSLOG_INFO, "FAT volume found");

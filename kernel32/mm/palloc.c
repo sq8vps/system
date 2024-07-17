@@ -264,7 +264,7 @@ static void freeBlock(uintptr_t index)
         BUDDY(i, index) &= ~BUDDY_BIT(i, index);
         uintptr_t blockBuddy = index ^ ((uintptr_t)1 << i);
         if(BUDDY(i, blockBuddy) & BUDDY_BIT(i, blockBuddy))
-            return;
+            break;
     }
     KeReleaseSpinlock(&freeBlockMutex);
 } 

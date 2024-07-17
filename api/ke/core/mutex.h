@@ -73,6 +73,24 @@ typedef struct _KeSemaphore
 #define KeSemaphoreInitializer {.current = 0, .max = 1, .queueTop = NULL, .queueBottom = NULL, .spinlock = KeSpinlockInitializer}
 
 /**
+ * @brief A read-write lock structure
+ * @attention Initialize with KeRwLockInitializer
+ */
+typedef struct KeRwLock
+{
+    uint32_t readers;
+    uint32_t writers;
+    struct KeTaskControlBlock *queueTop;
+    struct KeTaskControlBlock *queueBottom;
+    KeSpinlock lock;
+} KeRwLock;
+
+/**
+ * @brief Read-write lock initializer. Use it when creating RW locks.
+*/
+#define KeRwLockInitializer {.readers = 0, .writers = 0, .queueTop = NULL, .queueBottom = NULL, .lock = KeSpinlockInitializer}
+
+/**
  * @brief Acquire spinlock
  * @param *spinlock Spinlock structure
 */
@@ -124,6 +142,27 @@ extern bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout);
  * @param *sem Semaphore structure
 */
 extern void KeReleaseSemaphore(KeSemaphore *sem);
+
+/**
+ * @brief Acquire read-write (yielding), but with given timeout
+ * @param *rwLock RW lock structure
+ * @param timeout Timeout in ns or KE_MUTEX_NO_WAIT or KE_MUTEX_NORMAL
+ * @return True on successful acquistion, false on timeout
+*/
+extern bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout);
+
+/**
+ * @brief Acquire read-write lock (yielding)
+ * @param *rwLock RW lock structure
+ * @param write True if writing, false if reading
+*/
+extern void KeAcquireRwLock(KeRwLock *rwLock, bool write);
+
+/**
+ * @brief Release read-write lock
+ * @param *rwLock RW lock structure
+*/
+extern void KeReleaseRwLock(KeRwLock *rwLock);
 
 
 #ifdef __cplusplus

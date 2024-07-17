@@ -270,6 +270,11 @@ void KeUnblockTask(struct KeTaskControlBlock *tcb)
     attachToQueue(tcb, &readyToRun[tcb->majorPriority][tcb->minorPriority]);
 }
 
+enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb)
+{
+    return tcb->blockReason;
+}
+
 struct KeTaskControlBlock* KeGetCurrentTask(void)
 {
     return currentTask;

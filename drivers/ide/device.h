@@ -42,6 +42,7 @@ struct IdePrdTable
 {
     struct IdePrdEntry *table;
     uint32_t physical;
+    uint16_t entries;
 };
 
 struct IdeControllerData;
