@@ -97,9 +97,9 @@ struct IoRp
         */
         struct 
         {
-            uint64_t offset;
-            struct MmMemoryDescriptor *memory;
-            void *systemBuffer;
+            uint64_t offset; /**< File offset */
+            struct MmMemoryDescriptor *memory; /**< Memory descriptors for direct I/O */
+            void *systemBuffer; /**< Buffer for buffered I/O */
         } read, write;
 
         /**
@@ -142,12 +142,6 @@ struct IoRpQueue
 };
 
 /**
- * @brief Initialize RP slab cache
- * @return Status code
-*/
-INTERNAL STATUS IoInitializeRpCache(void);
-
-/**
  * @brief Create empty Request Packet
  * @return Created Request Packet pointer or NULL on failure
 */
@@ -180,7 +174,7 @@ extern STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCall
  * @brief Finalize Request Packet processing
  * @param *rp Input Request Packet
  * @return Status code
- * @attention This function does not free the memory
+ * @attention This function frees the memory when there is a completion callback registered
 */
 extern STATUS IoFinalizeRp(struct IoRp *rp);
 

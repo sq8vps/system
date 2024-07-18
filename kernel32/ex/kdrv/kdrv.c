@@ -268,7 +268,7 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
     }
 
     IoFileHandle *f = NULL;
-    status = IoOpenKernelFile(path, IO_FILE_READ | IO_FILE_BINARY, 0, &f);
+    status = IoOpenKernelFile(path, IO_FILE_READ, 0, &f);
     if(OK != status)
     {
         object->free = true;

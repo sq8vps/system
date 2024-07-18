@@ -142,10 +142,12 @@ NORETURN static void KeInit(void)
 	IoMountVolume("/dev/hda0", "disk1");
 
 	struct IoFileHandle *h;
-	IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_READ | IO_FILE_BINARY, 0, &h);
+	IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
 	char *t = MmAllocateKernelHeapAligned(8192, 512);
+	CmMemset(t, 'A', 8142);
+	CmStrcpy(&t[8142], "Test dopisywania z przekroczeniem granicy klastra");
 	uint64_t actualSize = 0;
-	IoReadKernelFileSync(h, t, 7000, 400, &actualSize);
+	IoWriteKernelFileSync(h, t, 8192, 0, &actualSize);
 	asm("nop");
 
 	while(1)

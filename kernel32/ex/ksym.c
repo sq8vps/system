@@ -18,7 +18,7 @@ STATUS ExLoadKernelSymbols(char *path)
 {
     STATUS ret = OK;
     IoFileHandle *f;
-    if(OK != (ret = IoOpenKernelFile(path, IO_FILE_READ | IO_FILE_BINARY, 0, &f)))
+    if(OK != (ret = IoOpenKernelFile(path, IO_FILE_READ, 0, &f)))
         return ret;
     
     struct Elf32_Ehdr *h = MmAllocateKernelHeap(sizeof(struct Elf32_Ehdr));

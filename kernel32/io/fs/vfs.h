@@ -11,12 +11,10 @@
 EXPORT
 typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_READ_ONLY 0x1 //file/directory is read only
-#define IO_VFS_FLAG_LOCK 0x2 //node is locked, for example during write - VFS does not check this flag
 #define IO_VFS_FLAG_NO_CACHE 0x4 //do not cache this entry
-#define IO_VFS_FLAG_VIRTUAL 0x8
 #define IO_VFS_FLAG_DIRTY 0x10 //data for this entry changed in cache, must be send to disk first
+#define IO_VFS_FLAG_ATTRIBUTES_DIRTY 0x20
 #define IO_VFS_FLAG_HIDDEN 0x40 /**< Node should be hidden from normal user */
-#define IO_VFS_FLAG_VFS_DIRECTORY 0x10000000
 #define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
 
 EXPORT

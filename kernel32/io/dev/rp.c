@@ -208,5 +208,8 @@ struct IoRp *IoCloneRp(struct IoRp *rp)
     
     CmMemcpy(n, rp, sizeof(*rp));
     ObInitializeObjectHeader(n);
+    n->queue = NULL;
+    n->next = NULL;
+    n->previous = NULL;
     return n;
 }

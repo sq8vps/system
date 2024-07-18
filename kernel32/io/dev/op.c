@@ -84,6 +84,8 @@ static STATUS IoPerformReadWrite(bool write,
         status = OUT_OF_RESOURCES;
         goto IoPerformReadWriteFailure;
     }
+    ctx->dev = dev;
+    ctx->node = node;
     ctx->alignedBuffer = alignedBuffer;
     ctx->alignedList = alignedList;
     ctx->list = list;
@@ -166,7 +168,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
             void *buffer = MmMapMemoryDescriptorList(ctx->list);
             if(NULL != buffer)
             {
-                CmMemcpy(&(ctx->alignedBuffer[ctx->offset]), buffer, ctx->size);
+                CmMemcpy(&(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), buffer, ctx->size);
                 MmUnmapMemoryDescriptorList(buffer);
             }
             else
@@ -183,7 +185,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
             {
                 goto IoReadWriteCallbackExit;
             }
-            IoFreeRp(rp);
+            //IoFreeRp(rp);
             return OK;
         }
     }
@@ -203,7 +205,7 @@ IoReadWriteCallbackExit:
     ctx->callback(status, ctx->size, ctx->context);
 
     MmFreeKernelHeap(ctx);
-    IoFreeRp(rp);
+    //IoFreeRp(rp);
     return OK;
 }
 

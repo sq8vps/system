@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "defines.h"
+#include "ke/core/mutex.h"
 
 #define FAT_BPB_SIGNATURE_VALUE 0xAA55
 
@@ -107,6 +108,9 @@ struct FatVolume
     uint16_t fsInfoSector;
 
     void *fat;
+    KeSpinlock fatLock;
+    uint32_t modifiedClusterLow;
+    uint32_t modifiedClusterHigh;
 };
 
 #define FAT_GET_OFFSET(vol, cluster) ((((cluster) - 2) * (vol)->sectorsPerCluster + (vol)->fatCount * (vol)->fatSize + (vol)->reservedSectors) * (vol)->disk->blockSize)

@@ -30,7 +30,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
 
     *size = 0;
 
-    if(OK != (ret = IoOpenKernelFile((char*)name, IO_FILE_READ | IO_FILE_BINARY, 0, &f)))
+    if(OK != (ret = IoOpenKernelFile((char*)name, IO_FILE_READ, 0, &f)))
     {
         return ret;
     }

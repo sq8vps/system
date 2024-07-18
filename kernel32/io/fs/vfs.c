@@ -523,6 +523,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_
 STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(node && buffer && callback);
+    STATUS status = 0;
 
     if(!node->status.open)
         return IO_FILE_CLOSED;
@@ -541,6 +542,13 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64
     if((offset > node->size) && (IO_VFS_DEVICE != node->type))
         return IO_FILE_TOO_SMALL;
 
+    uint64_t originalSize = node->size;
+    //TODO: update timestamps
+    if((offset + size) > node->size)
+    {
+        node->size = offset + size;
+    }
+
     switch(node->fsType)
     {
         /* File operations on initial ramdisk are handled differently.
@@ -549,19 +557,21 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64
         Initrd flag implies no caching and no writing.
         */
         case IO_VFS_FS_INITRD:
-            return IO_FILE_READ_ONLY;
+            status = IO_FILE_READ_ONLY;
             break;
         case IO_VFS_FS_PHYSICAL:
         case IO_VFS_FS_VIRTUAL:
-            return IoReadWrite(true, node->device, node, offset, size, buffer, callback, context, 
+            status = IoReadWrite(true, node->device, node, offset, size, buffer, callback, context, 
                 (flags & IO_VFS_FLAG_DIRECT) ? true : false);
             break;
         default:
-            return IO_BAD_FILE_TYPE;
+            status = IO_BAD_FILE_TYPE;
             break;
     }
+    if(OK != status)
+        node->size = originalSize;
 
-    return IO_BAD_FILE_TYPE;
+    return status;
 }
 
 STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)

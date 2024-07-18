@@ -20,10 +20,6 @@ struct KeTaskControlBlock;
 #define IoFileFlags IoVfsFlags
 
 /**
- * @brief Use synchronous (blocking) operations
-*/
-#define IO_FILE_FLAG_SYNCHRONOUS IO_VFS_OPERATION_FLAG_SYNCHRONOUS
-/**
  * @brief Perform operation directly, omit internal bufferring
 */
 #define IO_FILE_FLAG_DIRECT IO_VFS_OPERATION_FLAG_DIRECT
@@ -33,17 +29,28 @@ struct KeTaskControlBlock;
 #define IO_FILE_FLAG_NO_WAIT IO_VFS_OPERATION_FLAG_NO_WAIT
 
 /**
- * @brief File open mode
- * @note Any mode can be used with IO_FILE_BINARY option
+ * @brief File open modes
+ * 
+ * File content is available for reading in \a IO_FILE_READ, \a IO_FILE_WRITE and \a IO_FILE_APPEND modes.
+ * \a IO_FILE_WRITE allows to write to any offset without destroying current file content.
+ * \a IO_FILE_APPEND allows to append content to the end and ignores provided offset.
+ * \a IO_FILE_REPLACE flag can be ORed with open mode to destroy current file content.
+ * \a IO_FILE_READ_ATTRIBUTES allows to read file attributes via \a IoFileAttributes structure.
+ * \a IO_FILE_WRITE_ATTRIBUTES allows to write file attributes via \a IoFileAttributes structure.
+ * By default, when the file does not exist, the function fails and nothing is read nor written.
+ * \a IO_FILE_CREATE flag ORed with open mode allows to create the file if it does not exist.
+ * Using \a IO_FILE_READ_ATTRIBUTES or \a IO_FILE_WRITE_ATTRIBUTES with \a IO_FILE_WRITE 
+ * or \a IO_FILE_APPEND is illegal and result with open error.
 */
 typedef enum
 {
-    IO_FILE_READ = 0,
-    IO_FILE_WRITE = 1,
-    IO_FILE_APPEND = 2,
-    IO_FILE_READ_ATTRIBUTES = 4,
-    IO_FILE_WRITE_ATTRIBUTES = 8,
-    IO_FILE_BINARY = 0x8000,
+    IO_FILE_READ = 0x0, /**< Open file for reading */
+    IO_FILE_WRITE = 0x1, /**< Open file for writing (to any offset) */
+    IO_FILE_APPEND = 0x2, /**< Open file for appending (offset ignored) */
+    IO_FILE_READ_ATTRIBUTES = 0x4, /**< Open file for reading attributes */
+    IO_FILE_WRITE_ATTRIBUTES = 0x8, /**< Open file for writing attributes */
+    IO_FILE_CREATE = 0x10, /**< Create file if does not exist */
+    IO_FILE_REPLACE = 0x20, /**< Replace file content on writing (destroy old content) */
 } IoFileOpenMode;
 
 /**
@@ -59,6 +66,8 @@ typedef struct IoFileHandle
         uint64_t actualSize; /**< Actual read/written count of bytes */
         STATUS status; /**< Operation status */
         uint32_t completed : 1; /**< Operation completed */
+        uint32_t write : 1; /**< Write/append operation */
+        uint64_t offset; /**< Operation offset */
     } operation;
     union
     {

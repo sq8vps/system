@@ -24,9 +24,8 @@ static STATUS FatDispatch(struct IoRp *rp)
                 break;
             //handle read and write requests
             case IO_RP_READ:
-                return FatRead(rp);
-                break;
             case IO_RP_WRITE:
+                return FatReadWrite(rp);
                 break;
             default:
                 rp->status = IO_RP_CODE_UNKNOWN;

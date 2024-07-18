@@ -24,6 +24,18 @@ static void IoFileReadWriteCallback(STATUS status, uint64_t actualSize, void *co
         h->operation.completed = 1;
         h->operation.actualSize = actualSize;
         h->operation.status = status;
+        if(OK == status)
+        {
+            if(h->operation.write)
+            {
+                //check if file size changed
+                if((h->operation.offset + actualSize) != h->type.fileHandle.node->size)
+                {
+                    h->type.fileHandle.node->size = h->operation.offset + actualSize;
+                    h->type.fileHandle.node->flags |= IO_VFS_FLAG_ATTRIBUTES_DIRTY;
+                }
+            }
+        }
         if(TASK_BLOCK_NOT_BLOCKED != KeGetTaskBlockState(h->task))
             KeUnblockTask(h->task);
         ObUnlockObject(h);
@@ -283,6 +295,9 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size
         return IO_FILE_NOT_FOUND;
     if(handle->free)
         return IO_FILE_NOT_FOUND;
+    
+    handle->operation.write = 0;
+    handle->operation.offset = offset;
 
     return IoVfsRead(handle->type.fileHandle.node, handle->type.fileHandle.flags, buffer, size, offset, callback, context);
 }
@@ -313,10 +328,13 @@ STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t siz
         return IO_FILE_NOT_FOUND;
     if(handle->free)
         return IO_FILE_NOT_FOUND;
-    if(0 == (handle->type.fileHandle.flags & (IO_FILE_WRITE | IO_FILE_APPEND)))
+    if(0 == (handle->type.fileHandle.mode & (IO_FILE_WRITE | IO_FILE_APPEND)))
         return IO_FILE_BAD_MODE;
-    if(handle->type.fileHandle.flags & IO_FILE_APPEND)
+    if(handle->type.fileHandle.mode & IO_FILE_APPEND)
         offset = handle->type.fileHandle.node->size;
+
+    handle->operation.write = 1;
+    handle->operation.offset = offset;
 
     return IoVfsWrite(handle->type.fileHandle.node, handle->type.fileHandle.flags, buffer, size, offset, callback, context);
 }

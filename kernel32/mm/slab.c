@@ -1,10 +1,12 @@
 #include "slab.h"
 #include "mm/heap.h"
 #include "ke/core/mutex.h"
+#include "assert.h"
 
 struct MmSlabEntry
 {
     struct MmSlabEntry *next;
+    uint32_t free;
 };
 
 struct MmSlab
@@ -13,7 +15,6 @@ struct MmSlab
     uintptr_t chunkCount;
     struct MmSlab *nextSlab;
     struct MmSlabEntry *freeStack;
-    struct MmSlabEntry *usedStack;
     KeSpinlock lock;
 };
 
@@ -27,9 +28,11 @@ static STATUS MmSlabAllocateBlock(struct MmSlab *slab)
     for(uintptr_t i = 0; i < (slab->chunkCount - 1); i++)
     {
         t->next = (struct MmSlabEntry*)((uintptr_t)t + slab->chunkSize + sizeof(*t));
+        t->free = 1;
         t = t->next;
     }
     t->next = NULL;
+    t->free = 1;
 
     if(NULL == slab->freeStack)
     {
@@ -69,22 +72,19 @@ void *MmSlabAllocate(void *slabHandle)
     struct MmSlabEntry *e = NULL;
 
     KeAcquireSpinlock(&(slab->lock));
-    if(NULL != slab->freeStack)
+    if(NULL == slab->freeStack)
     {
-        e = slab->freeStack;
-        slab->usedStack = slab->freeStack;
-        slab->freeStack = slab->freeStack->next;
-    }
-    else
-    {
-        if(OK == MmSlabAllocateBlock(slab))
+        if(OK != MmSlabAllocateBlock(slab))
         {
-            e = slab->freeStack;
-            slab->freeStack = slab->freeStack->next;
-            e->next = slab->usedStack;
-            slab->usedStack = e;
+            KeReleaseSpinlock(&(slab->lock));
+            return NULL;
         }
     }
+
+    e = slab->freeStack;
+    ASSERT(e->free);
+    slab->freeStack = e->next;
+    e->free = 0;
     KeReleaseSpinlock(&(slab->lock));
     return e + 1;
 }
@@ -98,8 +98,10 @@ void MmSlabFree(void *slabHandle, void *memory)
     struct MmSlabEntry *entry = memory;
     entry--; //jump to header start
 
+    ASSERT(!entry->free);
     KeAcquireSpinlock(&(slab->lock));
     entry->next = slab->freeStack;
     slab->freeStack = entry;
+    entry->free = 1;
     KeReleaseSpinlock(&(slab->lock));
 }

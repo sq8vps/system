@@ -135,6 +135,9 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     }
 
     info->fat = NULL;
+    info->fatLock = (KeSpinlock)KeSpinlockInitializer;
+    info->modifiedClusterLow = UINT32_MAX;
+    info->modifiedClusterHigh = 0;
 
     status = IoReadDeviceSync(disk, info->reservedSectors * disk->blockSize, info->fatSize * disk->blockSize, &(info->fat));
     if(OK != status)
