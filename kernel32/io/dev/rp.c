@@ -70,11 +70,14 @@ STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback ca
     else
     {
         while(NULL != t->next)
+        {
+            ASSERT(t != rp);
             t = t->next;
-        
+        }
+        ASSERT(t != rp);
         t->next = rp;
     }
-
+    rp->next = NULL;
     rp->queue = queue;
 
     if(!queue->busy)
@@ -105,6 +108,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
             rp->completionCallback(rp, rp->completionContext);
 
         KeAcquireSpinlock(&(rp->queue->queueLock));
+        ASSERT(rp != rp->next);
         rp->queue->head = rp->next;
         if(NULL == rp->queue->head)
         {
@@ -116,6 +120,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
             KeReleaseSpinlock(&(rp->queue->queueLock));
             rp->queue->callback(rp->queue->head);
         }
+        rp->queue = NULL;
     }
     else
     {

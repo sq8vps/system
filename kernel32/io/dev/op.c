@@ -185,7 +185,6 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
             {
                 goto IoReadWriteCallbackExit;
             }
-            //IoFreeRp(rp);
             return OK;
         }
     }
@@ -205,7 +204,6 @@ IoReadWriteCallbackExit:
     ctx->callback(status, ctx->size, ctx->context);
 
     MmFreeKernelHeap(ctx);
-    //IoFreeRp(rp);
     return OK;
 }
 

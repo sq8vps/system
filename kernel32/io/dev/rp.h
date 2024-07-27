@@ -20,7 +20,8 @@ typedef void (*IoProcessRpCallback)(struct IoRp *rp);
 typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
 EXPORT
-typedef uint32_t IoRpFlags;
+typedef uint32_t IoRpFlags; /**< Request Packet flags */
+#define IO_RP_FLAG_EOF 0x1 /**< Read incomplete, end of file encountered - \a status is set to \a OK, chech \a size field */
 
 EXPORT
 enum IoRpCode
