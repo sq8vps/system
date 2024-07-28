@@ -84,10 +84,6 @@ LoaderStart:
 
 	call _enableA20 ;uruchamiamy linie A20
 
-	mov eax,cr0 ;uruchamiamy tryb chroniony
-	or eax,1
-	mov cr0,eax
-
 	mov ax,DATA_SEG ;data segment selector
 	mov ds,ax
 	mov ss,ax
@@ -96,6 +92,9 @@ LoaderStart:
 	mov gs,ax
 	mov esp,0x7FFFF
 
+	mov eax,cr0 ;uruchamiamy tryb chroniony
+	or eax,1
+	mov cr0,eax
 
 	jmp CODE_SEG:LDR32_OFFSET ;run the 32-bit 3rd stage loader we have read from the disk
 

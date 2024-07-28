@@ -45,7 +45,7 @@ STATUS HalInit(void)
     if(OK != (ret = HalInitInterruptController()))
         return ret;
 
-    if(OK != HalInitTimeController())
+    if(OK != (ret = HalInitTimeController()))
         return ret;
 
     return OK;

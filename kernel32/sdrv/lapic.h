@@ -3,8 +3,32 @@
 
 #include <stdint.h>
 #include "defines.h"
+#include <stdbool.h>
 
+/**
+ * @brief APIC IPI modes
+ */
+enum ApicIpiMode
+{
+    APIC_IPI_FIXED = 0,
+    APIC_IPI_LOWEST_PRIORITY = 1,
+    APIC_IPI_LEVEL_SMI = 2,
+    APIC_IPI_LEVEL_NMI = 4,
+    APIC_IPI_INIT = 5,
+    APIC_IPI_START_UP = 6,
+};
 
+/**
+ * @brief Send inter-processor interrupt
+ * @param destination Destination LAPIC ID
+ * @param mode IPI mode
+ * @param vector Vector number
+ * @param assert True to assert, false to deassert
+ * @return Status code
+ */
+STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert);
+
+void ApicWaitForIpiDelivery(void);
 
 /**
  * @brief Send End Of Interrupt using APIC
@@ -12,13 +36,6 @@
 */
 INTERNAL STATUS ApicSendEoi(void);
 
-/**
- * @brief Set NMI input
- * @param lint Local Interrupt port number (0 or 1)
- * @param mpflags MP-compliant interrupt flags
- * @return Status code
-*/
-//INTERNAL STATUS ApicSetNMI(uint8_t lint, uint16_t mpflags);
 
 /**
  * @brief Initialize APIC on Application Processor

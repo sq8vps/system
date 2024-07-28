@@ -122,8 +122,6 @@ NORETURN static void KeInit(void)
 		while(1)
 			;
 	}
-
-
 	
 
 	if(OK != IoInitDeviceManager("ACPI"))

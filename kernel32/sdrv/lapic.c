@@ -46,8 +46,24 @@ enum ApicTimerDivider
 #define LAPIC_TIMER_CURRENT_COUNT_OFFSET 0x390
 #define LAPIC_TIMER_DIVIDER_OFFSET 0x3E0
 
+#define LAPIC_ICR_RESERVED_MASK 0xFFF32000
+#define LAPIC_ICR_LEVEL_ASSERT (1 << 14)
+#define LAPIC_ICR_LEVEL_DEASSERT (0)
+
+#define LAPIC_ICR_DELIVERY_STATUS_BIT (1 << 12)
+
 #define LAPIC_LOCAL_MASK (1 << 16)
+
+#define LAPIC_MODE_FIXED (0 << 8)
+#define LAPIC_MODE_LOWEST_PRIORITY (1 << 8)
+#define LAPIC_MODE_SMI (2 << 8)
 #define LAPIC_MODE_NMI (4 << 8)
+#define LAPIC_MODE_INIT (5 << 8)
+#define LAPIC_MODE_START_UP (6 << 8)
+#define LAPIC_MODE_EXTINT (7 << 8)
+
+#define LAPIC_DELIVERY_STATUS_MASK (1 << 12)
+
 #define LAPIC_POLARITY_ACTIVE_LOW (1 << 13)
 #define LAPIC_POLARITY_ACTIVE_HIGH (0 << 13)
 #define LAPIC_TIMER_PERIODIC_FLAG (1 << 17)
@@ -69,7 +85,7 @@ static uint64_t counter = 0;
 /**
  * @brief A convenience macro for 32-bit Local APIC register access
 */
-#define LAPIC(register) (*(uint32_t volatile*)(lapic + register))
+#define LAPIC(register) (*(uint32_t volatile*)(lapic + (register)))
 
 static STATUS spuriousInterruptHandler(void *context)
 {
@@ -100,6 +116,22 @@ STATUS ApicSendEoi(void)
     
 //     return OK;
 // }
+
+STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert)
+{
+    LAPIC(LAPIC_ICR_OFFSET + 0x10) = (LAPIC(LAPIC_ICR_OFFSET + 0x10) & 0xFF000000) | (destination << 24);
+    LAPIC(LAPIC_ICR_OFFSET) = (LAPIC(LAPIC_ICR_OFFSET) & LAPIC_ICR_RESERVED_MASK) 
+        | (mode << 8) | (assert ? LAPIC_ICR_LEVEL_ASSERT : LAPIC_ICR_LEVEL_DEASSERT) | vector;
+    return OK;
+}
+
+void ApicWaitForIpiDelivery(void)
+{
+    while(LAPIC(LAPIC_ICR_OFFSET) & LAPIC_ICR_DELIVERY_STATUS_BIT)
+    {
+        TIGHT_LOOP_HINT();
+    }
+}
 
 STATUS ApicInitAP(void)
 {
@@ -160,80 +192,6 @@ STATUS ApicInitBSP(uintptr_t address)
     
     return OK;
 }
-
-// STATUS ApicEnableIRQ(uint8_t vector)
-// {
-//     if(vector < IT_FIRST_INTERRUPT_VECTOR)  
-//         return IT_BAD_VECTOR;
-    
-//     if(lapic)
-//     {
-//         STATUS ret = ApicIoEnableIRQ(vector);
-//         if(OK != ret)
-//         {
-//             if(vector == (LAPIC(LAPIC_LVT_TIMER_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_TIMER_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LINT1_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LINT1_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LINT0_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LINT0_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_CMCI_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_CMCI_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_ERROR_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_ERROR_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_PERF_MONITORING_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_PERF_MONITORING_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_THERMAL_SENSOR_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_THERMAL_SENSOR_OFFSET) &= ~(LAPIC_LOCAL_MASK);
-//             else
-//             {
-//                 return IT_NOT_REGISTERED;
-//             }
-
-//             return OK;
-//         }
-//         return OK;
-//     }
-
-//     return APIC_LAPIC_NOT_AVAILABLE;
-// }
-
-// STATUS ApicDisableIRQ(uint8_t vector)
-// {
-//     if(vector < IT_FIRST_INTERRUPT_VECTOR)  
-//         return IT_BAD_VECTOR;
-    
-//     if(lapic)
-//     {
-//         STATUS ret = ApicIoDisableIRQ(vector);
-//         if(OK != ret)
-//         {
-//             if(vector == (LAPIC(LAPIC_LVT_TIMER_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_TIMER_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LINT1_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LINT1_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LINT0_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LINT0_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_CMCI_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_CMCI_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_ERROR_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_ERROR_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_PERF_MONITORING_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_PERF_MONITORING_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else if(vector == (LAPIC(LAPIC_LVT_THERMAL_SENSOR_OFFSET) & LAPIC_VECTOR_MASK))
-//                 LAPIC(LAPIC_LVT_THERMAL_SENSOR_OFFSET) |= (LAPIC_LOCAL_MASK);
-//             else
-//             {
-//                 return IT_NOT_REGISTERED;
-//             }
-
-//             return OK;
-//         }
-//         return IT_NOT_REGISTERED;
-//     }
-
-//     return APIC_LAPIC_NOT_AVAILABLE;
-// }
 
 STATUS ApicConfigureSystemTimer(uint8_t vector)
 {

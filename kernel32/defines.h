@@ -242,6 +242,9 @@ EXPORT
 #define ASM asm volatile
 
 EXPORT
+#define TIGHT_LOOP_HINT() ASM("pause" : : : "memory")
+
+EXPORT
 /**
  * @brief Check if character \a x is alphanumeric
  * @param x Character to check

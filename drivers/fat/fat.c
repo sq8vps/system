@@ -34,7 +34,19 @@ uint32_t FatGetNextCluster(struct FatVolume *vol, uint32_t currentCluster)
             c = CmLeU32(((uint32_t*)vol->fat)[currentCluster]) & 0xFFFFFFF;
             break;
         case FAT12:
-            //TODO: FAT12 shit...
+            //TODO: untested for FAT16 and FAT12
+            if(currentCluster & 1) //odd cluster number
+            {
+                c = ((uint8_t*)vol->fat)[((currentCluster - 1) / 2) * 3] >> 4;
+                c |= ((uint16_t)((uint8_t*)vol->fat)[((currentCluster - 1) / 2) * 3 + 1] << 4);
+                c &= 0xFFF;
+            }
+            else //even cluster number
+            {
+                c = ((uint8_t*)vol->fat)[(currentCluster / 2) * 3];
+                c |= ((uint16_t)((uint8_t*)vol->fat)[(currentCluster / 2) * 3 + 1] << 8);
+                c &= 0xFFF;
+            }
             break;
     }
     return c;
@@ -74,7 +86,18 @@ void FatWriteNextCluster(struct FatVolume *vol, uint32_t currentCluster, uint32_
             ((uint32_t*)vol->fat)[currentCluster] |= (CmLeU32(nextCluster) & 0xFFFFFFF);
             break;
         case FAT12:
-            //TODO: FAT12 shit...
+            if(currentCluster & 1) //odd cluster number
+            {
+                ((uint8_t*)vol->fat)[((currentCluster - 1) / 2) * 3] &= 0x0F;
+                ((uint8_t*)vol->fat)[((currentCluster - 1) / 2) * 3] |= ((nextCluster & 0xF) << 4);
+                ((uint8_t*)vol->fat)[((currentCluster - 1) / 2) * 3 + 1] = (nextCluster >> 4);
+            }
+            else //even cluster number
+            {
+                ((uint8_t*)vol->fat)[(currentCluster / 2) * 3] = nextCluster & 0xFF;
+                ((uint8_t*)vol->fat)[(currentCluster / 2) * 3 + 1] &= 0xF0;
+                ((uint8_t*)vol->fat)[(currentCluster / 2) * 3 + 1] |= ((nextCluster >> 8) & 0xF);
+            }
             break;
     }    
 }

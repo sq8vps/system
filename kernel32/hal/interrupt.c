@@ -91,7 +91,8 @@ STATUS HalInitInterruptController(void)
         else
             PRINT("LAPIC address seems to be zero\n");
     }
-    IoPrint("Cannot continue: Local APIC is not available on this PC. Boot failed.\n");
+    else
+        IoPrint("Cannot continue: Local APIC is not available on this PC. Boot failed.\n");
     HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
     while(1)
     {
