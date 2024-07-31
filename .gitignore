@@ -31,12 +31,15 @@
 *.elf
 *.drv
 
+*.img
+.trunk/
+.vscode/
+api/
 .tmp_versions/
 modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-os-image.img
 elf/
 __pycache__/
 *.bat
