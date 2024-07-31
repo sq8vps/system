@@ -7,8 +7,8 @@ extern "C"
 {
 #endif
 
-#include <stdint.h>
 #include "defines.h"
+#include <stdint.h>
 /**
  * @brief Get timestamp in nanoseconds
  * @return Timestamp in ns

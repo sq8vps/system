@@ -1,53 +1,47 @@
 #include "hal.h"
-#include "cpu.h"
 #include "interrupt.h"
-#include "sdrv/dcpuid.h"
-#include "sdrv/tsc.h"
-#include "sdrv/msr.h"
 #include "time.h"
-#include "ioport.h"
-#include "sdrv/sse.h"
-#include "sdrv/fpu.h"
+#include "common.h"
+#include "math.h"
+#include "mm/heap.h"
 
-static STATUS verifyRequiredCapatibities(void)
-{
-    uint8_t available = 1;
-
-    //this function checks for capabilities required to run this OS
-    available &= CpuidCheckIfFpuAvailable();
-
-    if(!available)
-        return SYSTEM_INCOMPATIBLE;
-    
-    return OK;
-}
+static char *HalRootDeviceId = NULL;
 
 STATUS HalInit(void)
 {
-    //HalIoPortInit();
+    STATUS status = OK;
 
-    if(!CpuidCheckIfAvailable())
-        return SYSTEM_INCOMPATIBLE;
+    status = HalInitializeHardware();
+    if(OK != status)
+        return status;
+
+    status = HalInitMath();
+    if(OK != status)
+        return status;
+
+    status = HalInitializeRoot();
+    if(OK != status)
+        return status;
     
-    CpuidInit();
+    status = HalInitInterruptController();
+    if(OK != status)
+        return status;
 
-    STATUS ret = OK;
-    if(OK != (ret = verifyRequiredCapatibities()))
-        return ret;
-    
-    HalMsrInit();
-    if(OK != (ret = HalInitMath()))
-        return ret;
+    status = HalInitTimeController();
 
-    if(OK != (ret = HalInitCpu()))
-        return ret;
-    
-    if(OK != (ret = HalInitInterruptController()))
-        return ret;
-
-    if(OK != (ret = HalInitTimeController()))
-        return ret;
-
-    return OK;
+    return status;
 }
 
+char *HalGetRootDeviceId(void)
+{
+    return HalRootDeviceId;
+}
+
+void HalSetRootDeviceId(const char *id)
+{
+    if(NULL != HalRootDeviceId)
+        return;
+    HalRootDeviceId = MmAllocateKernelHeap(CmStrlen(id) + 1);
+    if(NULL != HalRootDeviceId)
+        CmStrcpy(HalRootDeviceId, id);
+}

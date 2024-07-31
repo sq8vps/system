@@ -134,7 +134,7 @@ ACPI_STATUS AcInitialize(void)
     if(ACPI_FAILURE(Status))
         return Status;
     
-    Status = SetPicMode(HalGetInterruptHandlingMethod() == IT_METHOD_APIC);
+    Status = SetPicMode(I686IsIoApicUsed());
 
     AcpiWriteBitRegister(ACPI_BITREG_SCI_ENABLE, 1);
 	AcpiInstallGlobalEventHandler(GlobalEventHandler, NULL);

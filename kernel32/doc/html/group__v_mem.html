@@ -125,28 +125,28 @@ typedef uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>MmPageDir
 typedef uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>MmPageTableEntry_t</b></td></tr>
 <tr class="separator:gada1e448f259b610d4ccee26af298ab5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga04701d40a4cfc57de9992c481d229628"><td class="memItemLeft" align="right" valign="top"><a id="ga04701d40a4cfc57de9992c481d229628" name="ga04701d40a4cfc57de9992c481d229628"></a>
-typedef uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>MmPagingFlags_t</b></td></tr>
+typedef uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>MmMemoryFlags</b></td></tr>
 <tr class="separator:ga04701d40a4cfc57de9992c481d229628"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:ga2388d37c5ae956109a445f47df1d701f"><td class="memItemLeft" align="right" valign="top"><a id="ga2388d37c5ae956109a445f47df1d701f" name="ga2388d37c5ae956109a445f47df1d701f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocator</b> (void)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>HalInitVirtualAllocator</b> (void)</td></tr>
 <tr class="memdesc:ga2388d37c5ae956109a445f47df1d701f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialize virtual allocator. <br /></td></tr>
 <tr class="separator:ga2388d37c5ae956109a445f47df1d701f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga204d0637996b25ea5dd9a203d3c6a78b"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga204d0637996b25ea5dd9a203d3c6a78b">MmGetPhysicalPageAddress</a> (uintptr_t vAddress, uintptr_t *pAddress)</td></tr>
+<tr class="memitem:ga204d0637996b25ea5dd9a203d3c6a78b"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga204d0637996b25ea5dd9a203d3c6a78b">HalGetPhysicalAddress</a> (uintptr_t vAddress, uintptr_t *pAddress)</td></tr>
 <tr class="memdesc:ga204d0637996b25ea5dd9a203d3c6a78b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get current process physical address corresponding to the virtual address.  <br /></td></tr>
 <tr class="separator:ga204d0637996b25ea5dd9a203d3c6a78b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga8291d0b54e252f669b264f7c14cfe918"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga8291d0b54e252f669b264f7c14cfe918">MmMapMemory</a> (uintptr_t vAddress, uintptr_t pAddress, MmPagingFlags_t flags)</td></tr>
+<tr class="memitem:ga8291d0b54e252f669b264f7c14cfe918"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga8291d0b54e252f669b264f7c14cfe918">HalMapMemory</a> (uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)</td></tr>
 <tr class="memdesc:ga8291d0b54e252f669b264f7c14cfe918"><td class="mdescLeft">&#160;</td><td class="mdescRight">Map current process memory.  <br /></td></tr>
 <tr class="separator:ga8291d0b54e252f669b264f7c14cfe918"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga7b3fd9b1a97db4d9f17c6177ad7c2ae6"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga7b3fd9b1a97db4d9f17c6177ad7c2ae6">MmMapMemoryEx</a> (uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmPagingFlags_t flags)</td></tr>
+<tr class="memitem:ga7b3fd9b1a97db4d9f17c6177ad7c2ae6"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga7b3fd9b1a97db4d9f17c6177ad7c2ae6">HalMapMemoryEx</a> (uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmMemoryFlags flags)</td></tr>
 <tr class="memdesc:ga7b3fd9b1a97db4d9f17c6177ad7c2ae6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Map multiple pages of current process memory.  <br /></td></tr>
 <tr class="separator:ga7b3fd9b1a97db4d9f17c6177ad7c2ae6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga2c2c4e35e93ce79110cad3a9c774b996"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga2c2c4e35e93ce79110cad3a9c774b996">MmUnmapMemory</a> (uintptr_t vAddress)</td></tr>
+<tr class="memitem:ga2c2c4e35e93ce79110cad3a9c774b996"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga2c2c4e35e93ce79110cad3a9c774b996">HalUnmapMemory</a> (uintptr_t vAddress)</td></tr>
 <tr class="memdesc:ga2c2c4e35e93ce79110cad3a9c774b996"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unmap current process memory.  <br /></td></tr>
 <tr class="separator:ga2c2c4e35e93ce79110cad3a9c774b996"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga167273b0de366ff93e829904c56ec72e"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga167273b0de366ff93e829904c56ec72e">MmUnmapMemoryEx</a> (uintptr_t vAddress, uintptr_t size)</td></tr>
+<tr class="memitem:ga167273b0de366ff93e829904c56ec72e"><td class="memItemLeft" align="right" valign="top">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga167273b0de366ff93e829904c56ec72e">HalUnmapMemoryEx</a> (uintptr_t vAddress, uintptr_t size)</td></tr>
 <tr class="memdesc:ga167273b0de366ff93e829904c56ec72e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unmap multiple pages of current process memory.  <br /></td></tr>
 <tr class="separator:ga167273b0de366ff93e829904c56ec72e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga3cca16c6bf9280aa1b99e86e74bd8eb6"><td class="memItemLeft" align="right" valign="top">EXPORT uintptr_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__v_mem.html#ga3cca16c6bf9280aa1b99e86e74bd8eb6">MmCreateProcessPageDirectory</a> (void)</td></tr>
@@ -205,13 +205,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
 </div>
 </div>
 <a id="ga204d0637996b25ea5dd9a203d3c6a78b" name="ga204d0637996b25ea5dd9a203d3c6a78b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga204d0637996b25ea5dd9a203d3c6a78b">&#9670;&#160;</a></span>MmGetPhysicalPageAddress()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ga204d0637996b25ea5dd9a203d3c6a78b">&#9670;&#160;</a></span>HalGetPhysicalAddress()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> MmGetPhysicalPageAddress </td>
+          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> HalGetPhysicalAddress </td>
           <td>(</td>
           <td class="paramtype">uintptr_t&#160;</td>
           <td class="paramname"><em>vAddress</em>, </td>
@@ -243,13 +243,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
 </div>
 </div>
 <a id="ga8291d0b54e252f669b264f7c14cfe918" name="ga8291d0b54e252f669b264f7c14cfe918"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga8291d0b54e252f669b264f7c14cfe918">&#9670;&#160;</a></span>MmMapMemory()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ga8291d0b54e252f669b264f7c14cfe918">&#9670;&#160;</a></span>HalMapMemory()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> MmMapMemory </td>
+          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> HalMapMemory </td>
           <td>(</td>
           <td class="paramtype">uintptr_t&#160;</td>
           <td class="paramname"><em>vAddress</em>, </td>
@@ -263,7 +263,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">MmPagingFlags_t&#160;</td>
+          <td class="paramtype">MmMemoryFlags&#160;</td>
           <td class="paramname"><em>flags</em>&#160;</td>
         </tr>
         <tr>
@@ -289,13 +289,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
 </div>
 </div>
 <a id="ga7b3fd9b1a97db4d9f17c6177ad7c2ae6" name="ga7b3fd9b1a97db4d9f17c6177ad7c2ae6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga7b3fd9b1a97db4d9f17c6177ad7c2ae6">&#9670;&#160;</a></span>MmMapMemoryEx()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ga7b3fd9b1a97db4d9f17c6177ad7c2ae6">&#9670;&#160;</a></span>HalMapMemoryEx()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> MmMapMemoryEx </td>
+          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> HalMapMemoryEx </td>
           <td>(</td>
           <td class="paramtype">uintptr_t&#160;</td>
           <td class="paramname"><em>vAddress</em>, </td>
@@ -315,7 +315,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">MmPagingFlags_t&#160;</td>
+          <td class="paramtype">MmMemoryFlags&#160;</td>
           <td class="paramname"><em>flags</em>&#160;</td>
         </tr>
         <tr>
@@ -369,13 +369,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
 </div>
 </div>
 <a id="ga2c2c4e35e93ce79110cad3a9c774b996" name="ga2c2c4e35e93ce79110cad3a9c774b996"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga2c2c4e35e93ce79110cad3a9c774b996">&#9670;&#160;</a></span>MmUnmapMemory()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ga2c2c4e35e93ce79110cad3a9c774b996">&#9670;&#160;</a></span>HalUnmapMemory()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> MmUnmapMemory </td>
+          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> HalUnmapMemory </td>
           <td>(</td>
           <td class="paramtype">uintptr_t&#160;</td>
           <td class="paramname"><em>vAddress</em></td><td>)</td>
@@ -397,13 +397,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>MmInitVirtualAllocato
 </div>
 </div>
 <a id="ga167273b0de366ff93e829904c56ec72e" name="ga167273b0de366ff93e829904c56ec72e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga167273b0de366ff93e829904c56ec72e">&#9670;&#160;</a></span>MmUnmapMemoryEx()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ga167273b0de366ff93e829904c56ec72e">&#9670;&#160;</a></span>HalUnmapMemoryEx()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> MmUnmapMemoryEx </td>
+          <td class="memname">EXPORT <a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> HalUnmapMemoryEx </td>
           <td>(</td>
           <td class="paramtype">uintptr_t&#160;</td>
           <td class="paramname"><em>vAddress</em>, </td>

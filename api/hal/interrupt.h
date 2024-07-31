@@ -57,7 +57,7 @@ enum HalInterruptSharing
 };
 
 /**
- * @brief External interrupt mode
+ * @brief IRQ mode
 */
 enum HalInterruptMode
 {
@@ -83,7 +83,7 @@ struct HalInterruptParams
  * @param irq ISA IRQ from device
  * @return Resolved IRQ after remapping (if applicable)
 */
-extern uint32_t HalResolveIsaIrqMapping(uint32_t irq);
+extern uint32_t I686ResolveIsaIrqMapping(uint32_t irq);
 
 /**
  * @brief Register external IRQ
@@ -149,21 +149,6 @@ extern STATUS HalDisableIrq(uint32_t input, ItHandler isr);
  * @return Error code
 */
 extern STATUS HalClearInterruptFlag(uint32_t input);
-
-/**
- * @brief Get interrupt handling method
- * @return Interrupt handling method
-*/
-extern enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
-
-/**
- * @brief Type representing task/processor priority level
-*/
-typedef uint8_t PRIO;
-
-#define HAL_PRIORITY_LEVEL_PASSIVE 0
-#define HAL_PRIORITY_LEVEL_DPC 2
-#define HAL_PRIORITY_LEVEL_EXCLUSIVE 15
 
 /**
  * @brief Raise current task priority level

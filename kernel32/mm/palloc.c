@@ -1,6 +1,6 @@
 #include "palloc.h"
 #include "common.h"
-#include "valloc.h"
+#include "hal/arch.h"
 #include "ke/core/mutex.h"
 
 #define MM_BUDDY_SMALLEST MM_PAGE_SIZE //smallest buddy block size
@@ -292,7 +292,7 @@ void MmInitPhysicalAllocator(struct KernelEntryArgs *kernelArgs)
     while(1)
     {
         //check if given virtual address is mapped to any physical address
-        if(OK == MmGetPhysicalPageAddress(vAddress, &pAddress))
+        if(OK == HalGetPhysicalAddress(vAddress, &pAddress))
         {
             //if so, mark block as used
             markAsUsed(pAddress / MM_BUDDY_SMALLEST, 1);

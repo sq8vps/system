@@ -9,8 +9,18 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "valloc.h"
 #include "heap.h"
+/**
+ * @brief Memory flags container
+ */
+typedef uint16_t MmMemoryFlags;
+
+#define MM_FLAG_PRESENT 1 /**< Memory is present */
+#define MM_FLAG_WRITABLE 2 /**< Memory is writable */
+#define MM_FLAG_USER_MODE 4 /**< Memory is available in user mode */
+#define MM_FLAG_WRITE_THORUGH 8 /**< Memory is write trough */
+#define MM_FLAG_CACHE_DISABLE 16 /**< Memory caching is disabled */
+
 /**
  * @brief A descriptor for physical memory region
 */
@@ -64,13 +74,13 @@ extern uint64_t MmGetMemoryDescriptorListSize(struct MmMemoryDescriptor *list);
  * @param *list First descriptor, i.e., the list obtained from \a MmBuildMemoryDescriptorList()
  * @return Pointer to mapped dynamic memory or NULL on failure
 */
-extern void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list);
+extern void *HalMapMemoryDescriptorList(struct MmMemoryDescriptor *list);
 
 /**
  * @brief Unmap memory previously mapped using Memory Descriptor list
  * @param *memory Virtual memory pointer
 */
-extern void MmUnmapMemoryDescriptorList(void *memory);
+extern void HalUnmapMemoryDescriptorList(void *memory);
 
 /**
  * @brief Copy Memory Descriptor list
@@ -86,7 +96,7 @@ extern struct MmMemoryDescriptor *MmCloneMemoryDescriptorList(struct MmMemoryDes
  * @param flags Page flags
  * @return Error code
 */
-extern STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags);
+extern STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags);
 
 /**
  * @brief Unmap and free  memory

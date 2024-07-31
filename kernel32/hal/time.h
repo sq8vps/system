@@ -1,8 +1,21 @@
-#ifndef KERNEL_TIME_H_
-#define KERNEL_TIME_H_
+#ifndef HAL_TIME_H_
+#define HAL_TIME_H_
 
-#include <stdint.h>
+/**
+ * @file time.h
+ * @brief Time HAL module
+ * 
+ * @defgroup time Times HAL driver
+ * @ingroup hal
+*/
+
 #include "defines.h"
+#include <stdint.h>
+
+/**
+ * @addtogroup time
+ * @{
+*/
 
 /**
  * @brief Initialize date and time module
@@ -30,5 +43,23 @@ EXPORT
  * @return Timestamp in ms
 */
 EXTERN uint64_t HalGetTimestampMillis(void);
+
+/**
+ * @brief Initialize system (shcheduler) timer
+ * @param vector Interrupt vector number
+ * @return Status code
+*/
+INTERNAL STATUS HalConfigureSystemTimer(uint8_t vector);
+
+/**
+ * @brief Start one-shot system timer
+ * @param time Time in microseconds
+ * @return Status code
+*/
+INTERNAL STATUS HalStartSystemTimer(uint64_t time);
+
+/**
+ * @}
+*/
 
 #endif

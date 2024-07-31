@@ -31,32 +31,32 @@ uint32_t PciConfigReadDword(union IoBusId address, uint8_t offset)
 {
 	uint32_t data = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
      ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
-	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
-	return HalIoPortReadDWord(PCI_CONFIG_IO_DATA);
+	IoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
+	return IoPortReadDWord(PCI_CONFIG_IO_DATA);
 }
 
 uint16_t PciConfigReadWord(union IoBusId address, uint8_t offset)
 {
 	uint32_t data = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
      ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
-	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
-	return (HalIoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 2) << 3)) & 0xFFFF;
+	IoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
+	return (IoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 2) << 3)) & 0xFFFF;
 }
 
 uint8_t PciConfigReadByte(union IoBusId address, uint8_t offset)
 {
 	uint32_t data = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
      ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
-	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
-	return (HalIoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 3) << 3)) & 0xFF;
+	IoPortWriteDWord(PCI_CONFIG_IO_ADDR, data);
+	return (IoPortReadDWord(PCI_CONFIG_IO_DATA) >> ((offset & 3) << 3)) & 0xFF;
 }
 
 void PciConfigWriteDword(union IoBusId address, uint8_t offset, uint32_t data)
 {
 	uint32_t a = (((uint32_t)address.pci.bus << 16) | ((uint32_t)address.pci.device << 11) |
      ((uint32_t)address.pci.function << 8) | (offset & 0xFC) | PCI_CONFIG_IO_ENABLE_FLAG);
-	HalIoPortWriteDWord(PCI_CONFIG_IO_ADDR, a);
-	HalIoPortWriteDWord(PCI_CONFIG_IO_DATA, data);
+	IoPortWriteDWord(PCI_CONFIG_IO_ADDR, a);
+	IoPortWriteDWord(PCI_CONFIG_IO_DATA, data);
 }
 
 void PciConfigWriteByte(union IoBusId address, uint8_t offset, uint8_t data)

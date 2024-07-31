@@ -76,7 +76,7 @@ enum HalInterruptSharing
 
 EXPORT
 /**
- * @brief External interrupt mode
+ * @brief IRQ mode
 */
 enum HalInterruptMode
 {
@@ -98,22 +98,13 @@ struct HalInterruptParams
     enum HalInterruptWakeCapable wake;
 };
 
-
-#define HAL_PIC_REMAP_VECTOR IT_IRQ_VECTOR_BASE
-
 EXPORT
 /**
  * @brief Resolve legacy ISA IRQ to global interrupt mapping
  * @param irq ISA IRQ from device
  * @return Resolved IRQ after remapping (if applicable)
 */
-EXTERN uint32_t HalResolveIsaIrqMapping(uint32_t irq);
-
-/**
- * @brief Set dual-PIC presence state
- * @param state Dual-PIC presence state
-*/
-INTERNAL void HalSetDualPicPresence(bool state);
+EXTERN uint32_t I686ResolveIsaIrqMapping(uint32_t irq);
 
 /**
  * @brief Add ISA remap entry when I/O APIC is used
@@ -121,7 +112,7 @@ INTERNAL void HalSetDualPicPresence(bool state);
  * @param gsi Global System Interrupt (Global IRQ number)
  * @return Status code
 */
-INTERNAL STATUS HalAddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi);
+INTERNAL STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi);
 
 /**
  * @brief Initialize interrupt controller
@@ -202,43 +193,10 @@ EXPORT
 EXTERN STATUS HalClearInterruptFlag(uint32_t input);
 
 /**
- * @brief Initialize system (shcheduler) timer
- * @param vector Interrupt vector number
- * @return Status code
-*/
-INTERNAL STATUS HalConfigureSystemTimer(uint8_t vector);
-
-/**
- * @brief Start one-shot system timer
- * @param time Time in microseconds
- * @return Status code
-*/
-INTERNAL STATUS HalStartSystemTimer(uint64_t time);
-
-/**
  * @brief Check if generated interrupt is spurious and should not be processed
  * @return True if spurious, false if not
 */
 INTERNAL bool HalIsInterruptSpurious(void);
-
-EXPORT
-/**
- * @brief Get interrupt handling method
- * @return Interrupt handling method
-*/
-EXTERN enum HalInterruptMethod HalGetInterruptHandlingMethod(void);
-
-
-EXPORT
-/**
- * @brief Type representing task/processor priority level
-*/
-typedef uint8_t PRIO;
-
-EXPORT
-#define HAL_PRIORITY_LEVEL_PASSIVE 0
-#define HAL_PRIORITY_LEVEL_DPC 2
-#define HAL_PRIORITY_LEVEL_EXCLUSIVE 15
 
 EXPORT
 /**
@@ -256,6 +214,12 @@ EXPORT
  * @warning If the provided priority level is higher than current priority level, a kernel panic occurs
 */
 EXTERN void HalLowerPriorityLevel(PRIO prio);
+
+/**
+ * @brief Set current task priority
+ * @param prio Priority to be set
+ */
+INTERNAL void HalSetTaskPriority(PRIO prio);
 
 EXPORT
 /**

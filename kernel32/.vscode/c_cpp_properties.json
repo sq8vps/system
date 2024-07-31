@@ -3,13 +3,11 @@
         {
             "name": "Linux",
             "includePath": [
-                "kernel32",
-                ".",
-                "api",
-                "drivers/acpi/acpica/include"
+                "."
             ],
             "defines": [
-                "${default}"
+                "${default}",
+                "__i686__"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,

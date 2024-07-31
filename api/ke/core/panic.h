@@ -9,30 +9,74 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
+#include "io/disp/print.h"
 /**
  * @brief Main kernel panic error codes
 */
 enum KernelPanicCode
 {
-    NON_MASKABLE_INTERRUPT,
-    DIVISION_BY_ZERO,
-    INVALID_OPCODE,
-    DOUBLE_FAULT,
-    GENERAL_PROTECTION_FAULT,
-    BOOT_FAILURE,
-    NO_EXECUTABLE_TASK,
-    UNACQUIRED_MUTEX_RELEASED,
-    BUSY_MUTEX_ACQUIRED,
-    PAGE_FAULT,
-    MACHINE_CHECK_FAULT,
-    UNEXPECTED_FAULT,
-    ACPI_FATAL_ERROR,
-    PRIORITY_LEVEL_TOO_LOW,
-    PRIORITY_LEVEL_TOO_HIGH,
-    RP_FINALIZED_OUT_OF_LINE,
-    ILLEGAL_PRIORITY_LEVEL_CHANGE,
-    ILLEGAL_PRIORITY_LEVEL,
-    OBJECT_LOCK_UNAVAILABLE,
+    NO_ERROR = 0x0,
+    /**
+     * @brief An uncorrectable kernel mode fault occurred
+     * 
+     * An uncorrectable kernel mode fault occured. Refer to architecture-specific
+     * error codes for details.
+     */
+    KERNEL_MODE_FAULT = 0x1,
+    /**
+     * @brief A critical error occured during early boot stage
+     */
+    BOOT_FAILURE = 0x2,
+    /**
+     * @brief No task to be executed is available
+     * 
+     * This error should not normally occur.
+     */
+    NO_EXECUTABLE_TASK = 0x3,
+    /**
+     * @brief A mutex-like object was released without being acquired first
+     */
+    UNACQUIRED_MUTEX_RELEASED = 0x4,
+    /**
+     * @brief A mutex-like object was acquired before being released
+     */
+    BUSY_MUTEX_ACQUIRED = 0x5,
+    /**
+     * @brief A unknown fault occured
+     */
+    UNEXPECTED_FAULT = 0x6,
+    /**
+     * @brief A fatal driver-defined error occured
+     */
+    DRIVER_FATAL_ERROR = 0x7,
+    /**
+     * @brief Current priority level is too low to execute the operation
+     */
+    PRIORITY_LEVEL_TOO_LOW = 0x8,
+    /**
+     * @brief Current priority level is too high to execute the operation
+     */
+    PRIORITY_LEVEL_TOO_HIGH = 0x9,
+    /**
+     * @brief A queued Request Packet was finalized out of line in a simple queue
+     */
+    RP_FINALIZED_OUT_OF_LINE = 0xA,
+    /**
+     * @brief An illegal priority level change occured
+     */
+    ILLEGAL_PRIORITY_LEVEL_CHANGE = 0xB,
+    /**
+     * @brief An illegal priority level was requested
+     */
+    ILLEGAL_PRIORITY_LEVEL = 0xC,
+    /**
+     * @brief There was an attempt to lock the object that is not lockable
+     */
+    OBJECT_LOCK_UNAVAILABLE = 0xD,
+    /**
+     * @brief There was an attempt to access illegal memory
+     */
+    MEMORY_ACCESS_VIOLATION = 0xE,
 };
 
 /**

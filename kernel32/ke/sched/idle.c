@@ -1,13 +1,12 @@
 #include "idle.h"
 #include "ke/task/task.h"
 #include "sched.h"
-#include "mm/valloc.h"
 
 NORETURN static void KeIdleWorker(void *unused)
 {
     while(1)
     {
-        ASM("hlt");
+        HALT();
     }
 }
 

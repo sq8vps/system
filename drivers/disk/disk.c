@@ -30,6 +30,13 @@ STATUS DiskReadWrite(struct IoRp *rp)
             {
                 size = rp->size;
             }
+            else
+            {
+                //TODO: implement user mode buffer handling
+                rp->status = NOT_COMPATIBLE;
+                IoFinalizeRp(rp);
+                return OK;
+            }
 
             if(size > info->partition.sizeBytes)
             {
@@ -50,6 +57,13 @@ STATUS DiskReadWrite(struct IoRp *rp)
             else if(dev->flags & IO_DEVICE_FLAG_BUFFERED_IO)
             {
                 size = rp->size;
+            }
+            else
+            {
+                //TODO: implement user mode buffer handling
+                rp->status = NOT_COMPATIBLE;
+                IoFinalizeRp(rp);
+                return OK;
             }
 
             if(size > info->partition.sizeBytes)

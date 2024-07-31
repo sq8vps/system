@@ -275,7 +275,7 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
         goto LoadKernelDriverFailure;
 	}
 
-    status = MmAllocateMemory(object->address, object->size, MM_PAGE_FLAG_WRITABLE);
+    status = MmAllocateMemory(object->address, object->size, MM_FLAG_WRITABLE);
     if(OK != status)
     {
         object->free = true;

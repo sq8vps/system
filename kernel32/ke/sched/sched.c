@@ -9,6 +9,8 @@
 #include "it/it.h"
 #include "sleep.h"
 #include "ke/core/dpc.h"
+#include "hal/arch.h"
+#include "hal/time.h"
 
 #define KE_SCHEDULER_TIME_SLICE 10000 //microseconds
 
@@ -186,27 +188,11 @@ void KeSchedulerStart(void)
         KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
     if(OK != (ret = ItSetInterruptHandlerEnable(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, true)))
         KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
-    //create kernel initialization task
-    uintptr_t cr3;
-    ASM("mov %0,cr3" : "=r" (cr3) : );
-    //this is the very first task, so stack pointers are not needed
-    //there will be filled at the first task context store event
-    struct KeTaskControlBlock *tcb = KePrepareTCB(0, 0, cr3, PL_KERNEL, "KernelInit", NULL);
-    if(NULL == tcb)
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, KE_TCB_PREPARATION_FAILURE, 0, 0);
-    
-    KeChangeTaskMajorPriority(tcb, TCB_DEFAULT_MAJOR_PRIORITY);
-    KeChangeTaskMinorPriority(tcb, TCB_DEFAULT_MINOR_PRIORITY);
-    KeEnableTask(tcb);
-
-    currentTask = tcb;
-    KeCurrentCpuState = &(tcb->cpu);
+        
+    HalInitializeScheduler();
 
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
-
-    while(NULL == KeGetCurrentTask())
-        ;
 }
 
 
@@ -285,7 +271,7 @@ void KeTaskYield(void)
     if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE)
         KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_PRIORITY_LEVEL_PASSIVE, 0, 0);
     KeSchedule();
-    KePerformTaskSwitch();
+    HalPerformTaskSwitch();
 }
 
 void KePerformPreemptedTaskSwitch(void)
@@ -295,7 +281,7 @@ void KePerformPreemptedTaskSwitch(void)
     {
         dpcTaskSwitchPending = false;
         KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
-        KePerformTaskSwitch();
+        HalPerformTaskSwitch();
         return;
     }
     KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);

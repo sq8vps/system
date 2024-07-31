@@ -1,7 +1,7 @@
 #include "defines.h"
 #include "vprintf.h"
 #include "common.h"
-#include "sdrv/bootvga/bootvga.h"
+#include "hal/i686/bootvga/bootvga.h"
 #include "mm/heap.h"
 
 static uint8_t _FindHighestPositionBase10(uint64_t n, uint64_t *power)
@@ -232,7 +232,7 @@ static int _PrintNumber(struct VPrintfConfig *config, uint64_t x, bool sign, uin
             for (uint32_t i = 0; i < length; i++)
             {
                 uint8_t val = (x >> power) & (((uint64_t)1 << (uint64_t)baseExponent) - (uint64_t)1);
-                char symbol;
+                char symbol = ' ';
                 if (val <= 9)
                     symbol = val + '0';
                 else if (val <= 26)

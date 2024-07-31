@@ -10,8 +10,6 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
-struct KeTaskControlBlock;
-
 
 #ifdef __cplusplus
 }

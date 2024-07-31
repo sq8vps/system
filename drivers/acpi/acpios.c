@@ -43,7 +43,7 @@ ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_P
 
 void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
 {
-    return MmMapDynamicMemory(PhysicalAddress, Length, MM_PAGE_FLAG_WRITABLE);
+    return MmMapDynamicMemory(PhysicalAddress, Length, MM_FLAG_WRITABLE);
 }
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
@@ -54,7 +54,7 @@ void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
 ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
 {
     uintptr_t p = 0;
-    STATUS status = MmGetPhysicalPageAddress((uintptr_t)LogicalAddress, &p);
+    STATUS status = HalGetPhysicalAddress((uintptr_t)LogicalAddress, &p);
     *PhysicalAddress = p;
     if(OK != status)
         return AE_ERROR;
@@ -77,11 +77,11 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
     ACPI_SIZE k = 0;
     while(k < Length)
     {
-        MmPagingFlags_t flags;
-        if(OK != MmGetPageFlags((uintptr_t)Memory + k, &flags))
+        MmMemoryFlags flags;
+        if(OK != HalGetPageFlags((uintptr_t)Memory + k, &flags))
             return false;
         
-        if((flags & MM_PAGE_FLAG_PRESENT) == 0)
+        if((flags & MM_FLAG_PRESENT) == 0)
             return false;
         
         k += MM_PAGE_SIZE;
@@ -94,11 +94,11 @@ BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
     ACPI_SIZE k = 0;
     while(k < Length)
     {
-        MmPagingFlags_t flags;
-        if(OK != MmGetPageFlags((uintptr_t)Memory + k, &flags))
+        MmMemoryFlags flags;
+        if(OK != HalGetPageFlags((uintptr_t)Memory + k, &flags))
             return false;
         
-        if(((flags & MM_PAGE_FLAG_PRESENT) == 0) || ((flags & MM_PAGE_FLAG_WRITABLE) == 0))
+        if(((flags & MM_FLAG_PRESENT) == 0) || ((flags & MM_FLAG_WRITABLE) == 0))
             return false;
         
         k += MM_PAGE_SIZE;
@@ -373,13 +373,13 @@ ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32 *Value, UINT32 Width)
     switch(Width)
     {
         case 8:
-            *Value = HalIoPortReadByte(Address); 
+            *Value = IoPortReadByte(Address); 
             break;
         case 16:
-            *Value = HalIoPortReadWord(Address); 
+            *Value = IoPortReadWord(Address); 
             break;
         case 32:
-            *Value = HalIoPortReadDWord(Address); 
+            *Value = IoPortReadDWord(Address); 
             break;
         default:
             return AE_BAD_PARAMETER;
@@ -393,13 +393,13 @@ ACPI_STATUS AcpiOsWritePort(ACPI_IO_ADDRESS Address, UINT32 Value, UINT32 Width)
     switch(Width)
     {
         case 8:
-            HalIoPortWriteByte(Address, Value); 
+            IoPortWriteByte(Address, Value); 
             break;
         case 16:
-            HalIoPortWriteWord(Address, Value); 
+            IoPortWriteWord(Address, Value); 
             break;
         case 32:
-            HalIoPortWriteDWord(Address, Value); 
+            IoPortWriteDWord(Address, Value); 
             break;
         default:
             return AE_BAD_PARAMETER;
@@ -414,7 +414,7 @@ ACPI_STATUS AcpiOsSignal(UINT32 Function, void *Info)
     {
         case ACPI_SIGNAL_FATAL:
             ACPI_SIGNAL_FATAL_INFO *s = (ACPI_SIGNAL_FATAL_INFO*)Info;
-            KePanicEx(ACPI_FATAL_ERROR, s->Type, s->Code, s->Argument, 0);
+            KePanicEx(DRIVER_FATAL_ERROR, s->Type, s->Code, s->Argument, 0);
         default:
             break;
     }

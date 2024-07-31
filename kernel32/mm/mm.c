@@ -2,6 +2,7 @@
 #include "palloc.h"
 #include "slab.h"
 #include "dynmap.h"
+#include "hal/arch.h"
 
 static void *MmMemoryDescriptorSlabHandle = NULL;
 #define MM_MEMORY_DESCRIPTOR_CACHE_CHUNKS_PER_SLAB 128
@@ -45,7 +46,7 @@ struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t s
     {
         uintptr_t physical;
         uintptr_t bytesToBoundary;
-        if(OK != MmGetPhysicalPageAddress((uintptr_t)memory, &physical))
+        if(OK != HalGetPhysicalAddress((uintptr_t)memory, &physical))
             goto _MmBuildMemoryDescriptorListFailure;
 
         if(physical & (MM_PAGE_SIZE - 1))
@@ -140,7 +141,7 @@ uint64_t MmGetMemoryDescriptorListSize(struct MmMemoryDescriptor *list)
     return size;
 }
 
-void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
+void *HalMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
 {
     if(NULL == list)
         return NULL;
@@ -163,7 +164,7 @@ void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
     if(NULL == m)
         return NULL;
     
-    if(OK != MmMapMemoryEx((uintptr_t)m, first.physical, first.size, 0))
+    if(OK != HalMapMemoryEx((uintptr_t)m, first.physical, first.size, 0))
     {
         MmFreeDynamicMemoryReservation(ret);
         return NULL;
@@ -173,15 +174,15 @@ void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
     struct MmMemoryDescriptor *l = first.next;
     while(NULL != l)
     {
-        if(OK != MmMapMemoryEx((uintptr_t)m, l->physical, l->size, 0))
+        if(OK != HalMapMemoryEx((uintptr_t)m, l->physical, l->size, 0))
         {
             //failure, unmap everything
-            MmUnmapMemoryEx((uintptr_t)ret, first.size);
+            HalUnmapMemoryEx((uintptr_t)ret, first.size);
             struct MmMemoryDescriptor *k = list;
             m = ret;
             while(k != l)
             {
-                MmUnmapMemoryEx((uintptr_t)m, k->size);
+                HalUnmapMemoryEx((uintptr_t)m, k->size);
                 k = k->next;
                 m = (void*)((uintptr_t)m + k->size);
             }
@@ -195,12 +196,12 @@ void *MmMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
     return (void*)((uintptr_t)ret + offset);
 }
 
-void MmUnmapMemoryDescriptorList(void *memory)
+void HalUnmapMemoryDescriptorList(void *memory)
 {
     MmUnmapDynamicMemory(memory);
 }
 
-STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags)
+STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
 {
     STATUS ret = OK;
 
@@ -218,7 +219,7 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags
             goto mmAllocateKernelMemoryFailed;
         }
 
-        if(OK != (ret = MmMapMemoryEx(address, pAddress, allocated, flags)))
+        if(OK != (ret = HalMapMemoryEx(address, pAddress, allocated, flags)))
         {
             //mapping failed
             MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE); //free physical page that wasn't mapped
@@ -236,9 +237,9 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmPagingFlags_t flags
     //unmap and free previously mapped and allocated pages
     while(address != initialAddress)
     {
-        MmGetPhysicalPageAddress(address, &pAddress);
+        HalGetPhysicalAddress(address, &pAddress);
         MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
-        MmUnmapMemory(address);
+        HalUnmapMemory(address);
         address -= MM_PAGE_SIZE;
     }
     return ret;
@@ -249,9 +250,9 @@ STATUS MmFreeMemory(uintptr_t address, uintptr_t size)
     while(size)
     {
         uintptr_t pAddress = 0;
-        if(OK == MmGetPhysicalPageAddress(address, &pAddress))
+        if(OK == HalGetPhysicalAddress(address, &pAddress))
         {
-            MmUnmapMemory(address);
+            HalUnmapMemory(address);
             MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
         }
         address -= MM_PAGE_SIZE;

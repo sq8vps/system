@@ -3,6 +3,7 @@
 #include "heap.h"
 #include "ke/core/panic.h"
 #include "ke/core/mutex.h"
+#include "hal/arch.h"
 
 #define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (MM_PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
@@ -99,7 +100,7 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(void *ptr, bool unmap)
     MmAvlInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, n, (uintptr_t)ptr);
 
     if(unmap && (0 != originalSize))
-        MmUnmapMemoryEx((uintptr_t)ptr, originalSize);
+        HalUnmapMemoryEx((uintptr_t)ptr, originalSize);
 
     KeReleaseSpinlock(&dynamicAllocatorMutex);
     return originalSize;
@@ -110,17 +111,17 @@ uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
     return MmFreeDynamicMemoryReservationEx(ptr, false);
 }
 
-void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmPagingFlags_t flags)
+void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags)
 {
     void *ptr = MmReserveDynamicMemory(n);
     if(NULL == ptr)
         return NULL;
     
     STATUS ret;
-    if(OK != (ret = MmMapMemoryEx(ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE), 
+    if(OK != (ret = HalMapMemoryEx(ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE), 
         ALIGN_DOWN(pAddress, MM_PAGE_SIZE), 
         n, 
-        MM_PAGE_FLAG_WRITABLE | flags)))
+        MM_FLAG_WRITABLE | flags)))
     {
         MmFreeDynamicMemoryReservation(ptr);
         return NULL;
@@ -149,7 +150,7 @@ void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs)
             for(uint32_t i = 0; i < (kernelArgs->initrdSize / MM_PAGE_SIZE + ((kernelArgs->initrdSize % MM_PAGE_SIZE) > 0)); i++)
             {
                 //check if pages are actually mapped
-                if(OK != MmGetPhysicalPageAddress(kernelArgs->initrdAddress + (i * MM_PAGE_SIZE), &dummy))
+                if(OK != HalGetPhysicalAddress(kernelArgs->initrdAddress + (i * MM_PAGE_SIZE), &dummy))
                     KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, 0, 0, 0);
             }
 

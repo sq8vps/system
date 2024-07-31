@@ -146,21 +146,16 @@ typedef enum
 /**
  * @brief General privilege level enum
 */
-typedef enum PrivilegeLevel_t
+typedef enum PrivilegeLevel
 {
     PL_KERNEL,
     PL_USER
-} PrivilegeLevel_t;
+} PrivilegeLevel;
 
 /**
  * @brief A common timestamp type
 */
 typedef uint64_t time_t;
-
-/**
- * @brief A common character type (UTF-8)
-*/
-typedef char Utf8_t;
 
 /**
  * @brief Attribute for never-returning functions
@@ -244,6 +239,7 @@ union UID
     uint8_t raw[16];
 } PACKED;
 
+#include "hal/archdefs.h"
 
 #ifdef __cplusplus
 }

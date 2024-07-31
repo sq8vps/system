@@ -286,12 +286,12 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
         params.wake = IT_WAKE_INCAPABLE;
         if(0 != hdr->standard.interruptLine)
         {
-            irqInput = HalResolveIsaIrqMapping(hdr->standard.interruptLine);
+            irqInput = I686ResolveIsaIrqMapping(hdr->standard.interruptLine);
             status = HalRegisterIrq(irqInput, IdeIsr, info, params);
         }
         else
         {
-            irqInput = HalResolveIsaIrqMapping(IDE_DEFAULT_ISA_IRQ);
+            irqInput = I686ResolveIsaIrqMapping(IDE_DEFAULT_ISA_IRQ);
             status = HalRegisterIrq(irqInput, IdeIsr, info, params);
         }
     }
@@ -334,20 +334,20 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
 
 void IdeWriteBmrCommand(struct IdeControllerData *info, uint8_t chan, uint8_t command)
 {
-    HalIoPortWriteByte(info->channel[chan].masterPort + IDE_BMR_COMMAND_SHIFT, command);
+    IoPortWriteByte(info->channel[chan].masterPort + IDE_BMR_COMMAND_SHIFT, command);
 }
 
 uint8_t IdeReadBmrStatus(struct IdeControllerData *info, uint8_t chan)
 {
-    return HalIoPortReadByte(info->channel[chan].masterPort + IDE_BMR_STATUS_SHIFT);
+    return IoPortReadByte(info->channel[chan].masterPort + IDE_BMR_STATUS_SHIFT);
 }
 
 void IdeWriteBmrStatus(struct IdeControllerData *info, uint8_t chan, uint8_t status)
 {
-    HalIoPortWriteByte(info->channel[chan].masterPort + IDE_BMR_STATUS_SHIFT, status);
+    IoPortWriteByte(info->channel[chan].masterPort + IDE_BMR_STATUS_SHIFT, status);
 }
 
 void IdeWriteBmrPrdt(struct IdeControllerData *info, uint8_t chan, struct IdePrdTable *prdt)
 {
-    HalIoPortWriteDWord(info->channel[chan].masterPort + IDE_BMR_PRDT_SHIFT, prdt->physical);
+    IoPortWriteDWord(info->channel[chan].masterPort + IDE_BMR_PRDT_SHIFT, prdt->physical);
 }

@@ -53,7 +53,7 @@ static STATUS PciDispatch(struct IoRp *rp)
             status = PciGetSystemDeviceId(rp);
             break;
         default:
-            rp->status = IO_RP_PROCESSING_FAILED;
+            status = IO_RP_PROCESSING_FAILED;
             break;
     }
 

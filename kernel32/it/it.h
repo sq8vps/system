@@ -15,28 +15,11 @@
 #include "defines.h"
 
 EXPORT
+/**
+ * @brief Magic value to be used when requesting random vector number
+ */
 #define IT_VECTOR_ANY 0
 
-EXPORT
-/**
- * @brief Lowest vector available for IRQs
-*/
-#define IT_IRQ_VECTOR_BASE 48
-
-EXPORT
-/**
- * @brief First vector available for interrupt requests
-*/
-#define IT_FIRST_INTERRUPT_VECTOR 32
-
-EXPORT
-#define IT_MAX_IRQ_VECTORS (256 - IT_FIRST_INTERRUPT_VECTOR)
-
-/*
-* Vectors reserved and used by the kernel
-*/
-#define IT_SYSTEM_TIMER_VECTOR IT_FIRST_INTERRUPT_VECTOR
-#define IT_LAPIC_SPURIOUS_VECTOR (255)
 
 EXPORT
 /**
@@ -84,28 +67,7 @@ enum ItExceptionVector
  * @{
 */
 
-/**
- * @brief ISR frame for interrupts and exceptions with no privilege level change
-*/
-struct ItFrame
-{
-    uint32_t ip;
-    uint32_t cs;
-    uint32_t flags;
-} PACKED;
 
-EXPORT
-/**
- * @brief ISR frame for interrupts and exceptions with privilege level change
-*/
-struct ItFrameMS
-{
-    uint32_t ip;
-    uint32_t cs;
-    uint32_t flags;
-    uint32_t esp;
-    uint32_t ss;
-} PACKED;
 
 EXPORT
 /**

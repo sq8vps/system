@@ -1,25 +1,21 @@
 #include <stdint.h>
 #include "it/it.h"
 #include "mm/palloc.h"
-#include "mm/valloc.h"
 #include "mm/heap.h"
 #include "mm/mm.h"
 #include "../cdefines.h"
 #include "ex/exec.h"
 #include "common.h"
 #include "ex/kdrv/kdrv.h"
-#include "mm/gdt.h"
 #include "mm/dynmap.h"
 #include "hal/hal.h"
 #include "ke/task/task.h"
-#include "ke/task/tss.h"
 #include "ke/sched/sched.h"
 #include "ke/core/mutex.h"
-#include "sdrv/bootvga/bootvga.h"
+#include "hal/i686/bootvga/bootvga.h"
 #include "ke/core/panic.h"
 #include "io/fs/vfs.h"
 #include "io/fs/fs.h"
-#include "hal/cpu.h"
 #include "hal/interrupt.h"
 #include "sdrv/initrd/initrd.h"
 #include "ex/ksym.h"
@@ -27,13 +23,12 @@
 #include "ke/task/task.h"
 #include "ke/sched/sched.h"
 #include "ke/sched/sleep.h"
-#include "sdrv/fpu.h"
-#include "sdrv/sse.h"
 #include "io/dev/dev.h"
 #include "ke/core/dpc.h"
 #include "common/order.h"
 #include "io/dev/vol.h"
 #include "ddk/fs.h"
+#include "hal/arch.h"
 
 extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
 
@@ -79,10 +74,8 @@ NORETURN static void KeInit(void)
 	CmDetectEndianness();
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
-	MmGdtInit();
-	MmGdtApplyFlat();
 	MmInitPhysicalAllocator(&kernelArgs);
-	MmInitVirtualAllocator();
+	HalInitVirtualAllocator();
 	MmInitializeMemoryDescriptorAllocator();
 	MmInitDynamicMemory(&kernelArgs);
 	//boot VGA driver can be initialized when dynamic memory allocator is available
@@ -91,8 +84,6 @@ NORETURN static void KeInit(void)
 	
 	if(OK != HalInit())
 		KePanicEx(BOOT_FAILURE, HAL_INIT_FAILURE, 0, 0, 0);
-
-	KePrepareTSS(0);
 
 	ItInit(); //initialize interrupts and exceptions
 	IoVfsInit();
@@ -139,14 +130,14 @@ NORETURN static void KeInit(void)
 	KeSleep(MS_TO_NS(4000));
 	IoMountVolume("/dev/hda0", "disk1");
 
-	struct IoFileHandle *h;
-	IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
-	char *t = MmAllocateKernelHeapAligned(8192, 512);
-	CmMemset(t, 'A', 8142);
-	CmStrcpy(&t[8142], "Test dopisywania z przekroczeniem granicy klastra");
-	uint64_t actualSize = 0;
-	IoWriteKernelFileSync(h, t, 8192, 0, &actualSize);
-	asm("nop");
+	// struct IoFileHandle *h;
+	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
+	// char *t = MmAllocateKernelHeapAligned(8192, 512);
+	// CmMemset(t, 'A', 8142);
+	// CmStrcpy(&t[8142], "Test dopisywania z przekroczeniem granicy klastra");
+	// uint64_t actualSize = 0;
+	// IoWriteKernelFileSync(h, t, 8192, 0, &actualSize);
+	// asm("nop");
 
 	while(1)
 	{

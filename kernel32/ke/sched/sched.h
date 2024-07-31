@@ -47,12 +47,6 @@ EXPORT
 EXTERN void KeTaskYield(void);
 
 /**
- * @brief Perform task switch immediately if new task is available
- * @attention Do not use this function. KeSchedule() should be used first to prepare new task.
-*/
-INTERNAL extern void KePerformTaskSwitch(void);
-
-/**
  * @brief Perform task switch if previous task was preempted and new task is available
  * @attention Do not use this function. KeSchedule() should be used first to prepare new task.
  * @attention This function works only for tasks scheduled from task switch DPC.

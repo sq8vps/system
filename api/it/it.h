@@ -10,36 +10,15 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 #include "defines.h"
+/**
+ * @brief Magic value to be used when requesting random vector number
+ */
 #define IT_VECTOR_ANY 0
-
-/**
- * @brief Lowest vector available for IRQs
-*/
-#define IT_IRQ_VECTOR_BASE 48
-
-/**
- * @brief First vector available for interrupt requests
-*/
-#define IT_FIRST_INTERRUPT_VECTOR 32
-
-#define IT_MAX_IRQ_VECTORS (256 - IT_FIRST_INTERRUPT_VECTOR)
 
 /**
  * @brief Maximum number of shared IRQ consumers
 */
 #define IT_MAX_SHARED_IRQ_CONSUMERS 8
-
-/**
- * @brief ISR frame for interrupts and exceptions with privilege level change
-*/
-struct ItFrameMS
-{
-    uint32_t ip;
-    uint32_t cs;
-    uint32_t flags;
-    uint32_t esp;
-    uint32_t ss;
-} PACKED;
 
 /**
  * @brief Type definition for generic interrupt service routine

@@ -144,11 +144,11 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
             if(!ctx->write)
             {
                 //map caller buffer and copy data
-                void *buffer = MmMapMemoryDescriptorList(ctx->list);
+                void *buffer = HalMapMemoryDescriptorList(ctx->list);
                 if(NULL != buffer)
                 {
                     CmMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
-                    MmUnmapMemoryDescriptorList(buffer);
+                    HalUnmapMemoryDescriptorList(buffer);
                 }
                 else
                     status = OUT_OF_RESOURCES;
@@ -165,11 +165,11 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
         else
         {
             //map caller buffer and copy data
-            void *buffer = MmMapMemoryDescriptorList(ctx->list);
+            void *buffer = HalMapMemoryDescriptorList(ctx->list);
             if(NULL != buffer)
             {
                 CmMemcpy(&(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), buffer, ctx->size);
-                MmUnmapMemoryDescriptorList(buffer);
+                HalUnmapMemoryDescriptorList(buffer);
             }
             else
             {

@@ -10,6 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "ob/ob.h"
+#include "hal/archdefs.h"
 struct ObObjectHeader;
 struct _KeSemaphore;
 struct _KeMutex;
@@ -51,10 +52,6 @@ enum KeTaskBlockReason
     TASK_BLOCK_EVENT,
 };
 
-#define TCB_EFLAGS_IF (1 << 9) //interrupt flag
-#define TCB_EFLAGS_RESERVED (1 << 1) //reserved EFLAGS bits
-#define TCB_EFLAGS_IOPL_USER (3 << 12) //user mode EFLAGS bits
-
 #define TCB_MAX_NAME_LENGTH (64) //max task name lanegth
 #define TCB_MINOR_PRIORITY_LIMIT (15) //task priority limit
 
@@ -68,24 +65,16 @@ struct KeTaskControlBlock
 {
     struct ObObjectHeader objectHeader;
 
-    struct
-    {
-        uintptr_t esp; //stack pointer
-        uintptr_t esp0; //kernel stack pointer for privilege level change
-        uintptr_t cr3; //task page directory address
-        uint16_t ds; //task data segment register
-        uint16_t es; //task extra segment register
-        uint16_t fs; //task extra segment register
-        uint16_t gs; //task extra segment register
-    } cpu;
+    struct HalCpuState cpu;
 
     void *mathState;
 
-    uintptr_t stackSize; //memory currently allocated for process stack
+    uintptr_t userStackSize; //memory currently allocated for process stack
+    uintptr_t kernelStackSize;
     uintptr_t heapTop;
     uintptr_t heapSize;
 
-    PrivilegeLevel_t pl;
+    PrivilegeLevel pl;
 
     char name[TCB_MAX_NAME_LENGTH + 1]; //task name
     char *path; //task image path
@@ -148,7 +137,7 @@ struct KeTaskControlBlock
  * @warning Image loading and memory allocation is responsibility of caller.
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-extern STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t pl, 
+extern STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
@@ -163,7 +152,7 @@ extern STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLe
  * @return Status code
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-extern STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel_t pl, struct KeTaskControlBlock **tcb);
+extern STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
 
 
 #ifdef __cplusplus

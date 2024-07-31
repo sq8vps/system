@@ -24,15 +24,15 @@ var searchData=
   ['mmgdtgetflatunprivilegeddataoffset_21',['MmGdtGetFlatUnprivilegedDataOffset',['../group__gdt.html#ga0fe91c5504743c1a8dce848d746f6972',1,'gdt.h']]],
   ['mmgdtinit_22',['MmGdtInit',['../group__gdt.html#ga979c69267b4e2249583efcb405df34bf',1,'gdt.h']]],
   ['mmgetpagedirectoryaddress_23',['MmGetPageDirectoryAddress',['../group__v_mem.html#gac02399e84b5f171935bb79b5f8b707bd',1,'valloc.h']]],
-  ['mmgetphysicalpageaddress_24',['MmGetPhysicalPageAddress',['../group__v_mem.html#ga204d0637996b25ea5dd9a203d3c6a78b',1,'valloc.h']]],
+  ['mmgetphysicalpageaddress_24',['HalGetPhysicalAddress',['../group__v_mem.html#ga204d0637996b25ea5dd9a203d3c6a78b',1,'valloc.h']]],
   ['mminitdynamicmemory_25',['MmInitDynamicMemory',['../group__dynmap.html#ga518d76a54cec30fa1037f3fc913e38b9',1,'dynmap.h']]],
   ['mminitphysicalallocator_26',['MmInitPhysicalAllocator',['../group__p_mem.html#gae9503a4071a5bc311a41bb867dd02b76',1,'palloc.h']]],
-  ['mminitvirtualallocator_27',['MmInitVirtualAllocator',['../group__v_mem.html#ga2388d37c5ae956109a445f47df1d701f',1,'valloc.h']]],
+  ['mminitvirtualallocator_27',['HalInitVirtualAllocator',['../group__v_mem.html#ga2388d37c5ae956109a445f47df1d701f',1,'valloc.h']]],
   ['mmmapdynamicmemory_28',['MmMapDynamicMemory',['../group__dynmap.html#ga7fe09945927aef272f21ba6b2ebd3ae1',1,'dynmap.h']]],
-  ['mmmapmemory_29',['MmMapMemory',['../group__v_mem.html#ga8291d0b54e252f669b264f7c14cfe918',1,'valloc.h']]],
-  ['mmmapmemoryex_30',['MmMapMemoryEx',['../group__v_mem.html#ga7b3fd9b1a97db4d9f17c6177ad7c2ae6',1,'valloc.h']]],
+  ['HalMapMemory_29',['HalMapMemory',['../group__v_mem.html#ga8291d0b54e252f669b264f7c14cfe918',1,'valloc.h']]],
+  ['HalMapMemoryex_30',['HalMapMemoryEx',['../group__v_mem.html#ga7b3fd9b1a97db4d9f17c6177ad7c2ae6',1,'valloc.h']]],
   ['mmswitchpagedirectory_31',['MmSwitchPageDirectory',['../group__v_mem.html#gac589d3f44d7a175bd18ef7474a13c4b3',1,'valloc.h']]],
   ['mmunmapdynamicmemory_32',['MmUnmapDynamicMemory',['../group__dynmap.html#ga8b0fd4219369d674daf9a9e6f1ce36f5',1,'dynmap.h']]],
-  ['mmunmapmemory_33',['MmUnmapMemory',['../group__v_mem.html#ga2c2c4e35e93ce79110cad3a9c774b996',1,'valloc.h']]],
-  ['mmunmapmemoryex_34',['MmUnmapMemoryEx',['../group__v_mem.html#ga167273b0de366ff93e829904c56ec72e',1,'valloc.h']]]
+  ['HalUnmapMemory_33',['HalUnmapMemory',['../group__v_mem.html#ga2c2c4e35e93ce79110cad3a9c774b996',1,'valloc.h']]],
+  ['HalUnmapMemoryex_34',['HalUnmapMemoryEx',['../group__v_mem.html#ga167273b0de366ff93e829904c56ec72e',1,'valloc.h']]]
 ];

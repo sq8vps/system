@@ -20,7 +20,7 @@
 
 
 #define MAX_CPU_COUNT 64
-#define MAX_IOAPIC_COUNT 4
+
 
 /**
  * @brief Mark all following lines up to the next blank line as "to be exported"
@@ -174,11 +174,11 @@ EXPORT
 /**
  * @brief General privilege level enum
 */
-typedef enum PrivilegeLevel_t
+typedef enum PrivilegeLevel
 {
     PL_KERNEL,
     PL_USER
-} PrivilegeLevel_t;
+} PrivilegeLevel;
 
 EXPORT
 /**
@@ -186,11 +186,6 @@ EXPORT
 */
 typedef uint64_t time_t;
 
-EXPORT
-/**
- * @brief A common character type (UTF-8)
-*/
-typedef char Utf8_t;
 
 EXPORT
 /**
@@ -242,9 +237,6 @@ EXPORT
 #define ASM asm volatile
 
 EXPORT
-#define TIGHT_LOOP_HINT() ASM("pause" : : : "memory")
-
-EXPORT
 /**
  * @brief Check if character \a x is alphanumeric
  * @param x Character to check
@@ -287,6 +279,8 @@ union UID
     } PACKED;
     uint8_t raw[16];
 } PACKED;
+
+#include "hal/archdefs.h"
 
 /**
  * @}

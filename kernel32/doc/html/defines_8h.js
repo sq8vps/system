@@ -7,8 +7,8 @@ var defines_8h =
     [ "IS_ALPHANUMERIC", "group__defines.html#ga638f01e78d9750d6cd695b77033ef4d1", null ],
     [ "NORETURN", "group__defines.html#gaa1728270d73c5d1598de1fd691762eb1", null ],
     [ "PACKED", "group__defines.html#ga36d525cf4d116b2fe4ecc00222b256f1", null ],
-    [ "PrivilegeLevel_t", "group__defines.html#gaad2926b5b3f1c1f63671a5cc44799d50", null ],
-    [ "PrivilegeLevel_t", "group__defines.html#gad9234e84bbd5afa0bbdf8680b3c81160", [
+    [ "PrivilegeLevel", "group__defines.html#gaad2926b5b3f1c1f63671a5cc44799d50", null ],
+    [ "PrivilegeLevel", "group__defines.html#gad9234e84bbd5afa0bbdf8680b3c81160", [
       [ "PL_KERNEL", "defines_8h.html#gad9234e84bbd5afa0bbdf8680b3c81160a25337489715ecfa7d2486c2824ef93dc", null ],
       [ "PL_USER", "defines_8h.html#gad9234e84bbd5afa0bbdf8680b3c81160a495cd91bb527e488c84b3695b4c558ab", null ]
     ] ],

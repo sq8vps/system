@@ -14,13 +14,22 @@
 #include "defines.h"
 #include <stdbool.h>
 
-EXPORT
-struct KeTaskControlBlock;
-
 /**
  * @addtogroup hal
  * @{
 */
+
+/**
+ * @brief Initialize architecture-specific basic hardware
+ * @return Status code 
+ */
+INTERNAL STATUS HalInitializeHardware(void);
+
+/**
+ * @brief Initialize fundamentals of a root device
+ * @return Status code 
+ */
+INTERNAL STATUS HalInitializeRoot(void);
 
 /**
  * @brief Initialize hardware abstraction layer
@@ -32,28 +41,19 @@ struct KeTaskControlBlock;
 INTERNAL STATUS HalInit(void);
 
 /**
- * @brief Initialize math peripherals
- * @return Status code
-*/
-INTERNAL STATUS HalInitMath(void);
+ * @brief Get root device ID
+ * @return Root device ID pointer
+ */
+INTERNAL char *HalGetRootDeviceId(void);
 
 /**
- * @brief Create buffer for coprocessor state storage
- * @return Buffer pointer or NULL on failure
-*/
-INTERNAL void *HalCreateMathStateBuffer(void);
+ * @brief Set root device ID
+ * @param *id Root device ID to be set
+ * @warning This function should be used only by the architecture-specific HAL module
+ */
+INTERNAL void HalSetRootDeviceId(const char *id);
 
-/**
- * @brief Store coprocessor state
- * @param *tcb Task control block
-*/
-INTERNAL void HalStoreMathState(struct KeTaskControlBlock *tcb);
 
-/**
- * @brief Restore coprocessor state
- * @param *tcb Task control block
-*/
-INTERNAL void HalRestoreMathState(struct KeTaskControlBlock *tcb);
 
 /**
  * @}

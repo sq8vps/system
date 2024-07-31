@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include "ob/ob.h"
+#include "hal/archdefs.h"
 
 EXPORT
 struct ObObjectHeader;
@@ -50,10 +51,7 @@ enum KeTaskBlockReason
     TASK_BLOCK_EVENT,
 };
 
-EXPORT
-#define TCB_EFLAGS_IF (1 << 9) //interrupt flag
-#define TCB_EFLAGS_RESERVED (1 << 1) //reserved EFLAGS bits
-#define TCB_EFLAGS_IOPL_USER (3 << 12) //user mode EFLAGS bits
+
 
 EXPORT
 #define TCB_MAX_NAME_LENGTH (64) //max task name lanegth
@@ -71,24 +69,16 @@ struct KeTaskControlBlock
 {
     struct ObObjectHeader objectHeader;
 
-    struct
-    {
-        uintptr_t esp; //stack pointer
-        uintptr_t esp0; //kernel stack pointer for privilege level change
-        uintptr_t cr3; //task page directory address
-        uint16_t ds; //task data segment register
-        uint16_t es; //task extra segment register
-        uint16_t fs; //task extra segment register
-        uint16_t gs; //task extra segment register
-    } cpu;
+    struct HalCpuState cpu;
 
     void *mathState;
 
-    uintptr_t stackSize; //memory currently allocated for process stack
+    uintptr_t userStackSize; //memory currently allocated for process stack
+    uintptr_t kernelStackSize;
     uintptr_t heapTop;
     uintptr_t heapSize;
 
-    PrivilegeLevel_t pl;
+    PrivilegeLevel pl;
 
     char name[TCB_MAX_NAME_LENGTH + 1]; //task name
     char *path; //task image path
@@ -141,17 +131,14 @@ struct KeTaskControlBlock
 
 
 /**
- * @brief Prepare task control block
- * @param kernelStack Kernel stack top
- * @param stack Task stack top
- * @param pageDir Task page directory physical address
+ * @brief Allocate and prepare task control block
  * @param pl Privilege level
  * @param *name Task name
  * @param *path Task image path
  * @return Task control block pointer or NULL on memory allocation failure
  * @warning This function is used internally. Use KeCreateProcess() to create process.
 */
-struct KeTaskControlBlock* KePrepareTCB(uintptr_t kernelStack, uintptr_t stack, uintptr_t pageDir, PrivilegeLevel_t pl, const char *name, const char *path);
+struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, const char *path);
 
 EXPORT
 /**
@@ -166,7 +153,7 @@ EXPORT
  * @warning Image loading and memory allocation is responsibility of caller.
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-EXTERN STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel_t pl, 
+EXTERN STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 EXPORT
@@ -182,12 +169,6 @@ EXPORT
  * @return Status code
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-EXTERN STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel_t pl, struct KeTaskControlBlock **tcb);
-
-/**
- * @brief Get highest memory available in process space
- * @return Highest memory address available (last available byte address)
-*/
-INTERNAL uintptr_t KeGetHighestAvailableMemory(void);
+EXTERN STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
 
 #endif

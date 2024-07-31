@@ -6,7 +6,7 @@
 #include "elf.h"
 #include "common.h"
 
-STATUS ExCreateProcess(char *name, char *path, PrivilegeLevel_t pl, struct KeTaskControlBlock **tcb)
+STATUS ExCreateProcess(char *name, char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb)
 {
     if((NULL == path) || (NULL == name))
         return NULL_POINTER_GIVEN;

@@ -8,7 +8,6 @@
 #define MM_KERNEL_HEAP_START 0xD8000000                // kernel heap start address
 #define MM_KERNEL_HEAP_MAX_SIZE 0x10000000             // kernel heap max size
 #define MM_KERNEL_HEAP_ALIGNMENT 16                    // required kernel heap block address alignment
-#define MM_KERNEL_HEAP_DEALLOCATION_THRESHOLD 0x100000 // free heap memory deallocation threshold
 
 /**
  * @brief A heap block metadata (header) structure
