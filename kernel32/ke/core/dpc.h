@@ -4,13 +4,14 @@
 #include "defines.h"
 #include <stdint.h>
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief A callback function type for DPC worker
 */
 typedef void (*KeDpcCallback)(void *context);
 
-EXPORT
+
 /**
  * @brief DPC priority levels
 */
@@ -23,7 +24,7 @@ enum KeDpcPriority
     _KE_DPC_PRIORITY_LIMIT = KE_DPC_PRIORITY_HIGH,
 };
 
-EXPORT
+
 /**
  * @brief Register a Deferred Procedure Call
  * @param priority DPC priority
@@ -32,7 +33,9 @@ EXPORT
  * @return Status code
  * @attention Processor priority must be > HAL_PRIORITY_LEVEL_PASSIVE, otherwise the kernel panic occurs.
 */
-EXTERN STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context);
+STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context);
+
+END_EXPORT_API
 
 /**
  * @brief Process all Deferred Procedure Calls if priority level is low enough

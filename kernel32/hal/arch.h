@@ -19,26 +19,78 @@
 #include "mm/mm.h"
 #include "hal/interrupt.h"
 
-struct KeTaskControlBlock;
+
 
 /**
  * @addtogroup arch
  * @{
 */
 
-/**
- * @brief Enable architecture-specific IRQ
- * @param input IRQ number
- * @return Status code
- */
-INTERNAL STATUS I686IrqEnable(uint32_t input);
+EXPORT_API
+
+struct KeTaskControlBlock;
 
 /**
- * @brief Disable architecture-specific IRQ
- * @param input IRQ number
+ * @brief Get page table entry flags
+ * @param vAddress Input virtual address
+ * @param *flags Output flags
  * @return Status code
+*/
+STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags);
+
+
+/**
+ * @brief Get current process physical address corresponding to the virtual address
+ * @param vAddress Input virtual address
+ * @param *pAddress Output physical address
+ * @return Error code
  */
-INTERNAL STATUS I686IrqDisable(uint32_t input);
+STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress);
+
+
+/**
+ * @brief Map current process memory
+ * @param vAddress Address to map the memory to
+ * @param pAddress Physical memory address
+ * @param flags Page flags
+ * @return Error code
+ * @attention This function does not allocate physical memory.
+*/
+STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags);
+
+
+/**
+ * @brief Map multiple pages of current process memory
+ * @param vAddress Address to map the memory to
+ * @param pAddress Physical memory address
+ * @param size Memory size in bytes
+ * @param flags Page flags
+ * @return Error code
+ * @attention This function does not allocate physical memory.
+*/
+STATUS HalMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmMemoryFlags flags);
+
+
+/**
+ * @brief Unmap current process memory
+ * @param vAddress Address to map the memory to
+ * @return Error code
+ * @attention This function does not free physical memory.
+*/
+STATUS HalUnmapMemory(uintptr_t vAddress);
+
+
+/**
+ * @brief Unmap multiple pages of current process memory
+ * @param vAddress Address to unmap
+ * @param size Memory size in bytes
+ * @return Error code
+ * @attention This function does not free physical memory
+*/
+STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
+
+END_EXPORT_API
+
 
 /**
  * @brief Register architecture-specific IRQ
@@ -102,69 +154,41 @@ INTERNAL void HalInitializeScheduler(void);
 INTERNAL void HalPerformTaskSwitch(void);
 
 /**
- * @brief Initialize virtual allocator
-*/
-INTERNAL void HalInitVirtualAllocator(void);
-
-EXPORT
-/**
- * @brief Get page table entry flags
- * @param vAddress Input virtual address
- * @param *flags Output flags
+ * @brief Attach kernel thread to another task's memory space
+ * @param *target Target task control block
  * @return Status code
-*/
-EXTERN STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags);
-
-EXPORT
-/**
- * @brief Get current process physical address corresponding to the virtual address
- * @param vAddress Input virtual address
- * @param *pAddress Output physical address
- * @return Error code
+ * @attention This function is for internal use only. Use \a KeAttachToTask().
  */
-EXTERN STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress);
+INTERNAL STATUS HalAttachToTask(struct KeTaskControlBlock *target);
 
-EXPORT
 /**
- * @brief Map current process memory
- * @param vAddress Address to map the memory to
- * @param pAddress Physical memory address
- * @param flags Page flags
- * @return Error code
- * @attention This function does not allocate physical memory.
-*/
-EXTERN STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags);
+ * @brief Enable architecture-specific IRQ
+ * @param input IRQ number
+ * @return Status code
+ */
+INTERNAL STATUS HalMasterEnableIrq(uint32_t input);
 
-EXPORT
 /**
- * @brief Map multiple pages of current process memory
- * @param vAddress Address to map the memory to
- * @param pAddress Physical memory address
- * @param size Memory size in bytes
- * @param flags Page flags
- * @return Error code
- * @attention This function does not allocate physical memory.
-*/
-EXTERN STATUS HalMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmMemoryFlags flags);
+ * @brief Disable architecture-specific IRQ
+ * @param input IRQ number
+ * @return Status code
+ */
+INTERNAL STATUS HalMasterDisableIrq(uint32_t input);
 
-EXPORT
 /**
- * @brief Unmap current process memory
- * @param vAddress Address to map the memory to
- * @return Error code
- * @attention This function does not free physical memory.
-*/
-EXTERN STATUS HalUnmapMemory(uintptr_t vAddress);
+ * @brief Architecture-specific initialization phase 1
+ */
+INTERNAL void HalInitPhase1(void);
 
-EXPORT
 /**
- * @brief Unmap multiple pages of current process memory
- * @param vAddress Address to unmap
- * @param size Memory size in bytes
- * @return Error code
- * @attention This function does not free physical memory
-*/
-EXTERN STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
+ * @brief Architecture-specific initialization phase 2
+ */
+INTERNAL void HalInitPhase2(void);
+
+/**
+ * @brief Architecture-specific initialization phase 3
+ */
+INTERNAL void HalInitPhase3(void);
 
 /**
  * @}

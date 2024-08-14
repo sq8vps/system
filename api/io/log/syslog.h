@@ -10,6 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include <stdarg.h>
+
 /**
  * @brief Syslog message types
 */
@@ -19,6 +20,7 @@ enum IoSyslogMessageType
     SYSLOG_WARNING,
     SYSLOG_ERROR,
 };
+
 
 /**
  * @brief Syslog object handle
@@ -30,18 +32,21 @@ struct IoSyslogHandle
     char *name;
 };
 
+
 /**
  * @brief Open syslog
  * @param *name Module name to be used in syslog
  * @return Syslog object handle or NULL on failure
 */
-extern struct IoSyslogHandle* IoOpenSyslog(const char *name);
+struct IoSyslogHandle* IoOpenSyslog(const char *name);
+
 
 /**
  * @brief Close syslog
  * @param *handle Syslog handle
 */
-extern void IoCloseSyslog(struct IoSyslogHandle *handle);
+void IoCloseSyslog(struct IoSyslogHandle *handle);
+
 
 /**
  * @brief Write to syslog
@@ -51,7 +56,8 @@ extern void IoCloseSyslog(struct IoSyslogHandle *handle);
  * @param args Additional arguments
  * @return Status code
 */
-extern STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, va_list args);
+STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, va_list args);
+
 
 /**
  * @brief Write to syslog
@@ -62,7 +68,7 @@ extern STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType 
  * @return Status code
 */
 __attribute__ ((format (printf, 3, 4)))
-extern STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
+STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
 
 
 #ifdef __cplusplus

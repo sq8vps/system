@@ -13,38 +13,38 @@ extern "C"
  * @tparam MaxIds Number of IDs + 1
  * @attention This class never assigns ID = 0
 */
-template <typename IdType, size_t MaxIds>
+template <typename IdType, IdType MaxIds>
 class IdDispenser
 {
 private:
     IdType freeStack[MaxIds];
     IdType nextSequential{1};
-    size_t freeTop{0};
+    IdType freeTop{0};
     KeSpinlock lock KeSpinlockInitializer;
 public:
     IdType assign(void)
     {
         IdType id = 0;
-        KeAcquireSpinlock(&lock);
-        if(nextSequential < MaxIds)
-        {
-            id = nextSequential++;
-        }
-        else if(freeTop > 0)
+        PRIO prio = KeAcquireSpinlock(&lock);
+        if(freeTop > 0)
         {
             id = freeStack[freeTop--];
         }
-        KeReleaseSpinlock(&lock);
+        else if(nextSequential < MaxIds)
+        {
+            id = nextSequential++;
+        }
+        KeReleaseSpinlock(&lock, prio);
         return id;
     }
     void free(IdType id)
     {
-        KeAcquireSpinlock(&lock);
+        PRIO prio = KeAcquireSpinlock(&lock);
         if(freeTop < MaxIds)
         {
             freeStack[++freeTop] = id;
         }
-        KeReleaseSpinlock(&lock);
+        KeReleaseSpinlock(&lock, prio);
     }
 };
 

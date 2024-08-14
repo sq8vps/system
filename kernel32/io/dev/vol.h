@@ -5,7 +5,8 @@
 #include "io/dev/dev.h"
 #include "ob/ob.h"
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief Maximum length of volume label
 */
@@ -14,7 +15,7 @@ EXPORT
 /**
  * @brief Volume node structure
 */
-EXPORT
+
 struct IoVolumeNode
 {
     struct ObObjectHeader objectHeader;
@@ -28,16 +29,16 @@ struct IoVolumeNode
     struct IoVolumeNode *next, *previous; /**< A list of other volumes */
 };
 
-EXPORT
+
 /**
  * @brief Mount volume
  * @param *devPath Volume device path
  * @param *mountPoint Mount point name
  * @return Status code
 */
-EXTERN STATUS IoMountVolume(char *devPath, char *mountPoint);
+STATUS IoMountVolume(char *devPath, char *mountPoint);
 
-EXPORT
+
 /**
  * @brief Register volume associated with a device
  * 
@@ -48,9 +49,9 @@ EXPORT
  * @param flags Volume node flags
  * @return Status code
 */
-EXTERN STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
+STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
 
-EXPORT
+
 /**
  * @brief Set volume serial number
  * @param *dev Device object with associated volume
@@ -58,9 +59,9 @@ EXPORT
  * @return Status code
  * @note This function fails when there is no associated volume
 */
-EXTERN STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial);
+STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial);
 
-EXPORT
+
 /**
  * @brief Set volume label
  * @param *dev Device object with associated volume
@@ -68,9 +69,9 @@ EXPORT
  * @return Status code
  * @note This function fails when there is no associated volume
 */
-EXTERN STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
+STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
 
-EXPORT
+
 /**
  * @brief Register filesystem for given volume
  * @param *disk Volume device object (type = \a IO_DEVICE_TYPE_DISK)
@@ -78,6 +79,8 @@ EXPORT
  * @param volumeFlags Flags to be ORed with volume node flags
  * @return Status code
 */
-EXTERN STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
+STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
+
+END_EXPORT_API
 
 #endif

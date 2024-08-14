@@ -30,7 +30,7 @@ STATUS HalRegisterIrq(
     uint8_t vector = 0;
 
     struct HalInterruptEntry *matching = NULL;
-    KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
     if(NULL != HalInterruptList)
     {
         matching = HalInterruptList;
@@ -52,7 +52,7 @@ STATUS HalRegisterIrq(
             && (IT_SHAREABLE == params.shared)
             ))
         {
-            KeReleaseSpinlock(&HalInterruptListLock);
+            KeReleaseSpinlock(&HalInterruptListLock, prio);
             return IT_ALREADY_REGISTERED;
         }
 
@@ -65,7 +65,7 @@ STATUS HalRegisterIrq(
         matching = MmAllocateKernelHeap(sizeof(*matching));
         if(NULL == matching)
         {
-            KeReleaseSpinlock(&HalInterruptListLock);
+            KeReleaseSpinlock(&HalInterruptListLock, prio);
             return OUT_OF_RESOURCES;
         }
         CmMemset(matching, 0, sizeof(*matching));
@@ -74,7 +74,7 @@ STATUS HalRegisterIrq(
         if(0 == vector)
         {
             MmFreeKernelHeap(matching);
-            KeReleaseSpinlock(&HalInterruptListLock);
+            KeReleaseSpinlock(&HalInterruptListLock, prio);
             return OUT_OF_RESOURCES;
         }
         status = IrqRegister(input, vector, params);
@@ -82,7 +82,7 @@ STATUS HalRegisterIrq(
         {
             ItFreeVector(vector);
             MmFreeKernelHeap(matching);
-            KeReleaseSpinlock(&HalInterruptListLock);
+            KeReleaseSpinlock(&HalInterruptListLock, prio);
             return status; 
         }
         status = ItInstallInterruptHandler(vector, isr, context);
@@ -91,7 +91,7 @@ STATUS HalRegisterIrq(
             IrqUnregister(input);
             ItFreeVector(vector);
             MmFreeKernelHeap(matching);
-            KeReleaseSpinlock(&HalInterruptListLock);
+            KeReleaseSpinlock(&HalInterruptListLock, prio);
             return status;
         }
     }
@@ -110,7 +110,7 @@ STATUS HalRegisterIrq(
         t->next = matching;
     }
 
-    KeReleaseSpinlock(&HalInterruptListLock);
+    KeReleaseSpinlock(&HalInterruptListLock, prio);
     return OK;
 }
 
@@ -120,7 +120,7 @@ STATUS HalUnregisterIrq(uint32_t input, ItHandler isr)
 
     struct HalInterruptEntry *matching = NULL;
     struct HalInterruptEntry *previous = NULL;
-    KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
     if(NULL != HalInterruptList)
     {
         matching = HalInterruptList;
@@ -160,14 +160,14 @@ STATUS HalUnregisterIrq(uint32_t input, ItHandler isr)
         status = IT_NOT_REGISTERED;
     }
 HalUnregisterIrqExit:
-    KeReleaseSpinlock(&HalInterruptListLock);
+    KeReleaseSpinlock(&HalInterruptListLock, prio);
     return status;
 }
 
 uint8_t HalGetAssociatedVector(uint32_t input)
 {
     uint8_t vector = 0;
-    KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
     struct HalInterruptEntry *t = HalInterruptList;
     while(NULL != t)
     {
@@ -178,14 +178,14 @@ uint8_t HalGetAssociatedVector(uint32_t input)
         }
         t = t->next;
     }
-    KeReleaseSpinlock(&HalInterruptListLock);
+    KeReleaseSpinlock(&HalInterruptListLock, prio);
     return vector;
 }
 
 STATUS HalEnableIrq(uint32_t input, ItHandler isr)
 {
     STATUS status = OK;
-    KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
     struct HalInterruptEntry *t = HalInterruptList;
     while(NULL != t)
     {
@@ -198,7 +198,7 @@ STATUS HalEnableIrq(uint32_t input, ItHandler isr)
 
     if(NULL != t)
     {
-        status = I686IrqEnable(input);
+        status = HalMasterEnableIrq(input);
 
         if(OK == status)
         {
@@ -208,14 +208,14 @@ STATUS HalEnableIrq(uint32_t input, ItHandler isr)
     else
         status = IT_NOT_REGISTERED;
 
-    KeReleaseSpinlock(&HalInterruptListLock);
+    KeReleaseSpinlock(&HalInterruptListLock, prio);
     return status;
 }
 
 STATUS HalDisableIrq(uint32_t input, ItHandler isr)
 {
     STATUS status = OK;
-    KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
     struct HalInterruptEntry *t = HalInterruptList;
     while(NULL != t)
     {
@@ -228,7 +228,7 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr)
 
     if(NULL != t)
     {
-        status = I686IrqDisable(input);
+        status = HalMasterDisableIrq(input);
 
         if(OK == status)
         {
@@ -238,7 +238,7 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr)
     else
         status = IT_NOT_REGISTERED;
 
-    KeReleaseSpinlock(&HalInterruptListLock);
+    KeReleaseSpinlock(&HalInterruptListLock, prio);
     return status;
 }
 

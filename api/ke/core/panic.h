@@ -10,6 +10,15 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "io/disp/print.h"
+
+/**
+ * @brief Get nth caller address
+ * @param n Caller level: 0 - the caller of the given function
+ * @warning This macro is GCC-specific and is unsafe for n>0
+*/
+#define KE_GET_CALLER_ADDRESS(n) (uintptr_t)__builtin_extract_return_addr(__builtin_return_address(n))
+
+
 /**
  * @brief Main kernel panic error codes
 */
@@ -77,14 +86,28 @@ enum KernelPanicCode
      * @brief There was an attempt to access illegal memory
      */
     MEMORY_ACCESS_VIOLATION = 0xE,
+    /**
+     * @brief A task attachment request was invalid
+     * 
+     * - Arg 0: Error type:
+     *      - 0 - source and target tasks are the same
+     *      - 1 - source task is already attached to some task
+     *      - 2 - source task is not a kernel mode thread
+     * - Arg 1: Source task control block (attachee)
+     * - Arg 2: Target task control block
+     * - Arg 3: Task to which the source task is currently attached (for error type 1 only)
+     */
+    INVALID_TASK_ATTACHMENT_ATTEMPT = 0xF,
 };
 
+
 /**
  * @brief Emergency system shutdown routine - kernel panic
  * @param code Error code
  * @attention This function never returns
 */
-extern NORETURN void KePanic(uintptr_t code);
+NORETURN void KePanic(uintptr_t code);
+
 
 /**
  * @brief Emergency system shutdown routine - kernel panic
@@ -95,7 +118,8 @@ extern NORETURN void KePanic(uintptr_t code);
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-extern NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+
 
 /**
  * @brief Emergency system shutdown routine - kernel panic with explicitly provided instruction pointer
@@ -103,7 +127,8 @@ extern NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, u
  * @param code Error code
  * @attention This function never returns
 */
-extern NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
+NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
+
 
 /**
  * @brief Emergency system shutdown routine - kernel panic with explicitly provided instruction pointer
@@ -115,7 +140,7 @@ extern NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-extern NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 
 #ifdef __cplusplus

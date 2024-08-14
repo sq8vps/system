@@ -3,5 +3,5 @@ diskutil mbr gap -i "C:\programy\system\output\loader.bin" "C:\programy\system\o
 osfmount -a -t file -o rw -f os-image.img -m F:
 xcopy output\* F:\SYSTEM\ /E /Y
 osfmount -D -m F:
-qemu-system-i386 -s -S -monitor stdio -no-shutdown -no-reboot os-image.img
+qemu-system-i386 -s -S -monitor stdio -no-shutdown -no-reboot -smp 4 os-image.img
 del os-image.img.lock

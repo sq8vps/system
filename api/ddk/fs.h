@@ -10,8 +10,10 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 #include "defines.h"
+
 struct IoVfsNode;
 struct IoDeviceObject;
+
 
 /**
  * @brief Type specific operations for file systems
@@ -22,6 +24,7 @@ enum FsOperations
     FS_GET_NODE, /**< Get VFS node of given file/directory */
     FS_GET_NODE_CHILDREN, /**< Get list of children VFS nodes for given node (directory, exclusively)*/
 };
+
 
 /**
  * @brief FS get node/get node children request body

@@ -5,7 +5,8 @@
 #include "ke/core/mutex.h"
 #include "defines.h"
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief Header structure for all kernel objects
 */
@@ -15,37 +16,21 @@ struct ObObjectHeader
     KeSpinlock lock;
 };
 
-EXPORT
-/**
- * @brief Check if object is locked
- * 
- * This function check if object is currently locked.
- * @param *object Object to check the lock status of
- * @warning This function causes kernel panic when object is not lockable
- * @return True if object is locked, false if not
-*/
-EXTERN bool ObIsObjectLocked(void *object);
-
-EXPORT
 /**
  * @brief Lock object
- * 
- * This function locks the object, that is, acquires the associated spinlock.
- * Object should be unlocked as soon as possible.
- * @param *object Object to lock
- * @warning This function causes kernel panic when object is not lockable
-*/
-EXTERN void ObLockObject(void *object);
+ * @param *object Object pointer
+ * @return Previous task priority to be passed to \a ObUnlockObject()
+ */
+PRIO ObLockObject(void *object);
 
-EXPORT
 /**
  * @brief Unlock object
- * 
- * This function unlocks the object, that is, releases the associated spinlock.
- * @param *object Object to lock
- * @warning This function causes kernel panic when object is not unlockable
-*/
-EXTERN void ObUnlockObject(void *object);
+ * @param *object Object pointer
+ * @param previousPriority Previous task priority obtained from \a ObLockObject()
+ */
+void ObUnlockObject(void *object, PRIO previousPriority);
+
+END_EXPORT_API
 
 /**
  * @brief Initialize object header

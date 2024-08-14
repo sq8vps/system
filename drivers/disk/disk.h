@@ -8,6 +8,7 @@
 #include "mbr.h"
 #include "ddk/stor.h"
 #include "gpt.h"
+#include <stdatomic.h>
 
 //this driver handles partitions in general
 //it can be an MDO for the partition 0 and then the BDO is the storage driver
@@ -15,7 +16,7 @@
 struct DiskData
 {
     uint32_t index; //object index for generating device file names
-    uint32_t childCount; //count of children devices (partitions)
+    _Atomic uint32_t childCount; //count of children devices (partitions)
     uint8_t isMdo : 1; //this object is a MDO, so it represents a partition
     uint8_t isPartition0 : 1; //this object is for partition 0 (flat disk)
     uint8_t isGpt : 1; //is this disk partitioned using GPT scheme

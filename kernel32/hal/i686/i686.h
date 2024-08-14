@@ -4,10 +4,15 @@
 
 #include <stdint.h>
 #include "defines.h"
+#include <stdbool.h>
+
+EXPORT_API
+
+struct KeSpinlock;
 
 #if defined(__i686__) || defined(__amd64__)
 
-EXPORT
+
 #if defined(__i686__) && defined(PAE)
     /**
      * @brief Physical address data type
@@ -20,7 +25,7 @@ EXPORT
     typedef uintptr_t PADDRESS;
 #endif
 
-EXPORT
+
 /**
  * @brief Processor priority levels
  */
@@ -31,25 +36,25 @@ enum HalPriorityLevel
     HAL_PRIORITY_LEVEL_EXCLUSIVE = 15, /**< Exclusive priority level - no IRQs */
 };
 
-EXPORT
+
 /**
  * @brief Type representing task/processor priority level
 */
 typedef uint8_t PRIO;
 
-EXPORT
+
 /**
  * @brief Lowest vector available for non-kernel IRQs
 */
 #define IT_IRQ_VECTOR_BASE 48
 
-EXPORT
+
 /**
  * @brief First vector available for IRQs
 */
 #define IT_FIRST_INTERRUPT_VECTOR 32
 
-EXPORT
+
 /**
  * @brief Last vector available for IRQs
  */
@@ -61,9 +66,9 @@ EXPORT
  */
 #define IT_SYSTEM_TIMER_VECTOR IT_FIRST_INTERRUPT_VECTOR
 
-EXPORT
+
 /**
- * @brief Thight loop CPU "hint"
+ * @brief Tight loop CPU "hint"
  */
 #define TIGHT_LOOP_HINT() ASM("pause" : : : "memory")
 
@@ -74,7 +79,7 @@ EXPORT
 
 #endif
 
-EXPORT
+
 #if defined(__i686__)
 struct HalCpuState
 {
@@ -85,7 +90,17 @@ struct HalCpuState
     uint16_t es; //task extra segment register
     uint16_t fs; //task extra segment register
     uint16_t gs; //task extra segment register
-};
+
+    struct KeSpinlock *userPageTableLock;
+} PACKED;
 #endif
+
+struct HalCpuExtensions
+{
+    uint8_t lapicId;
+    bool bootstrap;
+};
+
+END_EXPORT_API
 
 #endif

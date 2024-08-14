@@ -4,7 +4,8 @@
 #include "defines.h"
 #include <stdint.h>
 
-EXPORT
+EXPORT_API
+
 enum IoBusType
 {
     IO_BUS_TYPE_UNKNOWN = 0,
@@ -14,7 +15,7 @@ enum IoBusType
     IO_BUS_TYPE_ISA,
 };
 
-EXPORT
+
 /**
  * @brief Bus location
 */
@@ -36,7 +37,7 @@ union IoBusId
     uint64_t u64; /**< 64-bit unsigned int */
 };
 
-EXPORT
+
 /**
  * @brief Common PCI configuration space header
 */
@@ -123,11 +124,11 @@ struct IoPciDeviceHeader
     };
 } PACKED;
 
-EXPORT
+
 #define PCI_HEADER_TYPE_MASK 0x7F
 #define PCI_HEADER_TYPE_MULTIFUNCTION 0x80
 
-EXPORT
+
 #define PCI_HEADER_COMMAND_IO_SPACE 0x01
 #define PCI_HEADER_COMMAND_MEMORY_SPACE 0x02
 #define PCI_HEADER_COMMAND_BUS_MASTER 0x04
@@ -139,7 +140,7 @@ EXPORT
 #define PCI_HEADER_COMMAND_SERR 0x100
 #define PCI_HEADER_COMMAND_FAST_BACK_BACK 0x200
 
-EXPORT
+
 #define PCI_HEADER_STATUS_CAPABILITES 0x10
 #define PCI_HEADER_STATUS_66MHZ_CAPABLE 0x20
 #define PCI_HEADER_STATUS_FAST_BACK_BACK_CAPABLE 0x80
@@ -154,6 +155,6 @@ EXPORT
 #define PCI_HEADER_STATUS_SIGNALED_SYSTEM_ERROR 0x4000
 #define PCI_HEADER_STATUS_DETECTED_PARITY_ERROR 0x8000
 
-
+END_EXPORT_API
 
 #endif

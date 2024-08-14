@@ -1,6 +1,8 @@
 Page size is 4096 B.
 Kernel virtual memory organization:
-0xD0000000 - kernel image (128 MiB)
+0xD0000000 - process data (96 MiB)
+    - (max kernel mode threads per process) * 20 KiB
+0xD6000000 - kernel image (32 MiB)
 0xD8000000 - kernel heap (256 MiB)
 0xE8000000 - kernel mode drivers (256 MiB)
 0xF8000000 - dynamically mapped memory (124 MiB) - for memory mapped I/O and mapping previously allocated physical memory

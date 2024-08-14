@@ -5,14 +5,17 @@
 #include "defines.h"
 #include "ob/ob.h"
 #include "hal/archdefs.h"
+#include "config.h"
+#include "hal/cpu.h"
 
-EXPORT
+EXPORT_API
+
 struct ObObjectHeader;
-struct _KeSemaphore;
-struct _KeMutex;
+struct KeSemaphore;
+struct KeMutex;
 struct IoFileHandle;
 
-EXPORT
+
 /**
  * @brief Task states
 */
@@ -25,7 +28,7 @@ enum KeTaskState
     TASK_TERMINATED, //task was terminated and should be removed completely
 };
 
-EXPORT
+
 /**
  * @brief Task major priority/scheduling policy
 */
@@ -38,7 +41,7 @@ enum KeTaskMajorPriority
     PRIORITY_LOWEST = 4,
 };
 
-EXPORT
+
 /**
  * @brief Reason for task block (task state = TASK_WAITING)
 */
@@ -51,37 +54,61 @@ enum KeTaskBlockReason
     TASK_BLOCK_EVENT,
 };
 
+/**
+ * @brief Task type
+ */
+enum KeTaskType
+{
+    KE_TASK_TYPE_PROCESS, /**< Process, that is, the very first task with given memory space */
+    KE_TASK_TYPE_THREAD, /**< Thread, that is, a child task created for given parent process */
+};
+
+/**
+ * @brief Max task name length
+ */
+#define TCB_MAX_NAME_LENGTH (64)
+
+#define TCB_MINOR_PRIORITY_LIMIT (15)
 
 
-EXPORT
-#define TCB_MAX_NAME_LENGTH (64) //max task name lanegth
-#define TCB_MINOR_PRIORITY_LIMIT (15) //task priority limit
-
-EXPORT
 #define TCB_DEFAULT_MAJOR_PRIORITY (PRIORITY_NORMAL) //task default scheduling policy
 #define TCB_DEFAULT_MINOR_PRIORITY (7) //task default priority
 
-EXPORT
+/**
+ * @brief Task ID type
+ */
+typedef int KE_TASK_ID;
+
 /**
  * @brief A structure storing all task data
 */
 struct KeTaskControlBlock
 {
-    struct ObObjectHeader objectHeader;
+    struct ObObjectHeader objectHeader; /**< Object manager header */
 
-    struct HalCpuState cpu;
+    enum KeTaskType type; /**< Task type */
 
-    void *mathState;
+    struct HalCpuState cpu; /**< Architecture-specific CPU context */
+    void *mathState; /**< Architecture-specific FPU context */
 
-    uintptr_t userStackSize; //memory currently allocated for process stack
-    uintptr_t kernelStackSize;
-    uintptr_t heapTop;
-    uintptr_t heapSize;
+    uintptr_t userStackSize; /**< Current user mode stack size */
+    void *userStackTop; /**< Initial user mode stack top */
+    uintptr_t kernelStackSize; /**< Current kernel mode stack size */
+    void *kernelStackTop; /**< Initial kernel mode stack top */
+    void *heapTop; /**< Current user mode heap top */
+    uintptr_t heapSize; /**< Current user mode heap size */
 
-    PrivilegeLevel pl;
+    void *image; /**< Image start address */
+    uintptr_t imageSize; /**< Image size */
+    
+    PrivilegeLevel pl; /**< Task privilege level */
 
-    char name[TCB_MAX_NAME_LENGTH + 1]; //task name
-    char *path; //task image path
+    char name[TCB_MAX_NAME_LENGTH + 1]; /**< Task name */
+    char *path; /**< Task image path */
+
+    uintptr_t taskCount; /**< Number of tasks associated with this process */
+    uintptr_t freeTaskIds[MAX_KERNEL_MODE_THREADS - 1]; /**< Free local IDs for children tasks */
+    uintptr_t threadId; /**< Thread ID within a task, starting from 1 */
 
     struct
     {
@@ -89,9 +116,8 @@ struct KeTaskControlBlock
         uint32_t openFileCount;
     } files;
     
-    uint16_t pid; //unique process ID
-    uint16_t tid; //unique task ID
-    struct KeTaskControlBlock *parent; //parent process for owned threads
+    KE_TASK_ID tid; //unique task ID
+    struct KeTaskControlBlock *parent; //parent process of this thread
 
     enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
     uint8_t minorPriority; //task minor priority
@@ -103,8 +129,16 @@ struct KeTaskControlBlock
 
     uint64_t waitUntil; //terminal time of sleep or timeout when acquiring mutex
 
-    struct _KeMutex *mutex;
-    struct _KeSemaphore *semaphore;
+    // struct
+    // {
+    //     struct KeTaskControlBlock *attachedTo; /**< Task to which this task is attached to */
+    //     struct KeTaskControlBlock *attachee; /**< Task which is attached to this task */
+    //     KeMutex *mutex; /**< Mutex to be acquired in order to attach to this task */
+    // } attach; /**< Task memory space attachment state */
+    
+
+    struct KeMutex *mutex;
+    struct KeSemaphore *semaphore;
     struct KeRwLock *rwLock;
     struct KeTaskControlBlock *nextAux;
     struct KeTaskControlBlock *previousAux;
@@ -127,20 +161,25 @@ struct KeTaskControlBlock
     struct KeTaskControlBlock *next; //next task in queue
     struct KeTaskControlBlock *previous; //previous task in queue
     struct KeTaskControlBlock **queue; //queue top handle
-} PACKED;
+};
 
+/**
+ * @brief Free TCB-related structures and destroy TCB
+ * @param *tcb TCB to be destroyed
+ */
+void KeDestroyTCB(struct KeTaskControlBlock *tcb);
 
 /**
  * @brief Allocate and prepare task control block
  * @param pl Privilege level
  * @param *name Task name
- * @param *path Task image path
+ * @param *path Task image path - might be NULL
  * @return Task control block pointer or NULL on memory allocation failure
  * @warning This function is used internally. Use KeCreateProcess() to create process.
 */
 struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, const char *path);
 
-EXPORT
+
 /**
  * @brief Create process without default bootstrapping routine
  * @param *name Process name
@@ -153,10 +192,10 @@ EXPORT
  * @warning Image loading and memory allocation is responsibility of caller.
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-EXTERN STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
+STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
-EXPORT
+
 /**
  * @brief Create process
  * 
@@ -169,6 +208,8 @@ EXPORT
  * @return Status code
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-EXTERN STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
+STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
+
+END_EXPORT_API
 
 #endif

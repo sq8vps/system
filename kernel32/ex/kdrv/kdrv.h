@@ -19,16 +19,17 @@
  * @{
 */
 
-EXPORT
+EXPORT_API
+
 struct ExDriverObject;
 struct IoDeviceObject;
 struct IoRp;
 
-EXPORT
+
 #define DRIVER_ENTRY DriverEntry
 typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 
-EXPORT
+
 struct ExDriverObject
 {
     struct ObObjectHeader objectHeader;
@@ -49,7 +50,7 @@ struct ExDriverObject
     struct ExDriverObject *previous;
 };
 
-EXPORT
+
 struct ExDriverObjectList
 {
     struct ExDriverObject *this;
@@ -69,6 +70,15 @@ struct ExDriverObjectList
 STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectList **drivers, uint16_t *driverCount);
 
 /**
+ * @brief Find driver by memory address (e.g. for debugging)
+ * @param *address Input/output pointer to memory address buffer. The driver base address is returned to this variable.
+ * @return Matched driver object or NULL if no matching object was found
+*/
+struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
+
+END_EXPORT_API
+
+/**
  * @brief Load given driver
  * @param *path Driver file path
  * @param **driverObject Output pointer with created driver object
@@ -76,13 +86,6 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
 */
 INTERNAL STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject);
 
-EXPORT
-/**
- * @brief Find driver by memory address (e.g. for debugging)
- * @param *address Input/output pointer to memory address buffer. The driver base address is returned to this variable.
- * @return Matched driver object or NULL if no matching object was found
-*/
-EXTERN struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
 
 /**
  * @}

@@ -9,13 +9,14 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
+
 /**
  * @brief Resolve kernel symbol
  * @param name Kernel symbol name
  * @return Kernel symbol value
  * @attention Kernel symbol table must be loaded first using ExLoadKernelSymbols()
 */
-extern uintptr_t ExGetKernelSymbol(const char *name);
+uintptr_t ExGetKernelSymbol(const char *name);
 
 
 #ifdef __cplusplus

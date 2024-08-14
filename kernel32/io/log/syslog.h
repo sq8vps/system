@@ -5,7 +5,8 @@
 #include "defines.h"
 #include <stdarg.h>
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief Syslog message types
 */
@@ -16,7 +17,7 @@ enum IoSyslogMessageType
     SYSLOG_ERROR,
 };
 
-EXPORT
+
 /**
  * @brief Syslog object handle
 */
@@ -27,22 +28,22 @@ struct IoSyslogHandle
     char *name;
 };
 
-EXPORT
+
 /**
  * @brief Open syslog
  * @param *name Module name to be used in syslog
  * @return Syslog object handle or NULL on failure
 */
-EXTERN struct IoSyslogHandle* IoOpenSyslog(const char *name);
+struct IoSyslogHandle* IoOpenSyslog(const char *name);
 
-EXPORT
+
 /**
  * @brief Close syslog
  * @param *handle Syslog handle
 */
-EXTERN void IoCloseSyslog(struct IoSyslogHandle *handle);
+void IoCloseSyslog(struct IoSyslogHandle *handle);
 
-EXPORT
+
 /**
  * @brief Write to syslog
  * @param *h Syslog handle
@@ -51,9 +52,9 @@ EXPORT
  * @param args Additional arguments
  * @return Status code
 */
-EXTERN STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, va_list args);
+STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, va_list args);
 
-EXPORT
+
 /**
  * @brief Write to syslog
  * @param *h Syslog handle
@@ -63,6 +64,8 @@ EXPORT
  * @return Status code
 */
 __attribute__ ((format (printf, 3, 4)))
-EXTERN STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
+STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
+
+END_EXPORT_API
 
 #endif

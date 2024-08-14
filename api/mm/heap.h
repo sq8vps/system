@@ -9,6 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
+
 /**
  * @brief Allocate aligned memory on kernel heap
  * @param n Count of bytes to allocate
@@ -17,13 +18,15 @@ extern "C"
 */
 void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
 
+
 /**
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-extern void *MmAllocateKernelHeap(uintptr_t n);
+void *MmAllocateKernelHeap(uintptr_t n);
+
 
 /**
  * @brief Allocate memory on kernel heap and clear it
@@ -31,7 +34,8 @@ extern void *MmAllocateKernelHeap(uintptr_t n);
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-extern void *MmAllocateKernelHeapZeroed(uintptr_t n);
+void *MmAllocateKernelHeapZeroed(uintptr_t n);
+
 
 /**
  * @brief Allocate memory on kernel heap
@@ -39,6 +43,7 @@ extern void *MmAllocateKernelHeapZeroed(uintptr_t n);
  * @return Pointer to allocated memory or NULL on failure
 */
 #define malloc(n) MmAllocateKernelHeap(n)
+
 
 /**
  * @brief Allocate memory on kernel heap and clear it
@@ -49,11 +54,13 @@ extern void *MmAllocateKernelHeapZeroed(uintptr_t n);
 */
 #define calloc(n, size) MmAllocateKernelHeapZeroed((n) * (size))
 
+
 /**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
-extern void MmFreeKernelHeap(const void *ptr);
+void MmFreeKernelHeap(const void *ptr);
+
 
 /**
  * @brief Free memory allocated on kernel heap

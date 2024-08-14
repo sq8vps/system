@@ -6,7 +6,8 @@
 #include "bus.h"
 #include "hal/interrupt.h"
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief IRQ entry
 */
@@ -18,7 +19,7 @@ struct IoIrqEntry
     struct HalInterruptParams params; /**< IRQ parameters */
 };
 
-EXPORT
+
 /**
  * @brief Special multi-level IRQ map structure for bus controllers
 */
@@ -32,7 +33,7 @@ struct IoIrqMap
     struct IoIrqMap *child; /**< Child controller IRQ map */
 };
 
-EXPORT
+
 /**
  * @brief Device resource types
 */
@@ -43,7 +44,7 @@ enum IoDeviceResourceType
     IO_RESOURCE_IRQ_MAP,
 };
 
-EXPORT
+
 /**
  * @brief Device resource descriptor
 */
@@ -64,12 +65,14 @@ struct IoDeviceResource
     };
 };
 
-EXPORT
+
 /**
  * @brief Copy IRQ map
  * @param *map Map starting point
  * @return Copied map
 */
-EXTERN struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map);
+struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map);
+
+END_EXPORT_API
 
 #endif

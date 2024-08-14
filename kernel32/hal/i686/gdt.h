@@ -49,7 +49,7 @@
 /**
  * @brief Get GDT offset from entry number
  */
-#define GDT_OFFSET(entry) (8 * (entry))
+#define GDT_OFFSET(entry) (8 *(entry))
 
 /**
  * @brief Get GDT entry number from offset
@@ -62,9 +62,15 @@
 #define GDT_CPU(entry) ((entry) - 5)
 
 /**
- * @brief Initialize Global Descriptor Table
+ * @brief Initialize Global Descriptor Table and apply to current CPU
  */
 INTERNAL void GdtInit(void);
+
+/**
+ * @brief Apply GDT to current CPU
+ * @attention GDT must be initialized first with \a GdtInit()
+ */
+INTERNAL void GdtApply(void);
 
 /**
  * @brief Create TSS for CPU and add to GDT

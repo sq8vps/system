@@ -20,31 +20,31 @@ STATUS ExMountVolume(struct IoDeviceObject *disk)
     if(NULL != ExFsDriverState.list)
     {
         drv = ExFsDriverState.list;
-        ObLockObject(drv);
+        
         while(drv)
         {
             if(NULL != drv->mount)
             {
                 drv->referenceCount++;
-                ObUnlockObject(drv);
+                
 
                 status = drv->mount(drv, disk);
 
-                ObLockObject(drv);
+                
                 drv->referenceCount--;
                 if(OK == status)
                 {
-                    ObUnlockObject(drv);
+                    
                     KeReleaseMutex(&(ExFsDriverState.mutex));
                     return OK;
                 }
             }
             struct ExDriverObject *next = drv->next;
-            ObUnlockObject(drv);
+            
             drv = next;
-            ObLockObject(drv);
+            
         }
-        ObUnlockObject(drv);
+        
     }
     else
     {
@@ -55,19 +55,19 @@ STATUS ExMountVolume(struct IoDeviceObject *disk)
             return status;
         }
         
-        ObLockObject(drv);
+        
         drv->referenceCount++;
-        ObUnlockObject(drv);
+        
 
         status = drv->mount(drv, disk);
 
-        ObLockObject(drv);
+        
         drv->referenceCount--;
         if(OK == status)
         {
             ExFsDriverState.list = drv;
         }
-        ObUnlockObject(drv);
+        
     }
 
     KeReleaseMutex(&(ExFsDriverState.mutex));

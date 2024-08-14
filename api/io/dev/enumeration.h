@@ -9,8 +9,6 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-struct IoDeviceNode;
-
 
 #ifdef __cplusplus
 }

@@ -9,10 +9,13 @@ extern "C"
 
 #include "defines.h"
 #include <stdbool.h>
+
 struct IoDeviceObject;
 struct IoVfsNode;
 
+
 typedef void (*IoReadWriteCompletionCallback)(STATUS status, uint64_t actualSize, void *context);
+
 
 /**
  * @brief Perform asynchronous read or write
@@ -27,8 +30,9 @@ typedef void (*IoReadWriteCompletionCallback)(STATUS status, uint64_t actualSize
  * @param forceDirectIo True to force direct I/O
  * @return Status code
  */
-extern STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
+STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
                 IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo);
+
 
 /**
  * @brief Perfrom synchronous device read
@@ -43,7 +47,7 @@ extern STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNo
  * @param **buffer Output buffer pointer, allocated by this function
  * @return Status code
 */
-extern STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
+STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
 
 
 #ifdef __cplusplus

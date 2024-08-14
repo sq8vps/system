@@ -6,7 +6,8 @@
 #include "bus.h"
 #include "ob/ob.h"
 
-EXPORT
+EXPORT_API
+
 struct IoRp;
 struct IoRpQueue;
 struct IoDeviceObject;
@@ -14,16 +15,16 @@ struct IoVfsNode;
 struct IoDeviceResource;
 struct KeTaskControlBlock;
 
-EXPORT
+
 typedef STATUS (*IoRpCompletionCallback)(struct IoRp *rp, void *context);
 typedef void (*IoProcessRpCallback)(struct IoRp *rp);
 typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
-EXPORT
+
 typedef uint32_t IoRpFlags; /**< Request Packet flags */
 #define IO_RP_FLAG_EOF 0x1 /**< Read incomplete, end of file encountered - \a status is set to \a OK, chech \a size field */
 
-EXPORT
+
 enum IoRpCode
 {
     IO_RP_UNKNOWN = 0, /**< Unknown request, do not use */
@@ -50,7 +51,7 @@ enum IoRpCode
     IO_RP_FILESYSTEM_CONTROL,
 };
 
-EXPORT
+
 struct IoRp
 {
     struct ObObjectHeader objectHeader;
@@ -134,7 +135,7 @@ struct IoRp
     struct IoRpQueue *queue;
 };
 
-EXPORT
+
 struct IoRpQueue
 {
     IoProcessRpCallback callback;
@@ -143,36 +144,30 @@ struct IoRpQueue
     uint8_t busy : 1;
 };
 
-/**
- * @brief Initialize RP slab cache
- * @return Status code
-*/
-INTERNAL STATUS IoInitializeRpCache(void);
 
-EXPORT
 /**
  * @brief Create empty Request Packet
  * @return Created Request Packet pointer or NULL on failure
 */
-EXTERN struct IoRp *IoCreateRp(void);
+struct IoRp *IoCreateRp(void);
 
-EXPORT
+
 /**
  * @brief Free Request Packet
  * @param *rp Request Packet pointer obtained from \a IoCreateRp()
 */
-EXTERN void IoFreeRp(struct IoRp *rp);
+void IoFreeRp(struct IoRp *rp);
 
-EXPORT
+
 /**
  * @brief Create Request Packet queue
  * @param callback Callback function for processing queued RPs
  * @param **queue Output RP queue pointer (the memory is allocated by the function)
  * @return Status code
 */
-EXTERN STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue);
+STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue);
 
-EXPORT
+
 /**
  * @brief Start RP processing, that is append it to the queue
  * @param *queue Destination RP queue
@@ -180,35 +175,35 @@ EXPORT
  * @param cancelCb Callback function required for RP cancelling; called after RP is removed from the queue. NULL if not used.
  * @return Status code
 */
-EXTERN STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb);
+STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb);
 
-EXPORT
+
 /**
  * @brief Finalize Request Packet processing
  * @param *rp Input Request Packet
  * @return Status code
  * @attention This function frees the memory when there is a completion callback registered
 */
-EXTERN STATUS IoFinalizeRp(struct IoRp *rp);
+STATUS IoFinalizeRp(struct IoRp *rp);
 
-EXPORT
+
 /**
  * @brief Cancel pending Request Packet
  * @param *rp RP to be cancelled
  * @return Status code
  * @attention The cancel callback routine must be provided
 */
-EXTERN STATUS IoCancelRp(struct IoRp *rp);
+STATUS IoCancelRp(struct IoRp *rp);
 
-EXPORT
+
 /**
  * @brief Get current Request Packet position in device stack
  * @param *rp Request Packet pointer
  * @return Current subdevice object
 */
-EXTERN struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
+struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
 
-EXPORT
+
 /**
  * @brief Mark Request Packet as pending
  * 
@@ -217,9 +212,9 @@ EXPORT
  * from the RP dispatch routine. The driver should not call this routine when passing RP to another driver.
  * @param *rp Request Packet
 */
-EXTERN void IoMarkRpPending(struct IoRp *rp);
+void IoMarkRpPending(struct IoRp *rp);
 
-EXPORT
+
 /**
  * @brief Wait for RP completion
  * 
@@ -228,14 +223,22 @@ EXPORT
  * @param *rp Request Packet
  * @warning This function must not be called when \a IoSendRp() was not successful.
 */
-EXTERN void IoWaitForRpCompletion(struct IoRp *rp);
+void IoWaitForRpCompletion(struct IoRp *rp);
 
-EXPORT
+
 /**
  * @brief Clone exisiting RP
  * @param *rp RP to clone
  * @return New cloned RP or NULL on failure
  */
-EXTERN struct IoRp *IoCloneRp(struct IoRp *rp);
+struct IoRp *IoCloneRp(struct IoRp *rp);
+
+END_EXPORT_API
+
+/**
+ * @brief Initialize RP slab cache
+ * @return Status code
+*/
+INTERNAL STATUS IoInitializeRpCache(void);
 
 #endif

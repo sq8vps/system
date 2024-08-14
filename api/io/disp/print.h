@@ -9,6 +9,7 @@ extern "C"
 
 #include "defines.h"
 #include <stdarg.h>
+
 /**
  * @brief Print formatted output to currently active output
  * @param *format Format string
@@ -18,7 +19,8 @@ extern "C"
  * console output. Drivers should use \a IoWriteSyslog() instead.
 */
 __attribute__ ((format (printf, 1, 2)))
-extern int IoPrint(const char *format, ...);
+int IoPrint(const char *format, ...);
+
 
 /**
  * @brief Print formatted output to currently active output
@@ -28,7 +30,8 @@ extern int IoPrint(const char *format, ...);
  * @attention This function does not guarantee any output. The output is written to currently available and active
  * console output. Drivers should use \a IoWriteSyslog() instead.
 */
-extern int IoVprint(const char *format, va_list args);
+int IoVprint(const char *format, va_list args);
+
 
 /**
  * @brief Compose a formatted string
@@ -37,7 +40,8 @@ extern int IoVprint(const char *format, va_list args);
  * @return Count of characters written
 */
 __attribute__ ((format (printf, 2, 3)))
-extern int IoSprint(char *s, const char *format, ...);
+int IoSprint(char *s, const char *format, ...);
+
 
 /**
  * @brief Compose a formatted string with length limit
@@ -47,7 +51,8 @@ extern int IoSprint(char *s, const char *format, ...);
  * @return Count of characters written
 */
 __attribute__ ((format (printf, 3, 4)))
-extern int IoSprintN(char *s, size_t n, const char *format, ...);
+int IoSprintN(char *s, size_t n, const char *format, ...);
+
 
 #ifndef DISABLE_KERNEL_STDLIB
 #define sprintf(str, ...) IoSprint(str, __VA_ARGS__)

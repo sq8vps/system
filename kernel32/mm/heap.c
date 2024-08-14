@@ -219,7 +219,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
     if(1 != __builtin_popcountll(align))
         return NULL;
 
-    KeAcquireSpinlock(&MmHeapAllocatorLock);
+    PRIO prio = KeAcquireSpinlock(&MmHeapAllocatorLock);
     if(NULL != MmHeapBlockHead)
     {
         struct MmHeapBlock *block = MmHeapBlockHead;
@@ -239,7 +239,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
                         {
                             asm("nop");
                         }
-                        KeReleaseSpinlock(&(MmHeapAllocatorLock));
+                        KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
                         return (void *)((uintptr_t)ret + META_SIZE);
                     }
                 }
@@ -270,7 +270,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
                     }
                 if (NULL != ret)
                 {
-                    KeReleaseSpinlock(&(MmHeapAllocatorLock));
+                    KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
                     return (void *)((uintptr_t)ret + META_SIZE);
                 }
             }
@@ -280,7 +280,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
     ret = MmHeapAllocateNewBlock(n, align);
 
     
-    KeReleaseSpinlock(&(MmHeapAllocatorLock));
+    KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
     if (NULL != ret)
     {
                             if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
@@ -313,7 +313,7 @@ void MmFreeKernelHeap(const void *ptr)
     if(NULL == ptr)
         return;
     
-    KeAcquireSpinlock(&(MmHeapAllocatorLock));
+    PRIO prio = KeAcquireSpinlock(&(MmHeapAllocatorLock));
     struct MmHeapBlock *block = (struct MmHeapBlock *)((uintptr_t)ptr - META_SIZE);
     block->free = true;
 
@@ -363,7 +363,7 @@ void MmFreeKernelHeap(const void *ptr)
 
     ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
 
-    KeReleaseSpinlock(&MmHeapAllocatorLock);
+    KeReleaseSpinlock(&MmHeapAllocatorLock, prio);
 }
 
 #if MM_KERNEL_HEAP_START & (MM_KERNEL_HEAP_ALIGNMENT - 1)

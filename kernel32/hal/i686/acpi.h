@@ -22,7 +22,7 @@
  * @addtogroup acpi
  * @{
 */
-STATUS AcpiInit(uintptr_t *lapicAddress);
+INTERNAL STATUS AcpiInit(uintptr_t *lapicAddress);
 
 /**
  * @}

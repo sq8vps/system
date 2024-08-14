@@ -3,9 +3,10 @@
 #include "acpi.h"
 #include "mm/dynmap.h"
 #include "common.h"
-#include "cpu.h"
+#include "hal/cpu.h"
 #include "ioapic.h"
 #include "irq.h"
+#include "dcpuid.h"
 
 #define ACPI_BDA_MEMORY_SIZE_LOCATION 0x413 //here the number of kilobytes between 0 and EBDA is stored
 #define ACPI_BIOS_AREA_SPACE_LOCATION 0xE0000 //another alternative location of EBDA - 64 kiB BIOS memory
@@ -196,10 +197,12 @@ static void AcpiReadEntries(struct AcpiMadt *hdr)
                     entry = (uint8_t*)entry + cpu->length;
                     break;
                 }
-                PRINT("CPU with APIC ID = 0x%X\n", cpu->lapicId);
-                CpuAdd(cpu->lapicId, 
-                    ((cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ENABLED) || (cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE)),
-                    !!(cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ENABLED));
+                //ACPI apparently does not inform whether the CPU is bootstrap or not
+                bool isBootstrap = (CpuidGetApicId() == cpu->lapicId);
+                PRINT("%sCPU with APIC ID = 0x%X\n", isBootstrap ? "Bootstrap " : "", cpu->lapicId);
+                struct HalCpuExtensions ext = {.bootstrap = isBootstrap, .lapicId = cpu->lapicId};
+                HalRegisterCpu(&ext,
+                    ((cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ENABLED) || (cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE)));
                 entry = (uint8_t*)entry + cpu->length;
                 break;
             case ACPI_MADT_ENTRY_IOAPIC:

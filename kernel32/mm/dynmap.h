@@ -22,7 +22,8 @@
  * @{
 */
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief Reserve dynamic memory pool without mapping
  * @param n Byte count
@@ -31,18 +32,18 @@ EXPORT
  * The pointer does not point to any physical memory. 
  * To reserve and map dynamic memory, use \a MmMapDynamicMemory()
 */
-EXTERN void *MmReserveDynamicMemory(uintptr_t n);
+void *MmReserveDynamicMemory(uintptr_t n);
 
-EXPORT
+
 /**
  * @brief Free reservation of dynamic memory pool
  * @param *ptr Memory pointer from \a MmReserveDynamicMemory()
  * @return Count of bytes previously reserved
  * @attention This function does not unmap the memory.
 */
-EXTERN uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
+uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
 
-EXPORT
+
 /**
  * @brief Map dynamic kernel memory
  * @param pAddress Physical address
@@ -50,14 +51,16 @@ EXPORT
  * @param flags Flags to apply to mapped memory (present and writable flags are always added)
  * @return Pointer to mapped virtual memory
 */
-EXTERN void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
+void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
 
-EXPORT
+
 /**
  * @brief Unmap dynamic kernel memory
  * @param *ptr Memory pointer (from MmMapDynamicMemory)
 */
-EXTERN void MmUnmapDynamicMemory(void *ptr);
+void MmUnmapDynamicMemory(void *ptr);
+
+END_EXPORT_API
 
 /**
  * @brief Initialize dynamic kernel memory module

@@ -1,7 +1,8 @@
 #include "exceptions.h"
 #include "ke/core/panic.h"
-#include "it/it.h"
+#include "hal/i686/it/it.h"
 #include "hal/i686/fpu.h"
+#include "it/it.h"
 
 //debug interrupt handlers
 
@@ -126,30 +127,56 @@ IT_HANDLER static void ItControlPriotectionHandler(struct ItFrame *f, uint32_t e
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, CONTROL_PROTECTION_EXCEPTION, error, 0, 0);
 }
 
-extern STATUS InstallExceptionHandler(enum ItExceptionVector vector, void *isr);
-
-void InstallExceptionHandlers(void)
+/**
+ * @brief Enum containing exception vectors
+*/
+enum ItExceptionVector
 {
-    InstallExceptionHandler(IT_EXCEPTION_DIVIDE, ItDivisionByZeroHandler);
-	InstallExceptionHandler(IT_EXCEPTION_DEBUG, ItDebugHandler);
-	InstallExceptionHandler(IT_EXCEPTION_NMI, ItNmiHandler);
-	InstallExceptionHandler(IT_EXCEPTION_BREAKPOINT, ItBreakpointHandler);
-	InstallExceptionHandler(IT_EXCEPTION_OVERFLOW, ItOverflowHandler);
-	InstallExceptionHandler(IT_EXCEPTION_BOUND_EXCEEDED, ItBoundExceededHandler);
-	InstallExceptionHandler(IT_EXCEPTION_INVALID_OPCODE, ItInvalidOpcodeHandler);
-	InstallExceptionHandler(IT_EXCEPTION_DEVICE_UNAVAILABLE, ItDeviceUnavailableHandler);
-	InstallExceptionHandler(IT_EXCEPTION_DOUBLE_FAULT, ItDoubleFaultHandler);
-	InstallExceptionHandler(IT_EXCEPTION_COPROCESSOR_OVERRUN, ItCoprocessorOverrunHandler);
-	InstallExceptionHandler(IT_EXCEPTION_INVALID_TSS, ItInvalidTssHandler);
-	InstallExceptionHandler(IT_EXCEPTION_SEGMENT_NOT_PRESENT, ItSegmentNotPresentHandler); 
-	InstallExceptionHandler(IT_EXCEPTION_STACK_FAULT, ItStackFaultHandler);
-	InstallExceptionHandler(IT_EXCEPTION_GENERAL_PROTECTION, ItGeneralProtectionHandler);
-	InstallExceptionHandler(IT_EXCEPTION_PAGE_FAULT, ItPageFaultHandler);
-	InstallExceptionHandler(IT_EXCEPTION_FPU_ERROR, ItFpuHandler);
-	InstallExceptionHandler(IT_EXCEPTION_ALIGNMENT_CHECK, ItAlignmentCheckHandler);
-	InstallExceptionHandler(IT_EXCEPTION_MACHINE_CHECK, ItMachineCheckHandler);
-	InstallExceptionHandler(IT_EXCEPTION_SIMD_FPU, ItSimdFpuHandler);
-	InstallExceptionHandler(IT_EXCEPTION_VIRTUALIZATION, ItVirtualizationExceptionHandler);
-	InstallExceptionHandler(IT_EXCEPTION_CONTROL_PROTECTION, ItControlPriotectionHandler);
+    IT_EXCEPTION_DIVIDE = 0,
+    IT_EXCEPTION_DEBUG = 1,
+    IT_EXCEPTION_NMI = 2,
+    IT_EXCEPTION_BREAKPOINT = 3,
+    IT_EXCEPTION_OVERFLOW = 4,
+    IT_EXCEPTION_BOUND_EXCEEDED = 5,
+    IT_EXCEPTION_INVALID_OPCODE = 6,
+    IT_EXCEPTION_DEVICE_UNAVAILABLE = 7,
+    IT_EXCEPTION_DOUBLE_FAULT = 8,
+    IT_EXCEPTION_COPROCESSOR_OVERRUN = 9,
+    IT_EXCEPTION_INVALID_TSS = 10,
+    IT_EXCEPTION_SEGMENT_NOT_PRESENT = 11,
+    IT_EXCEPTION_STACK_FAULT = 12,
+    IT_EXCEPTION_GENERAL_PROTECTION = 13,
+    IT_EXCEPTION_PAGE_FAULT = 14,
+    IT_EXCEPTION_FPU_ERROR = 16,
+    IT_EXCEPTION_ALIGNMENT_CHECK = 17,
+    IT_EXCEPTION_MACHINE_CHECK = 18,
+    IT_EXCEPTION_SIMD_FPU = 19,
+    IT_EXCEPTION_VIRTUALIZATION = 20,
+    IT_EXCEPTION_CONTROL_PROTECTION = 21,
+};
+
+void I686InstallAllExceptionHandlers(uint16_t cpu)
+{
+    I686InstallExceptionHandler(cpu, IT_EXCEPTION_DIVIDE, ItDivisionByZeroHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_DEBUG, ItDebugHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_NMI, ItNmiHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_BREAKPOINT, ItBreakpointHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_OVERFLOW, ItOverflowHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_BOUND_EXCEEDED, ItBoundExceededHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_INVALID_OPCODE, ItInvalidOpcodeHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_DEVICE_UNAVAILABLE, ItDeviceUnavailableHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_DOUBLE_FAULT, ItDoubleFaultHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_COPROCESSOR_OVERRUN, ItCoprocessorOverrunHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_INVALID_TSS, ItInvalidTssHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_SEGMENT_NOT_PRESENT, ItSegmentNotPresentHandler); 
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_STACK_FAULT, ItStackFaultHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_GENERAL_PROTECTION, ItGeneralProtectionHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_PAGE_FAULT, ItPageFaultHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_FPU_ERROR, ItFpuHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_ALIGNMENT_CHECK, ItAlignmentCheckHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_MACHINE_CHECK, ItMachineCheckHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_SIMD_FPU, ItSimdFpuHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_VIRTUALIZATION, ItVirtualizationExceptionHandler);
+	I686InstallExceptionHandler(cpu, IT_EXCEPTION_CONTROL_PROTECTION, ItControlPriotectionHandler);
 }
 

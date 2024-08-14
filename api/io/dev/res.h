@@ -11,6 +11,7 @@ extern "C"
 #include "defines.h"
 #include "bus.h"
 #include "hal/interrupt.h"
+
 /**
  * @brief IRQ entry
 */
@@ -21,6 +22,7 @@ struct IoIrqEntry
     uint32_t pin; /**< Interrupt pin, bus-specific */
     struct HalInterruptParams params; /**< IRQ parameters */
 };
+
 
 /**
  * @brief Special multi-level IRQ map structure for bus controllers
@@ -35,6 +37,7 @@ struct IoIrqMap
     struct IoIrqMap *child; /**< Child controller IRQ map */
 };
 
+
 /**
  * @brief Device resource types
 */
@@ -44,6 +47,7 @@ enum IoDeviceResourceType
     IO_RESOURCE_IRQ,
     IO_RESOURCE_IRQ_MAP,
 };
+
 
 /**
  * @brief Device resource descriptor
@@ -65,12 +69,13 @@ struct IoDeviceResource
     };
 };
 
+
 /**
  * @brief Copy IRQ map
  * @param *map Map starting point
  * @return Copied map
 */
-extern struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map);
+struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map);
 
 
 #ifdef __cplusplus

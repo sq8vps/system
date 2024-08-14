@@ -104,7 +104,7 @@ STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct IoDeviceO
 
 static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t lba, uint64_t size, struct MmMemoryDescriptor *buffer)
 {
-    KeAcquireSpinlock(&(info->controller->channel[info->channel].lock));
+    PRIO prio = KeAcquireSpinlock(&(info->controller->channel[info->channel].lock));
     //clear Physical Region Descriptors
     IdeClearPrdTable(&(info->controller->channel[info->channel].prdt));
     //form PRD entries for this operation using provided memory descriptors
@@ -174,7 +174,7 @@ IdeStartReadWriteContinue:
     info->controller->channel[info->channel].operation.slot = info->drive;
     info->controller->channel[info->channel].operation.write = (true == write);
     info->controller->channel[info->channel].operation.busy = 1;
-    KeReleaseSpinlock(&(info->controller->channel[info->channel].lock));
+    KeReleaseSpinlock(&(info->controller->channel[info->channel].lock), prio);
 
     //store PRD table
     IdeWriteBmrPrdt(info->controller, info->channel, &(info->controller->channel[info->channel].prdt));
@@ -254,10 +254,10 @@ STATUS IdeIsr(void *context)
         {
             IdeWriteBmrCommand(info, i, 0);
             IdeWriteBmrStatus(info, i, bmrStatus | IDE_BMR_STATUS_INTERRUPT | IDE_BMR_STATUS_ERROR);
-            KeAcquireSpinlock(&(info->channel[i].lock));
+            PRIO prio = KeAcquireSpinlock(&(info->channel[i].lock));
             if(info->channel[i].operation.busy)
             {
-                KeReleaseSpinlock(&(info->channel[i].lock));
+                KeReleaseSpinlock(&(info->channel[i].lock), prio);
                 //after successful completion the activity bit must be cleared. Of course the error bit must be cleared too.
                 if(!(bmrStatus & IDE_BMR_STATUS_ACTIVE) && !(bmrStatus & IDE_BMR_STATUS_ERROR))
                 {
@@ -276,30 +276,30 @@ STATUS IdeIsr(void *context)
                     }
                     else //all data transferred
                     {
-                        KeAcquireSpinlock(&(info->channel[i].lock));
+                        PRIO prio = KeAcquireSpinlock(&(info->channel[i].lock));
                         //RP finalization
                         info->channel[i].rp->status = OK;
                         KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
                         CmMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
                         info->channel[i].operation.busy = 0;
-                        KeReleaseSpinlock(&(info->channel[i].lock));
+                        KeReleaseSpinlock(&(info->channel[i].lock), prio);
                     }
                     
                 }
                 else //failure
                 {
-                    KeAcquireSpinlock(&(info->channel[i].lock));
+                    PRIO prio = KeAcquireSpinlock(&(info->channel[i].lock));
                     //RP finalization
                     info->channel[i].rp->status = UNKNOWN_ERROR;
                     info->channel[i].rp->size = 0;
                     KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
                     CmMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
                     info->channel[i].operation.busy = 0;
-                    KeReleaseSpinlock(&(info->channel[i].lock));
+                    KeReleaseSpinlock(&(info->channel[i].lock), prio);
                 }
             }
             else
-                KeReleaseSpinlock(&(info->channel[i].lock));
+                KeReleaseSpinlock(&(info->channel[i].lock), prio);
         }
     }
     return OK;

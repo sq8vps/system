@@ -18,12 +18,12 @@ void *MmReserveDynamicMemory(uintptr_t n)
 {
     n = ALIGN_UP(n, MM_PAGE_SIZE);
     
-    KeAcquireSpinlock(&dynamicAllocatorMutex);
+    PRIO prio = KeAcquireSpinlock(&dynamicAllocatorMutex);
 
     struct MmAvlNode *region = MmAvlFindGreaterOrEqual(MM_DYNAMIC_SIZE_FREE_TREE, n);
     if(NULL == region) //no fitting region available
     {
-        KeReleaseSpinlock(&dynamicAllocatorMutex);
+        KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
         return NULL;
     }
     //else region is available
@@ -54,11 +54,11 @@ void *MmReserveDynamicMemory(uintptr_t n)
 
     node->val = n; //store size
 
-    KeReleaseSpinlock(&dynamicAllocatorMutex);
+    KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
     return (void*)vAddress;
 
 MmMapDynamicMemoryFail:
-    KeReleaseSpinlock(&dynamicAllocatorMutex);
+    KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
     return NULL;
 }
 
@@ -66,16 +66,17 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(void *ptr, bool unmap)
 {
     ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE);
 
-    KeAcquireSpinlock(&dynamicAllocatorMutex);
+    PRIO prio = KeAcquireSpinlock(&dynamicAllocatorMutex);
     struct MmAvlNode *this = MmAvlFindExactMatch(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
     if(NULL == this)
     {
-        KeReleaseSpinlock(&dynamicAllocatorMutex);
+        KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
         return 0;
     }
 
     uintptr_t n = this->val; //get size
     uintptr_t originalSize = n;
+    void *originalPtr = ptr;
     MmAvlDelete(&MM_DYNAMIC_ADDRESS_USED_TREE, this);
 
     //check if there is an adjacent free region with higher address
@@ -100,9 +101,9 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(void *ptr, bool unmap)
     MmAvlInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, n, (uintptr_t)ptr);
 
     if(unmap && (0 != originalSize))
-        HalUnmapMemoryEx((uintptr_t)ptr, originalSize);
+        HalUnmapMemoryEx((uintptr_t)originalPtr, originalSize);
 
-    KeReleaseSpinlock(&dynamicAllocatorMutex);
+    KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
     return originalSize;
 }
 
@@ -131,6 +132,8 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags)
 
 void MmUnmapDynamicMemory(void *ptr)
 {
+    if(NULL == ptr)
+        return;
     MmFreeDynamicMemoryReservationEx(ptr, true);
 }
 

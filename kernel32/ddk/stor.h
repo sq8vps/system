@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include "defines.h"
 
-EXPORT
+EXPORT_API
+
 struct IoDeviceObject;
 
-EXPORT
+
 /**
  * @brief Type specific operations for storage controller devices
 */
@@ -17,7 +18,7 @@ enum StorOperations
     STOR_GET_GEOMETRY,
 };
 
-EXPORT
+
 /**
  * @brief Structure describing CHS address
 */
@@ -28,7 +29,7 @@ struct StorChs
     uint32_t sector;
 };
 
-EXPORT
+
 /**
  * @brief Geometry structure for storage controller devices
 */
@@ -46,7 +47,7 @@ struct StorGeometry
     uint32_t sectorsPerTrack;
 };
 
-EXPORT
+
 /**
  * @brief Get disk device geometry
  * @param *target Target disk device BDO
@@ -54,7 +55,8 @@ EXPORT
  * @return Status code
  * @attention This function is always synchronous
 */
-EXTERN STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geometry);
+STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geometry);
 
+END_EXPORT_API
 
 #endif

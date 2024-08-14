@@ -4,14 +4,15 @@
 #include "defines.h"
 #include <stdbool.h>
 
-EXPORT
+EXPORT_API
+
 struct IoDeviceObject;
 struct IoVfsNode;
 
-EXPORT
+
 typedef void (*IoReadWriteCompletionCallback)(STATUS status, uint64_t actualSize, void *context);
 
-EXPORT
+
 /**
  * @brief Perform asynchronous read or write
  * @param write True if writing, false if reading
@@ -25,10 +26,10 @@ EXPORT
  * @param forceDirectIo True to force direct I/O
  * @return Status code
  */
-EXTERN STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
+STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
                 IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo);
 
-EXPORT
+
 /**
  * @brief Perfrom synchronous device read
  * 
@@ -42,6 +43,8 @@ EXPORT
  * @param **buffer Output buffer pointer, allocated by this function
  * @return Status code
 */
-EXTERN STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
+STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
+
+END_EXPORT_API
 
 #endif

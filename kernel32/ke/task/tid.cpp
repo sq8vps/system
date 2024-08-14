@@ -1,17 +1,18 @@
 #include "templates/id.hpp"
+#include "task.h"
 
 #define KE_MAX_TASK_ID 65535
 
-static IdDispenser<uint16_t, KE_MAX_TASK_ID> KeTaskIdDispenser; 
+static IdDispenser<KE_TASK_ID, KE_MAX_TASK_ID> KeTaskIdDispenser; 
 
 extern "C"
 {
-uint16_t KeAssignTid(void)
+KE_TASK_ID KeAssignTid(void)
 {
     return KeTaskIdDispenser.assign();
 }
 
-void KeFreeTid(uint16_t tid)
+void KeFreeTid(KE_TASK_ID tid)
 {
     KeTaskIdDispenser.free(tid);
 }

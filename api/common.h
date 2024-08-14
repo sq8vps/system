@@ -11,12 +11,15 @@ extern "C"
 #include "defines.h"
 #include <stdarg.h>
 #include <stdbool.h>
+
+
 /**
  * @brief Get string length
  * @param str Input string
  * @return String length (excluding null terminator)
 */
-extern uint32_t CmStrlen(const char *str);
+uint32_t CmStrlen(const char *str);
+
 
 /**
  * @brief Copy string
@@ -24,7 +27,8 @@ extern uint32_t CmStrlen(const char *str);
  * @param strFrom Source string
  * @return Destination string
 */
-extern char* CmStrcpy(char *strTo, const char *strFrom);
+char* CmStrcpy(char *strTo, const char *strFrom);
+
 
 /**
  * @brief Copy at most n bytes of a string
@@ -33,7 +37,8 @@ extern char* CmStrcpy(char *strTo, const char *strFrom);
  * @param n Character limit (NULL terminator excluded)
  * @return Destination string
 */
-extern char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n);
+char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n);
+
 
 /**
  * @brief Compare strings
@@ -41,7 +46,8 @@ extern char* CmStrncpy(char *strTo, const char *strFrom, uintptr_t n);
  * @param s2 2nd string
  * @return 0 if identical
 */
-extern int CmStrcmp(const char *s1, const char *s2);
+int CmStrcmp(const char *s1, const char *s2);
+
 
 /**
  * @brief Compare strings up to a given length
@@ -50,7 +56,8 @@ extern int CmStrcmp(const char *s1, const char *s2);
  * @param n Length limit
  * @return 0 if identical
 */
-extern int CmStrncmp(const char *s1, const char *s2, int n);
+int CmStrncmp(const char *s1, const char *s2, int n);
+
 
 /**
  * @brief Copy memory
@@ -59,14 +66,16 @@ extern int CmStrncmp(const char *s1, const char *s2, int n);
  * @param n Number of bytes to copy
  * @return Destination buffer
 */
-extern void* CmMemcpy(void *to, const void *from, uintptr_t n);
+void* CmMemcpy(void *to, const void *from, uintptr_t n);
+
 
 /**
  * @brief Calculate absolute value of an integer
  * @param x Input integer
  * @return Absolute value of x
 */
-extern uint64_t CmAbs(int64_t x);
+uint64_t CmAbs(int64_t x);
+
 
 /**
  * @brief Fill memory with given value
@@ -74,7 +83,8 @@ extern uint64_t CmAbs(int64_t x);
  * @param c Filler value
  * @param num Byte count
 */
-extern void* CmMemset(void *ptr, int c, uintptr_t num);
+void* CmMemset(void *ptr, int c, uintptr_t num);
+
 
 /**
  * @brief Compare memory
@@ -83,14 +93,16 @@ extern void* CmMemset(void *ptr, int c, uintptr_t num);
  * @param n Number of bytes to compare
  * @return 0 if equal
 */
-extern int CmMemcmp(const void *s1, const void *s2, uintptr_t n);
+int CmMemcmp(const void *s1, const void *s2, uintptr_t n);
+
 
 /**
  * @brief Check if character is printable
  * @param c Character to check
  * @return 1 if printable, 0 otherwise
 */
-extern int CmIsprint(int c);
+int CmIsprint(int c);
+
 
 /**
  * @brief Concatenate strings
@@ -98,56 +110,64 @@ extern int CmIsprint(int c);
  * @param *src String to be concatenated
  * @return Destination string
 */
-extern char *CmStrcat(char *dst, const char *src);
+char *CmStrcat(char *dst, const char *src);
+
 
 /**
  * @brief Check if given character is a hexadecimal character
  * @param c Input character
  * @return 1 if is a hexadecimal character, 0 if not
 */
-extern char CmIsxdigit(int c);
+char CmIsxdigit(int c);
+
 
 /**
  * @brief Check if given character is a digit
  * @param c Input character
  * @return 1 if is a digit, 0 if not
 */
-extern char CmIsdigit(int c);
+char CmIsdigit(int c);
+
 
 /**
  * @brief Check if given character is a whitespace
  * @param c Input character
  * @return 1 if is a whitespace character, 0 if not
 */
-extern int CmIsspace(int c);
+int CmIsspace(int c);
+
 
 /**
  * @brief Convert character to lowercase
  * @param c Input character
  * @return Given character converted to lowercase
 */
-extern int CmTolower(int c);
+int CmTolower(int c);
+
 
 /**
  * @brief Convert character to uppercase
  * @param c Input character
  * @return Given character converted to uppercase
 */
-extern int CmToupper(int c);
+int CmToupper(int c);
+
 
 /**
  * @brief Calculate natural power of 10
  * @param x Exponent
  * @return 10^x
 */
-extern uint64_t CmPow10(uint16_t x);
+uint64_t CmPow10(uint16_t x);
+
 
 /**
  * @brief Extract file name from path
  * @param *path Input path
  * @return Pointer to the first character of file name
 */
-extern char *CmGetFileName(char *path);
+char *CmGetFileName(char *path);
+
 
 /**
  * @brief Allocate table of strings
@@ -157,21 +177,25 @@ extern char *CmGetFileName(char *path);
  * @return Allocated table pointer or NULL on failure
  * @note If either \a countToAllocate or \a length is zero, then no string is allocated.
 */
-extern char** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, uint32_t length);
+char** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, uint32_t length);
+
 
 /**
  * @brief Free table of strings
  * @param **table Table of strings
  * @param count Number of strings in table
 */
-extern void CmFreeStringTable(char **table, uint32_t count);
+void CmFreeStringTable(char **table, uint32_t count);
+
 
 /**
  * @brief Check correctness of a file name
  * @param *name File name (not path!)
  * @return True if correct, false if not
 */
-extern bool CmCheckFileName(char *name);
+bool CmCheckFileName(char *name);
+
+
 
 #ifdef DEBUG
     #include "io/disp/print.h"

@@ -9,23 +9,26 @@ extern "C"
 
 #include "defines.h"
 #include <stdint.h>
+
 /**
  * @brief Get timestamp in nanoseconds
  * @return Timestamp in ns
 */
-extern uint64_t HalGetTimestamp(void);
+uint64_t HalGetTimestamp(void);
+
 
 /**
  * @brief Get timestamp in microseconds
  * @return Timestamp in us
 */
-extern uint64_t HalGetTimestampMicros(void);
+uint64_t HalGetTimestampMicros(void);
+
 
 /**
  * @brief Get timestamp in milliseconds
  * @return Timestamp in ms
 */
-extern uint64_t HalGetTimestampMillis(void);
+uint64_t HalGetTimestampMillis(void);
 
 
 #ifdef __cplusplus

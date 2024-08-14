@@ -8,8 +8,18 @@
 #include "io/fs/fs.h"
 #include "hal/arch.h"
 
-uint16_t KeAssignTid(void);
-void KeFreeTid(uint16_t tid);
+KE_TASK_ID KeAssignTid(void);
+void KeFreeTid(KE_TASK_ID tid);
+
+void KeDestroyTCB(struct KeTaskControlBlock *tcb)
+{
+    if(NULL == tcb)
+        return;
+    //KeDestroyMutex(tcb->attach.mutex);
+    MmFreeKernelHeap(tcb->mathState);
+    MmFreeKernelHeap(tcb->path);
+    MmFreeKernelHeap(tcb);
+}
 
 struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, const char *path)
 {
@@ -24,11 +34,22 @@ struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, con
     tcb->mathState = HalCreateMathStateBuffer();
     if(NULL == tcb->mathState)
     {
-        MmFreeKernelHeap(tcb);
+        KeDestroyTCB(tcb);
         return NULL;
     }
 
+    for(uintptr_t i = 0; i < MAX_KERNEL_MODE_THREADS - 1; i++)
+    {
+        tcb->freeTaskIds[i] = MAX_KERNEL_MODE_THREADS - 1 - i;
+    }
+
     tcb->pl = pl;
+    // tcb->attach.mutex = KeCreateMutex();
+    // if(NULL == tcb->attach.mutex)
+    // {
+    //     KeDestroyTCB(tcb);
+    //     return NULL;
+    // }
 
     tcb->state = TASK_UNINITIALIZED;
     tcb->state = TASK_UNINITIALIZED;
@@ -40,7 +61,7 @@ struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, con
     {
         if(NULL == (tcb->path = MmAllocateKernelHeap(CmStrlen(path) + 1)))
         {
-            MmFreeKernelHeap(tcb);
+            KeDestroyTCB(tcb);
             return NULL;
         }
 
@@ -48,7 +69,6 @@ struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, con
     }
 
     tcb->tid = KeAssignTid();
-    tcb->pid = tcb->tid;
 
     return tcb;
 }

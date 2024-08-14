@@ -75,17 +75,18 @@ NORETURN static void KeInit(void)
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
 	MmInitPhysicalAllocator(&kernelArgs);
-	HalInitVirtualAllocator();
+
+	HalInitPhase1();
+
 	MmInitializeMemoryDescriptorAllocator();
 	MmInitDynamicMemory(&kernelArgs);
-	//boot VGA driver can be initialized when dynamic memory allocator is available
-	if(OK != BootVgaInit())
-		ItHardReset();
-	
-	if(OK != HalInit())
-		KePanicEx(BOOT_FAILURE, HAL_INIT_FAILURE, 0, 0, 0);
+
+	HalInitPhase2();
 
 	ItInit(); //initialize interrupts and exceptions
+
+	HalInitPhase3();
+
 	IoVfsInit();
 	IoFsInit();
 	KeDpcInitialize();
@@ -97,7 +98,7 @@ NORETURN static void KeInit(void)
 			;
 	}
 
-	KeSchedulerStart();
+	KeStartScheduler();
 
 	STATUS ret = OK;
 	if(OK != (ret = InitrdInit(kernelArgs.initrdAddress)))

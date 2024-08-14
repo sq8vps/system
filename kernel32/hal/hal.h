@@ -1,5 +1,5 @@
-#ifndef KERNEL_DRIVER_HAL
-#define KERNEL_DRIVER_HAL
+#ifndef KERNEL_HAL_H_
+#define KERNEL_HAL_H_
 
 /**
  * @file hal.h
@@ -18,27 +18,6 @@
  * @addtogroup hal
  * @{
 */
-
-/**
- * @brief Initialize architecture-specific basic hardware
- * @return Status code 
- */
-INTERNAL STATUS HalInitializeHardware(void);
-
-/**
- * @brief Initialize fundamentals of a root device
- * @return Status code 
- */
-INTERNAL STATUS HalInitializeRoot(void);
-
-/**
- * @brief Initialize hardware abstraction layer
- * 
- * Initializes whole Hardware Abstraction Layer. Reads system tables and sets up all core peripherals.
- * 
- * @return Status code
-*/
-INTERNAL STATUS HalInit(void);
 
 /**
  * @brief Get root device ID

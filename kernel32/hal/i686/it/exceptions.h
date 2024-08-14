@@ -16,7 +16,7 @@ struct ItFrame
     uint32_t flags;
 } PACKED;
 
-EXPORT
+
 /**
  * @brief ISR frame for interrupts and exceptions with privilege level change
 */
@@ -143,6 +143,11 @@ enum I686PanicCode
     CONTROL_PROTECTION_EXCEPTION = 21,
     UNEXPECTED_INTEL_TRAP = 0xFFFFFFFF,
 };
+
+/**
+ * @brief Install all exception handlers for given CPU
+ */
+INTERNAL void I686InstallAllExceptionHandlers(uint16_t cpu);
 
 #endif
 

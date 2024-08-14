@@ -56,7 +56,7 @@ KeStoreTaskContext:
     push eax ;push return address
     ret
 
-;This function performs task switch, that is it loads and executes
+;This function performs task switch, that is, it loads and executes
 ;the task which TCB is stored in *nextTask.
 ;Also, the stack must contain all GP registers, EFLAGS, CS and EIP.
 ;This function does not return to it's caller.

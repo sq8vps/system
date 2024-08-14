@@ -5,7 +5,7 @@
 #include "common.h"
 #include "lapic.h"
 #include "ioapic.h"
-#include "cpu.h"
+#include "hal/cpu.h"
 
 #define MP_BDA_MEMORY_SIZE_LOCATION 0x413 //here the number of kilobytes between 0 and EBDA is stored
 #define MP_LOWER_MEMORY_LOCATION 0x9FC00 //here is the alternative location of EBDA
@@ -237,7 +237,8 @@ static void readEntries(struct MpConfigurationTableHeader *hdr)
                 struct MpProcessorEntry *cpu = (struct MpProcessorEntry*)entry;
                 if(0 == (cpu->cpuFlags & MP_CPU_ENTRY_FLAG_EN))
                     break;
-                CpuAdd(cpu->localApicId, !!(cpu->cpuFlags & MP_CPU_ENTRY_FLAG_EN), !!(cpu->cpuFlags & MP_CPU_ENTRY_FLAG_BP));
+                struct HalCpuExtensions ext = {.bootstrap = !!(cpu->cpuFlags & MP_CPU_ENTRY_FLAG_BP), .lapicId = cpu->localApicId};
+                HalRegisterCpu(&ext, !!(cpu->cpuFlags & MP_CPU_ENTRY_FLAG_EN));
                 entry = ((struct MpProcessorEntry*)entry) + 1;
                 break;
             case MP_CONFIGURATION_TABLE_ENTRY_BUS:

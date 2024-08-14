@@ -92,6 +92,16 @@ static uint32_t CpuidReadEcx(uint32_t page)
     return reg;
 }
 
+static uint32_t CpuidReadEbx(uint32_t page)
+{
+    if(!cpuidAvailable)
+        return 0;
+    uint32_t dummy;
+    uint32_t reg;
+    __cpuid(page, dummy, reg, dummy, dummy);
+    return reg;
+}
+
 bool CpuidInit(void)
 {
     return CpuidCheckIfAvailable();
@@ -161,6 +171,12 @@ bool CpuidCheckIfSseAvailable(void)
 {
     uint32_t reg = CpuidReadEdx(1);
     return (reg & CPUID_FEATURE_EDX_SSE) && (reg & CPUID_FEATURE_EDX_FXSR); 
+}
+
+uint8_t CpuidGetApicId(void)
+{
+    uint32_t reg = CpuidReadEbx(1);
+    return reg >> 24;
 }
 
 #endif

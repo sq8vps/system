@@ -12,7 +12,7 @@ static KeSpinlock PciBridgeListMutex = KeSpinlockInitializer;
 STATUS PciRegisterBridge(union IoBusId address, struct PciBridge *upstreamBridge, struct PciBridge **out)
 {
     return NOT_IMPLEMENTED;
-    // KeAcquireSpinlock(&PciBridgeListMutex);
+    // PRIO prio = KeAcquireSpinlock(&PciBridgeListMutex);
     // if(NULL == PciBridgeList)
     // {
     //     KeReleaseSpinlock(&PciBridgeListMutex);
@@ -29,7 +29,7 @@ STATUS PciRegisterBridge(union IoBusId address, struct PciBridge *upstreamBridge
     // b->next = NULL;
     // b->child = NULL;
 
-    // KeAcquireSpinlock(&PciBridgeListMutex);
+    // PRIO prio = KeAcquireSpinlock(&PciBridgeListMutex);
     //     // if(NULL == upstreamBridge)
     //     // {
     //     //     KeReleaseSpinlock(&PciBridgeListMutex);
@@ -65,12 +65,12 @@ STATUS PciRegisterHostBridge(union IoBusId address, struct PciBridge **out)
 
     CmMemset(b, 0, sizeof(*b));
 
-    KeAcquireSpinlock(&PciBridgeListMutex);
+    PRIO prio = KeAcquireSpinlock(&PciBridgeListMutex);
     //allow only one host bridge
     if(NULL == PciBridgeList)
     {
         PciBridgeList = b;
-        KeReleaseSpinlock(&PciBridgeListMutex);
+        KeReleaseSpinlock(&PciBridgeListMutex, prio);
         b->primaryBus = 0;
         b->secondaryBus = 0;
         b->subordinateBus = 255;
@@ -79,7 +79,7 @@ STATUS PciRegisterHostBridge(union IoBusId address, struct PciBridge **out)
     }
     else
     {
-        KeReleaseSpinlock(&PciBridgeListMutex);
+        KeReleaseSpinlock(&PciBridgeListMutex, prio);
         MmFreeKernelHeap(b);
         return OUT_OF_RESOURCES;
     }

@@ -3,7 +3,8 @@
 
 #include "defines.h"
 
-EXPORT
+EXPORT_API
+
 #ifdef DEBUG
     #include "common.h"
     /**
@@ -14,5 +15,7 @@ EXPORT
 #else
     #define ASSERT(expression)
 #endif
+
+END_EXPORT_API
 
 #endif

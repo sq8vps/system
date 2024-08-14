@@ -60,7 +60,7 @@ STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback ca
     ASSERT(NULL != rp);
     ASSERT(NULL != queue);
     rp->cancelCallback = cancelCb;
-    KeAcquireSpinlock(&(queue->queueLock));
+    PRIO prio = KeAcquireSpinlock(&(queue->queueLock));
     struct IoRp *t = queue->head;
     if(NULL == t)
     {
@@ -83,13 +83,13 @@ STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback ca
     if(!queue->busy)
     {
         queue->busy = 1;
-        KeReleaseSpinlock(&(queue->queueLock));
+        KeReleaseSpinlock(&(queue->queueLock), prio);
         queue->callback(t);
         return OK;
     }
     else
     {
-        KeReleaseSpinlock(&(queue->queueLock));
+        KeReleaseSpinlock(&(queue->queueLock), prio);
         return OK;
     }
 }
@@ -107,17 +107,17 @@ STATUS IoFinalizeRp(struct IoRp *rp)
         if(NULL != rp->completionCallback)
             rp->completionCallback(rp, rp->completionContext);
 
-        KeAcquireSpinlock(&(rp->queue->queueLock));
+        PRIO prio = KeAcquireSpinlock(&(rp->queue->queueLock));
         ASSERT(rp != rp->next);
         rp->queue->head = rp->next;
         if(NULL == rp->queue->head)
         {
             rp->queue->busy = 0;
-            KeReleaseSpinlock(&(rp->queue->queueLock));
+            KeReleaseSpinlock(&(rp->queue->queueLock), prio);
         }
         else
         {
-            KeReleaseSpinlock(&(rp->queue->queueLock));
+            KeReleaseSpinlock(&(rp->queue->queueLock), prio);
             rp->queue->callback(rp->queue->head);
         }
         rp->queue = NULL;
@@ -145,10 +145,10 @@ STATUS IoCancelRp(struct IoRp *rp)
     if(NULL == rp->queue)
         return IO_RP_NOT_CANCELLABLE;
 
-    KeAcquireSpinlock(&(rp->queue->queueLock));
+    PRIO prio = KeAcquireSpinlock(&(rp->queue->queueLock));
     if(rp->queue->head == rp)
     {
-        KeReleaseSpinlock(&(rp->queue->queueLock)); 
+        KeReleaseSpinlock(&(rp->queue->queueLock), prio); 
         return IO_RP_NOT_CANCELLABLE;
     }
     struct IoRp *t = rp->queue->head;
@@ -161,13 +161,13 @@ STATUS IoCancelRp(struct IoRp *rp)
             if(NULL != t->previous)
                 t->previous->next = t->next;
             
-            KeReleaseSpinlock(&(rp->queue->queueLock));
+            KeReleaseSpinlock(&(rp->queue->queueLock), prio);
             rp->cancelCallback(rp);
             return OK;
         }
         t = t->next;
     }
-    KeReleaseSpinlock(&(rp->queue->queueLock)); 
+    KeReleaseSpinlock(&(rp->queue->queueLock), prio); 
     return IO_RP_NOT_CANCELLABLE;
 }
 

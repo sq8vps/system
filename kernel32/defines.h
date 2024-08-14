@@ -18,27 +18,23 @@
  * @{
 */
 
-
-#define MAX_CPU_COUNT 64
-
+/**
+ * @brief Export all following lines up to the \a END_EXPORT_API mark
+ */
+#define EXPORT_API
 
 /**
- * @brief Mark all following lines up to the next blank line as "to be exported"
-*/
-#define EXPORT
+ * @brief End to-be-exported block started with \a EXPORT_API
+ */
+#define END_EXPORT_API
 
-/**
- * @brief Mark function/variable to be externed on exporting
-*/
-#define EXTERN
+EXPORT_API
 
-EXPORT
 /**
  * @brief Mark symbol (function/variable) as internal/hidden
 */
 #define INTERNAL __attribute__ ((visibility("hidden")))
 
-EXPORT
 /**
  * @brief Stringify without expanding
  * @param ... Arguments to stringify
@@ -46,7 +42,7 @@ EXPORT
 */
 #define _STRINGIFY(...) #__VA_ARGS__
 
-EXPORT
+
 /**
  * @brief Expand and stringify
  * @param ... Arguments to expand and stringify
@@ -54,7 +50,7 @@ EXPORT
 */
 #define STRINGIFY(...) _STRINGIFY(__VA_ARGS__)
 
-EXPORT
+
 /**
  * @brief Kernel status codes
 */
@@ -78,6 +74,7 @@ typedef enum
     OPERATION_NOT_ALLOWED,
     BAD_ALIGNMENT,
     NOT_COMPATIBLE,
+    TIMEOUT,
 
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number
@@ -114,6 +111,7 @@ typedef enum
     KE_TSS_ENTRY_LIMIT_EXCEEDED = 0x00004000,
     KE_SCHEDULER_INITIALIZATION_FAILURE,
     KE_TCB_PREPARATION_FAILURE,
+    KE_KERNEL_THREAD_LIMIT_REACHED,
 
     IO_ROOT_DEVICE_INIT_FAILURE = 0x00005000,
     IO_ILLEGAL_NAME,
@@ -170,7 +168,7 @@ typedef enum
 
 } STATUS;
 
-EXPORT
+
 /**
  * @brief General privilege level enum
 */
@@ -180,33 +178,33 @@ typedef enum PrivilegeLevel
     PL_USER
 } PrivilegeLevel;
 
-EXPORT
+
 /**
  * @brief A common timestamp type
 */
 typedef uint64_t time_t;
 
 
-EXPORT
+
 /**
  * @brief Attribute for never-returning functions
 */
 #define NORETURN __attribute__((noreturn))
 
-EXPORT
+
 /**
  * @brief Attribute for packed structures
 */
 #define PACKED __attribute__ ((packed))
 
-EXPORT
+
 /**
  * @brief Variable alignment macro
  * @param n Alignment value in bytes
 */
 #define ALIGN(n) __attribute__ ((aligned(n)))
 
-EXPORT
+
 /**
  * @brief Align value up
  * @param val Value to be aligned
@@ -214,7 +212,7 @@ EXPORT
 */
 #define ALIGN_UP_MASK(val, mask) (((val) + (mask)) & ~(mask))
 
-EXPORT
+
 /**
  * @brief Align value up
  * @param val Value to be aligned
@@ -222,7 +220,7 @@ EXPORT
 */
 #define ALIGN_UP(val, align) ALIGN_UP_MASK(val, (typeof(val))(align) - 1)
 
-EXPORT
+
 /**
  * @brief Align value down
  * @param val Value to be aligned
@@ -230,13 +228,13 @@ EXPORT
 */
 #define ALIGN_DOWN(val, align) ((val) & ~((typeof(val))(align) - 1))
 
-EXPORT
+
 /**
  * @brief Macro for inline assembly
 */
 #define ASM asm volatile
 
-EXPORT
+
 /**
  * @brief Check if character \a x is alphanumeric
  * @param x Character to check
@@ -244,7 +242,7 @@ EXPORT
 */
 #define IS_ALPHANUMERIC(x) ((((x) >= '0') && ((x) <= '9')) || (((x) >= 'A') && ((x) <= 'Z')) || (((x) >= 'a') && ((x) <= 'z')))
 
-EXPORT
+
 /**
  * @brief Convert microseconds to nanoseconds (standard kernel time resolution)
  * @param us Value in microseconds
@@ -252,7 +250,7 @@ EXPORT
 */
 #define US_TO_NS(us) (((uint64_t)1000) * (us))
 
-EXPORT
+
 /**
  * @brief Convert milliseconds to nanoseconds (standard kernel time resolution)
  * @param us Value in milliseconds
@@ -260,7 +258,7 @@ EXPORT
 */
 #define MS_TO_NS(ms) (((uint64_t)1000000) * (ms))
 
-EXPORT
+
 /**
  * @brief Unique Identifier structure
 */
@@ -279,6 +277,8 @@ union UID
     } PACKED;
     uint8_t raw[16];
 } PACKED;
+
+END_EXPORT_API
 
 #include "hal/archdefs.h"
 

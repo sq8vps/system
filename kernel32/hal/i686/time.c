@@ -8,7 +8,7 @@
 
 static bool HalUseTsc = false;
 
-STATUS HalInitTimeController(void)
+STATUS I686InitTimeController(void)
 {
     if(CpuidCheckIfTscAvailable() && CpuidCheckIfTscInvariant())
     {

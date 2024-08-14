@@ -10,6 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "io/fs/vfs.h"
+
 struct IoDeviceObject;
 
 /**
@@ -19,7 +20,7 @@ struct IoDeviceObject;
  * @param *name File name, must be unique in \a /dev
  * @return Status code
 */
-extern STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name);
+STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name);
 
 
 #ifdef __cplusplus

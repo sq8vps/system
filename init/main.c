@@ -4,7 +4,7 @@ KeSpinlock s = KeSpinlockInitializer;
 
 int main()
 {
-    KeAcquireSpinlock(&s);
+    PRIO prio = KeAcquireSpinlock(&s);
     CmPrintf("Halo\n");
     KeReleaseSpinlock(&s);
     while(1)

@@ -1,5 +1,6 @@
 #include "gdt.h"
 #include "common.h"
+#include "config.h"
 
 #define GDT_MAX_ENTRIES (4 + MAX_CPU_COUNT)
 #define GDT_PRESENT_FLAG 128
@@ -113,6 +114,11 @@ void GdtInit(void)
     gdtr.size = (sizeof(gdt)) - 1;
     gdtr.offset = (uintptr_t)gdt;
 
+    GdtApply();
+}
+
+void GdtApply(void)
+{
     ASM("lgdt %0" : : "m" (gdtr));
 }
 

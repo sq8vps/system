@@ -20,7 +20,8 @@
  * @{
 */
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief Allocate aligned memory on kernel heap
  * @param n Count of bytes to allocate
@@ -29,25 +30,25 @@ EXPORT
 */
 void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
 
-EXPORT
+
 /**
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-EXTERN void *MmAllocateKernelHeap(uintptr_t n);
+void *MmAllocateKernelHeap(uintptr_t n);
 
-EXPORT
+
 /**
  * @brief Allocate memory on kernel heap and clear it
  * @param n Count of bytes to allocate
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-EXTERN void *MmAllocateKernelHeapZeroed(uintptr_t n);
+void *MmAllocateKernelHeapZeroed(uintptr_t n);
 
-EXPORT
+
 /**
  * @brief Allocate memory on kernel heap
  * @param n Count of bytes to allocate
@@ -55,7 +56,7 @@ EXPORT
 */
 #define malloc(n) MmAllocateKernelHeap(n)
 
-EXPORT
+
 /**
  * @brief Allocate memory on kernel heap and clear it
  * @param n Number of elements to allocate
@@ -65,19 +66,21 @@ EXPORT
 */
 #define calloc(n, size) MmAllocateKernelHeapZeroed((n) * (size))
 
-EXPORT
+
 /**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
-EXTERN void MmFreeKernelHeap(const void *ptr);
+void MmFreeKernelHeap(const void *ptr);
 
-EXPORT
+
 /**
  * @brief Free memory allocated on kernel heap
  * @param ptr Allocated memory address
 */
 #define free(ptr) MmFreeKernelHeap(ptr)
+
+END_EXPORT_API
 
 /**
  * @}

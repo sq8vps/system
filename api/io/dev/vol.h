@@ -10,10 +10,15 @@ extern "C"
 #include <stdint.h>
 #include "io/dev/dev.h"
 #include "ob/ob.h"
+
 /**
  * @brief Maximum length of volume label
 */
 #define IO_VOLUME_MAX_LABEL_LENGTH 32
+
+/**
+ * @brief Volume node structure
+*/
 
 struct IoVolumeNode
 {
@@ -28,13 +33,15 @@ struct IoVolumeNode
     struct IoVolumeNode *next, *previous; /**< A list of other volumes */
 };
 
+
 /**
  * @brief Mount volume
  * @param *devPath Volume device path
  * @param *mountPoint Mount point name
  * @return Status code
 */
-extern STATUS IoMountVolume(char *devPath, char *mountPoint);
+STATUS IoMountVolume(char *devPath, char *mountPoint);
+
 
 /**
  * @brief Register volume associated with a device
@@ -46,7 +53,8 @@ extern STATUS IoMountVolume(char *devPath, char *mountPoint);
  * @param flags Volume node flags
  * @return Status code
 */
-extern STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
+STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
+
 
 /**
  * @brief Set volume serial number
@@ -55,7 +63,8 @@ extern STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
  * @return Status code
  * @note This function fails when there is no associated volume
 */
-extern STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial);
+STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial);
+
 
 /**
  * @brief Set volume label
@@ -64,7 +73,8 @@ extern STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t seria
  * @return Status code
  * @note This function fails when there is no associated volume
 */
-extern STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
+STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
+
 
 /**
  * @brief Register filesystem for given volume
@@ -73,7 +83,7 @@ extern STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
  * @param volumeFlags Flags to be ORed with volume node flags
  * @return Status code
 */
-extern STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
+STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
 
 
 #ifdef __cplusplus

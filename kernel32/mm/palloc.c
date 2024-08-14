@@ -132,14 +132,14 @@ static KeSpinlock blockAllocationMutex = KeSpinlockInitializer;
 */
 static bool allocateBlock(uint8_t order, uintptr_t *index)
 {
-    KeAcquireSpinlock(&blockAllocationMutex);
+    PRIO prio = KeAcquireSpinlock(&blockAllocationMutex);
     if(0 != findBlock(order, index))
     {
         markAsUsed(*index, 1 << order);
-        KeReleaseSpinlock(&blockAllocationMutex);
+        KeReleaseSpinlock(&blockAllocationMutex, prio);
         return true;
     }
-    KeReleaseSpinlock(&blockAllocationMutex);
+    KeReleaseSpinlock(&blockAllocationMutex, prio);
     return false;
 }
 
@@ -195,7 +195,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
 	uintptr_t firstBlock = 0;
     uintptr_t freeBlocks = 0;
 
-    KeAcquireSpinlock(&contiguousAllocationMutex);
+    PRIO prio = KeAcquireSpinlock(&contiguousAllocationMutex);
 
 	for(uintptr_t i = 0; i < MM_BUDDY_ENTRIES; i++)
 	{
@@ -223,7 +223,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
                             
                             markAsUsed(firstBlock, blocks);
 							*address = firstBlock * MM_BUDDY_SMALLEST;
-                            KeReleaseSpinlock(&contiguousAllocationMutex);
+                            KeReleaseSpinlock(&contiguousAllocationMutex, prio);
                             return blocks * MM_BUDDY_SMALLEST;
 						}
 
@@ -237,7 +237,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
 						if(i == MM_BUDDY_ENTRIES) //end of buddy reached, allocation failed
                         {
                             *address = 0;
-                            KeReleaseSpinlock(&contiguousAllocationMutex);
+                            KeReleaseSpinlock(&contiguousAllocationMutex, prio);
 							return 0;
                         }
 					}
@@ -246,7 +246,7 @@ uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, ui
 		}
 	}
     *address = 0;
-    KeReleaseSpinlock(&contiguousAllocationMutex);
+    KeReleaseSpinlock(&contiguousAllocationMutex, prio);
 	return 0;
 }
 
@@ -258,7 +258,7 @@ static KeSpinlock freeBlockMutex = KeSpinlockInitializer;
 */
 static void freeBlock(uintptr_t index)
 {
-    KeAcquireSpinlock(&freeBlockMutex);
+    PRIO prio = KeAcquireSpinlock(&freeBlockMutex);
     for(uintptr_t i = 0; i < MM_BUDDY_COUNT; i++)
     {
         BUDDY(i, index) &= ~BUDDY_BIT(i, index);
@@ -266,7 +266,7 @@ static void freeBlock(uintptr_t index)
         if(BUDDY(i, blockBuddy) & BUDDY_BIT(i, blockBuddy))
             break;
     }
-    KeReleaseSpinlock(&freeBlockMutex);
+    KeReleaseSpinlock(&freeBlockMutex, prio);
 } 
 
 void MmFreePhysicalMemory(uintptr_t address, uintptr_t n)

@@ -8,7 +8,8 @@
 #include "io/dev/op.h"
 #include "ke/core/mutex.h"
 
-EXPORT
+EXPORT_API
+
 typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_READ_ONLY 0x1 //file/directory is read only
 #define IO_VFS_FLAG_NO_CACHE 0x4 //do not cache this entry
@@ -17,16 +18,16 @@ typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_HIDDEN 0x40 /**< Node should be hidden from normal user */
 #define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
 
-EXPORT
+
 typedef uint32_t IoVfsFlags;
 
-EXPORT
+
 #define IO_VFS_FLAG_SYNCHRONOUS 1 //synchronous read/write, that is do no return until completed
 #define IO_VFS_FLAG_DIRECT 2 //force unbuffered read/write
 #define IO_VFS_FLAG_NO_WAIT 4 //do not wait if file is locked
 #define IO_VFS_FLAG_CREATE 8 //create file if doesn't exist
 
-EXPORT
+
 /**
  * @brief VFS node types
 */
@@ -40,7 +41,7 @@ enum IoVfsEntryType
     IO_VFS_LINK, //symbolic link, might exist physically or not
 };
 
-EXPORT
+
 /**
  * @brief VFS filesystem type
 */
@@ -54,7 +55,7 @@ enum IoVfsFsType
     IO_VFS_FS_INITRD, //initial ramdisk filesystem
 };
 
-EXPORT
+
 /**
  * @brief VFS node reference value type
 */
@@ -72,7 +73,7 @@ union IoVfsReference
 };
 
 
-EXPORT
+
 /**
  * @brief Main VFS node structure
 */
@@ -112,12 +113,12 @@ struct IoVfsNode
     char name[]; /**< Node name, length can be obtained using \a IoVfsGetMaxFileNameLength() */
 };
 
-EXPORT
+
 /**
  * @brief Get maximum file name length
  * @return Maximum file name length, excluding terminator
 */
-EXTERN uint32_t IoVfsGetMaxFileNameLength(void);
+uint32_t IoVfsGetMaxFileNameLength(void);
 
 /**
  * @brief Initialize Virtual File System and set up core entries
@@ -240,20 +241,20 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_
 */
 STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
 
-EXPORT
+
 /**
  * @brief Create VFS node with given name
  * @param *name Node name
  * @return Node pointer or NULL on failure
 */
-EXTERN struct IoVfsNode* IoVfsCreateNode(char *name);
+struct IoVfsNode* IoVfsCreateNode(char *name);
 
-EXPORT
+
 /**
  * @brief Destroy (deallocate) VFS node
  * @param *node Node to destroy
 */
-EXTERN void IoVfsDestroyNode(struct IoVfsNode *node);
+void IoVfsDestroyNode(struct IoVfsNode *node);
 
 /**
  * @brief Get size of the element
@@ -263,22 +264,24 @@ EXTERN void IoVfsDestroyNode(struct IoVfsNode *node);
 */
 STATUS IoVfsGetSize(char *path, uint64_t *size);
 
-EXPORT
+
 /**
  * @brief Lock VFS tree for reading, that is, any operations involving traversing the tree
  */
-EXTERN void IoVfsLockTreeForReading(void);
+void IoVfsLockTreeForReading(void);
 
-EXPORT
+
 /**
  * @brief Lock VFS tree for writing, that is, any operations involving modyfing the tree
  */
-EXTERN void IoVfsLockTreeForWriting(void);
+void IoVfsLockTreeForWriting(void);
 
-EXPORT
+
 /**
  * @brief Unlock VFS tree
  */
-EXTERN void IoVfsUnlockTree(void);
+void IoVfsUnlockTree(void);
+
+END_EXPORT_API
 
 #endif

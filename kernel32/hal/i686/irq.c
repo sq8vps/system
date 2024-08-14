@@ -12,7 +12,7 @@ static bool DualPicPresent = false;
 static bool UseIoApic = false;
 static uint32_t IsaRemapTable[ISA_INTERRUPT_COUNT];
 
-STATUS HalInitInterruptController(void)
+STATUS I686InitInterruptController(void)
 {
     PicSetIrqMask(0xFFFF); //mask all PIC interrupts
     PicRemap(PIC_REMAP_VECTOR, PIC_REMAP_VECTOR + 8);
@@ -74,7 +74,7 @@ bool I686IsIoApicUsed(void)
     return UseIoApic;
 }
 
-STATUS I686IrqEnable(uint32_t input)
+STATUS HalMasterEnableIrq(uint32_t input)
 {
     if(UseIoApic)
         return ApicIoEnableIrq(input);
@@ -82,7 +82,7 @@ STATUS I686IrqEnable(uint32_t input)
         return PicEnableIrq(input);
 }
 
-STATUS I686IrqDisable(uint32_t input)
+STATUS HalMasterDisableIrq(uint32_t input)
 {
     if(UseIoApic)
         return ApicIoDisableIrq(input);

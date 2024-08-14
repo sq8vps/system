@@ -62,7 +62,7 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     dpc->priority = priority;
     dpc->next = NULL;
     
-    KeAcquireSpinlock(&(KeDpcState.lock));
+    PRIO prio = KeAcquireSpinlock(&(KeDpcState.lock));
     if(NULL == KeDpcState.queue[queueIndex])
         KeDpcState.queue[queueIndex] = dpc;
     else
@@ -77,13 +77,13 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     dpc->time = HalGetTimestamp();
     if(false == KeDpcState.isOngoing)
         KeDpcState.isPending = true;
-    KeReleaseSpinlock(&(KeDpcState.lock));
+    KeReleaseSpinlock(&(KeDpcState.lock), prio);
     return OK;
 }
 
 static void KeDpcProcess(void)
 {
-    KeAcquireSpinlock(&(KeDpcState.lock));
+    PRIO prio = KeAcquireSpinlock(&(KeDpcState.lock));
     KeDpcState.isOngoing = true;
     KeDpcState.isPending = false;
     for(uint8_t i = 0; i < (_KE_DPC_PRIORITY_LIMIT + 1); i++)
@@ -92,31 +92,31 @@ static void KeDpcProcess(void)
         while(NULL != KeDpcState.queue[i])
         {
             t = KeDpcState.queue[i];
-            KeReleaseSpinlock(&(KeDpcState.lock));
+            KeReleaseSpinlock(&(KeDpcState.lock), prio);
             t->time = HalGetTimestamp() - t->time;
             t->callback(t->context);
-            KeAcquireSpinlock(&(KeDpcState.lock));
+            prio = KeAcquireSpinlock(&(KeDpcState.lock));
             KeDpcState.queue[i] = t->next;
             MmSlabFree(KeDpcState.slabHandle, t);
         }
     }
     KeDpcState.isOngoing = false;
-    KeReleaseSpinlock(&(KeDpcState.lock));
+    KeReleaseSpinlock(&(KeDpcState.lock), prio);
 }
 
 void KeProcessDpcQueue(void)
 {
     if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_DPC)
         return;
-    KeAcquireSpinlock(&(KeDpcState.lock));
+    PRIO prio = KeAcquireSpinlock(&(KeDpcState.lock));
     if(KeDpcState.isPending)
     {
-        KeReleaseSpinlock(&(KeDpcState.lock));
+        KeReleaseSpinlock(&(KeDpcState.lock), prio);
         KeDpcProcess();
         KePerformPreemptedTaskSwitch();
         return;
     }
-    KeReleaseSpinlock(&(KeDpcState.lock));
+    KeReleaseSpinlock(&(KeDpcState.lock), prio);
 }
 
 STATUS KeDpcInitialize(void)

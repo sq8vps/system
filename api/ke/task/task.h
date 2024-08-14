@@ -11,10 +11,12 @@ extern "C"
 #include "defines.h"
 #include "ob/ob.h"
 #include "hal/archdefs.h"
+
 struct ObObjectHeader;
 struct _KeSemaphore;
 struct _KeMutex;
 struct IoFileHandle;
+
 
 /**
  * @brief Task states
@@ -28,6 +30,7 @@ enum KeTaskState
     TASK_TERMINATED, //task was terminated and should be removed completely
 };
 
+
 /**
  * @brief Task major priority/scheduling policy
 */
@@ -39,6 +42,7 @@ enum KeTaskMajorPriority
     PRIORITY_BACKGROUND = 3,
     PRIORITY_LOWEST = 4,
 };
+
 
 /**
  * @brief Reason for task block (task state = TASK_WAITING)
@@ -52,11 +56,16 @@ enum KeTaskBlockReason
     TASK_BLOCK_EVENT,
 };
 
+
+
+
 #define TCB_MAX_NAME_LENGTH (64) //max task name lanegth
 #define TCB_MINOR_PRIORITY_LIMIT (15) //task priority limit
 
+
 #define TCB_DEFAULT_MAJOR_PRIORITY (PRIORITY_NORMAL) //task default scheduling policy
 #define TCB_DEFAULT_MINOR_PRIORITY (7) //task default priority
+
 
 /**
  * @brief A structure storing all task data
@@ -99,6 +108,14 @@ struct KeTaskControlBlock
 
     uint64_t waitUntil; //terminal time of sleep or timeout when acquiring mutex
 
+    struct
+    {
+        struct KeTaskControlBlock *attachedTo; /**< Task to which this task is attached to */
+        struct KeTaskControlBlock *attachee; /**< Task which is attached to this task */
+        KeMutex *mutex; /**< Mutex to be acquired in order to attach to this task */
+    } attach; /**< Task memory space attachment state */
+    
+
     struct _KeMutex *mutex;
     struct _KeSemaphore *semaphore;
     struct KeRwLock *rwLock;
@@ -123,7 +140,19 @@ struct KeTaskControlBlock
     struct KeTaskControlBlock *next; //next task in queue
     struct KeTaskControlBlock *previous; //previous task in queue
     struct KeTaskControlBlock **queue; //queue top handle
-} PACKED;
+};
+
+
+/**
+ * @brief Allocate and prepare task control block
+ * @param pl Privilege level
+ * @param *name Task name
+ * @param *path Task image path
+ * @return Task control block pointer or NULL on memory allocation failure
+ * @warning This function is used internally. Use KeCreateProcess() to create process.
+*/
+struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, const char *path);
+
 
 /**
  * @brief Create process without default bootstrapping routine
@@ -137,8 +166,9 @@ struct KeTaskControlBlock
  * @warning Image loading and memory allocation is responsibility of caller.
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-extern STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
+STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+
 
 /**
  * @brief Create process
@@ -152,7 +182,7 @@ extern STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLe
  * @return Status code
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
-extern STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
+STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
 
 
 #ifdef __cplusplus

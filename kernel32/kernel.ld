@@ -11,7 +11,7 @@ PROVIDE(_KERNEL_PAGE_SIZE = __KERNEL_PAGE_SIZE);
 SECTIONS
 {
   /* This is the kernel image location. Specified in documentation. */
-  . = 0xD0000000;
+  . = 0xD6000000;
   .text           :
   {
     *(.text .text.*)

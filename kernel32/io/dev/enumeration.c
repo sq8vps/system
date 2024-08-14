@@ -21,12 +21,12 @@ static void IoEnumeratorThread(void *unused)
     STATUS status;
     while(1)
     {
-        KeAcquireSpinlock(&IoEnumerationQueueMutex);
+        PRIO prio = KeAcquireSpinlock(&IoEnumerationQueueMutex);
         while(NULL != IoEnumerationQueueHead)
         {
             struct IoEnumerationQueue *t = IoEnumerationQueueHead;
             IoEnumerationQueueHead = t->next;
-            KeReleaseSpinlock(&IoEnumerationQueueMutex);
+            KeReleaseSpinlock(&IoEnumerationQueueMutex, prio);
             
             if((NULL != t->node->mdo)
                 || (OK == IoBuildDeviceStack(t->node)))
@@ -76,9 +76,9 @@ static void IoEnumeratorThread(void *unused)
             }
             MmFreeKernelHeap(t);
             
-            KeAcquireSpinlock(&IoEnumerationQueueMutex);
+            prio = KeAcquireSpinlock(&IoEnumerationQueueMutex);
         }
-        KeReleaseSpinlock(&IoEnumerationQueueMutex); 
+        KeReleaseSpinlock(&IoEnumerationQueueMutex, prio); 
 
         KeBlockTask(enumeratorThread, TASK_BLOCK_EVENT);
         KeTaskYield();
@@ -105,7 +105,7 @@ STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node)
 
     t->node = node;
     t->next = NULL;
-    KeAcquireSpinlock(&IoEnumerationQueueMutex);
+    PRIO prio = KeAcquireSpinlock(&IoEnumerationQueueMutex);
     if(NULL == IoEnumerationQueueHead)
     {
         IoEnumerationQueueHead = t;
@@ -117,7 +117,7 @@ STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node)
             last = last->next;
         last->next = t;
     }
-    KeReleaseSpinlock(&IoEnumerationQueueMutex);
+    KeReleaseSpinlock(&IoEnumerationQueueMutex, prio);
     KeUnblockTask(enumeratorThread);
     return OK;
 }

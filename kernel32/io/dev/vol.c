@@ -29,7 +29,7 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     if(NULL == devNode)
         return IO_FILE_NOT_FOUND;
 
-    ObLockObject(devNode);
+    
 
     if(IO_VFS_DEVICE != devNode->type)
         status = IO_BAD_FILE_TYPE;
@@ -39,14 +39,14 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     
     if(OK != status)
     {
-        ObUnlockObject(devNode);
+        
         return status;
     }
 
     //get underlying disk device node
     struct IoDeviceObject *dev = devNode->device;
 
-    ObLockObject(dev);
+    
 
     if(IO_DEVICE_TYPE_DISK != dev->type)
         status = IO_NOT_DISK_DEVICE_FILE;
@@ -54,8 +54,8 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     if(NULL == dev->associatedVolume)
         status = IO_VOLUME_NOT_REGISTERED;
     
-    ObUnlockObject(dev);
-    ObUnlockObject(devNode);
+    
+    
 
     if(OK != status)
         return status;
@@ -84,48 +84,48 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
         return OUT_OF_RESOURCES;
     }
 
-    ObLockObject(dev);
+    
     mountPointNode->type = IO_VFS_MOUNT_POINT;
     mountPointNode->fsType = IO_VFS_FS_PHYSICAL;
     mountPointNode->device = dev->associatedVolume->fsdo;
 
     dev->associatedVolume->mountPoint = mountPointNode;
     dev->referenceCount++;
-    ObUnlockObject(dev);
+    
 
     return IoVfsInsertNodeByPath(mountPointNode, "/");
 }
 
 STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
 {
-    ObLockObject(dev);
+    
     if(dev->type != IO_DEVICE_TYPE_DISK)
     {
-        ObUnlockObject(dev);
+        
         return NOT_COMPATIBLE;
     }
     
     if(NULL != dev->associatedVolume)
     {
-        ObUnlockObject(dev);
+        
         return IO_VOLUME_ALREADY_EXISTS;
     }
 
-    ObUnlockObject(dev);
+    
     
     struct IoVolumeNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
     if(NULL == node)
         return OUT_OF_RESOURCES;
     
     ObInitializeObjectHeader(node);
-    ObLockObject(node);
-    ObLockObject(dev);
+    
+    
     
     node->pdo = dev;
     node->flags = flags;
     dev->associatedVolume = node;
 
-    KeAcquireSpinlock(&(IoVolumeState.lock));
+    PRIO prio = KeAcquireSpinlock(&(IoVolumeState.lock));
     if(NULL == IoVolumeState.list)
         IoVolumeState.list = node;
     else
@@ -138,29 +138,29 @@ STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
         t->next = node;
         node->previous = t;
     }
-    KeReleaseSpinlock(&(IoVolumeState.lock));
+    KeReleaseSpinlock(&(IoVolumeState.lock), prio);
 
-    ObUnlockObject(dev);
-    ObUnlockObject(node);
+    
+    
 
     return OK;
 }
 
 STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
 {
-    ObLockObject(dev);
+    
     if(NULL == dev->associatedVolume)
     {
-        ObUnlockObject(dev);
+        
         return IO_VOLUME_NOT_REGISTERED;
     }
 
     struct IoVolumeNode *vol = dev->associatedVolume;
-    ObUnlockObject(dev);
+    
 
-    ObLockObject(vol);
+    
     vol->serialNumber = serial;
-    ObUnlockObject(vol);
+    
     return OK;
 }
 
@@ -169,19 +169,19 @@ STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label)
     if(CmStrlen(label) > IO_VOLUME_MAX_LABEL_LENGTH)
         return IO_ILLEGAL_NAME;
     
-    ObLockObject(dev);
+    
     if(NULL == dev->associatedVolume)
     {
-        ObUnlockObject(dev);
+        
         return IO_VOLUME_NOT_REGISTERED;
     }
 
     struct IoVolumeNode *vol = dev->associatedVolume;
-    ObUnlockObject(dev);
+    
 
-    ObLockObject(vol);
+    
     CmStrncpy(vol->label, label, IO_VOLUME_MAX_LABEL_LENGTH);
-    ObUnlockObject(vol);
+    
     return OK;
 }
 
@@ -189,33 +189,33 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
 {
     ASSERT(disk && fs);
 
-    ObLockObject(disk);
+    
     if(IO_DEVICE_TYPE_DISK != disk->type)
     {
-        ObUnlockObject(disk);
+        
         return IO_DEVICE_INCOMPATIBLE;
     }
 
     if(NULL == disk->associatedVolume)
     {
-        ObUnlockObject(disk);
+        
         return IO_VOLUME_NOT_REGISTERED;
     }
 
-    ObLockObject(fs);
+    
     if(IO_DEVICE_TYPE_FS != fs->type)
     {
-        ObUnlockObject(fs);
-        ObUnlockObject(disk);
+        
+        
         return IO_DEVICE_INCOMPATIBLE;
     }
 
-    ObLockObject(disk->associatedVolume);
+    
     if(NULL != disk->associatedVolume->fsdo)
     {
-        ObUnlockObject(disk->associatedVolume);
-        ObUnlockObject(fs);
-        ObUnlockObject(disk);
+        
+        
+        
         return IO_VOLUME_ALREADY_MOUNTED;
     }
 
@@ -224,8 +224,8 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
     fs->volumeNode = disk->associatedVolume;
     fs->volumeNode->flags |= IO_DEVICE_FLAG_FS_ASSOCIATED;
 
-    ObUnlockObject(disk->associatedVolume);
-    ObUnlockObject(fs);
-    ObUnlockObject(disk);
+    
+    
+    
     return OK;
 }

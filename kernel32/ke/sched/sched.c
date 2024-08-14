@@ -23,17 +23,13 @@ struct KeSchedulerQueue
     KeSpinlock spinlock;
 };
 
-#ifdef SMP
-    volatile struct KeTaskControlBlock *currentTask[MAX_CPU_COUNT];
-    struct KeTaskControlBlock *queue[MAX_CPU_COUNT][PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1];
-#else
+
     struct KeTaskControlBlock *currentTask; //current task TCB
     void *KeCurrentCpuState;
     struct KeTaskControlBlock *nextTask = NULL; //next task TCB planned to be switched after DPC processing
     void *KeNextCpuState = NULL;
     static struct KeTaskControlBlock *readyToRun[PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1]; //next ready to run task
     static struct KeTaskControlBlock *terminated; //next task to be terminated
-#endif
 
 static void KeSchedule(void);
 
@@ -41,9 +37,9 @@ static void KeSchedule(void);
 static void KeSchedulerWorker(void *context)
 {
     KeSchedule();
-    KeAcquireSpinlock(&dpcTaskSwitchFlagMutex);
+    PRIO prio = KeAcquireSpinlock(&dpcTaskSwitchFlagMutex);
     dpcTaskSwitchPending = true;
-    KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
+    KeReleaseSpinlock(&dpcTaskSwitchFlagMutex, prio);
 }
 
 STATUS KeSchedulerISR(void *context)
@@ -64,7 +60,7 @@ static void detachFromQueue(struct KeTaskControlBlock *tcb)
 {
     if(NULL == tcb->queue)
         return;
-    KeAcquireSpinlock(&queueMutex);
+    PRIO prio = KeAcquireSpinlock(&queueMutex);
     if(tcb != *(tcb->queue))
     {
         tcb->next->previous = tcb->previous;
@@ -92,7 +88,7 @@ static void detachFromQueue(struct KeTaskControlBlock *tcb)
             tcb->queue = NULL;
         }
     }
-    KeReleaseSpinlock(&queueMutex);
+    KeReleaseSpinlock(&queueMutex, prio);
 }
 
 /**
@@ -104,7 +100,7 @@ static void attachToQueue(struct KeTaskControlBlock *tcb, struct KeTaskControlBl
 {
     if(NULL != tcb->queue)
         detachFromQueue(tcb);
-    KeAcquireSpinlock(&queueMutex);
+    PRIO prio = KeAcquireSpinlock(&queueMutex);
     if(NULL == *queueHandle)
     {
         tcb->next = tcb;
@@ -120,14 +116,14 @@ static void attachToQueue(struct KeTaskControlBlock *tcb, struct KeTaskControlBl
         (*queueHandle)->previous = tcb;
         tcb->queue = queueHandle;
     }
-    KeReleaseSpinlock(&queueMutex);
+    KeReleaseSpinlock(&queueMutex, prio);
 }
 
 static KeSpinlock schedulerMutex = KeSpinlockInitializer;
 
 static void KeSchedule(void)
 {
-    KeAcquireSpinlock(&schedulerMutex);
+    PRIO prio = KeAcquireSpinlock(&schedulerMutex);
     
     //reattach task to appropriate queue
     switch(currentTask->requestedState)
@@ -164,7 +160,7 @@ static void KeSchedule(void)
                 KeNextCpuState = &(readyToRun[major][minor]->cpu);
                 //update state
                 nextTask->state = TASK_RUNNING;
-                KeReleaseSpinlock(&schedulerMutex);
+                KeReleaseSpinlock(&schedulerMutex, prio);
                 HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
                 return;
             }
@@ -174,10 +170,12 @@ static void KeSchedule(void)
     KePanic(NO_EXECUTABLE_TASK);
 }
 
-void KeSchedulerStart(void)
+void KeStartScheduler(void)
 {
     CmMemset(readyToRun, 0, sizeof(readyToRun));
     terminated = NULL;
+    currentTask = NULL;
+    KeCurrentCpuState = NULL;
     
     STATUS ret = OK;
     //create idle task
@@ -276,13 +274,13 @@ void KeTaskYield(void)
 
 void KePerformPreemptedTaskSwitch(void)
 {
-    KeAcquireSpinlock(&dpcTaskSwitchFlagMutex);
+    PRIO prio = KeAcquireSpinlock(&dpcTaskSwitchFlagMutex);
     if(true == dpcTaskSwitchPending)
     {
         dpcTaskSwitchPending = false;
-        KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
+        KeReleaseSpinlock(&dpcTaskSwitchFlagMutex, prio);
         HalPerformTaskSwitch();
         return;
     }
-    KeReleaseSpinlock(&dpcTaskSwitchFlagMutex);
+    KeReleaseSpinlock(&dpcTaskSwitchFlagMutex, prio);
 }

@@ -8,6 +8,7 @@
 #include "ke/core/mutex.h"
 #include "mm/mm.h"
 #include "gdt.h"
+#include "ke/sched/sched.h"
 
 #if defined(__i686__)
 
@@ -33,6 +34,8 @@ MmPageTableEntry *pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TABLE_ADDRESS;
 #define MM_PAGE_TABLE_SIZE 4096 //page table size
 #define MM_PAGE_DIRECTORY_ENTRY_COUNT 1024 //number of entries in page directory
 #define MM_PAGE_TABLE_ENTRY_COUNT 1024 //number of entries in page table
+
+#define INVALIDATE_TLB(address) ASM("invlpg [%0]" : : "r" (address) : "memory")
 
 /**
  * @brief Allocate memory for page directory
@@ -105,7 +108,7 @@ static KeSpinlock pageTableCreationMutex = KeSpinlockInitializer;
 STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 {
 	//make sure that no other function will try to create a page table for the same page directory entry
-	KeAcquireSpinlock(&pageTableCreationMutex); 
+	PRIO prio = KeAcquireSpinlock(&pageTableCreationMutex); 
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //check if page table is present
 	{
 		//if not, create one
@@ -113,12 +116,12 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 		if(MM_PAGE_TABLE_SIZE != MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &pageTableAddr))
 		{
 			MmFreePhysicalMemory(pageTableAddr, MM_PAGE_TABLE_SIZE);
-			KeReleaseSpinlock(&pageTableCreationMutex);
+			KeReleaseSpinlock(&pageTableCreationMutex, prio);
 			return MM_NO_MEMORY;
 		}
 
 		pageDir[vAddress >> 22] = pageTableAddr | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //store page directory entry
-		asm volatile("invlpg [%0]" : : "r" ((uintptr_t)(&PAGETABLE(vAddress >> 22, 0))) : "memory"); //invalidate old entry in TLB
+		INVALIDATE_TLB((uintptr_t)(&PAGETABLE(vAddress >> 22, 0)));
 		//now the table can be accessed
 
 		for(uint16_t i = 0; i < MM_PAGE_TABLE_ENTRY_COUNT; i++)
@@ -128,7 +131,7 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 
 		//from now on the page table can be accessed using pageTable[]
 	}
-	KeReleaseSpinlock(&pageTableCreationMutex);
+	KeReleaseSpinlock(&pageTableCreationMutex, prio);
 
 	if(PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT) //check if page is already present
 		return MM_ALREADY_MAPPED;
@@ -144,7 +147,7 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 		f |= PAGE_FLAG_PCD;
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (pAddress & 0xFFFFF000) | f | PAGE_FLAG_PRESENT; //add page to page table
 
-	asm volatile("invlpg [%0]" : : "r" (vAddress) : "memory"); //invalidate old entry in TLB
+	INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
 
 	return OK;	
 }
@@ -183,7 +186,7 @@ STATUS HalUnmapMemory(uintptr_t vAddress)
 
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (MmPageTableEntry)0; //clear entry
 
-	asm volatile("invlpg [%0]" : : "r" (vAddress) : "memory"); //invalidate old entry in TLB
+	INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
 
 	return OK;	
 }
@@ -202,7 +205,7 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 	return OK;
 }
 
-void HalInitVirtualAllocator(void)
+void I686InitVirtualAllocator(void)
 {
 	GdtInit();
 	//iterate through the kernel space mapping
@@ -221,7 +224,7 @@ void HalInitVirtualAllocator(void)
 		
 		pageDir[i] = newPageTable | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //add page directory entry
 
-		asm volatile("invlpg [%0]" : : "r" ((uintptr_t)(&PAGETABLE(i, 0))) : "memory"); //invalidate old entry in TLB
+		INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i, 0))); //invalidate old entry in TLB
 
 		//clear page table
 		CmMemset(&PAGETABLE(i, 0), 0, MM_PAGE_TABLE_ENTRY_COUNT * sizeof(MmPageTableEntry));
@@ -231,48 +234,205 @@ void HalInitVirtualAllocator(void)
 	CmMemset(pageDir, 0, (MM_KERNEL_ADDRESS >> 22) * sizeof(MmPageDirectoryEntry));
 }
 
-uintptr_t GetPageDirectoryAddress(void)
+uintptr_t I686GetPageDirectoryAddress(void)
 {
 	uintptr_t pageDir;
 	ASM("mov eax,cr3" : "=a" (pageDir) : : );
 	return pageDir;
 }
 
-void SwitchPageDirectory(uintptr_t pageDir)
+STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress, void **stack)
 {
-	uintptr_t oldPageDir;
-	asm volatile("mov eax,cr3" : "=a" (oldPageDir) : : );
-	if(oldPageDir != pageDir) //avoid TLB flush when both addresses are the same
-		asm volatile("mov cr3,eax" : : "a" (pageDir) : );
-}
+	MmPageDirectoryEntry *pd = NULL;
+	MmPageTableEntry *pt = NULL;
+	PADDRESS ptAddress = 0;
+	PADDRESS stackPhysical = 0;
+	*pdAddress = 0;
+	*stack = NULL;
 
-uintptr_t CreateProcessPageDirectory(void)
-{
-	uintptr_t newPageDirAddress = allocatePageDirectory();
-	if(0 == newPageDirAddress)
-		return 0;
+	*pdAddress = allocatePageDirectory();
+	ptAddress = allocatePageTable();
+	if((0 == pdAddress) || (0 == ptAddress)
+	|| (0 == MmAllocatePhysicalMemory(MM_PAGE_SIZE, &stackPhysical)))
+		goto I686CreateProcessMemorySpaceFailure;
 	
-	MmPageDirectoryEntry *newPageDir = MmMapDynamicMemory(newPageDirAddress, MM_PAGE_DIRECTORY_SIZE, 0);
+	pd = MmMapDynamicMemory(*pdAddress, MM_PAGE_DIRECTORY_SIZE, 0);
+	if(NULL == pd)
+		goto I686CreateProcessMemorySpaceFailure;
 
-	if(NULL == newPageDir)
-	{
-		MmFreePhysicalMemory(newPageDirAddress, MM_PAGE_DIRECTORY_SIZE);
-		return 0;
-	}
+	pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, 0);
+	if(NULL == pt)
+		goto I686CreateProcessMemorySpaceFailure;
 
-	CmMemset(newPageDir, 0, MM_PAGE_DIRECTORY_SIZE);
+	CmMemset(pd, 0, MM_PAGE_DIRECTORY_SIZE);
+	CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
 
 	//copy entries for kernel space
-	CmMemcpy(&newPageDir[MM_KERNEL_SPACE_START >> 22], 
+	CmMemcpy(&pd[MM_KERNEL_SPACE_START >> 22], 
 		&pageDir[MM_KERNEL_SPACE_START >> 22], 
 		((MM_KERNEL_SPACE_SIZE >> 22) - 1) * sizeof(MmPageDirectoryEntry));
 	
 	//apply self-referencing page directory trick
-	newPageDir[MM_PAGE_DIRECTORY_ENTRY_COUNT - 1] = newPageDirAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+	pd[MM_PAGE_DIRECTORY_ENTRY_COUNT - 1] = *pdAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+	//store page table address is page directory
+	pd[(stackAddress - MM_PAGE_SIZE) >> 22] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+	pt[((stackAddress - MM_PAGE_SIZE) >> 12) & 0x3FF] = stackPhysical | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
 
-	MmUnmapDynamicMemory(newPageDir);
+	*stack = MmMapDynamicMemory(stackPhysical, MM_PAGE_SIZE, 0);
+	if(NULL != *stack)
+	{
+		*stack = (void*)((uintptr_t)*stack + MM_PAGE_SIZE);
+		MmUnmapDynamicMemory(pt);
+		MmUnmapDynamicMemory(pd);
+		return OK;
+	}
 
-	return newPageDirAddress;
+I686CreateProcessMemorySpaceFailure:
+	MmUnmapDynamicMemory(*stack);
+	MmUnmapDynamicMemory(pt);
+	MmUnmapDynamicMemory(pd);
+	if(0 != ptAddress)
+		MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
+	if(0 != pdAddress)
+		MmFreePhysicalMemory(*pdAddress, MM_PAGE_DIRECTORY_SIZE);
+	*pdAddress = 0;
+	*stack = NULL;
+	return OUT_OF_RESOURCES;
 }
+
+// STATUS I686CreateThreadKernelStack(const struct KeTaskControlBlock *parent, uintptr_t stackAddress, void **stack)
+// {
+// 	MmPageDirectoryEntry *pd = NULL;
+// 	MmPageTableEntry *pt = NULL;
+// 	PADDRESS ptAddress = 0;
+// 	PADDRESS stackPhysical = 0;
+// 	*stack = NULL;
+// 	bool newPageTable = false;
+
+// 	if(0 == MmAllocatePhysicalMemory(MM_PAGE_SIZE, &stackPhysical))
+// 		goto I686CreateThreadKernelStackFailure;
+	
+// 	pd = MmMapDynamicMemory(parent->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
+// 	if(NULL == pd)
+// 		goto I686CreateThreadKernelStackFailure;
+
+// 	KeAcquireSpinlock(parent->cpu.userPageTableLock);
+
+// 	if(0 == (pd[(stackAddress - MM_PAGE_SIZE) >> 22] & PAGE_FLAG_PRESENT)) //page table for given stack address not present?
+// 	{
+// 		//create new page table
+// 		ptAddress = allocatePageTable();
+// 		if(0 == ptAddress)
+// 			goto I686CreateThreadKernelStackFailure;
+// 		newPageTable = true;
+// 	}
+// 	else
+// 		ptAddress = pd[(stackAddress - MM_PAGE_SIZE) >> 22] & 0xFFFFF000;
+
+// 	pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, 0);
+// 	if(NULL == pt)
+// 		goto I686CreateThreadKernelStackFailure;
+
+// 	if(newPageTable)
+// 	{
+// 		pd[(stackAddress - MM_PAGE_SIZE) >> 2] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+// 		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
+// 	}
+
+// 	pt[((stackAddress - MM_PAGE_SIZE) >> 12) & 0x3FF] = stackPhysical | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+
+// 	*stack = MmMapDynamicMemory(stackPhysical, MM_PAGE_SIZE, 0);
+// 	if(NULL != *stack)
+// 	{
+// 		*stack = (void*)((uintptr_t)*stack + MM_PAGE_SIZE);
+// 		MmUnmapDynamicMemory(pt);
+// 		MmUnmapDynamicMemory(pd);
+// 		return OK;
+// 	}
+
+// I686CreateThreadKernelStackFailure:
+// 	MmUnmapDynamicMemory(*stack);
+// 	MmUnmapDynamicMemory(pt);
+// 	MmUnmapDynamicMemory(pd);
+// 	if(0 != ptAddress)
+// 		MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
+// 	*stack = NULL;
+// 	return OUT_OF_RESOURCES;
+// }
+
+//TODO: when mapping kernel space memory, TLBs must be invalidated across all processors
+// STATUS HalMapForeignMemory(struct KeTaskControlBlock *target, uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
+// {
+// 	STATUS status = OK;
+// 	MmPageTableEntry *pt = NULL;
+// 	MmPageDirectoryEntry *pd = NULL;
+// 	PADDRESS ptAddr = 0;
+// 	bool allocatePageTable = false;
+
+// 	if((target == KeGetCurrentTask())
+// 		|| (vAddress >= MM_KERNEL_SPACE_START))
+// 		return HalMapMemory(vAddress, pAddress, flags);
+
+// 	pd = MmMapDynamicMemory(target->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
+// 	if(NULL == pd)
+// 		return OUT_OF_RESOURCES;
+
+// 	PRIO prio = KeAcquireSpinlock(target->cpu.userPageTableLock);
+
+// 	if((pd[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //page table is not present
+// 	{
+// 		allocatePageTable = true;
+// 		//if not, create one
+// 		if(MM_PAGE_TABLE_SIZE != MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &ptAddr))
+// 		{
+// 			status = OUT_OF_RESOURCES;
+// 			goto HalMapForeignMemoryExit;
+// 		}
+// 	}
+// 	else //page table is present
+// 	{
+// 		ptAddr = pd[vAddress >> 22] & 0xFFFFF000;
+// 	}
+
+// 	//map page table
+// 	pt = MmMapDynamicMemory(ptAddr, MM_PAGE_TABLE_SIZE, 0);
+// 	if(NULL == pt)
+// 	{
+// 		status = OUT_OF_RESOURCES;
+// 		goto HalMapForeignMemoryExit;
+// 	}
+
+// 	if(allocatePageTable)
+// 	{
+// 		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
+// 		pd[vAddress >> 22] = ptAddr | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //store page directory entry
+// #ifdef SMP
+// 		//TODO: send invalidate tlb ipi to other processor
+// #endif
+// 	}
+
+// 	if(pt[(vAddress >> 12) & 0x3FF] & PAGE_FLAG_PRESENT) //check if page is already present
+// 	{
+// 		status = MM_ALREADY_MAPPED;
+// 		goto HalMapForeignMemoryExit;
+// 	}
+
+// 	uint16_t f = 0;
+// 	if(flags & MM_FLAG_WRITABLE)
+// 		f |= PAGE_FLAG_WRITABLE;
+// 	if(flags & MM_FLAG_USER_MODE)
+// 		f |= PAGE_FLAG_USER;
+// 	if(flags & MM_FLAG_WRITE_THORUGH)
+// 		f |= PAGE_FLAG_PWT;
+// 	if(flags & MM_FLAG_CACHE_DISABLE)
+// 		f |= PAGE_FLAG_PCD;
+// 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (pAddress & 0xFFFFF000) | f | PAGE_FLAG_PRESENT; //add page to page table
+
+// 	INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
+
+// HalMapForeignMemoryExit:
+
+// 	return status;	
+// }
 
 #endif

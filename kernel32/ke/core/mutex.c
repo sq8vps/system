@@ -3,67 +3,58 @@
 #include "panic.h"
 #include "hal/time.h"
 #include "it/it.h"
+#include "hal/arch.h"
 
 //list of tasks waiting for mutex or semaphore
 //this list is sorted by earliest deadline first
 static struct KeTaskControlBlock *list = NULL;
 static KeSpinlock listLock = KeSpinlockInitializer;
 
-void KeAcquireSpinlock(KeSpinlock *spinlock)
+PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 {
+    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
 #ifndef SMP
-    spinlock->priority = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
     if(0 != spinlock->lock)
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
+    
     spinlock->lock = 1;
 #else
-    //UNTESTED!!!!
-    uint16_t *lock = &(spinlock->lock);
-    uint32_t *eflags = &(spinlock->eflags);
-    asm volatile("pushfd"); //store flags
-    ItDisableInterrupts();
-    asm volatile("lock bts WORD [%0],0" : "=m" (lock) : ); //store bit 0 value in CF and set bit 0 (atomic)
-    asm volatile("jnc .IRQacquired"); //if bit 0 was clear previously then the lock is acquired
-
-    asm volatile(".IRQretry:");
-    asm volatile("popfd"); //restore previous flags
-    asm volatile("pushfd"); //store previous flags again
-    asm volatile("pause");
-    asm volatile("bt WORD [%0],0" : : "m" (lock)); //check if bit is set
-    asm volatile("jc .IRQretry"); //if so, wait for the bit to be clear
-
-    ItDisableInterrupts();
-    asm volatile("lock bts WORD [%0],0" : "=m" (lock) : ); //store bit 0 value in CF and set bit 0 (atomic)
-    asm volatile("jc .IRQretry"); //if bit 0 was set previously then retry
-
-    asm volatile(".IRQacquired:");
-    asm volatile("pop eax");
-    asm volatile("mov [%0],eax" : "=m" (eflags) : ); //store previous flags
+    while(1)
+    {
+        //obtain previous value and try to set atomically
+        //if previous value was 0, then we've acquired the lock
+        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_SEQ_CST))
+            break;
+        
+        //else we haven't acquired the lock
+        //loop until the lock appears to be free
+        //do not use atomic operations to avoid locking CPU memory bus
+        //and optimize such tight loop
+        //after we detect possibly free lock, then do the atomic exchange again
+        while(0 != spinlock->lock)
+            TIGHT_LOOP_HINT();
+    }
 #endif
+    return prio;
 }
 
-void KeReleaseSpinlock(KeSpinlock *spinlock)
+void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 {
 #ifndef SMP
     if(0 == spinlock->lock)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 0;
-
 #else
-    uint16_t *lock = &(spinlock->lock);
-    asm volatile("lock btr WORD [%0],0" : "=m" (lock) : ); //check if bit was clear previously
-    asm volatile("jc .IRQrelease");
-    //if so, the lock was never acquired
-    asm volatile("push %0" : : "r" (UNACQUIRED_MUTEX_RELEASED));
-    asm volatile("call KePanic");
-    asm volatile(".IRQrelease:");
+    if(0 == __atomic_load_n(&spinlock->lock, __ATOMIC_SEQ_CST))
+        KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
+    __atomic_store_n(&spinlock->lock, 0, __ATOMIC_SEQ_CST);
 #endif
-    HalLowerPriorityLevel(spinlock->priority);
+    HalLowerPriorityLevel(previousPriority);
 }
 
 static void insertToList(struct KeTaskControlBlock *tcb)
 {
-    KeAcquireSpinlock(&listLock);
+    PRIO prio = KeAcquireSpinlock(&listLock);
     if(NULL == list)
         list = tcb;
     else
@@ -81,35 +72,36 @@ static void insertToList(struct KeTaskControlBlock *tcb)
         }
         s->nextAux = tcb;
     }
-    KeReleaseSpinlock(&listLock);
+    KeReleaseSpinlock(&listLock, prio);
 }
 
 static void removeFromList(struct KeTaskControlBlock *tcb)
 {
-    KeAcquireSpinlock(&listLock);
+    PRIO prio = KeAcquireSpinlock(&listLock);
     if(list == tcb)
         list = tcb->nextAux;
     if(tcb->previousAux)
         tcb->previousAux->nextAux = tcb->nextAux;
     if(tcb->nextAux)
         tcb->nextAux->previous = tcb->previousAux;
-    KeReleaseSpinlock(&listLock);   
+    KeReleaseSpinlock(&listLock, prio);   
 }
 
 void KeAcquireMutex(KeMutex *mutex)
 {
-    KeAcquireMutexWithTimeout(mutex, KE_MUTEX_NORMAL);
+    KeAcquireMutexWithTimeout(mutex, KE_MUTEX_NO_TIMEOUT);
 }
 
 bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
 {
+    HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *current = KeGetCurrentTask();
-    KeAcquireSpinlock(&(mutex->spinlock));
+    PRIO prio = KeAcquireSpinlock(&(mutex->spinlock));
     if(mutex->lock)
     {
         if(KE_MUTEX_NO_WAIT == timeout)
         {
-            KeReleaseSpinlock(&(mutex->spinlock));
+            KeReleaseSpinlock(&(mutex->spinlock), prio);
             return false;
         }
         else
@@ -129,11 +121,11 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
             current->semaphore = NULL;
             current->mutex = mutex;
             current->rwLock = NULL;
-            KeReleaseSpinlock(&(mutex->spinlock));
-            if(timeout < KE_MUTEX_NORMAL)
+            KeReleaseSpinlock(&(mutex->spinlock), prio);
+            if(timeout < KE_MUTEX_NO_TIMEOUT)
                 current->waitUntil = HalGetTimestamp() + timeout;
             else
-                current->waitUntil = KE_MUTEX_NORMAL;
+                current->waitUntil = KE_MUTEX_NO_TIMEOUT;
             insertToList(current);
             KeTaskYield(); //suspend task and wait for an event
 
@@ -146,7 +138,7 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
     else
     {
         mutex->lock = 1;
-        KeReleaseSpinlock(&(mutex->spinlock));
+        KeReleaseSpinlock(&(mutex->spinlock), prio);
         return true;
     }
 }
@@ -155,13 +147,13 @@ void KeReleaseMutex(KeMutex *mutex)
 {
     if(NULL == mutex)
         return;
-    KeAcquireSpinlock(&(mutex->spinlock));
+    PRIO prio = KeAcquireSpinlock(&(mutex->spinlock));
     if(0 == mutex->lock)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 1, (uintptr_t)mutex, 0, 0);
     if(NULL == mutex->queueTop)
     {
         mutex->lock = 0;
-        KeReleaseSpinlock(&(mutex->spinlock));
+        KeReleaseSpinlock(&(mutex->spinlock), prio);
         return;
     }
     struct KeTaskControlBlock *next = mutex->queueTop;
@@ -173,23 +165,24 @@ void KeReleaseMutex(KeMutex *mutex)
 
     removeFromList(next);
     KeUnblockTask(next);
-    KeReleaseSpinlock(&(mutex->spinlock));
+    KeReleaseSpinlock(&(mutex->spinlock), prio);
 }
 
 void KeAcquireSemaphore(KeSemaphore *sem)
 {
-    KeAcquireSemaphoreWithTimeout(sem, KE_MUTEX_NORMAL);
+    KeAcquireSemaphoreWithTimeout(sem, KE_MUTEX_NO_TIMEOUT);
 }
 
 bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
 {
+    HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *current = KeGetCurrentTask();
-    KeAcquireSpinlock(&(sem->spinlock));
+    PRIO prio = KeAcquireSpinlock(&(sem->spinlock));
     if(sem->current == sem->max)
     {
         if(KE_MUTEX_NO_WAIT == timeout)
         {
-            KeReleaseSpinlock(&(sem->spinlock));
+            KeReleaseSpinlock(&(sem->spinlock), prio);
             return false;
         }
         else
@@ -209,11 +202,11 @@ bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
             current->semaphore = sem;
             current->mutex = NULL;
             current->rwLock = NULL;
-            KeReleaseSpinlock(&(sem->spinlock));
-            if(timeout < KE_MUTEX_NORMAL)
+            KeReleaseSpinlock(&(sem->spinlock), prio);
+            if(timeout < KE_MUTEX_NO_TIMEOUT)
                 current->waitUntil = HalGetTimestamp() + timeout;
             else
-                current->waitUntil = KE_MUTEX_NORMAL;
+                current->waitUntil = KE_MUTEX_NO_TIMEOUT;
             insertToList(current);
             KeTaskYield(); //suspend task and wait for an event
 
@@ -228,21 +221,21 @@ bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
     else
     {
         sem->current++;
-        KeReleaseSpinlock(&(sem->spinlock));
+        KeReleaseSpinlock(&(sem->spinlock), prio);
         return true;
     }
 }
 
 void KeReleaseSemaphore(KeSemaphore *sem)
 {
-    KeAcquireSpinlock(&(sem->spinlock));
+    PRIO prio = KeAcquireSpinlock(&(sem->spinlock));
     if(0 == sem->current)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 2, (uintptr_t)sem, (uintptr_t)sem->max, 0);
 
     if(NULL == sem->queueTop)
     {
         sem->current--;
-        KeReleaseSpinlock(&(sem->spinlock));
+        KeReleaseSpinlock(&(sem->spinlock), prio);
         return;
     }
     struct KeTaskControlBlock *next = sem->queueTop;
@@ -254,14 +247,14 @@ void KeReleaseSemaphore(KeSemaphore *sem)
 
     removeFromList(next);
     KeUnblockTask(next);
-    KeReleaseSpinlock(&(sem->spinlock));   
+    KeReleaseSpinlock(&(sem->spinlock), prio);   
 }
 
 void KeTimedExclusionRefresh(void)
 {
     struct KeTaskControlBlock *s = NULL;
     uint64_t currentTimestamp = HalGetTimestamp();
-    KeAcquireSpinlock(&listLock);
+    PRIO prio = KeAcquireSpinlock(&listLock);
     while(NULL != list)
     {
         s = list;
@@ -273,7 +266,7 @@ void KeTimedExclusionRefresh(void)
             s->previousAux = NULL;
             if(NULL != s->mutex)
             {
-                KeAcquireSpinlock(&(s->mutex->spinlock));
+                PRIO prio = KeAcquireSpinlock(&(s->mutex->spinlock));
                 if(s->previous)
                     s->previous->next = s->next;
                 else
@@ -284,11 +277,11 @@ void KeTimedExclusionRefresh(void)
                 else
                     s->mutex->queueBottom = s->previous;
 
-                KeReleaseSpinlock(&(s->mutex->spinlock));
+                KeReleaseSpinlock(&(s->mutex->spinlock), prio);
             }
             else if(s->semaphore)
             {
-                KeAcquireSpinlock(&(s->semaphore->spinlock));
+                PRIO prio = KeAcquireSpinlock(&(s->semaphore->spinlock));
                 if(s->previous)
                     s->previous->next = s->next;
                 else
@@ -299,11 +292,11 @@ void KeTimedExclusionRefresh(void)
                 else
                     s->semaphore->queueBottom = s->previous;
 
-                KeReleaseSpinlock(&(s->semaphore->spinlock));
+                KeReleaseSpinlock(&(s->semaphore->spinlock), prio);
             }
             else
             {
-                KeAcquireSpinlock(&(s->rwLock->lock));
+                PRIO prio = KeAcquireSpinlock(&(s->rwLock->lock));
                 if(s->previous)
                     s->previous->next = s->next;
                 else
@@ -314,7 +307,7 @@ void KeTimedExclusionRefresh(void)
                 else
                     s->rwLock->queueBottom = s->previous;
 
-                KeReleaseSpinlock(&(s->rwLock->lock));
+                KeReleaseSpinlock(&(s->rwLock->lock), prio);
             }
             s->mutex = NULL;
             s->semaphore = NULL;
@@ -323,23 +316,24 @@ void KeTimedExclusionRefresh(void)
         else
             break;
     }
-    KeReleaseSpinlock(&listLock);
+    KeReleaseSpinlock(&listLock, prio);
 }
 
 bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
 {
+    HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *current = KeGetCurrentTask();
-    KeAcquireSpinlock(&(rwLock->lock));
+    PRIO prio = KeAcquireSpinlock(&(rwLock->lock));
     if(rwLock->writers || (write && rwLock->readers))
     {
         if(KE_MUTEX_NO_WAIT == timeout)
         {
-            KeReleaseSpinlock(&(rwLock->lock));
+            KeReleaseSpinlock(&(rwLock->lock), prio);
             return false;
         }
         else
         {
-            ObLockObject(current);
+            
             KeBlockTask(current, TASK_BLOCK_MUTEX);
             if(rwLock->queueTop)
             {
@@ -356,13 +350,13 @@ bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
             current->mutex = NULL;
             current->rwLock = rwLock;
             current->blockParameters.rwLock.write = write;
-            KeReleaseSpinlock(&(rwLock->lock));
-            if(timeout < KE_MUTEX_NORMAL)
+            KeReleaseSpinlock(&(rwLock->lock), prio);
+            if(timeout < KE_MUTEX_NO_TIMEOUT)
                     current->waitUntil = HalGetTimestamp() + timeout;
                 else
-                    current->waitUntil = KE_MUTEX_NORMAL;
+                    current->waitUntil = KE_MUTEX_NO_TIMEOUT;
             insertToList(current);
-            ObUnlockObject(current);
+            
             KeTaskYield(); //suspend task and wait for an event
         }
     }
@@ -373,23 +367,23 @@ bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
         else
             rwLock->readers++;
 
-        KeReleaseSpinlock(&(rwLock->lock));
+        KeReleaseSpinlock(&(rwLock->lock), prio);
     }
     return true;
 }
 
 void KeAcquireRwLock(KeRwLock *rwLock, bool write)
 {
-    KeAcquireRwLockWithTimeout(rwLock, write, KE_MUTEX_NORMAL);
+    KeAcquireRwLockWithTimeout(rwLock, write, KE_MUTEX_NO_TIMEOUT);
 }
 
 void KeReleaseRwLock(KeRwLock *rwLock)
 {
-    KeAcquireSpinlock(&(rwLock->lock));
+    PRIO prio = KeAcquireSpinlock(&(rwLock->lock));
 
     if((0 == rwLock->writers) && (0 == rwLock->readers))
     {
-        KeReleaseSpinlock(&(rwLock->lock));
+        KeReleaseSpinlock(&(rwLock->lock), prio);
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 3, (uintptr_t)rwLock, 0, 0);
     }
 
@@ -403,7 +397,7 @@ void KeReleaseRwLock(KeRwLock *rwLock)
         struct KeTaskControlBlock *t = rwLock->queueTop;
         while(NULL != t)
         {
-            ObLockObject(t);
+            
             if(t->blockParameters.rwLock.write)
             {
                 if(0 == rwLock->readers)
@@ -415,14 +409,14 @@ void KeReleaseRwLock(KeRwLock *rwLock)
                     else
                         rwLock->queueBottom = NULL;
                     
-                    ObUnlockObject(t);
-                    KeReleaseSpinlock(&(rwLock->lock));
+                    
+                    KeReleaseSpinlock(&(rwLock->lock), prio);
                     KeUnblockTask(t);
                     return;
                 }
                 else
                 {
-                    KeReleaseSpinlock(&(rwLock->lock));
+                    KeReleaseSpinlock(&(rwLock->lock), prio);
                     return;
                 }
             }
@@ -436,10 +430,62 @@ void KeReleaseRwLock(KeRwLock *rwLock)
 
             rwLock->queueTop = t->next;
             removeFromList(t);
-            ObUnlockObject(t);
+            
             KeUnblockTask(t);
             t = rwLock->queueTop;
         }
     }
-    KeReleaseSpinlock(&(rwLock->lock));
+    KeReleaseSpinlock(&(rwLock->lock), prio);
+}
+
+KeMutex *KeCreateMutex(void)
+{
+    KeMutex *m = MmAllocateKernelHeap(sizeof(*m));
+    if(NULL != m)
+        *m = (KeMutex)KeMutexInitializer;
+    return m;
+}
+
+KeSpinlock *KeCreateSpinlock(void)
+{
+    KeSpinlock *m = MmAllocateKernelHeap(sizeof(*m));
+    if(NULL != m)
+        *m = (KeSpinlock)KeSpinlockInitializer;
+    return m;
+}
+
+KeSemaphore *KeCreateSemaphore(void)
+{
+    KeSemaphore *m = MmAllocateKernelHeap(sizeof(*m));
+    if(NULL != m)
+        *m = (KeSemaphore)KeSemaphoreInitializer;
+    return m;
+}
+
+KeRwLock *KeCreateRwLock(void)
+{
+    KeRwLock *m = MmAllocateKernelHeap(sizeof(*m));
+    if(NULL != m)
+        *m = (KeRwLock)KeRwLockInitializer;
+    return m;
+}
+
+void KeDestroyMutex(KeMutex *mutex)
+{
+    MmFreeKernelHeap(mutex);
+}
+
+void KeDestroySpinlock(KeSpinlock *spinlock)
+{
+    MmFreeKernelHeap(spinlock);
+}
+
+void KeDestroySempahore(KeSemaphore *semaphore)
+{
+    MmFreeKernelHeap(semaphore);
+}
+
+void KeDestroyRwLock(KeRwLock *rwLock)
+{
+    MmFreeKernelHeap(rwLock);
 }

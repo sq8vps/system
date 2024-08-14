@@ -8,6 +8,7 @@ extern "C"
 #endif
 
 #include "defines.h"
+
 #ifdef DEBUG
     #include "common.h"
     /**

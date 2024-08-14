@@ -216,16 +216,16 @@ STATUS FatReadWrite(struct IoRp *rp)
 
         if(0 != requiredClusters)
         {
-            KeAcquireSpinlock(&(vol->fatLock));
+            PRIO prio = KeAcquireSpinlock(&(vol->fatLock));
             //reserve clusters
             if(0 != FatReserveClusters(vol, ctx->cluster, requiredClusters))
             {
                 FatFreeClusters(vol, ctx->cluster);
-                KeReleaseSpinlock(&(vol->fatLock));
+                KeReleaseSpinlock(&(vol->fatLock), prio);
                 IoFreeRp(n);
                 return OUT_OF_RESOURCES; 
             }
-            KeReleaseSpinlock(&(vol->fatLock));
+            KeReleaseSpinlock(&(vol->fatLock), prio);
         }
     }    
 

@@ -8,6 +8,7 @@
 #include "pit.h"
 #include "msr.h"
 #include "tsc.h"
+#include "hal/time.h"
 
 #define LAPIC_SPURIOUS_VECTOR 255
 
@@ -52,6 +53,8 @@ enum ApicTimerDivider
 #define LAPIC_ICR_RESERVED_MASK 0xFFF32000
 #define LAPIC_ICR_LEVEL_ASSERT (1 << 14)
 #define LAPIC_ICR_LEVEL_DEASSERT (0)
+#define LAPIC_ICR_TRIGGER_LEVEL (1 << 15)
+#define LAPIC_ICR_TRIGGER_EDGE (0)
 
 #define LAPIC_ICR_DELIVERY_STATUS_BIT (1 << 12)
 
@@ -122,18 +125,23 @@ STATUS ApicSendEoi(void)
 
 STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert)
 {
-    LAPIC(LAPIC_ICR_OFFSET + 0x10) = (LAPIC(LAPIC_ICR_OFFSET + 0x10) & 0xFF000000) | (destination << 24);
+    LAPIC(LAPIC_ICR_OFFSET + 0x10) = (LAPIC(LAPIC_ICR_OFFSET + 0x10) & 0x00FFFFFF) | ((uint32_t)destination << 24);
     LAPIC(LAPIC_ICR_OFFSET) = (LAPIC(LAPIC_ICR_OFFSET) & LAPIC_ICR_RESERVED_MASK) 
-        | (mode << 8) | (assert ? LAPIC_ICR_LEVEL_ASSERT : LAPIC_ICR_LEVEL_DEASSERT) | vector;
+        | (mode << 8) | LAPIC_ICR_TRIGGER_LEVEL 
+        | ((assert || (mode != APIC_IPI_INIT)) ? LAPIC_ICR_LEVEL_ASSERT : LAPIC_ICR_LEVEL_DEASSERT) | vector;
     return OK;
 }
 
-void ApicWaitForIpiDelivery(void)
+STATUS ApicWaitForIpiDelivery(uint64_t timeLimit)
 {
+    uint64_t end = HalGetTimestamp() + timeLimit;
     while(LAPIC(LAPIC_ICR_OFFSET) & LAPIC_ICR_DELIVERY_STATUS_BIT)
     {
+        if(end <= HalGetTimestamp())
+            return TIMEOUT;
         TIGHT_LOOP_HINT();
     }
+    return OK;
 }
 
 STATUS ApicInitAp(void)
@@ -141,12 +149,13 @@ STATUS ApicInitAp(void)
     if(NULL == lapic)
         return APIC_LAPIC_NOT_AVAILABLE;
 
+    MsrSet(MSR_IA32_APIC_BASE, MsrGet(MSR_IA32_APIC_BASE) | MSR_IA32_APIC_BASE_ENABLE_MASK);
+
     LAPIC(LAPIC_LINT0_OFFSET) = LAPIC_LOCAL_MASK;
     LAPIC(LAPIC_LINT1_OFFSET) = LAPIC_LOCAL_MASK;
 
     LAPIC(LAPIC_TPR_OFFSET) = 0;
     LAPIC(LAPIC_DESTINATION_FORMAT_OFFSET) = 0xFFFFFFFF;
-    LAPIC(LAPIC_LOGICAL_DESTINATION_OFFSET) = 0x01000000;
 
     LAPIC(LAPIC_SPURIOUS_INTERRUPT_OFFSET) = 0x100 | LAPIC_SPURIOUS_VECTOR;
 
@@ -272,6 +281,11 @@ uint8_t ApicGetProcessorPriority(void)
         return 0;
     
     return (LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xFF;
+}
+
+uint8_t ApicGetCurrentId(void)
+{
+    return (LAPIC(LAPIC_ID_OFFSET) >> 24);
 }
 
 #endif

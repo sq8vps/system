@@ -31,14 +31,14 @@ static KeSpinlock ItHandlerTableMutex = KeSpinlockInitializer;
 
 uint8_t ItReserveVector(uint8_t vector)
 {
+	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
 	if(0 == vector)
 	{
-		KeAcquireSpinlock(&ItHandlerTableMutex);
 		for(uint16_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
 		{
 			if((0 == ItHandlerDescriptorTable[i].count) && (false == ItHandlerDescriptorTable[i].reserved))
 			{
-				KeReleaseSpinlock(&ItHandlerTableMutex);
+				KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 				return i + IT_FIRST_INTERRUPT_VECTOR;
 			}
 		}
@@ -47,13 +47,13 @@ uint8_t ItReserveVector(uint8_t vector)
 	else if(vector >= IT_FIRST_INTERRUPT_VECTOR)
 	{
 		vector -= IT_FIRST_INTERRUPT_VECTOR;
-		KeAcquireSpinlock(&ItHandlerTableMutex);
+
 		if(0 == ItHandlerDescriptorTable[vector].count)
 			ItHandlerDescriptorTable[vector].reserved = true;
 		else
 			vector = 0;
 	}
-	KeReleaseSpinlock(&ItHandlerTableMutex);
+	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 	return vector;
 }
 
@@ -64,12 +64,12 @@ void ItFreeVector(uint8_t vector)
 	
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 
-	KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
 	if(true == ItHandlerDescriptorTable[vector].reserved)
 	{
 		ItHandlerDescriptorTable[vector].reserved = false;
 	}
-	KeReleaseSpinlock(&ItHandlerTableMutex);
+	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 }
 
 STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
@@ -79,11 +79,11 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 
-	KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
 
 	if(ItHandlerDescriptorTable[vector].count == IT_MAX_SHARED_IRQ_CONSUMERS)
 	{
-		KeReleaseSpinlock(&ItHandlerTableMutex);
+		KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 		return IT_VECTOR_NOT_FREE;
 	}
 
@@ -91,7 +91,7 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 	ItHandlerDescriptorTable[vector].consumer[ItHandlerDescriptorTable[vector].count].context = context;
 	ItHandlerDescriptorTable[vector].count++;
 	ItHandlerDescriptorTable[vector].reserved = false;
-	KeReleaseSpinlock(&ItHandlerTableMutex);
+	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 
 	return OK;
 }
@@ -103,7 +103,7 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
-	KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
 	for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector].count; i++)
 	{
 		if(ItHandlerDescriptorTable[vector].consumer[i].callback == isr)
@@ -118,11 +118,11 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 				ItHandlerDescriptorTable[vector].consumer[k].callback = NULL;
 			}
 			ItHandlerDescriptorTable[vector].count--;
-			KeReleaseSpinlock(&ItHandlerTableMutex);
+			KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 			return OK;
 		}
 	}
-	KeReleaseSpinlock(&ItHandlerTableMutex);
+	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 	return IT_NOT_REGISTERED;
 }
 
@@ -133,17 +133,17 @@ STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
-	KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
 	for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector].count; i++)
 	{
 		if(ItHandlerDescriptorTable[vector].consumer[i].callback == isr)
 		{
 			ItHandlerDescriptorTable[vector].consumer[i].enabled = enable;
-			KeReleaseSpinlock(&ItHandlerTableMutex);
+			KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 			return OK;
 		}
 	}
-	KeReleaseSpinlock(&ItHandlerTableMutex);
+	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 	return IT_NOT_REGISTERED;	
 }
 
@@ -154,13 +154,12 @@ STATUS ItInit(void)
 		ItHandlerDescriptorTable[i].count = 0;
 		CmMemset(ItHandlerDescriptorTable[i].consumer, 0, sizeof(ItHandlerDescriptorTable[i].consumer[0]));
 	}
-
-	return ItInitializeArchitectureInterrupts();
+	return OK;
 }
 
 void ItHandleIrq(uint8_t vector)
 {
-	ItEnableInterrupts();
+	HalEnableInterrupts();
 	if(HalIsInterruptSpurious())                                               
         return;            
 	for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)        

@@ -11,7 +11,9 @@ extern "C"
 #include "defines.h"
 #include "bus.h"
 #include "ob/ob.h"
+
 #define IO_MAX_COMPATIBLE_DEVICE_IDS 8
+
 
 typedef uint32_t IoDeviceFlags;
 #define IO_DEVICE_FLAG_INITIALIZED 0x1
@@ -24,6 +26,7 @@ typedef uint32_t IoDeviceFlags;
 #define IO_DEVICE_FLAG_PERSISTENT 0x80000000
 #define IO_DEVICE_FLAG_REMOVABLE_MEDIA 0x40000000
 #define IO_DEVICE_FLAG_ENUMERATION_CAPABLE 0x20000000
+
 
 enum IoDeviceType
 {
@@ -39,16 +42,19 @@ enum IoDeviceType
     __IO_DEVICE_TYPE_COUNT, //count of device types, do not use
 };
 
+
 struct IoDeviceObject;
 struct IoVolumeNode;
 struct IoDeviceResource;
 struct ExDeviceObject;
 struct IoRp;
 
+
 /**
  * @brief Maximum length of device name
 */
 #define IO_DEVICE_MAX_NAME_LENGTH 64
+
 
 /**
  * @brief Device node structure
@@ -64,6 +70,10 @@ struct IoDeviceNode
     struct IoDeviceNode *child; /**< First child node */
     struct IoDeviceNode *next, *previous; /**< A list of nodes on the same level */
 };
+
+/**
+ * @brief Device object structure
+*/
 
 struct IoDeviceObject
 {
@@ -88,6 +98,7 @@ struct IoDeviceObject
     };
 };
 
+
 /**
  * @brief Get memory alignment required to perform direct I/O
  * @param dev Target device
@@ -95,6 +106,7 @@ struct IoDeviceObject
  * @warning Might return 0, which should be treated as 1 (any alignment)
  */
 #define IO_DEV_REQUIRED_ALIGNMENT(dev) (((dev)->blockSize > (dev)->alignment) ? (dev)->blockSize : (dev)->alignment) 
+
 
 /**
  * @brief Create device object from driver
@@ -106,11 +118,12 @@ struct IoDeviceObject
  * @attention If the device being created is not a BDO, then it must be attached to a stack using \a IoAttachDevice().
  * If it is a BDO, it must be registered in the system using \a IoRegisterDevice().
 */
-extern STATUS IoCreateDevice(
+STATUS IoCreateDevice(
     struct ExDriverObject *driver, 
     enum IoDeviceType type,
     IoDeviceFlags flags, 
     struct IoDeviceObject **device);
+
 
 /**
  * @brief Destroy device object
@@ -121,7 +134,8 @@ extern STATUS IoCreateDevice(
  * @return Status code
  * @attention This function destroys only unattached devices
 */
-extern STATUS IoDestroyDevice(struct IoDeviceObject *device);
+STATUS IoDestroyDevice(struct IoDeviceObject *device);
+
 
 /**
  * @brief Attach device to the top of the device stack
@@ -129,9 +143,10 @@ extern STATUS IoDestroyDevice(struct IoDeviceObject *device);
  * @param *destination Any device object in given device stack
  * @return Pointer to the previous top device stack object or NULL on failure
 */
-extern struct IoDeviceObject* IoAttachDevice(
+struct IoDeviceObject* IoAttachDevice(
     struct IoDeviceObject *attachee, 
     struct IoDeviceObject *destination);
+
 
 /**
  * @brief Register new device to be used by the system
@@ -140,7 +155,7 @@ extern struct IoDeviceObject* IoAttachDevice(
  * @return Status code
  * @warning This function should be called only by (or on behalf of) base (bus) subdevice object
 */
-extern STATUS IoRegisterDevice(
+STATUS IoRegisterDevice(
     struct IoDeviceObject *bdo, 
     struct IoDeviceObject *enumerator);
 
@@ -150,7 +165,8 @@ extern STATUS IoRegisterDevice(
  * @param *rp RP to be sent
  * @return Status code
 */
-extern STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp);
+STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp);
+
 
 /**
  * @brief Send/pass Request Packet down the stack
@@ -158,7 +174,8 @@ extern STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp);
  * @return Status code
  * @attention This function fails if there are no more subdevices in the stack
 */
-extern STATUS IoSendRpDown(struct IoRp *rp);
+STATUS IoSendRpDown(struct IoRp *rp);
+
 
 /**
  * @brief Get main device ID and compatbile device IDs for a device
@@ -167,7 +184,8 @@ extern STATUS IoSendRpDown(struct IoRp *rp);
  * @param **compatbileIds[] List of compatbile IDs. This buffer is allocated by the driver.
  * @return Status code. On failure the returned IDs are NULL.
 */
-extern STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char ***compatibleIds);
+STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char ***compatibleIds);
+
 
 /**
  * @brief Read device configuration space
@@ -177,7 +195,8 @@ extern STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char **
  * @param **buffer Output buffer. This buffer is allocated by the callee.
  * @return Status code
 */
-extern STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
+STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
+
 
 /**
  * @brief Write device configuration space
@@ -187,7 +206,8 @@ extern STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uin
  * @param *buffer Input buffer
  * @return Status code
 */
-extern STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void *buffer);
+STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void *buffer);
+
 
 /**
  * @brief Get resources associated with given device
@@ -196,7 +216,8 @@ extern STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, ui
  * @param *count Output number of resource entries
  * @return Status code
 */
-extern STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource **res, uint32_t *count);
+STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource **res, uint32_t *count);
+
 
 /**
  * @brief Get device location information
@@ -205,7 +226,7 @@ extern STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceRe
  * @param *location Output for bus-specific location information
  * @return Status code
 */
-extern STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, union IoBusId *location);
+STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, union IoBusId *location);
 
 
 #ifdef __cplusplus

@@ -5,11 +5,12 @@
 #include <stdbool.h>
 #include "defines.h"
 
-EXPORT
+EXPORT_API
+
 struct IoVfsNode;
 struct IoDeviceObject;
 
-EXPORT
+
 /**
  * @brief Type specific operations for file systems
 */
@@ -20,7 +21,7 @@ enum FsOperations
     FS_GET_NODE_CHILDREN, /**< Get list of children VFS nodes for given node (directory, exclusively)*/
 };
 
-EXPORT
+
 /**
  * @brief FS get node/get node children request body
  * 
@@ -48,6 +49,8 @@ union FsGetRequest
         struct IoVfsNode *children;
     } getChildren;
 };
+
+END_EXPORT_API
 
 /**
  * @brief Get VFS node with given name and parent from the filesystem

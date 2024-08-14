@@ -1,22 +1,164 @@
 #include "cpu.h"
+#include "lapic.h"
+#include "lapic.h"
+#include "common.h"
+#include "ke/sched/sleep.h"
+#include "ke/core/panic.h"
+#include "config.h"
+#include "memory.h"
+#include "hal/arch.h"
+#include "gdt.h"
+#include "hal/cpu.h"
+#include "it/it.h"
+#include "math.h"
+#include "lapic.h"
 
-struct Cpu
+#ifdef SMP
+
+extern void I686StartAp(void);
+extern void I686StartApEnd(void);
+
+struct
 {
-    uint8_t lapic;
-    bool usable;
-    bool bootstrap;
-};
+    uintptr_t cpuId;
+    uintptr_t lapicId;
+    uintptr_t cr3;
+    uintptr_t esp;
+    uintptr_t eip;
+} PACKED static I686StartApData[MAX_CPU_COUNT];
+static volatile uint32_t I686StartedCpuCount = 1;
 
-static struct Cpu CpuList[MAX_CPU_COUNT];
-static uint32_t CpuCount = 0;
+void I686CpuBootstrap(uint32_t cpuId);
 
-void CpuAdd(uint8_t lapic, bool usable, bool bootstrap)
+#define I686_AP_BOOTSTRAP_ADDRESS 0x1000
+#define I686_AP_BOOTSTRAP_DATA_ADDRESS 0x2000
+
+STATUS I686ConfigureBootstrapCpu(void)
 {
-    if(CpuCount >= MAX_CPU_COUNT)
-        return;
-    
-    CpuList[CpuCount].lapic = lapic;
-    CpuList[CpuCount].usable = usable;
-    CpuList[CpuCount].bootstrap = bootstrap;
-    CpuCount++;
+    for(uint32_t i = 0; i < HalGetCpuCount(); i++)
+    {
+        struct HalCpu *cpu = HalGetCpuEntry(i);
+        if(cpu->extensions.bootstrap)
+        {
+            I686InstallIdt(cpu->number);
+            if(OK != GdtAddCpu(cpu->number))
+                FAIL_BOOT("failed to add TSS for CPU");
+            GdtLoadTss(cpu->number);
+            return OK;
+        }
+    }   
+
+    FAIL_BOOT("no bootstrap CPU. Broken ACPI/MP tables?")
+
+    return OK;
 }
+
+STATUS I686StartProcessors(void)
+{
+    STATUS status = OK;
+
+    uint32_t CpuCount = HalGetCpuCount();
+    if(CpuCount <= 1)
+        return OK;
+
+    void *stack = (void*)MM_KERNEL_SPACE_START;
+
+    status = HalMapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS, I686_AP_BOOTSTRAP_ADDRESS, 
+        ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, MM_PAGE_SIZE), 
+        MM_FLAG_WRITABLE | MM_FLAG_CACHE_DISABLE | MM_FLAG_WRITE_THORUGH);
+    if(OK != status)
+        FAIL_BOOT("cannot map memory for CPU bootstrap");
+
+    status = MmAllocateMemory((uintptr_t)stack - (CpuCount - 1) * MM_PAGE_SIZE,
+        (CpuCount - 1) * MM_PAGE_SIZE, MM_FLAG_WRITABLE);
+    if(OK != status)
+        FAIL_BOOT("cannot allocate temporary stacks from CPU boostrap")
+
+    uint32_t i = 0, k = 0;
+    for(i = 0; i < CpuCount; i++)
+    {
+        struct HalCpu *cpu = HalGetCpuEntry(i);
+        if(NULL == cpu)
+            continue;
+        if(cpu->extensions.bootstrap)
+            continue;
+        I686StartApData[k].cpuId = cpu->number;
+        I686StartApData[k].cr3 = I686GetPageDirectoryAddress();
+        I686StartApData[k].esp = (uintptr_t)stack - (k * MM_PAGE_SIZE);
+        I686StartApData[k].lapicId = cpu->extensions.lapicId;
+        I686StartApData[k].eip = (uintptr_t)I686CpuBootstrap;
+        k++;
+    }
+    I686StartApData[k].esp = 0;
+
+    CmMemcpy((void*)I686_AP_BOOTSTRAP_ADDRESS, I686StartAp, (uintptr_t)I686StartApEnd - (uintptr_t)I686StartAp);
+    CmMemcpy((void*)I686_AP_BOOTSTRAP_DATA_ADDRESS, I686StartApData, sizeof(I686StartApData));
+
+    for(uint16_t i = 0; i < CpuCount; i++)
+    {
+        struct HalCpu *cpu = HalGetCpuEntry(i);
+        if(NULL == cpu)
+            continue;
+        if(cpu->extensions.bootstrap || !cpu->usable)
+            continue;
+        
+        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_INIT, 0, true);
+        ApicWaitForIpiDelivery(US_TO_NS(200));
+        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_INIT, 0, false);
+        ApicWaitForIpiDelivery(US_TO_NS(200));
+    }
+    KeDelay(MS_TO_NS(10));
+    for(uint16_t i = 0; i < CpuCount; i++)
+    {
+        struct HalCpu *cpu = HalGetCpuEntry(i);
+        if(NULL == cpu)
+            continue;
+        if(cpu->extensions.bootstrap || !cpu->usable)
+            continue;
+        
+        uint32_t lastCpuCount = __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST);
+        //first wait for IPI delivery up to a given time
+        //if that passes, then wait a bit and check if the AP woke up
+        //if any of these failed, then repeat
+        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
+        if(OK == ApicWaitForIpiDelivery(US_TO_NS(200)))
+        {
+            KeDelay(US_TO_NS(200)); 
+            //counter changed, continue with next AP
+            if(lastCpuCount != __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST))
+                continue;
+        }
+        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
+        if(OK == ApicWaitForIpiDelivery(US_TO_NS(200)))
+        {
+            //this time wait much longer
+            KeDelay(MS_TO_NS(1000)); 
+            if(lastCpuCount != __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST))
+                continue;
+        }
+        //second attempt failed, skip AP
+    }
+
+    status = HalUnmapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS,
+        ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, MM_PAGE_SIZE));
+    if(OK != status)
+        FAIL_BOOT("cannot unmap memory after CPU bootstrap")
+
+    return OK;
+}
+
+void I686CpuBootstrap(uint32_t cpuId)
+{
+    __atomic_fetch_add(&I686StartedCpuCount, 1, __ATOMIC_SEQ_CST);
+    GdtApply();
+    GdtAddCpu(cpuId);
+    GdtLoadTss(cpuId);
+    I686InstallIdt(cpuId);
+    I686InitMath();
+    ApicInitAp();
+    
+    while(1)
+        ;
+}
+
+#endif

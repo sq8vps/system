@@ -177,7 +177,7 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
                 partitionInfo->partition.start = info->mbr->partition[i].lba;
                 partitionInfo->partition.size = info->mbr->partition[i].sectors;
                 partitionInfo->partition.sectorSize = dev->blockSize;
-                partitionInfo->index = atomic_fetch_add(&(info->childCount), 1);
+                partitionInfo->index = atomic_fetch_add_explicit(&(info->childCount), 1, __ATOMIC_RELAXED);
 
                 partitionInfo->partition.startBytes = info->mbr->partition[i].lba * dev->blockSize;
                 partitionInfo->partition.sizeBytes = info->mbr->partition[i].sectors * dev->blockSize;

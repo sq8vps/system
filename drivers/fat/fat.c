@@ -418,7 +418,7 @@ static void FatUpdateOnDiskCallback(STATUS status, uint64_t actualSize, void *co
 void FatUpdateOnDisk(struct FatVolume *vol)
 {
     STATUS status = OK;
-    KeAcquireSpinlock(&(vol->fatLock));
+    PRIO prio = KeAcquireSpinlock(&(vol->fatLock));
     if(vol->modifiedClusterLow <= vol->modifiedClusterHigh)
     {
         uint64_t lowShift = 0, highShift = 0;
@@ -439,7 +439,7 @@ void FatUpdateOnDisk(struct FatVolume *vol)
         }
         vol->modifiedClusterHigh = 0;
         vol->modifiedClusterLow = UINT32_MAX;
-        KeReleaseSpinlock(&(vol->fatLock));
+        KeReleaseSpinlock(&(vol->fatLock), prio);
         lowShift = ALIGN_DOWN(lowShift, vol->disk->blockSize);
         highShift = ALIGN_UP(highShift, vol->disk->blockSize);
         for(uint8_t i = 0; i < vol->fatCount; i++)
@@ -452,5 +452,5 @@ void FatUpdateOnDisk(struct FatVolume *vol)
         }
         return;
     }
-    KeReleaseSpinlock(&(vol->fatLock));
+    KeReleaseSpinlock(&(vol->fatLock), prio);
 }

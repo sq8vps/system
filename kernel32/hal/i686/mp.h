@@ -12,7 +12,7 @@
  * @return Status code
  * @attention MP module should be finally deinitialized with MpDeInit()
 */
-STATUS MpInit(uint32_t *lapicAddress);
+INTERNAL STATUS MpInit(uint32_t *lapicAddress);
 
 // /**
 //  * @brief Read and apply Local and I/O APIC entries

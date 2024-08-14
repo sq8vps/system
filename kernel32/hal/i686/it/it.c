@@ -1,7 +1,9 @@
 #include "it/wrappers.h"
 #include "defines.h"
+#include "config.h"
 #include <stdint.h>
 #include "common.h"
+#include "exceptions.h"
 
 #if defined(__i686__)
 
@@ -27,18 +29,9 @@ struct IdtEntry
 } PACKED;
 
 /**
- * @brief IDT register
-*/
-struct
-{
-	uint16_t limit;
-	uint32_t base;
-} PACKED static idtr;
-
-/**
  * @brief Interrupt Descriptor Table itself
 */
-static struct IdtEntry idt[IDT_ENTRY_COUNT] ALIGN(8);
+static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT] ALIGN(8);
 
 /**
  * @brief Insert entry to IDT
@@ -46,74 +39,80 @@ static struct IdtEntry idt[IDT_ENTRY_COUNT] ALIGN(8);
  * @param *isr Interrupt service routine
  * @return Status code
  */
-static STATUS InsertIdtEntry(uint8_t vector, void *isr)
+static STATUS InsertIdtEntry(uint16_t cpu, uint8_t vector, void *isr)
 {
-	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_NO_FREE_VECTORS;
-	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
-	idt[vector].isrHigh = (uint32_t)isr >> 16;
-	idt[vector].selector = GDT_OFFSET(GDT_KERNEL_CS); //interrupt are always processed in kernel mode
-	idt[vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT;
-	return OK;
+    if(vector < IT_FIRST_INTERRUPT_VECTOR)
+        return IT_NO_FREE_VECTORS;
+
+    if(cpu >= MAX_CPU_COUNT)
+        return OUT_OF_RESOURCES;
+
+    idt[cpu][vector].isrLow = (uint32_t)isr & 0xFFFF;
+    idt[cpu][vector].isrHigh = (uint32_t)isr >> 16;
+    idt[cpu][vector].selector = GDT_OFFSET(GDT_KERNEL_CS); //interrupt are always processed in kernel mode
+    idt[cpu][vector].flags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT;
+    return OK;
 }
 
-INTERNAL STATUS InstallExceptionHandler(enum ItExceptionVector vector, void *isr)
+STATUS I686InstallExceptionHandler(uint16_t cpu, uint8_t vector, void *isr)
 {
-	if(vector >= IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
-	
-	idt[vector].isrLow = (uint32_t)isr & 0xFFFF;
-	idt[vector].isrHigh = (uint32_t)isr >> 16;
-	idt[vector].selector = GDT_OFFSET(GDT_KERNEL_CS);
-	idt[vector].flags = IDT_FLAG_TRAP_GATE | IDT_FLAG_PRESENT;
-	return OK;
+    if(vector >= IT_FIRST_INTERRUPT_VECTOR)
+        return IT_BAD_VECTOR;
+
+    if(cpu >= MAX_CPU_COUNT)
+        return OUT_OF_RESOURCES;
+
+    idt[cpu][vector].isrLow = (uint32_t)isr & 0xFFFF;
+    idt[cpu][vector].isrHigh = (uint32_t)isr >> 16;
+    idt[cpu][vector].selector = GDT_OFFSET(GDT_KERNEL_CS);
+    idt[cpu][vector].flags = IDT_FLAG_TRAP_GATE | IDT_FLAG_PRESENT;
+    return OK;
 }
 
 #endif
 
 #if defined(__i686__) || defined(__amd64__)
 
-extern void InstallExceptionHandlers(void);
-
-STATUS ItInitializeArchitectureInterrupts(void)
+STATUS I686InitIdt(void)
 {
 	CmMemset(idt, 0, sizeof(idt));
-	//set up all defined exceptions to default handlers
-    InstallExceptionHandlers();
 
-	//install dummy handlers for all non-exception interrupts
-	for(uint16_t i = IT_FIRST_INTERRUPT_VECTOR; i < IDT_ENTRY_COUNT; i++)
-	{
-		InsertIdtEntry(i, ItWrappers[i - IT_FIRST_INTERRUPT_VECTOR]);
-	}
-
-	//fill IDT register with IDT address and size
-	idtr.base = (uintptr_t)idt;
-	idtr.limit = sizeof(struct IdtEntry) * IDT_ENTRY_COUNT - 1;
-	//load IDT register address
-	ASM("lidt %0" : : "m" (idtr));
-	//enable interrupts
-	ItEnableInterrupts();
+	//install exception handlers and wrappers for all non-exception interrupts
+    for(uint16_t cpu = 0; cpu < MAX_CPU_COUNT; cpu++)
+    {
+        I686InstallAllExceptionHandlers(cpu);
+        for(uint16_t i = IT_FIRST_INTERRUPT_VECTOR; i < IDT_ENTRY_COUNT; i++)
+        {
+            InsertIdtEntry(cpu, i, ItWrappers[i - IT_FIRST_INTERRUPT_VECTOR]);
+        }
+    }
 
 	return OK;
 }
 
-NORETURN void ItHardReset(void)
+void I686InstallIdt(uint16_t cpu)
 {
-	idtr.limit = 0;
+    struct
+    {
+        uint16_t limit;
+        uint32_t base;
+    } PACKED idtr;
+
+	//fill IDT register with IDT address and size
+	idtr.base = (uintptr_t)idt[cpu];
+	idtr.limit = sizeof(struct IdtEntry) * IDT_ENTRY_COUNT - 1;
+	//load IDT register address
 	ASM("lidt %0" : : "m" (idtr));
-	ItEnableInterrupts();
-	ASM("int 0");
-	while(1)
-		;
+	//enable interrupts
+	HalEnableInterrupts();
 }
 
-void ItDisableInterrupts(void)
+void HalDisableInterrupts(void)
 {
 	ASM("cli");
 }
 
-void ItEnableInterrupts(void)
+void HalEnableInterrupts(void)
 {
 	ASM("sti");
 }

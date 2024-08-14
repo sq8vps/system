@@ -7,17 +7,16 @@
 #include "vfs.h"
 #include "ob/ob.h"
 
-EXPORT
+EXPORT_API
+
 struct KeTaskControlBlock;
 
-
-EXPORT
 /**
  * @brief File operation flags
 */
 #define IoFileFlags IoVfsFlags
 
-EXPORT
+
 /**
  * @brief Perform operation directly, omit internal bufferring
 */
@@ -27,7 +26,7 @@ EXPORT
 */
 #define IO_FILE_FLAG_NO_WAIT IO_VFS_OPERATION_FLAG_NO_WAIT
 
-EXPORT
+
 /**
  * @brief File open modes
  * 
@@ -53,7 +52,7 @@ typedef enum
     IO_FILE_REPLACE = 0x20, /**< Replace file content on writing (destroy old content) */
 } IoFileOpenMode;
 
-EXPORT
+
 /**
  * @brief File handle
 */
@@ -109,7 +108,7 @@ STATUS IoOpenFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct KeT
 */
 STATUS IoCloseFile(struct KeTaskControlBlock *task, int handleNumber);
 
-EXPORT
+
 /**
  * @brief Open file in kernel mode
  * @param *file File path string
@@ -118,17 +117,17 @@ EXPORT
  * @param **handle Output file handle
  * @return Status code
 */
-EXTERN STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle);
+STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle);
 
-EXPORT
+
 /**
  * @brief Close file in kernel mode
  * @param *handle File handle
  * @return Status code
 */
-EXTERN STATUS IoCloseKernelFile(struct IoFileHandle *handle);
+STATUS IoCloseKernelFile(struct IoFileHandle *handle);
 
-EXPORT
+
 /**
  * @brief Read file asynchronously
  * @param *task Task Control Block
@@ -140,10 +139,10 @@ EXPORT
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-EXTERN STATUS IoReadFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoReadFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context);
 
-EXPORT
+
 /**
  * @brief Read file in kernel mode (globally) asynchronously
  * @param *handle File handle
@@ -154,10 +153,10 @@ EXPORT
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-EXTERN STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context);
 
-EXPORT
+
 /**
  * @brief Write file asynchronously
  * @param *task Task Control Block
@@ -169,10 +168,10 @@ EXPORT
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-EXTERN STATUS IoWriteFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoWriteFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context);
 
-EXPORT
+
 /**
  * @brief Write file in kernel mode (globally) asynchronously
  * @param *handle File handle
@@ -183,10 +182,10 @@ EXPORT
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-EXTERN STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context);
 
-EXPORT
+
 /**
  * @brief Read or write file in kernel mode (globally) synchronously
  * @param *handle File handle
@@ -197,10 +196,10 @@ EXPORT
  * @param write True for writing, false for reading
  * @return Status code
 */
-EXTERN STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
     uint64_t *actualSize, bool write);
 
-EXPORT
+
 /**
  * @brief Read or write file synchronously
  * @param *task Task Control Block
@@ -212,10 +211,10 @@ EXPORT
  * @param write True for writing, false for reading
  * @return Status code
 */
-EXTERN STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, 
     uint64_t *actualSize, bool write);
 
-EXPORT
+
 /**
  * @brief Read file in kernel mode (globally) synchronously
  * @param *handle File handle
@@ -225,9 +224,9 @@ EXPORT
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
-EXTERN STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
-EXPORT
+
 /**
  * @brief Write file in kernel mode (globally) synchronously
  * @param *handle File handle
@@ -237,9 +236,9 @@ EXPORT
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
-EXTERN STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
-EXPORT
+
 /**
  * @brief Read file synchronously
  * @param *task Task Control Block
@@ -250,9 +249,9 @@ EXPORT
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
-EXTERN STATUS IoReadFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoReadFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
-EXPORT
+
 /**
  * @brief Write file synchronously
  * @param *task Task Control Block
@@ -263,24 +262,26 @@ EXPORT
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
-EXTERN STATUS IoWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
 
-EXPORT
+
 /**
  * @brief Check if file exists
  * @param *file File path
  * @return True if exists, false if not
 */
-EXTERN bool IoCheckIfFileExists(char *file);
+bool IoCheckIfFileExists(char *file);
 
-EXPORT
+
 /**
  * @brief Get file size
  * @param *file File path
  * @param *size Pointer to where to store size
  * @return Status code
 */
-EXTERN STATUS IoGetFileSize(char *file, uint64_t *size);
+STATUS IoGetFileSize(char *file, uint64_t *size);
+
+END_EXPORT_API
 
 /**
  * @brief Initialize I/O File Manager subsystem

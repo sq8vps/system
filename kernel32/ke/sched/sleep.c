@@ -13,7 +13,7 @@ STATUS KePutTaskToSleep(struct KeTaskControlBlock *tcb, uint64_t time)
     KeBlockTask(tcb, TASK_BLOCK_SLEEP);
     tcb->waitUntil = HalGetTimestamp() + time;
 
-    KeAcquireSpinlock(&listLock);
+    PRIO prio = KeAcquireSpinlock(&listLock);
     if(NULL == list)
         list = tcb;
     else
@@ -31,7 +31,7 @@ STATUS KePutTaskToSleep(struct KeTaskControlBlock *tcb, uint64_t time)
         }
         s->next = tcb;
     }
-    KeReleaseSpinlock(&listLock);
+    KeReleaseSpinlock(&listLock, prio);
     if(tcb == KeGetCurrentTask())
         KeTaskYield();
     return OK;
@@ -51,7 +51,7 @@ void KeDelay(uint64_t time)
 
 STATUS KeRefreshSleepingTasks(void)
 {
-    KeAcquireSpinlock(&listLock);
+    PRIO prio = KeAcquireSpinlock(&listLock);
     struct KeTaskControlBlock *s = NULL;
     uint64_t currentTimestamp = HalGetTimestamp();
     while(NULL != list)
@@ -67,6 +67,6 @@ STATUS KeRefreshSleepingTasks(void)
         else
             break;
     }
-    KeReleaseSpinlock(&listLock);
+    KeReleaseSpinlock(&listLock, prio);
     return OK;
 }

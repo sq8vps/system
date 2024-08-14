@@ -164,7 +164,7 @@ ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout)
     if(0 == Timeout)
         time = KE_MUTEX_NO_WAIT;
     else if(0xFFFF == Timeout)
-        time = KE_MUTEX_NORMAL;
+        time = KE_MUTEX_NO_TIMEOUT;
     else
         time = MS_TO_NS(Timeout);
 
@@ -209,7 +209,7 @@ ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Time
     if(0 == Timeout)
         time = KE_MUTEX_NO_WAIT;
     else if(0xFFFF == Timeout)
-        time = KE_MUTEX_NORMAL;
+        time = KE_MUTEX_NO_TIMEOUT;
     else
         time = MS_TO_NS(Timeout);
 
@@ -262,13 +262,12 @@ void AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
 
 ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle)
 {
-    KeAcquireSpinlock(Handle);
-    return 0;
+    return KeAcquireSpinlock(Handle);
 }
 
 void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
 {
-    KeReleaseSpinlock(Handle);
+    KeReleaseSpinlock(Handle, Flags);
 }
 
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context)

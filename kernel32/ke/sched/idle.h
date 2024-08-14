@@ -8,6 +8,6 @@
  * @brief Create and register idle task
  * @return Status code
 */
-STATUS KeCreateIdleTask(void);
+INTERNAL STATUS KeCreateIdleTask(void);
 
 #endif

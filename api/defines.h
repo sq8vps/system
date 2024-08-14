@@ -9,6 +9,12 @@ extern "C"
 
 #include "../cdefines.h"
 #include <stddef.h>
+
+/**
+ * @brief Max CPU number handled by the kernel
+ */
+#define MAX_CPU_COUNT 64
+
 /**
  * @brief Mark symbol (function/variable) as internal/hidden
 */
@@ -21,12 +27,14 @@ extern "C"
 */
 #define _STRINGIFY(...) #__VA_ARGS__
 
+
 /**
  * @brief Expand and stringify
  * @param ... Arguments to expand and stringify
  * @return Expanded and stringified arguments
 */
 #define STRINGIFY(...) _STRINGIFY(__VA_ARGS__)
+
 
 /**
  * @brief Kernel status codes
@@ -51,6 +59,7 @@ typedef enum
     OPERATION_NOT_ALLOWED,
     BAD_ALIGNMENT,
     NOT_COMPATIBLE,
+    TIMEOUT,
 
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number
@@ -77,7 +86,7 @@ typedef enum
     EXEC_ELF_BROKEN,
     EXEC_ELF_UNSUPPORTED_TYPE,
     EXEC_ELF_UNDEFINED_SYMBOL,
-    EXEC_ELF_UNDEFINED_externAL_SYMBOL,
+    EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL,
     EXEC_UNSUPPORTED_KERNEL_MODE_DRIVER_TYPE,
     EXEC_BAD_DRIVER_INDEX,
     EXEC_BAD_DRIVER_CLASS,
@@ -143,6 +152,7 @@ typedef enum
 
 } STATUS;
 
+
 /**
  * @brief General privilege level enum
 */
@@ -152,26 +162,32 @@ typedef enum PrivilegeLevel
     PL_USER
 } PrivilegeLevel;
 
+
 /**
  * @brief A common timestamp type
 */
 typedef uint64_t time_t;
+
+
 
 /**
  * @brief Attribute for never-returning functions
 */
 #define NORETURN __attribute__((noreturn))
 
+
 /**
  * @brief Attribute for packed structures
 */
 #define PACKED __attribute__ ((packed))
+
 
 /**
  * @brief Variable alignment macro
  * @param n Alignment value in bytes
 */
 #define ALIGN(n) __attribute__ ((aligned(n)))
+
 
 /**
  * @brief Align value up
@@ -180,12 +196,14 @@ typedef uint64_t time_t;
 */
 #define ALIGN_UP_MASK(val, mask) (((val) + (mask)) & ~(mask))
 
+
 /**
  * @brief Align value up
  * @param val Value to be aligned
  * @param align Alignment value
 */
 #define ALIGN_UP(val, align) ALIGN_UP_MASK(val, (typeof(val))(align) - 1)
+
 
 /**
  * @brief Align value down
@@ -194,10 +212,12 @@ typedef uint64_t time_t;
 */
 #define ALIGN_DOWN(val, align) ((val) & ~((typeof(val))(align) - 1))
 
+
 /**
  * @brief Macro for inline assembly
 */
 #define ASM asm volatile
+
 
 /**
  * @brief Check if character \a x is alphanumeric
@@ -206,6 +226,7 @@ typedef uint64_t time_t;
 */
 #define IS_ALPHANUMERIC(x) ((((x) >= '0') && ((x) <= '9')) || (((x) >= 'A') && ((x) <= 'Z')) || (((x) >= 'a') && ((x) <= 'z')))
 
+
 /**
  * @brief Convert microseconds to nanoseconds (standard kernel time resolution)
  * @param us Value in microseconds
@@ -213,12 +234,14 @@ typedef uint64_t time_t;
 */
 #define US_TO_NS(us) (((uint64_t)1000) * (us))
 
+
 /**
  * @brief Convert milliseconds to nanoseconds (standard kernel time resolution)
  * @param us Value in milliseconds
  * @return Value in nanoseconds
 */
 #define MS_TO_NS(ms) (((uint64_t)1000000) * (ms))
+
 
 /**
  * @brief Unique Identifier structure

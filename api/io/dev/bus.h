@@ -9,6 +9,7 @@ extern "C"
 
 #include "defines.h"
 #include <stdint.h>
+
 enum IoBusType
 {
     IO_BUS_TYPE_UNKNOWN = 0,
@@ -17,6 +18,7 @@ enum IoBusType
     IO_BUS_TYPE_USB,
     IO_BUS_TYPE_ISA,
 };
+
 
 /**
  * @brief Bus location
@@ -38,6 +40,7 @@ union IoBusId
     uint32_t u32; /**< 32-bit unsigned int */
     uint64_t u64; /**< 64-bit unsigned int */
 };
+
 
 /**
  * @brief Common PCI configuration space header
@@ -125,8 +128,10 @@ struct IoPciDeviceHeader
     };
 } PACKED;
 
+
 #define PCI_HEADER_TYPE_MASK 0x7F
 #define PCI_HEADER_TYPE_MULTIFUNCTION 0x80
+
 
 #define PCI_HEADER_COMMAND_IO_SPACE 0x01
 #define PCI_HEADER_COMMAND_MEMORY_SPACE 0x02
@@ -138,6 +143,7 @@ struct IoPciDeviceHeader
 #define PCI_HEADER_COMMAND_STEPPING_CONTROL 0x80
 #define PCI_HEADER_COMMAND_SERR 0x100
 #define PCI_HEADER_COMMAND_FAST_BACK_BACK 0x200
+
 
 #define PCI_HEADER_STATUS_CAPABILITES 0x10
 #define PCI_HEADER_STATUS_66MHZ_CAPABLE 0x20

@@ -18,12 +18,11 @@ FILE_EPILOGUE = """
 import glob
 import os
 
-def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXTERN_KEYWORD, EXTERN_KEYWORD_REPLACEMENT, 
+def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXPORT_START_KEYWORD, EXPORT_END_KEYWORD, 
                 OUTPUT_PATH, OUTPUT_FILE):
     print("Generating " + OUTPUT_PATH + OUTPUT_FILE)
     print("Headers from " + SEARCH_PATH + " (recursively)")
-    print('\tExport keyword is "' + EXPORT_KEYWORD + '"')
-    print('\tExtern keyword is "' + EXTERN_KEYWORD + '", replacing with "' + EXTERN_KEYWORD_REPLACEMENT + '"')
+    print('\tBlock export keywords are "' + EXPORT_START_KEYWORD + '" and "' + EXPORT_END_KEYWORD + '"')
     #open main file
     with open(OUTPUT_PATH + OUTPUT_FILE, "w") as outputFile:
         #write head for main file
@@ -47,35 +46,30 @@ def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXTERN_KEYWORD, EXTERN_KEYWORD_REP
                     outputFile.write('#include "{}"'.format(headerPath.replace(SEARCH_PATH, '')) + '\n')
                     content = header.readlines()
                     keywordFound = False
-                    brackets = 0 #+1 for one opening bracket, -1 for one closing bracket
                     for line in content:
                         if line.startswith("#include"):
                             newHeader.write(line.replace(SEARCH_PATH, ''))
                             continue
 
-                        if line.startswith(EXPORT_KEYWORD):
+                        if line.startswith(EXPORT_START_KEYWORD):
                             keywordFound = True
                             exports += 1
-                            line = line.replace(EXPORT_KEYWORD, "")
+                            line = line.replace(EXPORT_START_KEYWORD, "")
                             if not line.strip(): #is line empty after removing the export keyword?
                                 continue
 
+                        if line.startswith(EXPORT_END_KEYWORD):
+                            keywordFound = False
+                            line = line.replace(EXPORT_END_KEYWORD, "")
+                            if not line.strip():
+                                continue
+                            
                         if keywordFound:
-                            if "{" in line:
-                                brackets += 1
-                            if "}" in line:
-                                brackets -= 1
+                            newHeader.write(line)
 
-                            if (not line.strip()) and (not brackets): #got empty line
-                                newHeader.write("\n")
-                                keywordFound = False
-                            else:
-                                if EXTERN_KEYWORD in line:
-                                    externs += 1
-                                newHeader.write(line.replace(EXTERN_KEYWORD, EXTERN_KEYWORD_REPLACEMENT))
                 newHeader.write(FILE_EPILOGUE)
                 newHeader.write("#endif")
-        print("\tFound " + str(exports) + " occurences of " + EXPORT_KEYWORD + " and " + str(externs) + " occurences of " + EXTERN_KEYWORD)
+        print("\tExported " + str(exports) + " blocks")
         outputFile.write(FILE_EPILOGUE)
         outputFile.write("#endif")
 

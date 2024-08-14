@@ -11,6 +11,7 @@ extern "C"
 #include "defines.h"
 #include "bus.h"
 #include "ob/ob.h"
+
 struct IoRp;
 struct IoRpQueue;
 struct IoDeviceObject;
@@ -18,12 +19,15 @@ struct IoVfsNode;
 struct IoDeviceResource;
 struct KeTaskControlBlock;
 
+
 typedef STATUS (*IoRpCompletionCallback)(struct IoRp *rp, void *context);
 typedef void (*IoProcessRpCallback)(struct IoRp *rp);
 typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
+
 typedef uint32_t IoRpFlags; /**< Request Packet flags */
 #define IO_RP_FLAG_EOF 0x1 /**< Read incomplete, end of file encountered - \a status is set to \a OK, chech \a size field */
+
 
 enum IoRpCode
 {
@@ -50,6 +54,7 @@ enum IoRpCode
     IO_RP_STORAGE_CONTROL = 0x2000,
     IO_RP_FILESYSTEM_CONTROL,
 };
+
 
 struct IoRp
 {
@@ -134,6 +139,7 @@ struct IoRp
     struct IoRpQueue *queue;
 };
 
+
 struct IoRpQueue
 {
     IoProcessRpCallback callback;
@@ -142,17 +148,20 @@ struct IoRpQueue
     uint8_t busy : 1;
 };
 
+
 /**
  * @brief Create empty Request Packet
  * @return Created Request Packet pointer or NULL on failure
 */
-extern struct IoRp *IoCreateRp(void);
+struct IoRp *IoCreateRp(void);
+
 
 /**
  * @brief Free Request Packet
  * @param *rp Request Packet pointer obtained from \a IoCreateRp()
 */
-extern void IoFreeRp(struct IoRp *rp);
+void IoFreeRp(struct IoRp *rp);
+
 
 /**
  * @brief Create Request Packet queue
@@ -160,7 +169,8 @@ extern void IoFreeRp(struct IoRp *rp);
  * @param **queue Output RP queue pointer (the memory is allocated by the function)
  * @return Status code
 */
-extern STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue);
+STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue);
+
 
 /**
  * @brief Start RP processing, that is append it to the queue
@@ -169,7 +179,8 @@ extern STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **q
  * @param cancelCb Callback function required for RP cancelling; called after RP is removed from the queue. NULL if not used.
  * @return Status code
 */
-extern STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb);
+STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb);
+
 
 /**
  * @brief Finalize Request Packet processing
@@ -177,7 +188,8 @@ extern STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCall
  * @return Status code
  * @attention This function frees the memory when there is a completion callback registered
 */
-extern STATUS IoFinalizeRp(struct IoRp *rp);
+STATUS IoFinalizeRp(struct IoRp *rp);
+
 
 /**
  * @brief Cancel pending Request Packet
@@ -185,14 +197,16 @@ extern STATUS IoFinalizeRp(struct IoRp *rp);
  * @return Status code
  * @attention The cancel callback routine must be provided
 */
-extern STATUS IoCancelRp(struct IoRp *rp);
+STATUS IoCancelRp(struct IoRp *rp);
+
 
 /**
  * @brief Get current Request Packet position in device stack
  * @param *rp Request Packet pointer
  * @return Current subdevice object
 */
-extern struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
+struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
+
 
 /**
  * @brief Mark Request Packet as pending
@@ -202,7 +216,8 @@ extern struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
  * from the RP dispatch routine. The driver should not call this routine when passing RP to another driver.
  * @param *rp Request Packet
 */
-extern void IoMarkRpPending(struct IoRp *rp);
+void IoMarkRpPending(struct IoRp *rp);
+
 
 /**
  * @brief Wait for RP completion
@@ -212,14 +227,15 @@ extern void IoMarkRpPending(struct IoRp *rp);
  * @param *rp Request Packet
  * @warning This function must not be called when \a IoSendRp() was not successful.
 */
-extern void IoWaitForRpCompletion(struct IoRp *rp);
+void IoWaitForRpCompletion(struct IoRp *rp);
+
 
 /**
  * @brief Clone exisiting RP
  * @param *rp RP to clone
  * @return New cloned RP or NULL on failure
  */
-extern struct IoRp *IoCloneRp(struct IoRp *rp);
+struct IoRp *IoCloneRp(struct IoRp *rp);
 
 
 #ifdef __cplusplus

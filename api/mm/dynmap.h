@@ -11,6 +11,7 @@ extern "C"
 #include "../cdefines.h"
 #include "defines.h"
 #include "mm/mm.h"
+
 /**
  * @brief Reserve dynamic memory pool without mapping
  * @param n Byte count
@@ -19,7 +20,8 @@ extern "C"
  * The pointer does not point to any physical memory. 
  * To reserve and map dynamic memory, use \a MmMapDynamicMemory()
 */
-extern void *MmReserveDynamicMemory(uintptr_t n);
+void *MmReserveDynamicMemory(uintptr_t n);
+
 
 /**
  * @brief Free reservation of dynamic memory pool
@@ -27,7 +29,8 @@ extern void *MmReserveDynamicMemory(uintptr_t n);
  * @return Count of bytes previously reserved
  * @attention This function does not unmap the memory.
 */
-extern uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
+uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
+
 
 /**
  * @brief Map dynamic kernel memory
@@ -36,13 +39,14 @@ extern uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
  * @param flags Flags to apply to mapped memory (present and writable flags are always added)
  * @return Pointer to mapped virtual memory
 */
-extern void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
+void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
+
 
 /**
  * @brief Unmap dynamic kernel memory
  * @param *ptr Memory pointer (from MmMapDynamicMemory)
 */
-extern void MmUnmapDynamicMemory(void *ptr);
+void MmUnmapDynamicMemory(void *ptr);
 
 
 #ifdef __cplusplus

@@ -9,7 +9,7 @@
 #include "ke/core/panic.h"
 #include "irq.h"
 
-STATUS HalInitializeRoot(void)
+STATUS I686InitRoot(void)
 {
     STATUS status = OK;
     uintptr_t address; //lapic address

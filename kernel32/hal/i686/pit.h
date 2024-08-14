@@ -8,28 +8,28 @@
 /**
  * @brief Initialize Programmable Interval Timer
 */
-void PitInit(void);
+INTERNAL void PitInit(void);
 
 /**
  * @brief Set PIT (channel 0) interval
  * @param interval Interval in milliseconds
 */
-void PitSetInterval(uint32_t interval);
+INTERNAL void PitSetInterval(uint32_t interval);
 
 /**
  * @brief Prepare PIT (channel 2) in single shot mode
  * @param time Time in microseconds
 */
-void PitOneShotInit(uint32_t time);
+INTERNAL void PitOneShotInit(uint32_t time);
 
 /**
  * @brief Start PIT one-shot timer
 */
-void PitOneShotStart(void);
+INTERNAL void PitOneShotStart(void);
 
 /**
  * @brief Wait for one-shot timer end
 */
-void PitOneShotWait(void);
+INTERNAL void PitOneShotWait(void);
 
 #endif

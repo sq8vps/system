@@ -26,18 +26,20 @@
 */
 INTERNAL bool CpuidInit(void);
 
+EXPORT_API
+
 /**
  * @brief Check if CPUID instruction is available
  * @return True if available, false if not
 */
 bool CpuidCheckIfAvailable(void);
 
-EXPORT
+
 /**
  * @brief Get CPU vendor string (13 characters incl. NULL terminator)
  * @param *dst Destination buffer
 */
-EXTERN void CpuidGetVendorString(char *dst);
+void CpuidGetVendorString(char *dst);
 
 /**
  * @brief Check if APIC is available
@@ -86,6 +88,14 @@ bool CpuidCheckIfMmxAvailable(void);
  * @return True if available, false if not
 */
 bool CpuidCheckIfSseAvailable(void);
+
+/**
+ * @brief Get current CPU local APIC ID
+ * @return Local APIC ID
+ */
+uint8_t CpuidGetApicId(void);
+
+END_EXPORT_API
 
 /**
  * @}

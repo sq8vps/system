@@ -1,12 +1,12 @@
 import exportlib
 
 
-#export keyword/indicator
+#export single keyword/indicator
 EXPORT_KEYWORD = "EXPORT"
-#extern keyword
-EXTERN_KEYWORD = "EXTERN"
-#how to replace extern keyword
-EXTERN_KEYWORD_REPLACEMENT = "extern"
+#export block start keyword
+EXPORT_BLOCK_START_KEYWORD = "EXPORT_API"
+#export block end keyword
+EXPORT_BLOCK_END_KEYWORD = "END_EXPORT_API"
 #output files path
 OUTPUT_PATH = "./api/"
 
@@ -15,5 +15,5 @@ KERNEL_SEARCH_PATH = "./kernel32/"
 #output file name
 KERNEL_OUTPUT_FILE = "kernel.h"
 
-exportlib.exportHeader(KERNEL_SEARCH_PATH, EXPORT_KEYWORD, EXTERN_KEYWORD, EXTERN_KEYWORD_REPLACEMENT, 
+exportlib.exportHeader(KERNEL_SEARCH_PATH, EXPORT_KEYWORD, EXPORT_BLOCK_START_KEYWORD, EXPORT_BLOCK_END_KEYWORD, 
                        OUTPUT_PATH, KERNEL_OUTPUT_FILE)

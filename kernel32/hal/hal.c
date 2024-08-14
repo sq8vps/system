@@ -7,31 +7,6 @@
 
 static char *HalRootDeviceId = NULL;
 
-STATUS HalInit(void)
-{
-    STATUS status = OK;
-
-    status = HalInitializeHardware();
-    if(OK != status)
-        return status;
-
-    status = HalInitMath();
-    if(OK != status)
-        return status;
-
-    status = HalInitializeRoot();
-    if(OK != status)
-        return status;
-    
-    status = HalInitInterruptController();
-    if(OK != status)
-        return status;
-
-    status = HalInitTimeController();
-
-    return status;
-}
-
 char *HalGetRootDeviceId(void)
 {
     return HalRootDeviceId;

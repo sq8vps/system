@@ -22,29 +22,31 @@
  * @{
 */
 
-
-
+struct KeTaskControlBlock;
 
 /**
- * @brief Create and prepare page directory for a process
+ * @brief Create process memory space and map stack on dynamic memory
  * 
- * This function copies page directory kernel space mappings.
- * @return Page directory physical address or 0 on failure
+ * This function creates page directory for a new process, copies kernel space page tables
+ * and allocates ONE page for a initial stack. Then it returns the dynamically mapped stack top.
+ * 
+ * @param *pdAddress Physical address of newly allocated page directory
+ * @param stackAddress Stack top virtual address (in new process memory space)
+ * @param **stack Dynamically mapped stack top pointer
+ * @return Status code
 */
-INTERNAL uintptr_t CreateProcessPageDirectory(void);
+INTERNAL STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress, void **stack);
 
 /**
  * @brief Get current page directory physical address
  * @return Page directory physical address
 */
-INTERNAL uintptr_t GetPageDirectoryAddress(void);
+INTERNAL uintptr_t I686GetPageDirectoryAddress(void);
 
 /**
- * @brief Switch current page directory
- * @param pageDir New page directory physical address
- * @warning Use exclusively when absolutely neccessary
-*/
-INTERNAL void SwitchPageDirectory(uintptr_t pageDir);
+ * @brief Initialize virtual memory allocator
+ */
+INTERNAL void I686InitVirtualAllocator(void);
 
 /**
  * @}

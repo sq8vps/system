@@ -22,6 +22,8 @@
  * @{
 */
 
+EXPORT_API
+
 /**
  * @brief Allocate ONE physical memory block (best fit)
  * 
@@ -38,7 +40,7 @@
 */
 uintptr_t MmAllocatePhysicalMemory(uintptr_t n, uintptr_t *address);
 
-EXPORT
+
 /**
  * @brief Allocate contiguous physical memory
  * @param n Byte Count
@@ -47,23 +49,18 @@ EXPORT
  * @return Number of bytes actually allocated. 0 when no contiguous block of size n was found.
  * @warning This function is slow and should not be used when not needed.
 */
-EXTERN uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, uintptr_t align);
+uintptr_t MmAllocateContiguousPhysicalMemory(uintptr_t n, uintptr_t *address, uintptr_t align);
 
-EXPORT
+
 /**
  * @brief Free physical memory
  * @param address Starting address
  * @param n Byte count. Freeing 0 bytes has no effect
  * @warning It is a caller's responsibility to free non-contiguous memory fragment by fragment
 */
-EXTERN void MmFreePhysicalMemory(uintptr_t address, uintptr_t n);
+void MmFreePhysicalMemory(uintptr_t address, uintptr_t n);
 
-/**
- * @brief Initialize physical memory allocator
- * @param *kernelArgs Pointer to the arguments passed to kernel by bootloader
- * @warning This function should be called only once
-*/
-void MmInitPhysicalAllocator(struct KernelEntryArgs *kernelArgs);
+
 
 /**
  * @brief Check if given physical memory region is usable at all
@@ -73,6 +70,14 @@ void MmInitPhysicalAllocator(struct KernelEntryArgs *kernelArgs);
 */
 bool MmCheckIfPhysicalMemoryUsable(uintptr_t address, uintptr_t size);
 
+END_EXPORT_API
+
+/**
+ * @brief Initialize physical memory allocator
+ * @param *kernelArgs Pointer to the arguments passed to kernel by bootloader
+ * @warning This function should be called only once
+*/
+void MmInitPhysicalAllocator(struct KernelEntryArgs *kernelArgs);
 
 /**
  * @}

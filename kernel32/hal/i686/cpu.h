@@ -5,8 +5,15 @@
 #include <stdbool.h>
 
 /**
- * @brief Add CPU to CPU list
+ * @brief Configure bootstrap CPU
+ * @return Status code
  */
-INTERNAL void CpuAdd(uint8_t lapic, bool usable, bool bootstrap);
+INTERNAL STATUS I686ConfigureBootstrapCpu(void);
+
+/**
+ * @brief Start application CPUs in MP environment
+ * @return Status code
+ */
+INTERNAL STATUS I686StartProcessors(void);
 
 #endif

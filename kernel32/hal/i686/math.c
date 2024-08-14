@@ -10,7 +10,7 @@
 
 static bool HalSseAvailable = false;
 
-STATUS HalInitMath(void)
+STATUS I686InitMath(void)
 {
     if(!CpuidCheckIfFpuAvailable())
         return SYSTEM_INCOMPATIBLE;

@@ -71,12 +71,12 @@ void *MmSlabAllocate(void *slabHandle)
     struct MmSlab *slab = slabHandle;
     struct MmSlabEntry *e = NULL;
 
-    KeAcquireSpinlock(&(slab->lock));
+    PRIO prio = KeAcquireSpinlock(&(slab->lock));
     if(NULL == slab->freeStack)
     {
         if(OK != MmSlabAllocateBlock(slab))
         {
-            KeReleaseSpinlock(&(slab->lock));
+            KeReleaseSpinlock(&(slab->lock), prio);
             return NULL;
         }
     }
@@ -85,7 +85,7 @@ void *MmSlabAllocate(void *slabHandle)
     ASSERT(e->free);
     slab->freeStack = e->next;
     e->free = 0;
-    KeReleaseSpinlock(&(slab->lock));
+    KeReleaseSpinlock(&(slab->lock), prio);
     return e + 1;
 }
 
@@ -99,9 +99,9 @@ void MmSlabFree(void *slabHandle, void *memory)
     entry--; //jump to header start
 
     ASSERT(!entry->free);
-    KeAcquireSpinlock(&(slab->lock));
+    PRIO prio = KeAcquireSpinlock(&(slab->lock));
     entry->next = slab->freeStack;
     slab->freeStack = entry;
     entry->free = 1;
-    KeReleaseSpinlock(&(slab->lock));
+    KeReleaseSpinlock(&(slab->lock), prio);
 }

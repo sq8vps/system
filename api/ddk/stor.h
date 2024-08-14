@@ -9,7 +9,9 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
+
 struct IoDeviceObject;
+
 
 /**
  * @brief Type specific operations for storage controller devices
@@ -20,6 +22,7 @@ enum StorOperations
     STOR_GET_GEOMETRY,
 };
 
+
 /**
  * @brief Structure describing CHS address
 */
@@ -29,6 +32,7 @@ struct StorChs
     uint32_t cylinder;
     uint32_t sector;
 };
+
 
 /**
  * @brief Geometry structure for storage controller devices
@@ -47,6 +51,7 @@ struct StorGeometry
     uint32_t sectorsPerTrack;
 };
 
+
 /**
  * @brief Get disk device geometry
  * @param *target Target disk device BDO
@@ -54,7 +59,7 @@ struct StorGeometry
  * @return Status code
  * @attention This function is always synchronous
 */
-extern STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geometry);
+STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geometry);
 
 
 #ifdef __cplusplus

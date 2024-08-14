@@ -10,15 +10,24 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 #include "defines.h"
+
 /**
  * @brief Magic value to be used when requesting random vector number
  */
 #define IT_VECTOR_ANY 0
 
+
+
 /**
  * @brief Maximum number of shared IRQ consumers
 */
 #define IT_MAX_SHARED_IRQ_CONSUMERS 8
+
+/**
+ * @brief Attribute to be used with interrupt handler wrappers
+*/
+#define IT_HANDLER __attribute__ ((interrupt, target("general-regs-only")))
+
 
 /**
  * @brief Type definition for generic interrupt service routine
@@ -31,15 +40,17 @@ typedef STATUS (*ItHandler)(void *context);
  * @return Reserved vector or 0 on failure
  * @note Use \a ItFreeVector to release vector that was reserved but not used
 */
-extern uint8_t ItReserveVector(uint8_t vector);
+uint8_t ItReserveVector(uint8_t vector);
+
 
 /**
  * @brief Free reserved vector
  * @param vector Reserved vector number to be freed
  * @note This function affects only vector that were reserved but not used
 */
-extern void ItFreeVector(uint8_t vector);
+void ItFreeVector(uint8_t vector);
 
+ 
 /**
  * @brief Install interrupt handler
  * @param vector Interrupt vector number
@@ -50,15 +61,17 @@ extern void ItFreeVector(uint8_t vector);
  * @warning This function does not know anything about the shareability of the IRQs services by this vector
  * @warning This function does not enable the interrupt handler
 */
-extern STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context);
+STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context);
 
+ 
 /**
  * @brief Uninstall interrupt handler
  * @param vector Vector number
  * @param isr Interrupt service routine pointer
  * @return Status code
 */
-extern STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
+STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
+
 
 /**
  * @brief Enable/disable interrupt handler
@@ -68,7 +81,7 @@ extern STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
  * @return Status code
  * @warning This function does not install the interrupt handler
 */
-extern STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable);
+STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable);
 
 
 #ifdef __cplusplus

@@ -18,11 +18,6 @@ struct KeTaskControlBlock;
  * @{
 */
 
-/**
- * @brief Initialize math peripherals
- * @return Status code
-*/
-INTERNAL STATUS HalInitMath(void);
 
 /**
  * @brief Create buffer for coprocessor state storage

@@ -56,13 +56,13 @@ static struct IOAPIC* findIoApic(uint32_t input)
 {
     for(uint8_t i = 0; i < IoApicDeviceCount; i++)
     {
-        KeAcquireSpinlock(&IoApicDevice[i].Lock);
+        PRIO prio = KeAcquireSpinlock(&IoApicDevice[i].Lock);
         if((IoApicDevice[i].irqBase <= input) && ((IoApicDevice[i].irqBase + IoApicDevice[i].inputs) >= input))
         {
-            KeReleaseSpinlock(&IoApicDevice[i].Lock);
+            KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
             return &IoApicDevice[i];
         }
-        KeReleaseSpinlock(&IoApicDevice[i].Lock);
+        KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
     }
     return NULL;
 }
@@ -115,13 +115,13 @@ STATUS ApicIoInit(void)
 
     for(uint16_t i = 0; i < IoApicEntryCount; i++)
     {
-        KeAcquireSpinlock(&IoApicDevice[IoApicDeviceCount].Lock);
+        PRIO prio = KeAcquireSpinlock(&IoApicDevice[IoApicDeviceCount].Lock);
         IoApicDevice[IoApicDeviceCount].mmio = (uint32_t*)(((uintptr_t)mmio) + (IoApicEntryTable[i].address - lowestAddress));
         IoApicDevice[IoApicDeviceCount].inputs = (read(&IoApicDevice[IoApicDeviceCount], IOAPIC_REG_IOAPICVER) >> 16) & 0x7F;
         IoApicDevice[IoApicDeviceCount].id = IoApicEntryTable[i].id;
         IoApicDevice[IoApicDeviceCount].irqBase = IoApicEntryTable[i].irqBase;
         CmMemset(IoApicDevice[IoApicDeviceCount].usage, 0, sizeof(IoApicDevice[IoApicDeviceCount].usage));
-        KeReleaseSpinlock(&IoApicDevice[IoApicDeviceCount].Lock);
+        KeReleaseSpinlock(&IoApicDevice[IoApicDeviceCount].Lock, prio);
         IoApicDeviceCount++;
     }
 
@@ -133,9 +133,9 @@ uint8_t ApicIoGetAssociatedVector(uint32_t input)
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
         return 0;
-    KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     uint8_t vector = read64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase)) & IOAPIC_IOREDTBL_VECTOR_MASK;
-    KeReleaseSpinlock(&ioApic->Lock);
+    KeReleaseSpinlock(&ioApic->Lock, prio);
     return vector;
 }
 
@@ -189,9 +189,9 @@ STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode m
     }
     params |= vector;
     params &= ~IOAPIC_IOREDTBL_MASK;
-    KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), params);
-    KeReleaseSpinlock(&ioApic->Lock);
+    KeReleaseSpinlock(&ioApic->Lock, prio);
 
     return OK;
 }
@@ -202,9 +202,9 @@ STATUS ApicIoUnregisterIrq(uint32_t input)
     if(NULL == ioApic)
         return APIC_IOAPIC_NOT_AVAILABLE;
     
-    KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), IT_FIRST_INTERRUPT_VECTOR | IOAPIC_IOREDTBL_MASK);
-    KeReleaseSpinlock(&ioApic->Lock);
+    KeReleaseSpinlock(&ioApic->Lock, prio);
 
     return OK;
 }
@@ -215,10 +215,10 @@ STATUS ApicIoEnableIrq(uint32_t input)
     if(NULL == ioApic)
         return IT_NOT_REGISTERED;
     
-    KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase),
             read64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase) & ~(IOAPIC_IOREDTBL_MASK)));
-    KeReleaseSpinlock(&ioApic->Lock);
+    KeReleaseSpinlock(&ioApic->Lock, prio);
     
     return OK;
 }
@@ -229,10 +229,10 @@ STATUS ApicIoDisableIrq(uint32_t input)
     if(NULL == ioApic)
         return IT_NOT_REGISTERED;
     
-    KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase),
             read64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase) | IOAPIC_IOREDTBL_MASK));
-    KeReleaseSpinlock(&ioApic->Lock);
+    KeReleaseSpinlock(&ioApic->Lock, prio);
     
     return OK;
 }
@@ -241,7 +241,7 @@ uint32_t ApicIoReserveInput(uint32_t input)
 {
     for(uint8_t i = 0; i < IoApicDeviceCount; i++)
     {
-        KeAcquireSpinlock(&IoApicDevice[i].Lock);
+        PRIO prio = KeAcquireSpinlock(&IoApicDevice[i].Lock);
         if(HAL_INTERRUPT_INPUT_ANY == input)
         {
             for(uint16_t k = 0; k < IoApicDevice[i].inputs; k++)
@@ -250,7 +250,7 @@ uint32_t ApicIoReserveInput(uint32_t input)
                 {
                     IoApicDevice[i].usage[k / 32] |= ((uint32_t)1 << (k % 32));
                     input = k + IoApicDevice[i].irqBase;
-                    KeReleaseSpinlock(&IoApicDevice[i].Lock);
+                    KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
                     return input;
                 }
             }
@@ -265,10 +265,10 @@ uint32_t ApicIoReserveInput(uint32_t input)
             }
             else
                 input = UINT32_MAX;
-            KeReleaseSpinlock(&IoApicDevice[i].Lock);
+            KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
             return UINT32_MAX;
         }
-        KeReleaseSpinlock(&IoApicDevice[i].Lock);
+        KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
     }
     return UINT32_MAX;
 }
@@ -277,15 +277,15 @@ void ApicIoFreeInput(uint32_t input)
 {
     for(uint8_t i = 0; i < IoApicDeviceCount; i++)
     {
-        KeAcquireSpinlock(&IoApicDevice[i].Lock);
+        PRIO prio = KeAcquireSpinlock(&IoApicDevice[i].Lock);
         if((input >= IoApicDevice[i].irqBase) && (input < (IoApicDevice[i].irqBase + IoApicDevice[i].inputs)))
         {
             input -= IoApicDevice[i].irqBase;
             IoApicDevice[i].usage[input / 32] &= ~((uint32_t)1 << (input % 32));
-            KeReleaseSpinlock(&IoApicDevice[i].Lock);
+            KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
             break;
         }
-        KeReleaseSpinlock(&IoApicDevice[i].Lock);
+        KeReleaseSpinlock(&IoApicDevice[i].Lock, prio);
     }
 }
 

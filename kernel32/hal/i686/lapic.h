@@ -26,9 +26,14 @@ enum ApicIpiMode
  * @param assert True to assert, false to deassert
  * @return Status code
  */
-STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert);
+INTERNAL STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert);
 
-void ApicWaitForIpiDelivery(void);
+/**
+ * @brief Wait for IPI delivery up to a given time
+ * @param timeLimit Time limit in nanoseconds
+ * @return \a OK if IPI deliverd, \a TIMEOUT if delivery timed out
+ */
+INTERNAL STATUS ApicWaitForIpiDelivery(uint64_t timeLimit);
 
 /**
  * @brief Send End Of Interrupt using APIC
@@ -107,5 +112,11 @@ INTERNAL uint8_t ApicGetTaskPriority(void);
  * @return Current processor priority (0-15)
 */
 INTERNAL uint8_t ApicGetProcessorPriority(void);
+
+/**
+ * @brief Get current CPU Local APIC ID
+ * @return LAPIC ID
+ */
+INTERNAL uint8_t ApicGetCurrentId(void);
 
 #endif

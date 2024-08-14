@@ -17,14 +17,17 @@
 */
 INTERNAL STATUS ExLoadKernelSymbols(char *path);
 
-EXPORT
+EXPORT_API
+
 /**
  * @brief Resolve kernel symbol
  * @param name Kernel symbol name
  * @return Kernel symbol value
  * @attention Kernel symbol table must be loaded first using ExLoadKernelSymbols()
 */
-EXTERN uintptr_t ExGetKernelSymbol(const char *name);
+uintptr_t ExGetKernelSymbol(const char *name);
+
+END_EXPORT_API
 
 /**
  * @}
