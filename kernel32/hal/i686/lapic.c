@@ -9,6 +9,9 @@
 #include "msr.h"
 #include "tsc.h"
 #include "hal/time.h"
+#include "hal/arch.h"
+#include "config.h"
+#include "hal/cpu.h"
 
 #define LAPIC_SPURIOUS_VECTOR 255
 
@@ -84,9 +87,14 @@ enum ApicTimerDivider
 static volatile uint8_t *lapic = NULL;
 
 #define LAPIC_DEFAULT_TIMER_DIVIDER APIC_TIMER_DIVIDE_16
-static uint64_t frequency; //calculated clock frequency  
 
-static uint64_t counter = 0;
+#ifndef SMP
+static uint64_t ApicCounter = 0;
+#else
+static uint64_t ApicCounter[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = 0};
+#endif
+
+static uint64_t ApicFrequency;
 
 /**
  * @brief A convenience macro for 32-bit Local APIC register access
@@ -123,13 +131,13 @@ STATUS ApicSendEoi(void)
 //     return OK;
 // }
 
-STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert)
+void ApicSendIpi(enum ApicIpiDestination shorthand, uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert)
 {
-    LAPIC(LAPIC_ICR_OFFSET + 0x10) = (LAPIC(LAPIC_ICR_OFFSET + 0x10) & 0x00FFFFFF) | ((uint32_t)destination << 24);
+    if(APIC_IPI_DESTINATION_NORMAL == shorthand)
+        LAPIC(LAPIC_ICR_OFFSET + 0x10) = (LAPIC(LAPIC_ICR_OFFSET + 0x10) & 0x00FFFFFF) | ((uint32_t)destination << 24);
     LAPIC(LAPIC_ICR_OFFSET) = (LAPIC(LAPIC_ICR_OFFSET) & LAPIC_ICR_RESERVED_MASK) 
-        | (mode << 8) | LAPIC_ICR_TRIGGER_LEVEL 
+        | ((shorthand & 0x3) << 18) | ((mode & 0x7) << 8) | ((mode == APIC_IPI_INIT) ? LAPIC_ICR_TRIGGER_LEVEL : LAPIC_ICR_TRIGGER_EDGE) 
         | ((assert || (mode != APIC_IPI_INIT)) ? LAPIC_ICR_LEVEL_ASSERT : LAPIC_ICR_LEVEL_DEASSERT) | vector;
-    return OK;
 }
 
 STATUS ApicWaitForIpiDelivery(uint64_t timeLimit)
@@ -190,7 +198,7 @@ STATUS ApicInitBsp(void)
     LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = 0xFFFFFFFF;
     PitOneShotWait();
     uint32_t value = LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
-    frequency = ((uint64_t)100) * ((uint64_t)(0xFFFFFFFF - value));
+    ApicFrequency = ((uint64_t)100) * ((uint64_t)(0xFFFFFFFF - value));
     
     return OK;
 }
@@ -234,28 +242,69 @@ void ApicStartSystemTimer(uint64_t time)
     }
     else
     {
-        counter += ((uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET));
-        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = time * frequency / (uint64_t)1000000;
+
+        __atomic_add_fetch(
+#ifndef SMP
+            &ApicCounter,
+#else
+            &ApicCounter[HalGetCurrentCpu()], 
+#endif
+            (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET), __ATOMIC_SEQ_CST);
+        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = time * ApicFrequency / (uint64_t)1000000;
     }
     LAPIC(LAPIC_LVT_TIMER_OFFSET) &= ~LAPIC_LOCAL_MASK;
 }
 
+#ifndef SMP
 uint64_t ApicGetTimestamp(void)
 {
-    return (uint64_t)((1000000000. * ((double)counter + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
-        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)frequency);
+    return (uint64_t)((1000000000. * ((double)__atomic_load_n(&ApicCounter, __ATOMIC_SEQ_CST)  + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)ApicFrequency);
 }
 
 uint64_t ApicGetTimestampMicros(void)
 {
-    return (uint64_t)((1000000. * ((double)counter + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
-        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)frequency);
+    return (uint64_t)((1000000. * ((double)__atomic_load_n(&ApicCounter, __ATOMIC_SEQ_CST)  + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)ApicFrequency);
 }
 
 uint64_t ApicGetTimestampMillis(void)
 {
-    return (uint64_t)((1000. * ((double)counter + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
-        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)frequency);
+    return (uint64_t)((1000. * ((double)__atomic_load_n(&ApicCounter, __ATOMIC_SEQ_CST) + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) 
+        - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) / (double)ApicFrequency);
+}
+#else
+uint64_t ApicGetTimestamp(void)
+{
+    return (uint64_t)((1000000000. * ((double)__atomic_load_n(&ApicCounter[HalGetCurrentCpu()], __ATOMIC_SEQ_CST) 
+         + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) 
+        / (double)ApicFrequency);
+}
+
+uint64_t ApicGetTimestampMicros(void)
+{
+    return (uint64_t)((1000000. * ((double)__atomic_load_n(&ApicCounter[HalGetCurrentCpu()], __ATOMIC_SEQ_CST) 
+         + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) 
+         / (double)ApicFrequency);
+}
+
+uint64_t ApicGetTimestampMillis(void)
+{
+    return (uint64_t)((1000. * ((double)__atomic_load_n(&ApicCounter[HalGetCurrentCpu()], __ATOMIC_SEQ_CST) 
+        + (double)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (double)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET))) 
+        / (double)ApicFrequency);
+}
+#endif
+
+void ApicSetRealTime(uint64_t realTime)
+{
+    realTime = (double)realTime * (double)ApicFrequency / 1000.;
+#ifndef SMP
+    __atomic_store_n(&ApicCounter, realTime, __ATOMIC_SEQ_CST);
+#else
+    for(uint16_t i = 0; i < MAX_CPU_COUNT; i++)
+        __atomic_store_n(&ApicCounter[i], realTime, __ATOMIC_SEQ_CST);
+#endif
 }
 
 STATUS ApicSetTaskPriority(uint8_t priority)

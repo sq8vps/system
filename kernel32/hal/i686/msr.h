@@ -8,6 +8,7 @@
 #define MSR_IA32_TSC_DEADLINE 0x6E0
 #define MSR_IA32_APIC_BASE 0x1B
 #define MSR_IA32_APIC_BASE_ENABLE_MASK 0x800
+#define MSR_IA32_APIC_BASE_BSP_MASK 0x100
 
 /**
  * @brief Initialize MSR module

@@ -12,11 +12,10 @@ static KeSpinlock listLock = KeSpinlockInitializer;
 
 PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 {
-    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
+    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_SPINLOCK);
 #ifndef SMP
     if(0 != spinlock->lock)
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
-    
     spinlock->lock = 1;
 #else
     while(1)

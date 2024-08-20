@@ -79,6 +79,8 @@ enum KeTaskType
  */
 typedef int KE_TASK_ID;
 
+struct KeSchedulerQueue;
+
 /**
  * @brief A structure storing all task data
 */
@@ -97,6 +99,7 @@ struct KeTaskControlBlock
     void *kernelStackTop; /**< Initial kernel mode stack top */
     void *heapTop; /**< Current user mode heap top */
     uintptr_t heapSize; /**< Current user mode heap size */
+    HalCpuBitmap affinity; /**< CPU affinity */
 
     void *image; /**< Image start address */
     uintptr_t imageSize; /**< Image size */
@@ -106,9 +109,9 @@ struct KeTaskControlBlock
     char name[TCB_MAX_NAME_LENGTH + 1]; /**< Task name */
     char *path; /**< Task image path */
 
-    uintptr_t taskCount; /**< Number of tasks associated with this process */
-    uintptr_t freeTaskIds[MAX_KERNEL_MODE_THREADS - 1]; /**< Free local IDs for children tasks */
-    uintptr_t threadId; /**< Thread ID within a task, starting from 1 */
+    int taskCount; /**< Number of tasks associated with this process */
+    int freeTaskIds[MAX_KERNEL_MODE_THREADS - 1]; /**< Free local IDs for children tasks */
+    int threadId; /**< Thread ID within a task, starting from 1 */
 
     struct
     {
@@ -160,7 +163,7 @@ struct KeTaskControlBlock
 
     struct KeTaskControlBlock *next; //next task in queue
     struct KeTaskControlBlock *previous; //previous task in queue
-    struct KeTaskControlBlock **queue; //queue top handle
+    struct KeSchedulerQueue *queue; //queue this task belongs to
 };
 
 /**
@@ -209,6 +212,20 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl,
  * @attention This function returns immidiately. The created process will be started by the scheduler later.
 */
 STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
+
+/**
+ * @brief Create thread within the given process
+ * @param *parent Parent process TCB
+ * @param *name Thread name
+ * @param *entry Thread entry point
+ * @param *entryContext Entry point parameter
+ * @param **tcb Output Task Control Block
+ * @return Status code
+ * @attention This function returns immidiately. The created thread will be started by the scheduler later.
+ * @note This function can be called by any task on behalf of any task
+*/
+STATUS KeCreateThread(struct KeTaskControlBlock *parent, const char *name,
+    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 END_EXPORT_API
 

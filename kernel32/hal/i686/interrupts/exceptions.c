@@ -1,8 +1,10 @@
 #include "exceptions.h"
 #include "ke/core/panic.h"
-#include "hal/i686/it/it.h"
+#include "hal/i686/interrupts/it.h"
 #include "hal/i686/fpu.h"
 #include "it/it.h"
+#include "hal/arch.h"
+#include "hal/i686/memory.h"
 
 //debug interrupt handlers
 
@@ -36,7 +38,18 @@ IT_HANDLER static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
     uintptr_t cr2;
     //obtain failing address from CR2 register
     ASM("mov %0,cr2" : "=r" (cr2) : );
-    KePanicIPEx(f->ip, KERNEL_MODE_FAULT, PAGE_FAULT, cr2, error, 0);
+
+    //handle lazy TLB shootdown
+    MmMemoryFlags flags = I686GetPageFlagsFromPageFault(cr2);
+    uint8_t ok = 0;
+    ok |= (flags & MM_FLAG_PRESENT) && !(error & 1); //P-flag is 0 - page not present in TLB
+    ok |= (flags & MM_FLAG_WRITABLE) && (error & 2); //W/R-flag is 1 - write was attempted, but page is read-only in TLB
+    ok |= (flags & MM_FLAG_USER_MODE) && (error & 4); //U/S-flag is 1 - access was in user mode, but page is kernel-only in TLB
+
+    if(ok)
+        I686_INVALIDATE_TLB(cr2);
+    else
+        KePanicIPEx(f->ip, KERNEL_MODE_FAULT, PAGE_FAULT, cr2, error, 0);
 }
 
 //faults correctable in user mode

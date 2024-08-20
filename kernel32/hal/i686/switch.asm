@@ -1,17 +1,15 @@
-;struct KeTaskControlBlock *currentTask
-extern currentTask
-;void *KeCurrentCpuState
+;struct KeTaskControlBlock *KeCurrentTask[]
+extern KeCurrentTask
+;void *KeCurrentCpuState[]
 extern KeCurrentCpuState
 
-;struct KeTaskControlBlock *nextTask
-extern nextTask
-;void *KeNextCpuState
+;struct KeTaskControlBlock *KeNextTask[]
+extern KeNextTask
+;void *KeNextCpuState[]
 extern KeNextCpuState
 
-;void KeSchedule(void)
-;This is the callback function that should provide scheduling,
-;that is it should set new task TCB in *nextTask
-extern KeSchedule
+;struct KeTaskControlBlock *KeLastTask[]
+extern KeLastTask
 
 ;void GdtUpdateTss(uintptr_t esp0)
 ;This is the function that updates the TSS for current CPU
@@ -22,6 +20,9 @@ extern HalStoreMathState
 
 ;void HalRestoreMathState(struct KeTaskControlBlock *tcb)
 extern HalRestoreMathState
+
+;void KeAttachLastTask(uint16_t cpu)
+extern KeAttachLastTask
 
 section .text
 
@@ -38,22 +39,37 @@ KeStoreTaskContext:
     push edi
     push ebp
 
-    push edi ;save original edi
+    push edi ;store edi temporarily
 
-    mov edi,[KeCurrentCpuState]
+    mov edx,[esp+28] ;get cpu number, which is on the stack
+
+    mov edi,[KeCurrentCpuState+4*edx]
+    ;check if KeCurrentCpuState is NULL
+    ;if so, we are probably just starting and the currently executed code is not a task
+    ;just drop all data and switch to the next task, the scheduler is aware of it
+    test edi,0xFFFFFFFF
+    jz .skip
+
     mov [edi + CPUState.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
     add DWORD [edi + CPUState.esp],4 ;omit locally pushed EDI
 
-    mov edi,[currentTask]
+    mov edi,[KeCurrentTask+4*edx] ;store current task in last task
+    mov [KeLastTask+4*edx],edi
 
     push eax
+
+    cld
     push edi
     call HalStoreMathState
     add esp,4
+
     pop eax
 
+
+.skip:
     pop edi ;restore original edi
     push eax ;push return address
+    mov eax,[esp+28] ;return CPU number
     ret
 
 ;This function performs task switch, that is, it loads and executes
@@ -63,17 +79,20 @@ KeStoreTaskContext:
 KeSwitchToTask:
     add esp,4 ;remove return address - not needed
 
-    mov esi,[nextTask]
-    mov [currentTask],esi
-    mov [nextTask],DWORD 0
+    mov edi,eax ;get CPU number
+    
+    mov esi,[KeNextTask+4*edi]
+    mov [KeCurrentTask+4*edi],esi
+    mov [KeNextTask+4*edi],DWORD 0
 
+    cld
     push esi
     call HalRestoreMathState
     add esp,4
 
-    mov esi,[KeNextCpuState]
-    mov [KeCurrentCpuState],esi
-    mov [KeNextCpuState],DWORD 0
+    mov esi,[KeNextCpuState+4*edi]
+    mov [KeCurrentCpuState+4*edi],esi
+    mov [KeNextCpuState+4*edi],DWORD 0
     mov esp,[esi + CPUState.esp] ;update kernel stack ESP
 
     mov eax,cr3 ;get current CR3
@@ -116,8 +135,19 @@ KeSwitchToTask:
 ;This function returns when the calling task is scheduled again
 global HalPerformTaskSwitch:function
 HalPerformTaskSwitch:
-    mov eax,[nextTask]
-    test eax,0xFFFFFFFF
+    cli
+
+%ifdef SMP
+    str eax ;get TSS offset from task register
+    shr eax,3 ;divide by 8 to obtain selector number from selector offset
+    sub eax,5 ;subtract 5 to get CPU number from the selector number
+%else
+    mov eax,0
+%endif
+
+    mov edx,[KeNextTask+4*eax]
+    test edx,0xFFFFFFFF ;check if there is a next task
+    ;if not, then continue with the current one
     jz .returnFromSwitch
 
     sub esp,12 ;make room for EIP, CS and EFLAGS
@@ -125,25 +155,37 @@ HalPerformTaskSwitch:
     ;store EIP
     mov [esp],DWORD .returnFromSwitch
     ;store CS
-    xor eax,eax
-    mov ax,cs
-    mov [esp+4],eax
+    xor edx,edx
+    mov dx,cs
+    mov [esp+4],edx
     ;store EFLAGS
     pushfd
-    pop eax
-    mov [esp+8],eax
+    pop edx
+    mov [esp+8],edx
 
     ;store task context immediately
+    ;CPU number is in EAX
     call KeStoreTaskContext
+
+    push eax
+
+    cld
+    push ax
+    call KeAttachLastTask
+    add esp,2
+
+    pop eax
 
     ;new task pointer is in nextTask
     ;switch to the new task
+    ;pass CPU number in EAX
     call KeSwitchToTask
 
     ;this point should be unreachable
     jmp $
 
 .returnFromSwitch: ;but return here on task switch
+    sti
     ret
 
 
@@ -157,4 +199,6 @@ struc CPUState
     .es resw 1
     .fs resw 1
     .gs resw 1
+
+    .prio resb 1
 endstruc

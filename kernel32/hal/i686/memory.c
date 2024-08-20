@@ -9,6 +9,7 @@
 #include "mm/mm.h"
 #include "gdt.h"
 #include "ke/sched/sched.h"
+#include "ipi.h"
 
 #if defined(__i686__)
 
@@ -35,7 +36,10 @@ MmPageTableEntry *pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TABLE_ADDRESS;
 #define MM_PAGE_DIRECTORY_ENTRY_COUNT 1024 //number of entries in page directory
 #define MM_PAGE_TABLE_ENTRY_COUNT 1024 //number of entries in page table
 
-#define INVALIDATE_TLB(address) ASM("invlpg [%0]" : : "r" (address) : "memory")
+#define IS_KERNEL_MEMORY(address) ((((address) >= MM_KERNEL_SPACE_START) && ((address) < MM_FIRST_PAGE_TABLE_ADDRESS)) \
+		|| ((((address) >= (uintptr_t)&pageTable[MM_KERNEL_SPACE_START >> 12]) && ((address) < MM_PAGE_DIRECTORY_ADDRESS))))
+
+static KeSpinlock I686KernelMemoryLock = KeSpinlockInitializer;
 
 /**
  * @brief Allocate memory for page directory
@@ -69,11 +73,45 @@ static uintptr_t allocatePageTable(void)
 	return address;
 }
 
+static inline PRIO I686AcquireMemoryLock(uintptr_t address)
+{
+#ifndef SMP
+	return HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
+#else
+	if(IS_KERNEL_MEMORY(address) || (NULL == KeGetCurrentTask()))
+	{
+		return KeAcquireSpinlock(&I686KernelMemoryLock);
+	}
+	else
+	{
+		return KeAcquireSpinlock(KeGetCurrentTask()->cpu.userMemoryLock);
+	}
+#endif
+}
+
+static inline void I686ReleaseMemoryLock(uintptr_t address, PRIO lastPriority)
+{
+#ifndef SMP
+	HalLowerPriorityLevel(lastPriority);
+#else
+	if(IS_KERNEL_MEMORY(address) || (NULL == KeGetCurrentTask()))
+	{
+		KeReleaseSpinlock(&I686KernelMemoryLock, lastPriority);
+	}
+	else
+	{
+		KeReleaseSpinlock(KeGetCurrentTask()->cpu.userMemoryLock, lastPriority);
+	}
+#endif
+}
+
 STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags)
 {
 	*flags = 0;
+	PRIO prio = I686AcquireMemoryLock(vAddress);
 	if(0 == (pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
 	{
+		I686ReleaseMemoryLock(vAddress, prio);
 		return MM_PAGE_NOT_PRESENT;
 	}
 
@@ -88,27 +126,56 @@ STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags)
 		*flags |= MM_FLAG_WRITE_THORUGH;
 	if(f & PAGE_FLAG_PCD)
 		*flags |= MM_FLAG_CACHE_DISABLE;
+	I686ReleaseMemoryLock(vAddress, prio);
 	return OK;
 }
 
 STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress)
 {
+	PRIO prio = I686AcquireMemoryLock(vAddress);
 	if(0 == (pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
+	{
+		I686ReleaseMemoryLock(vAddress, prio);
 		return MM_PAGE_NOT_PRESENT;
+	}
 
 	if(0 == (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT)) //check if page is present
+	{
+		I686ReleaseMemoryLock(vAddress, prio);
 		return MM_PAGE_NOT_PRESENT;
+	}
 
 	*pAddress = (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & 0xFFFFF000) + (vAddress & 0xFFF);
+	I686ReleaseMemoryLock(vAddress, prio);
 	return OK;
 }
 
-static KeSpinlock pageTableCreationMutex = KeSpinlockInitializer;
+MmMemoryFlags I686GetPageFlagsFromPageFault(uintptr_t address)
+{
+	MmMemoryFlags flags = 0;
+	if(0 == (pageDir[address >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
+	{
+		return 0;
+	}
+
+	uint16_t f = PAGETABLE(address >> 22, (address >> 12) & 0x3FF) & 0xFFF;
+	if(f & PAGE_FLAG_PRESENT)
+		flags |= MM_FLAG_PRESENT;
+	if(f & PAGE_FLAG_WRITABLE)
+		flags |= MM_FLAG_WRITABLE;
+	if(f & PAGE_FLAG_USER)
+		flags |= MM_FLAG_USER_MODE;
+	if(f & PAGE_FLAG_PWT)
+		flags |= MM_FLAG_WRITE_THORUGH;
+	if(f & PAGE_FLAG_PCD)
+		flags |= MM_FLAG_CACHE_DISABLE;
+	return OK;	
+}
 
 STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 {
-	//make sure that no other function will try to create a page table for the same page directory entry
-	PRIO prio = KeAcquireSpinlock(&pageTableCreationMutex); 
+	PRIO prio = I686AcquireMemoryLock(vAddress);
+
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //check if page table is present
 	{
 		//if not, create one
@@ -116,12 +183,12 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 		if(MM_PAGE_TABLE_SIZE != MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &pageTableAddr))
 		{
 			MmFreePhysicalMemory(pageTableAddr, MM_PAGE_TABLE_SIZE);
-			KeReleaseSpinlock(&pageTableCreationMutex, prio);
+			I686ReleaseMemoryLock(vAddress, prio);
 			return MM_NO_MEMORY;
 		}
 
 		pageDir[vAddress >> 22] = pageTableAddr | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //store page directory entry
-		INVALIDATE_TLB((uintptr_t)(&PAGETABLE(vAddress >> 22, 0)));
+		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(vAddress >> 22, 0)));
 		//now the table can be accessed
 
 		for(uint16_t i = 0; i < MM_PAGE_TABLE_ENTRY_COUNT; i++)
@@ -131,10 +198,13 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 
 		//from now on the page table can be accessed using pageTable[]
 	}
-	KeReleaseSpinlock(&pageTableCreationMutex, prio);
+	
 
 	if(PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT) //check if page is already present
+	{
+		I686ReleaseMemoryLock(vAddress, prio);
 		return MM_ALREADY_MAPPED;
+	}
 
 	uint16_t f = 0;
 	if(flags & MM_FLAG_WRITABLE)
@@ -147,8 +217,9 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 		f |= PAGE_FLAG_PCD;
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (pAddress & 0xFFFFF000) | f | PAGE_FLAG_PRESENT; //add page to page table
 
-	INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
+	I686_INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
 
+	I686ReleaseMemoryLock(vAddress, prio);
 	return OK;	
 }
 
@@ -170,7 +241,7 @@ STATUS HalMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, Mm
 	return OK;
 }
 
-STATUS HalUnmapMemory(uintptr_t vAddress)
+static STATUS HalUnmapMemoryNoLock(uintptr_t vAddress)
 {
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //page table not present?
 	{
@@ -186,22 +257,78 @@ STATUS HalUnmapMemory(uintptr_t vAddress)
 
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (MmPageTableEntry)0; //clear entry
 
-	INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
+	I686_INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
 
 	return OK;	
+}
+
+STATUS HalUnmapMemory(uintptr_t vAddress)
+{
+	PRIO prio = I686AcquireMemoryLock(vAddress);
+	STATUS status = HalUnmapMemoryNoLock(vAddress);
+#ifdef SMP
+	struct KeTaskControlBlock *task;
+	if(IS_KERNEL_MEMORY(vAddress))
+		I686SendInvalidateKernelTlb(vAddress, 1);
+	else if(NULL != (task = KeGetCurrentTask()))
+	{
+		I686SendInvalidateTlb(&(task->affinity), task->cpu.cr3, vAddress, 1);
+	}
+#endif
+	I686ReleaseMemoryLock(vAddress, prio);
+	return status;
 }
 
 STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 {
 	size = ALIGN_UP(size, MM_PAGE_SIZE);
+	uintptr_t start = vAddress;
+	uintptr_t originalSize = size;
+	PRIO prio = I686AcquireMemoryLock(vAddress);
 	while(size)
 	{
-		HalUnmapMemory(vAddress);
-		
+		HalUnmapMemoryNoLock(vAddress);
 		vAddress += MM_PAGE_SIZE;
-
 		size -= MM_PAGE_SIZE;
 	}
+#ifdef SMP
+	vAddress = start;
+	size = originalSize;
+
+	struct KeTaskControlBlock *task = KeGetCurrentTask();
+
+	while(size)
+	{
+		uintptr_t base = vAddress;
+		uintptr_t sameTypeSize = 0;
+		if(IS_KERNEL_MEMORY(vAddress))
+		{
+			do
+			{
+				sameTypeSize += MM_PAGE_SIZE;
+				vAddress += MM_PAGE_SIZE;
+				size -= MM_PAGE_SIZE;
+			} 
+			while(IS_KERNEL_MEMORY(vAddress) && (0 != size));
+		}
+		else
+		{
+			do
+			{
+				sameTypeSize += MM_PAGE_SIZE;
+				vAddress += MM_PAGE_SIZE;
+				size -= MM_PAGE_SIZE;
+			} 
+			while(!IS_KERNEL_MEMORY(vAddress) && (0 != size));			
+		}
+
+		if(IS_KERNEL_MEMORY(base))
+			I686SendInvalidateKernelTlb(base, sameTypeSize / MM_PAGE_SIZE);
+		else if(NULL != task)
+			I686SendInvalidateTlb(&(task->affinity), task->cpu.cr3, base, sameTypeSize / MM_PAGE_SIZE);
+	}
+#endif
+	I686ReleaseMemoryLock(start, prio);
 	return OK;
 }
 
@@ -224,7 +351,7 @@ void I686InitVirtualAllocator(void)
 		
 		pageDir[i] = newPageTable | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //add page directory entry
 
-		INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i, 0))); //invalidate old entry in TLB
+		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i, 0))); //invalidate old entry in TLB
 
 		//clear page table
 		CmMemset(&PAGETABLE(i, 0), 0, MM_PAGE_TABLE_ENTRY_COUNT * sizeof(MmPageTableEntry));
@@ -300,65 +427,63 @@ I686CreateProcessMemorySpaceFailure:
 	return OUT_OF_RESOURCES;
 }
 
-// STATUS I686CreateThreadKernelStack(const struct KeTaskControlBlock *parent, uintptr_t stackAddress, void **stack)
-// {
-// 	MmPageDirectoryEntry *pd = NULL;
-// 	MmPageTableEntry *pt = NULL;
-// 	PADDRESS ptAddress = 0;
-// 	PADDRESS stackPhysical = 0;
-// 	*stack = NULL;
-// 	bool newPageTable = false;
+STATUS I686CreateThreadKernelStack(const struct KeTaskControlBlock *parent, uintptr_t stackAddress, void **stack)
+{
+	MmPageDirectoryEntry *pd = NULL;
+	MmPageTableEntry *pt = NULL;
+	PADDRESS ptAddress = 0;
+	PADDRESS stackPhysical = 0;
+	*stack = NULL;
+	bool newPageTable = false;
 
-// 	if(0 == MmAllocatePhysicalMemory(MM_PAGE_SIZE, &stackPhysical))
-// 		goto I686CreateThreadKernelStackFailure;
+	if(0 == MmAllocatePhysicalMemory(MM_PAGE_SIZE, &stackPhysical))
+		goto I686CreateThreadKernelStackFailure;
 	
-// 	pd = MmMapDynamicMemory(parent->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
-// 	if(NULL == pd)
-// 		goto I686CreateThreadKernelStackFailure;
+	pd = MmMapDynamicMemory(parent->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
+	if(NULL == pd)
+		goto I686CreateThreadKernelStackFailure;
 
-// 	KeAcquireSpinlock(parent->cpu.userPageTableLock);
+	if(0 == (pd[(stackAddress - MM_PAGE_SIZE) >> 22] & PAGE_FLAG_PRESENT)) //page table for given stack address not present?
+	{
+		//create new page table
+		ptAddress = allocatePageTable();
+		if(0 == ptAddress)
+			goto I686CreateThreadKernelStackFailure;
+		newPageTable = true;
+	}
+	else
+		ptAddress = pd[(stackAddress - MM_PAGE_SIZE) >> 22] & 0xFFFFF000;
 
-// 	if(0 == (pd[(stackAddress - MM_PAGE_SIZE) >> 22] & PAGE_FLAG_PRESENT)) //page table for given stack address not present?
-// 	{
-// 		//create new page table
-// 		ptAddress = allocatePageTable();
-// 		if(0 == ptAddress)
-// 			goto I686CreateThreadKernelStackFailure;
-// 		newPageTable = true;
-// 	}
-// 	else
-// 		ptAddress = pd[(stackAddress - MM_PAGE_SIZE) >> 22] & 0xFFFFF000;
+	pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, 0);
+	if(NULL == pt)
+		goto I686CreateThreadKernelStackFailure;
 
-// 	pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, 0);
-// 	if(NULL == pt)
-// 		goto I686CreateThreadKernelStackFailure;
+	if(newPageTable)
+	{
+		pd[(stackAddress - MM_PAGE_SIZE) >> 2] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
+	}
 
-// 	if(newPageTable)
-// 	{
-// 		pd[(stackAddress - MM_PAGE_SIZE) >> 2] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
-// 		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
-// 	}
+	pt[((stackAddress - MM_PAGE_SIZE) >> 12) & 0x3FF] = stackPhysical | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
 
-// 	pt[((stackAddress - MM_PAGE_SIZE) >> 12) & 0x3FF] = stackPhysical | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+	*stack = MmMapDynamicMemory(stackPhysical, MM_PAGE_SIZE, 0);
+	if(NULL != *stack)
+	{
+		*stack = (void*)((uintptr_t)*stack + MM_PAGE_SIZE);
+		MmUnmapDynamicMemory(pt);
+		MmUnmapDynamicMemory(pd);
+		return OK;
+	}
 
-// 	*stack = MmMapDynamicMemory(stackPhysical, MM_PAGE_SIZE, 0);
-// 	if(NULL != *stack)
-// 	{
-// 		*stack = (void*)((uintptr_t)*stack + MM_PAGE_SIZE);
-// 		MmUnmapDynamicMemory(pt);
-// 		MmUnmapDynamicMemory(pd);
-// 		return OK;
-// 	}
-
-// I686CreateThreadKernelStackFailure:
-// 	MmUnmapDynamicMemory(*stack);
-// 	MmUnmapDynamicMemory(pt);
-// 	MmUnmapDynamicMemory(pd);
-// 	if(0 != ptAddress)
-// 		MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
-// 	*stack = NULL;
-// 	return OUT_OF_RESOURCES;
-// }
+I686CreateThreadKernelStackFailure:
+	MmUnmapDynamicMemory(*stack);
+	MmUnmapDynamicMemory(pt);
+	MmUnmapDynamicMemory(pd);
+	if(0 != ptAddress)
+		MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
+	*stack = NULL;
+	return OUT_OF_RESOURCES;
+}
 
 //TODO: when mapping kernel space memory, TLBs must be invalidated across all processors
 // STATUS HalMapForeignMemory(struct KeTaskControlBlock *target, uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
@@ -377,7 +502,7 @@ I686CreateProcessMemorySpaceFailure:
 // 	if(NULL == pd)
 // 		return OUT_OF_RESOURCES;
 
-// 	PRIO prio = KeAcquireSpinlock(target->cpu.userPageTableLock);
+// 	PRIO prio = KeAcquireSpinlock(target->cpu.userMemoryLock);
 
 // 	if((pd[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //page table is not present
 // 	{
@@ -428,7 +553,7 @@ I686CreateProcessMemorySpaceFailure:
 // 		f |= PAGE_FLAG_PCD;
 // 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (pAddress & 0xFFFFF000) | f | PAGE_FLAG_PRESENT; //add page to page table
 
-// 	INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
+// 	I686_INVALIDATE_TLB(vAddress); //invalidate old entry in TLB
 
 // HalMapForeignMemoryExit:
 

@@ -46,13 +46,13 @@ uint8_t ItReserveVector(uint8_t vector)
 	}
 	else if(vector >= IT_FIRST_INTERRUPT_VECTOR)
 	{
-		vector -= IT_FIRST_INTERRUPT_VECTOR;
-
-		if(0 == ItHandlerDescriptorTable[vector].count)
-			ItHandlerDescriptorTable[vector].reserved = true;
+		if(0 == ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count)
+			ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].reserved = true;
 		else
 			vector = 0;
 	}
+	else
+		vector = 0;
 	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
 	return vector;
 }

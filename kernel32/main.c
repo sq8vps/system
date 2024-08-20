@@ -45,7 +45,7 @@ void task1(void *c)
 	while(1)
 	{
 		KeAcquireSemaphore(&sem);
-		PRINT("1");
+		//PRINT("1");
 		KePutTaskToSleep(KeGetCurrentTask(), MS_TO_NS(3000));
 		KeReleaseSemaphore(&sem);
 	}
@@ -57,14 +57,62 @@ void task2(void *c)
 	{
 		if(true == KeAcquireSemaphoreWithTimeout(&sem, MS_TO_NS(780)))
 		{
-			PRINT("2");
+			//PRINT("2");
 			KeReleaseSemaphore(&sem);
 		}
-		else
-			PRINT("0");
+		//else
+			//PRINT("0");
 		// KeAcquireMutex(&s);
 		// CmPrintf("2");
 		// KeReleaseMutex(&s);
+		//KeTaskYield();
+	}
+}
+
+static void KeInitProcess(void *context)
+{
+	STATUS ret = OK;
+	// if(OK != (ret = InitrdInit((uintptr_t)context)))
+	// {
+	// 	PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
+	// 	while(1)
+	// 		;
+	// }
+
+	// if(OK != ExLoadKernelSymbols("/initrd/kernel32.elf"))
+	// {
+	// 	PRINT("Kernel symbol loading failed. Unable to boot.\n");
+	// 	while(1)
+	// 		;
+	// }
+	
+
+	// if(OK != IoInitDeviceManager("ACPI"))
+	// {
+	// 	PRINT("FAILURE");
+	// }
+
+	static struct KeTaskControlBlock *t1, *t2;
+
+	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
+	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
+	KeEnableTask(t1);
+	KeEnableTask(t2);
+
+	KeSleep(MS_TO_NS(4000));
+	// IoMountVolume("/dev/hda0", "disk1");
+
+	// struct IoFileHandle *h;
+	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
+	// char *t = MmAllocateKernelHeapAligned(8192, 512);
+	// CmMemset(t, 'A', 8142);
+	// CmStrcpy(&t[8142], "Test dopisywania z przekroczeniem granicy klastra");
+	// uint64_t actualSize = 0;
+	// IoWriteKernelFileSync(h, t, 8192, 0, &actualSize);
+	// asm("nop");
+
+	while(1)
+	{
 		//KeTaskYield();
 	}
 }
@@ -98,52 +146,11 @@ NORETURN static void KeInit(void)
 			;
 	}
 
-	KeStartScheduler();
+	KeStartScheduler(KeInitProcess, (void*)kernelArgs.initrdAddress);
 
-	STATUS ret = OK;
-	if(OK != (ret = InitrdInit(kernelArgs.initrdAddress)))
-	{
-		PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
-		while(1)
-			;
-	}
-
-	if(OK != ExLoadKernelSymbols("/initrd/kernel32.elf"))
-	{
-		PRINT("Kernel symbol loading failed. Unable to boot.\n");
-		while(1)
-			;
-	}
-	
-
-	if(OK != IoInitDeviceManager("ACPI"))
-	{
-		PRINT("FAILURE");
-	}
-
-	static struct KeTaskControlBlock *t1, *t2;
-
-	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
-	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
-	KeEnableTask(t1);
-	KeEnableTask(t2);
-
-	KeSleep(MS_TO_NS(4000));
-	IoMountVolume("/dev/hda0", "disk1");
-
-	// struct IoFileHandle *h;
-	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
-	// char *t = MmAllocateKernelHeapAligned(8192, 512);
-	// CmMemset(t, 'A', 8142);
-	// CmStrcpy(&t[8142], "Test dopisywania z przekroczeniem granicy klastra");
-	// uint64_t actualSize = 0;
-	// IoWriteKernelFileSync(h, t, 8192, 0, &actualSize);
-	// asm("nop");
-
+	//never reached
 	while(1)
-	{
-		//KeTaskYield();
-	}
+		;
 }
 
 NORETURN void KeEntry(struct KernelEntryArgs args)

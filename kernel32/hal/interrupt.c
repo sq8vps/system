@@ -244,7 +244,7 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr)
 
 PRIO HalRaisePriorityLevel(PRIO prio)
 {
-    if(prio > HAL_PRIORITY_LEVEL_EXCLUSIVE)
+    if(prio > HAL_PRIORITY_LEVEL_HIGHEST)
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
     PRIO old = HalGetTaskPriority();
     if(prio < old)
@@ -255,7 +255,7 @@ PRIO HalRaisePriorityLevel(PRIO prio)
 
 void HalLowerPriorityLevel(PRIO prio)
 {
-    if(prio > HAL_PRIORITY_LEVEL_EXCLUSIVE)
+    if(prio > HAL_PRIORITY_LEVEL_HIGHEST)
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
     PRIO old = HalGetTaskPriority();
     if(prio > old)

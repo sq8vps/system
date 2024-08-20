@@ -40,12 +40,8 @@ static STATUS MmSlabAllocateBlock(struct MmSlab *slab)
     }
     else
     {
-        t = slab->freeStack;
-        while(NULL != t->next)
-        {
-            t = t->next;
-        }
-        t->next = s;
+        t->next = slab->freeStack;
+        slab->freeStack = t;
     }
     return OK;
 }

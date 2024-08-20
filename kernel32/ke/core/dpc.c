@@ -7,6 +7,7 @@
 #include "panic.h"
 #include "ke/sched/sched.h"
 #include "mm/slab.h"
+#include "hal/arch.h"
 
 #define KE_DPC_CHUNK_PER_SLAB 64
 
@@ -24,18 +25,26 @@ struct KeDpcObject
 static struct
 {
     void *slabHandle;
-    struct KeDpcObject *queue[_KE_DPC_PRIORITY_LIMIT + 1];
+    struct
+    {
+        struct KeDpcObject *head;
+        KeSpinlock lock;
+    } queue[_KE_DPC_PRIORITY_LIMIT + 1];
     bool isPending;
-    bool isOngoing;
-    KeSpinlock lock;
-} 
-KeDpcState = {.slabHandle = NULL, .queue[0] = NULL, .queue[1] = NULL, .queue[2] = NULL, 
-                .isPending = false, .isOngoing = false, .lock = KeSpinlockInitializer};
+}
+#ifndef SMP
+KeDpcState[1];
+#else
+KeDpcState[MAX_CPU_COUNT];
+#endif
 
 STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context)
 {
     HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_DPC, HAL_PRIORITY_LEVEL_EXCLUSIVE);
-
+    uint16_t cpu = 0;
+#ifdef SMP
+    cpu = HalGetCurrentCpu();
+#endif
     uint8_t queueIndex = 0;
     switch(priority)
     {
@@ -53,7 +62,7 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
             break;
     }
 
-    struct KeDpcObject *dpc = MmSlabAllocate(KeDpcState.slabHandle);
+    struct KeDpcObject *dpc = MmSlabAllocate(KeDpcState[cpu].slabHandle);
     if(NULL == dpc)
         return OUT_OF_RESOURCES;
 
@@ -62,68 +71,83 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     dpc->priority = priority;
     dpc->next = NULL;
     
-    PRIO prio = KeAcquireSpinlock(&(KeDpcState.lock));
-    if(NULL == KeDpcState.queue[queueIndex])
-        KeDpcState.queue[queueIndex] = dpc;
+    PRIO prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[queueIndex].lock));
+    if(NULL == KeDpcState[cpu].queue[queueIndex].head)
+        KeDpcState[cpu].queue[queueIndex].head = dpc;
     else
     {
-        struct KeDpcObject *t = KeDpcState.queue[queueIndex];
+        struct KeDpcObject *t = KeDpcState[cpu].queue[queueIndex].head;
         while(NULL != t->next)
         {
             t = t->next;
         }
         t->next = dpc;
     }
+    KeReleaseSpinlock(&(KeDpcState[cpu].queue[queueIndex].lock), prio);
+
     dpc->time = HalGetTimestamp();
-    if(false == KeDpcState.isOngoing)
-        KeDpcState.isPending = true;
-    KeReleaseSpinlock(&(KeDpcState.lock), prio);
+
+    __atomic_store_n(&(KeDpcState[cpu].isPending), true, __ATOMIC_SEQ_CST);
+
     return OK;
 }
 
-static void KeDpcProcess(void)
+static void KeDpcProcess(uint16_t cpu)
 {
-    PRIO prio = KeAcquireSpinlock(&(KeDpcState.lock));
-    KeDpcState.isOngoing = true;
-    KeDpcState.isPending = false;
-    for(uint8_t i = 0; i < (_KE_DPC_PRIORITY_LIMIT + 1); i++)
+    PRIO dpcPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
+    while(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
     {
-        struct KeDpcObject *t = KeDpcState.queue[i];
-        while(NULL != KeDpcState.queue[i])
+        __atomic_store_n(&(KeDpcState[cpu].isPending), false, __ATOMIC_SEQ_CST);
+        for(uint8_t i = 0; i < (_KE_DPC_PRIORITY_LIMIT + 1); i++)
         {
-            t = KeDpcState.queue[i];
-            KeReleaseSpinlock(&(KeDpcState.lock), prio);
-            t->time = HalGetTimestamp() - t->time;
-            t->callback(t->context);
-            prio = KeAcquireSpinlock(&(KeDpcState.lock));
-            KeDpcState.queue[i] = t->next;
-            MmSlabFree(KeDpcState.slabHandle, t);
+            PRIO prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[i].lock));
+            struct KeDpcObject *t = KeDpcState[cpu].queue[i].head;
+            while(NULL != KeDpcState[cpu].queue[i].head)
+            {
+                t = KeDpcState[cpu].queue[i].head;
+                KeDpcState[cpu].queue[i].head = t->next;
+                KeReleaseSpinlock(&(KeDpcState[cpu].queue[i].lock), prio);
+                t->time = HalGetTimestamp() - t->time;
+                t->callback(t->context);
+                MmSlabFree(KeDpcState[cpu].slabHandle, t);
+                prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[i].lock));
+            }
+            KeReleaseSpinlock(&(KeDpcState[cpu].queue[i].lock), prio);
         }
     }
-    KeDpcState.isOngoing = false;
-    KeReleaseSpinlock(&(KeDpcState.lock), prio);
+    HalLowerPriorityLevel(dpcPrio);
 }
 
 void KeProcessDpcQueue(void)
 {
     if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_DPC)
         return;
-    PRIO prio = KeAcquireSpinlock(&(KeDpcState.lock));
-    if(KeDpcState.isPending)
+    uint16_t cpu = 0;
+#ifdef SMP
+        cpu = HalGetCurrentCpu();
+#endif
+    if(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
     {
-        KeReleaseSpinlock(&(KeDpcState.lock), prio);
-        KeDpcProcess();
-        KePerformPreemptedTaskSwitch();
+        KeDpcProcess(cpu);
+        KePerformTaskSwitch();
         return;
     }
-    KeReleaseSpinlock(&(KeDpcState.lock), prio);
 }
 
 STATUS KeDpcInitialize(void)
 {
-    KeDpcState.slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
-    if(NULL == KeDpcState.slabHandle)
+    CmMemset(KeDpcState, 0, sizeof(KeDpcState));
+#ifndef SMP
+    KeDpcState[0].slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
+    if(NULL == KeDpcState[0].slabHandle)
         return OUT_OF_RESOURCES;
-    
+#else
+    for(uint16_t i = 0; i < MAX_CPU_COUNT; i++)
+    {
+        KeDpcState[i].slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
+        if(NULL == KeDpcState[i].slabHandle)
+            return OUT_OF_RESOURCES;       
+    }
+#endif
     return OK;
 }

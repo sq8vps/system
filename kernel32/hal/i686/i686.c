@@ -13,6 +13,8 @@
 #include "cpu.h"
 #include "time.h"
 #include "pic.h"
+#include "it/it.h"
+#include "interrupts/it.h"
 
 void HalInitPhase1(void)
 {
@@ -62,6 +64,13 @@ void HalInitPhase2(void)
 
 void HalInitPhase3(void)
 {
+    for(uint16_t i = (HAL_PRIORITY_LEVEL_IPI << 4); i <= IT_LAST_INTERRUPT_VECTOR; i++)
+    {
+        if(i != ItReserveVector(i))
+            FAIL_BOOT("internal x86 vector reservation failed");
+    }
+    if(IT_SYSTEM_TIMER_VECTOR != ItReserveVector(IT_SYSTEM_TIMER_VECTOR))
+        FAIL_BOOT("system timer vector reservation failed");
 #ifdef SMP
     if(OK != I686StartProcessors())
         FAIL_BOOT("application CPU start failed");

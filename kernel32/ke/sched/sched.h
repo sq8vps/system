@@ -66,21 +66,40 @@ enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb);
 */
 struct KeTaskControlBlock* KeGetCurrentTask(void);
 
+/**
+ * @brief Get current task's parent (if has a parent) or self (if doesn't have a parent) pointer
+ * @return Current task's parent Task Control Block
+*/
+struct KeTaskControlBlock* KeGetCurrentTaskParent(void);
+
 END_EXPORT_API
 
 /**
- * @brief Perform task switch if previous task was preempted and new task is available
- * @attention Do not use this function. KeSchedule() should be used first to prepare new task.
- * @attention This function works only for tasks scheduled from task switch DPC.
+ * @brief Perform task switch that was invoked after IRQ, after DPC, on task yield etc.
+ * @attention Do not use this function
 */
-INTERNAL void KePerformPreemptedTaskSwitch(void);
+INTERNAL void KePerformTaskSwitch(void);
 
 /**
  * @brief Start scheduler
- * @attention This function return immediately to caller
- * @details Initialize scheduler, create idle process and create task from currently executed code.
+ * @param *continuationTask Continuation function to be executed in a new process - might be NULL
+ * @param *continuationContext Context to be passed to the continuation function
+ * @attention This function does not return
+ * @details Initialize scheduler, create idle and continuation process.
  * Then enable interrupts and start scheduling.
 */
-INTERNAL void KeStartScheduler(void);
+INTERNAL void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext);
+
+/**
+ * @brief Join scheduler with a new CPU
+ */
+INTERNAL void KeJoinScheduler(void);
+
+/**
+ * @brief Attach last task to appropriate queue
+ * @param cpu CPU number
+ * @attention This function is for context switch code use only
+ */
+INTERNAL void KeAttachLastTask(uint16_t cpu);
 
 #endif

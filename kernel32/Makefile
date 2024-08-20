@@ -5,8 +5,8 @@ LNK = i686-elf-g++
 AR = i686-elf-ar
 ASM = nasm
 C_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -D SMP -Wall -Og
-CPP_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -Wall -Og -std=c++2b
-ASM_FLAGS = -f elf32 -D DEBUG -g -F dwarf
+CPP_FLAGS = -I. -I.. -c -g -ffreestanding -masm=intel -D DEBUG -D SMP -Wall -Og -std=c++2b
+ASM_FLAGS = -f elf32 -D DEBUG -D SMP -g -F dwarf
 LNK_FLAGS = -g -nostdlib -T kernel.ld -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc
 

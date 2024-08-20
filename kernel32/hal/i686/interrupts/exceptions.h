@@ -136,11 +136,38 @@ enum I686PanicCode
     /**
      * @brief An internal machine error or a bus error occured
      * 
-     * This exception always resulsts in kernel panic.
+     * This exception always results in kernel panic.
      */
     MACHINE_CHECK = 18,
     VIRTUALIZATION_EXCEPTION = 20,
     CONTROL_PROTECTION_EXCEPTION = 21,
+
+    /**
+     * @brief An inter-processor interrupt delivery timed out
+     * 
+     * This exception occurs when a CPU issued an IPI,
+     * and IPI was not delivered to the target CPU within a given time.
+     * This exception always results in kernel panic.
+     * Panic parameters:
+     * - Arg 0 - Panic code = \a IPI_DELIVERY_TIMEOUT
+     * - Arg 1 - source CPU ID
+     * - Arg 2 - target CPU ID
+     * - Arg 3 - IPI type from \a I686IpiType
+     */
+    IPI_DELIVERY_TIMEOUT = 32,
+
+    /**
+     * @brief The received inter-processor interrupt has unknown type
+     * 
+     * 
+     * This exception always results in kernel panic.
+     * Panic parameters:
+     * - Arg 0 - Panic code = \a IPI_UNKNOWN_TYPE
+     * - Arg 1 - source CPU ID
+     * - Arg 2 - target CPU ID
+     * - Arg 3 - IPI type
+     */
+    IPI_UNKNOWN_TYPE = 33,
     UNEXPECTED_INTEL_TRAP = 0xFFFFFFFF,
 };
 

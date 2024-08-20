@@ -2,6 +2,8 @@
 #include "ke/task/task.h"
 #include "sched.h"
 
+static struct KeTaskControlBlock *KeIdleTaskMain = NULL;
+
 NORETURN static void KeIdleWorker(void *unused)
 {
     while(1)
@@ -14,8 +16,19 @@ STATUS KeCreateIdleTask(void)
 {
     STATUS ret = OK;
     struct KeTaskControlBlock *tcb = NULL;
-    if(OK != (ret = KeCreateProcessRaw("Idle task", NULL, PL_KERNEL, KeIdleWorker, NULL, &tcb)))
-        return ret;
+    if(NULL == KeIdleTaskMain)
+    {
+        ret = KeCreateProcessRaw("Idle task", NULL, PL_KERNEL, KeIdleWorker, NULL, &tcb);
+        if(OK != ret)
+            return ret;
+        KeIdleTaskMain = tcb;
+    }
+    else
+    {
+        ret = KeCreateThread(KeIdleTaskMain, "Idle task", KeIdleWorker, NULL, &tcb);
+        if(OK != ret)
+            return ret;
+    }
     
     //set lowest possible priority for this task
     if(OK != (ret = KeChangeTaskMajorPriority(tcb, PRIORITY_LOWEST)))

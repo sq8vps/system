@@ -114,6 +114,8 @@ uintptr_t MmFreeDynamicMemoryReservation(void *ptr)
 
 void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags)
 {
+    n = ALIGN_UP(pAddress + n, MM_PAGE_SIZE) - ALIGN_DOWN(pAddress, MM_PAGE_SIZE);
+
     void *ptr = MmReserveDynamicMemory(n);
     if(NULL == ptr)
         return NULL;

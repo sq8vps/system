@@ -19,19 +19,30 @@ enum ApicIpiMode
 };
 
 /**
+ * @brief APIC IPI destination shorthand modes
+ */
+enum ApicIpiDestination
+{
+    APIC_IPI_DESTINATION_NORMAL = 0,
+    APIC_IPI_DESTINATION_SELF = 1,
+    APIC_IPI_DESTINATION_ALL = 2,
+    APIC_IPI_DESTINATION_ALL_BUT_SELF = 3,
+};
+
+/**
  * @brief Send inter-processor interrupt
+ * @param shorthand Destination mode
  * @param destination Destination LAPIC ID
  * @param mode IPI mode
  * @param vector Vector number
  * @param assert True to assert, false to deassert
- * @return Status code
  */
-INTERNAL STATUS ApicSendIpi(uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert);
+INTERNAL void ApicSendIpi(enum ApicIpiDestination shorthand, uint8_t destination, enum ApicIpiMode mode, uint8_t vector, bool assert);
 
 /**
  * @brief Wait for IPI delivery up to a given time
  * @param timeLimit Time limit in nanoseconds
- * @return \a OK if IPI deliverd, \a TIMEOUT if delivery timed out
+ * @return \a OK if IPI delivered, \a TIMEOUT if delivery timed out
  */
 INTERNAL STATUS ApicWaitForIpiDelivery(uint64_t timeLimit);
 
@@ -118,5 +129,11 @@ INTERNAL uint8_t ApicGetProcessorPriority(void);
  * @return LAPIC ID
  */
 INTERNAL uint8_t ApicGetCurrentId(void);
+
+/**
+ * @brief Apply real time fix to all APIC counters
+ * @param realTime Real time in ns
+ */
+INTERNAL void ApicSetRealTime(uint64_t realTime);
 
 #endif

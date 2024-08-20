@@ -9,9 +9,12 @@
 #include "hal/arch.h"
 #include "gdt.h"
 #include "hal/cpu.h"
-#include "it/it.h"
+#include "interrupts/it.h"
 #include "math.h"
 #include "lapic.h"
+#include "ke/sched/sched.h"
+#include "ke/sched/idle.h"
+#include "ipi.h"
 
 #ifdef SMP
 
@@ -27,11 +30,20 @@ struct
     uintptr_t eip;
 } PACKED static I686StartApData[MAX_CPU_COUNT];
 static volatile uint32_t I686StartedCpuCount = 1;
+static volatile uint32_t I686ReadyCpuCount = 1;
+static volatile uint8_t I686ApCanContinue = 0;
 
 void I686CpuBootstrap(uint32_t cpuId);
 
 #define I686_AP_BOOTSTRAP_ADDRESS 0x1000
 #define I686_AP_BOOTSTRAP_DATA_ADDRESS 0x2000
+
+void HalHaltAllCpus(void)
+{
+#ifdef SMP
+    I686SendShutdownCpus();
+#endif
+}
 
 STATUS I686ConfigureBootstrapCpu(void)
 {
@@ -102,9 +114,9 @@ STATUS I686StartProcessors(void)
         if(cpu->extensions.bootstrap || !cpu->usable)
             continue;
         
-        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_INIT, 0, true);
+        ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, cpu->extensions.lapicId, APIC_IPI_INIT, 0, true);
         ApicWaitForIpiDelivery(US_TO_NS(200));
-        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_INIT, 0, false);
+        ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, cpu->extensions.lapicId, APIC_IPI_INIT, 0, false);
         ApicWaitForIpiDelivery(US_TO_NS(200));
     }
     KeDelay(MS_TO_NS(10));
@@ -120,7 +132,7 @@ STATUS I686StartProcessors(void)
         //first wait for IPI delivery up to a given time
         //if that passes, then wait a bit and check if the AP woke up
         //if any of these failed, then repeat
-        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
+        ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
         if(OK == ApicWaitForIpiDelivery(US_TO_NS(200)))
         {
             KeDelay(US_TO_NS(200)); 
@@ -128,7 +140,7 @@ STATUS I686StartProcessors(void)
             if(lastCpuCount != __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST))
                 continue;
         }
-        ApicSendIpi(cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
+        ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
         if(OK == ApicWaitForIpiDelivery(US_TO_NS(200)))
         {
             //this time wait much longer
@@ -138,6 +150,14 @@ STATUS I686StartProcessors(void)
         }
         //second attempt failed, skip AP
     }
+
+    while(__atomic_load_n(&I686ReadyCpuCount, __ATOMIC_SEQ_CST) != I686StartedCpuCount)
+        TIGHT_LOOP_HINT();
+
+    if(OK != I686InitializeIpi())
+        FAIL_BOOT("IPI module initialization failed");
+
+    __atomic_store_n(&I686ApCanContinue, 1, __ATOMIC_SEQ_CST);
 
     status = HalUnmapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS,
         ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, MM_PAGE_SIZE));
@@ -156,9 +176,24 @@ void I686CpuBootstrap(uint32_t cpuId)
     I686InstallIdt(cpuId);
     I686InitMath();
     ApicInitAp();
+
+    __atomic_fetch_add(&I686ReadyCpuCount, 1, __ATOMIC_SEQ_CST);
+
+    while(0 == __atomic_load_n(&I686ApCanContinue, __ATOMIC_SEQ_CST))
+        TIGHT_LOOP_HINT();
+
+    KeJoinScheduler();
     
     while(1)
         ;
+}
+
+uint16_t HalGetCurrentCpu(void)
+{
+    uint16_t register t;
+    //get GDT descriptor with TSS from task register
+    ASM("str %0" : "=r" (t) :);
+    return GDT_CPU(GDT_ENTRY(t));
 }
 
 #endif

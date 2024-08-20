@@ -31,6 +31,7 @@ struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, con
 
     ObInitializeObjectHeader(tcb);
 
+    tcb->affinity = HAL_CPU_ALL;
     tcb->mathState = HalCreateMathStateBuffer();
     if(NULL == tcb->mathState)
     {
@@ -82,4 +83,10 @@ STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl,
 STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb)
 {
     return KeCreateProcessRaw(name, path, pl, (void(*)(void*))ExProcessLoadWorker, (*tcb)->path, tcb);
+}
+
+STATUS KeCreateThread(struct KeTaskControlBlock *parent, const char *name,
+    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
+{
+    return HalCreateThread(parent, name, entry, entryContext, tcb);
 }

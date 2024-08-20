@@ -89,6 +89,12 @@ STATUS HalUnmapMemory(uintptr_t vAddress);
 */
 STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
 
+/**
+ * @brief Get current CPU number
+ * @return Current CPU number
+ */
+uint16_t HalGetCurrentCpu(void);
+
 END_EXPORT_API
 
 
@@ -142,6 +148,20 @@ INTERNAL STATUS HalCreateProcessRaw(const char *name, const char *path, Privileg
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
+ * @brief Create thread within the given process
+ * @param *parent Parent process TCB
+ * @param *name Thread name
+ * @param *entry Thread entry point
+ * @param *entryContext Entry point parameter
+ * @param **tcb Output Task Control Block
+ * @return Status code
+ * @attention This function returns immidiately. The created thread will be started by the scheduler later.
+ * @note This function can be called by any task on behalf of any task
+*/
+INTERNAL STATUS HalCreateThread(struct KeTaskControlBlock *parent, const char *name,
+    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+
+/**
  * @brief Initialize architecture-dependent scheduler part
  * @note This function panics on failure
  */
@@ -149,7 +169,7 @@ INTERNAL void HalInitializeScheduler(void);
 
 /**
  * @brief Perform task switch immediately if new task is available
- * @attention Do not use this function. KeSchedule() should be used first to prepare new task.
+ * @attention Do not use this function. The only legal function to force task switch is \a KeTaskYield()
 */
 INTERNAL void HalPerformTaskSwitch(void);
 
@@ -174,6 +194,12 @@ INTERNAL STATUS HalMasterEnableIrq(uint32_t input);
  * @return Status code
  */
 INTERNAL STATUS HalMasterDisableIrq(uint32_t input);
+
+/**
+ * @brief Halt all CPUs
+ * @attention This routine is used only on failure in a SMP system
+ */
+INTERNAL void HalHaltAllCpus(void);
 
 /**
  * @brief Architecture-specific initialization phase 1

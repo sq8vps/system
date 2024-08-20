@@ -33,7 +33,12 @@ enum HalPriorityLevel
 {
     HAL_PRIORITY_LEVEL_PASSIVE = 0, /**< Standard (non-elevated) priority level */
     HAL_PRIORITY_LEVEL_DPC = 2, /**< Deferred procedure call/dispatcher level */
-    HAL_PRIORITY_LEVEL_EXCLUSIVE = 15, /**< Exclusive priority level - no IRQs */
+
+    HAL_PRIORITY_LEVEL_IPI = 14, /**< Inter-processor interrupt level */
+    HAL_PRIORITY_LEVEL_SPINLOCK = HAL_PRIORITY_LEVEL_IPI - 1, /**< Spinlock priority level */
+    HAL_PRIORITY_LEVEL_EXCLUSIVE = HAL_PRIORITY_LEVEL_IPI - 1, /**< Exclusive priority level - no IRQs beside IPIs */
+
+    HAL_PRIORITY_LEVEL_HIGHEST = 15, /**< Highest priority level - absolutely no IRQs */
 };
 
 
@@ -59,7 +64,6 @@ typedef uint8_t PRIO;
  * @brief Last vector available for IRQs
  */
 #define IT_LAST_INTERRUPT_VECTOR 255
-//vector 255 is reserved for local APIC spurious interrupt
 
 /**
  * @brief System timer interrupt vector
@@ -91,7 +95,7 @@ struct HalCpuState
     uint16_t fs; //task extra segment register
     uint16_t gs; //task extra segment register
 
-    struct KeSpinlock *userPageTableLock;
+    struct KeSpinlock *userMemoryLock;
 } PACKED;
 #endif
 
