@@ -129,7 +129,7 @@ void KeProcessDpcQueue(void)
     if(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
     {
         KeDpcProcess(cpu);
-        KePerformTaskSwitch();
+        HalPerformTaskSwitch();
         return;
     }
 }

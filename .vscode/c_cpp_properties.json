@@ -8,7 +8,10 @@
                 ".."
             ],
             "defines": [
-                "${default}"
+                "${default}",
+                "SMP",
+                "DEBUG",
+                "__i686__"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,

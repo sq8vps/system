@@ -3,6 +3,7 @@
 #include "hal/i686/interrupts/it.h"
 #include "hal/i686/fpu.h"
 #include "it/it.h"
+#include "hal/i686/interrupts/it.h"
 #include "hal/arch.h"
 #include "hal/i686/memory.h"
 

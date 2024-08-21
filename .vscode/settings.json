@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.cpp": "cpp",
-        "task.h": "c"
+        "task.h": "c",
+        "fpu.h": "c"
     }
 }

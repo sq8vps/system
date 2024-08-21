@@ -70,6 +70,12 @@ enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb);
 */
 struct KeTaskControlBlock* KeGetCurrentTask(void);
 
+/**
+ * @brief Get current task's parent (if has a parent) or self (if doesn't have a parent) pointer
+ * @return Current task's parent Task Control Block
+*/
+struct KeTaskControlBlock* KeGetCurrentTaskParent(void);
+
 
 #ifdef __cplusplus
 }

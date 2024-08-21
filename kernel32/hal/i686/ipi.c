@@ -153,10 +153,10 @@ void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t
         }
     }
 
+    HalLowerPriorityLevel(prio);
+
     while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
-
-    HalLowerPriorityLevel(prio);
 }
 
 void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages)
@@ -189,10 +189,10 @@ void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages)
     if(OK != ApicWaitForIpiDelivery(US_TO_NS(500)))
         KePanicEx(KERNEL_MODE_FAULT, IPI_DELIVERY_TIMEOUT, cpu, UINTPTR_MAX, I686_IPI_TLB_SHOOTDOWN);
 
+    HalLowerPriorityLevel(prio);
+
     while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
-
-    HalLowerPriorityLevel(prio);
 }
 
 void I686SendShutdownCpus(void)
@@ -222,8 +222,8 @@ void I686SendShutdownCpus(void)
     if(OK != ApicWaitForIpiDelivery(US_TO_NS(500)))
         KePanicEx(KERNEL_MODE_FAULT, IPI_DELIVERY_TIMEOUT, cpu, UINTPTR_MAX, I686_IPI_CPU_SHUTDOWN);
 
+    HalLowerPriorityLevel(prio);
+
     while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
-
-    HalLowerPriorityLevel(prio);
 }

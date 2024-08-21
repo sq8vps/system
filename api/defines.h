@@ -11,11 +11,6 @@ extern "C"
 #include <stddef.h>
 
 /**
- * @brief Max CPU number handled by the kernel
- */
-#define MAX_CPU_COUNT 64
-
-/**
  * @brief Mark symbol (function/variable) as internal/hidden
 */
 #define INTERNAL __attribute__ ((visibility("hidden")))
@@ -35,6 +30,20 @@ extern "C"
 */
 #define STRINGIFY(...) _STRINGIFY(__VA_ARGS__)
 
+/**
+ * @brief Mark branch as extremely likely for compiler optimization
+ */
+#define likely(x) __builtin_expect(!!(x), 1)
+
+/**
+ * @brief Mark branch as extremely unlikely for compiler optimization
+ */
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
+/**
+ * @brief Divide two integers and round up
+ */
+#define CEIL_DIV(dividend, divisor) ((dividend) / (divisor) + (((dividend) % (divisor)) ? 1 : 0))
 
 /**
  * @brief Kernel status codes
@@ -96,6 +105,8 @@ typedef enum
     KE_TSS_ENTRY_LIMIT_EXCEEDED = 0x00004000,
     KE_SCHEDULER_INITIALIZATION_FAILURE,
     KE_TCB_PREPARATION_FAILURE,
+    KE_KERNEL_THREAD_LIMIT_REACHED,
+    KE_CPU_BITMAP_EMPTY,
 
     IO_ROOT_DEVICE_INIT_FAILURE = 0x00005000,
     IO_ILLEGAL_NAME,

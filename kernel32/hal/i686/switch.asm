@@ -24,6 +24,10 @@ extern HalRestoreMathState
 ;void KeAttachLastTask(uint16_t cpu)
 extern KeAttachLastTask
 
+;volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] - SMP systems
+;volatile bool KeTaskSwitchPending - UP systems
+extern KeTaskSwitchPending
+
 section .text
 
 ;Store current task context on stack
@@ -144,6 +148,12 @@ HalPerformTaskSwitch:
 %else
     mov eax,0
 %endif
+
+    mov dl,[KeTaskSwitchPending+eax]
+    test dl,0xFF
+    jz .returnFromSwitch
+
+    mov byte [KeTaskSwitchPending+eax],0
 
     mov edx,[KeNextTask+4*eax]
     test edx,0xFFFFFFFF ;check if there is a next task

@@ -26,14 +26,14 @@ void *KeCurrentCpuState[1] = {NULL};
 struct KeTaskControlBlock *KeNextTask[1] = {NULL}; //next task TCB planned to be switched after DPC processing
 void *KeNextCpuState[1] = {NULL};
 struct KeTaskControlBlock *KeLastTask[1] = {NULL};
-static volatile bool KeTaskSwitchPending = false;
+volatile bool KeTaskSwitchPending = false;
 #else
 struct KeTaskControlBlock *KeCurrentTask[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = NULL}; //current task TCB
 void *KeCurrentCpuState[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = NULL};
 struct KeTaskControlBlock *KeNextTask[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = NULL}; //next task TCB planned to be switched after DPC processing
 void *KeNextCpuState[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = NULL};
 struct KeTaskControlBlock *KeLastTask[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = NULL};
-static volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = false};
+volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = false};
 #endif
 
 static struct KeSchedulerQueue KeReadyToRun[PRIORITY_LOWEST + 1][TCB_MINOR_PRIORITY_LIMIT + 1]
@@ -48,14 +48,17 @@ static void KeSchedule(uint16_t cpu);
 static void KeSchedulerWorker(void *context)
 {
 #ifndef SMP
-    KeSchedule(0);
-    __atomic_store_n(&KeTaskSwitchPending, true, __ATOMIC_SEQ_CST);
+    if(false == KeTaskSwitchPending)
+    {
+        KeSchedule(0);
+        KeTaskSwitchPending = true;
+    }
 #else
     uint16_t cpu = (uintptr_t)context;
-    if(false == __atomic_load_n(&KeTaskSwitchPending[cpu], __ATOMIC_SEQ_CST))
+    if(false == KeTaskSwitchPending[cpu])
     {
         KeSchedule(cpu);
-        __atomic_store_n(&KeTaskSwitchPending[cpu], true, __ATOMIC_SEQ_CST);
+        KeTaskSwitchPending[cpu] = true;
     }
 #endif
 }
@@ -79,9 +82,11 @@ STATUS KeSchedulerISR(void *context)
 */
 static void KeDetachTaskFromQueue(struct KeTaskControlBlock *tcb, bool skipLock)
 {
-    if(NULL == tcb->queue)
-        return;
     PRIO prio;
+    if(NULL == tcb->queue)
+    {
+        return;
+    }
     if(!skipLock)
         prio = KeAcquireSpinlock(&(tcb->queue->spinlock));
     if(tcb != tcb->queue->head)
@@ -108,9 +113,13 @@ static void KeDetachTaskFromQueue(struct KeTaskControlBlock *tcb, bool skipLock)
             tcb->previous = NULL;
         }
     }
-    if(!skipLock)
-        KeReleaseSpinlock(&(tcb->queue->spinlock), prio);
+
     tcb->queue = NULL;
+
+    if(!skipLock)
+    {
+        KeReleaseSpinlock(&(tcb->queue->spinlock), prio);
+    }
 }
 
 /**
@@ -121,11 +130,12 @@ static void KeDetachTaskFromQueue(struct KeTaskControlBlock *tcb, bool skipLock)
 */
 static void KeAttachTaskToQueue(struct KeTaskControlBlock *tcb, struct KeSchedulerQueue *queue, bool skipLock)
 {
-    if(NULL != tcb->queue)
-        KeDetachTaskFromQueue(tcb, skipLock);
     PRIO prio;
     if(!skipLock)
+    {
         prio = KeAcquireSpinlock(&(queue->spinlock));
+    }
+
     if(NULL == queue->head)
     {
         tcb->next = tcb;
@@ -142,13 +152,16 @@ static void KeAttachTaskToQueue(struct KeTaskControlBlock *tcb, struct KeSchedul
         tcb->queue = queue;
     }
     if(!skipLock)
+    {
         KeReleaseSpinlock(&(queue->spinlock), prio);
+    }
 }
 
 void KeAttachLastTask(uint16_t cpu)
 {
     if(NULL != KeLastTask[cpu])
     {
+        PRIO prio = ObLockObject(KeLastTask[cpu]);
         switch(KeLastTask[cpu]->requestedState)
         {
             case TASK_READY_TO_RUN:
@@ -166,6 +179,7 @@ void KeAttachLastTask(uint16_t cpu)
                 KeLastTask[cpu]->state = TASK_WAITING;
                 break;
         }
+        ObUnlockObject(KeLastTask[cpu], prio);
         KeLastTask[cpu] = NULL;
     }
 }
@@ -179,31 +193,53 @@ static void KeSchedule(uint16_t cpu)
     {
         for(uint16_t minor = 0; minor < (TCB_MINOR_PRIORITY_LIMIT + 1); minor++)
         {
+            if(NULL != KeCurrentTask[cpu])
+            {
+                PRIO prio = ObLockObject(KeCurrentTask[cpu]);
+#ifdef SMP
+                if(HAL_GET_CPU_BIT(&(KeCurrentTask[cpu]->affinity), cpu))
+                {
+#endif
+                    if((KeCurrentTask[cpu]->majorPriority <= major)
+                        && (KeCurrentTask[cpu]->minorPriority < minor))
+                    {
+                        if((KeCurrentTask[cpu]->requestedState == TASK_RUNNING) 
+                        || (KeCurrentTask[cpu]->requestedState == TASK_READY_TO_RUN))
+                        {
+                            KeNextTask[cpu] = NULL;
+                            KeCurrentTask[cpu]->state = TASK_RUNNING;
+                            KeCurrentTask[cpu]->requestedState = TASK_READY_TO_RUN;
+                            HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
+                            ObUnlockObject(KeCurrentTask[cpu], prio);
+                            return;
+                        }
+                    }
+#ifdef SMP
+                }
+#endif
+                ObUnlockObject(KeCurrentTask[cpu], prio);
+            }
+
             PRIO prio = KeAcquireSpinlock(&KeReadyToRun[major][minor].spinlock);
             if(NULL != KeReadyToRun[major][minor].head)
             {
-                if(NULL != KeCurrentTask[cpu])
+                PRIO taskPrio = ObLockObject(KeReadyToRun[major][minor].head);
+#ifdef SMP
+                if(!HAL_GET_CPU_BIT(&(KeReadyToRun[major][minor].head->affinity), cpu))
                 {
-                    if((KeCurrentTask[cpu]->majorPriority <= major))
-                    {
-                        if((KeCurrentTask[cpu]->minorPriority < minor))
-                            if((KeCurrentTask[cpu]->requestedState == TASK_RUNNING) 
-                            || (KeCurrentTask[cpu]->requestedState == TASK_READY_TO_RUN))
-                            {
-                                KeNextTask[cpu] = NULL;
-                                KeCurrentTask[cpu]->state = TASK_RUNNING;
-                                KeReleaseSpinlock(&KeReadyToRun[major][minor].spinlock, prio);
-                                HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
-                                return;
-                            }
-                    }
+                    ObUnlockObject(KeReadyToRun[major][minor].head, taskPrio);
+                    KeReleaseSpinlock(&KeReadyToRun[major][minor].spinlock, prio);
+                    continue;
                 }
+#endif
                 //get next task from queue
                 KeNextTask[cpu] = KeReadyToRun[major][minor].head;
                 KeNextCpuState[cpu] = &(KeReadyToRun[major][minor].head->cpu);
                 KeDetachTaskFromQueue(KeNextTask[cpu], true);
                 //update state
                 KeNextTask[cpu]->state = TASK_RUNNING;
+                KeNextTask[cpu]->requestedState = TASK_READY_TO_RUN;
+                ObUnlockObject(KeNextTask[cpu], taskPrio);
                 KeReleaseSpinlock(&KeReadyToRun[major][minor].spinlock, prio);
                 HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
                 return;
@@ -211,16 +247,29 @@ static void KeSchedule(uint16_t cpu)
             KeReleaseSpinlock(&KeReadyToRun[major][minor].spinlock, prio);
         }
     }
+
+
     if(NULL != KeCurrentTask[cpu])
     {
-        if((KeCurrentTask[cpu]->requestedState == TASK_RUNNING) 
-        || (KeCurrentTask[cpu]->requestedState == TASK_READY_TO_RUN))
+        PRIO prio = ObLockObject(KeCurrentTask[cpu]);
+#ifdef SMP
+        if(HAL_GET_CPU_BIT(&(KeCurrentTask[cpu]->affinity), cpu))
         {
-            KeNextTask[cpu] = NULL;
-            KeCurrentTask[cpu]->state = TASK_RUNNING;
-            HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
-            return;
+#endif
+            if((KeCurrentTask[cpu]->requestedState == TASK_RUNNING) 
+            || (KeCurrentTask[cpu]->requestedState == TASK_READY_TO_RUN))
+            {
+                KeNextTask[cpu] = NULL;
+                KeCurrentTask[cpu]->state = TASK_RUNNING;
+                KeCurrentTask[cpu]->requestedState = TASK_READY_TO_RUN;
+                ObUnlockObject(KeCurrentTask[cpu], prio);
+                HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
+                return;
+            }
+#ifdef SMP
         }
+#endif
+        ObUnlockObject(KeCurrentTask[cpu], prio);
     }
 
     //should never reach this point
@@ -267,13 +316,9 @@ STATUS KeChangeTaskMajorPriority(struct KeTaskControlBlock *tcb, enum KeTaskMajo
     if(NULL == tcb)
         return NULL_POINTER_GIVEN;
 
+    PRIO prio = ObLockObject(tcb);
     tcb->majorPriority = priority;
-
-    if(TASK_READY_TO_RUN != tcb->state)
-        return OK; //task that is not ready-to-run does not belong to any prioritized queue
-    
-    KeDetachTaskFromQueue(tcb, false);
-    KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->majorPriority][tcb->minorPriority], false);
+    ObUnlockObject(tcb, prio);
 
     return OK;
 }
@@ -283,16 +328,12 @@ STATUS KeChangeTaskMinorPriority(struct KeTaskControlBlock *tcb, uint8_t priorit
     if(NULL == tcb)
         return NULL_POINTER_GIVEN;
 
+    PRIO prio = ObLockObject(tcb);
     if(priority > TCB_MINOR_PRIORITY_LIMIT)
         priority = TCB_MINOR_PRIORITY_LIMIT;
 
     tcb->minorPriority = priority;
-
-    if(TASK_READY_TO_RUN != tcb->state)
-        return OK; //task that is not ready-to-run does not belong to any prioritized queue
-    
-    KeDetachTaskFromQueue(tcb, false);
-    KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->majorPriority][tcb->minorPriority], false);
+    ObUnlockObject(tcb, prio);
 
     return OK;
 }
@@ -302,24 +343,45 @@ STATUS KeEnableTask(struct KeTaskControlBlock *tcb)
     if(NULL == tcb)
         return NULL_POINTER_GIVEN;
 
-    tcb->requestedState = TASK_READY_TO_RUN;
-    KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->majorPriority][tcb->minorPriority], false);
+    PRIO prio = ObLockObject(tcb);
+
+    if(TASK_UNINITIALIZED == tcb->state)
+    {
+        tcb->requestedState = TASK_READY_TO_RUN;
+        KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->majorPriority][tcb->minorPriority], false);
+    }
     
+    ObUnlockObject(tcb, prio);
+
     return OK;
 }
 
 void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason)
 {
+    PRIO prio = ObLockObject(tcb);
     tcb->requestedState = TASK_WAITING;
     tcb->blockReason = reason;
     KeDetachTaskFromQueue(tcb, false);
+    ObUnlockObject(tcb, prio);
 }
 
 void KeUnblockTask(struct KeTaskControlBlock *tcb)
 {
-    tcb->requestedState = TASK_READY_TO_RUN;
+    PRIO prio = ObLockObject(tcb);
     tcb->blockReason = TASK_BLOCK_NOT_BLOCKED;
-    KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->majorPriority][tcb->minorPriority], false);
+    //if the task is running on an CPU, it must stay detached from any queue
+    //this prevents other CPUs in a SMP system to execute the same task simultaneously
+    //in UP systems the problem is almost the same - the CPU might be currently executing the task,
+    //so it must stay detached
+    //just check if task is waiting
+    if(tcb->state == TASK_WAITING)
+        KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->majorPriority][tcb->minorPriority], false);
+    
+    if(TASK_RUNNING == tcb->state)
+        tcb->requestedState = TASK_READY_TO_RUN;
+    else
+        tcb->state = TASK_READY_TO_RUN;
+    ObUnlockObject(tcb, prio);
 }
 
 enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb)
@@ -355,33 +417,14 @@ void KeTaskYield(void)
     //this is required by the scheduler
 #ifndef SMP
     KeSchedule(0);
-    __atomic_store_n(&KeTaskSwitchPending, true, __ATOMIC_SEQ_CST);
+    KeTaskSwitchPending = true;
 #else
     uint16_t cpu = HalGetCurrentCpu();
-    if(false == __atomic_load_n(&KeTaskSwitchPending[cpu], __ATOMIC_SEQ_CST))
-    {
-        KeSchedule(cpu);
-        __atomic_store_n(&KeTaskSwitchPending[cpu], true, __ATOMIC_SEQ_CST);
-    }
+    KeSchedule(cpu);
+    KeTaskSwitchPending[cpu] = true;
 #endif
     HalLowerPriorityLevel(prio);
-    KePerformTaskSwitch();
-}
-
-void KePerformTaskSwitch(void)
-{
-#ifndef SMP
-    if(true == __atomic_exchange_n(&KeTaskSwitchPending, false, __ATOMIC_SEQ_CST))
-    {
-        HalPerformTaskSwitch();
-    }
-#else
-    uint16_t cpu = HalGetCurrentCpu();
-    if(true == __atomic_exchange_n(&KeTaskSwitchPending[cpu], false, __ATOMIC_SEQ_CST))
-    {
-        HalPerformTaskSwitch();
-    }
-#endif
+    HalPerformTaskSwitch();
 }
 
 void KeJoinScheduler(void)
@@ -395,4 +438,7 @@ void KeJoinScheduler(void)
 
 #if false != 0
 #error False is not zero!
+#endif
+#if true != 1
+#error True is not one!
 #endif

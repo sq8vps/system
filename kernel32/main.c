@@ -72,25 +72,25 @@ void task2(void *c)
 static void KeInitProcess(void *context)
 {
 	STATUS ret = OK;
-	// if(OK != (ret = InitrdInit((uintptr_t)context)))
-	// {
-	// 	PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
-	// 	while(1)
-	// 		;
-	// }
+	if(OK != (ret = InitrdInit((uintptr_t)context)))
+	{
+		PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
+		while(1)
+			;
+	}
 
-	// if(OK != ExLoadKernelSymbols("/initrd/kernel32.elf"))
-	// {
-	// 	PRINT("Kernel symbol loading failed. Unable to boot.\n");
-	// 	while(1)
-	// 		;
-	// }
+	if(OK != ExLoadKernelSymbols("/initrd/kernel32.elf"))
+	{
+		PRINT("Kernel symbol loading failed. Unable to boot.\n");
+		while(1)
+			;
+	}
 	
 
-	// if(OK != IoInitDeviceManager("ACPI"))
-	// {
-	// 	PRINT("FAILURE");
-	// }
+	if(OK != IoInitDeviceManager("ACPI"))
+	{
+		PRINT("FAILURE");
+	}
 
 	static struct KeTaskControlBlock *t1, *t2;
 
@@ -100,7 +100,7 @@ static void KeInitProcess(void *context)
 	KeEnableTask(t2);
 
 	KeSleep(MS_TO_NS(4000));
-	// IoMountVolume("/dev/hda0", "disk1");
+	IoMountVolume("/dev/hda0", "disk1");
 
 	// struct IoFileHandle *h;
 	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);

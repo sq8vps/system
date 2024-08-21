@@ -20,6 +20,20 @@ struct ObObjectHeader
     KeSpinlock lock;
 };
 
+/**
+ * @brief Lock object
+ * @param *object Object pointer
+ * @return Previous task priority to be passed to \a ObUnlockObject()
+ */
+PRIO ObLockObject(void *object);
+
+/**
+ * @brief Unlock object
+ * @param *object Object pointer
+ * @param previousPriority Previous task priority obtained from \a ObLockObject()
+ */
+void ObUnlockObject(void *object, PRIO previousPriority);
+
 
 #ifdef __cplusplus
 }

@@ -30,7 +30,7 @@ struct KeTaskControlBlock;
  * @brief A spinlock structure
  * @attention Initialize with KeSpinlockInitializer
 */
-typedef struct _KeSpinlock
+typedef struct KeSpinlock
 {
     uint32_t lock;
 } KeSpinlock;
@@ -46,7 +46,7 @@ typedef struct _KeSpinlock
  * @brief A mutex (yielding) structure
  * @attention Initialize with KeMutexInitializer
 */
-typedef struct _KeMutex
+typedef struct KeMutex
 {
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
@@ -65,7 +65,7 @@ typedef struct _KeMutex
  * @brief A semaphore structure
  * @attention Initialize with KeSemaphoreInitializer
 */
-typedef struct _KeSemaphore
+typedef struct KeSemaphore
 {
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;

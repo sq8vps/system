@@ -75,12 +75,6 @@ struct KeTaskControlBlock* KeGetCurrentTaskParent(void);
 END_EXPORT_API
 
 /**
- * @brief Perform task switch that was invoked after IRQ, after DPC, on task yield etc.
- * @attention Do not use this function
-*/
-INTERNAL void KePerformTaskSwitch(void);
-
-/**
  * @brief Start scheduler
  * @param *continuationTask Continuation function to be executed in a new process - might be NULL
  * @param *continuationContext Context to be passed to the continuation function
