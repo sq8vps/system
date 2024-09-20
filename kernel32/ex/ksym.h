@@ -10,12 +10,14 @@
  * @{
 */
 
+struct Multiboot2InfoHeader;
+
 /**
- * @brief Get and store kernel symbols from kernel image
- * @param *path Kernel ELF image path
+ * @brief Load and store kernel symbols
+ * @param *mb2h Multiboot2 header pointer
  * @return Error code
 */
-INTERNAL STATUS ExLoadKernelSymbols(char *path);
+INTERNAL STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h);
 
 EXPORT_API
 

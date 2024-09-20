@@ -64,6 +64,14 @@ enum KeTaskType
 };
 
 /**
+ * @brief Task flags
+ */
+enum KeTaskFlags
+{
+    KE_TASK_FLAG_IDLE = 1, /**< Idle task flag */
+};
+
+/**
  * @brief Max task name length
  */
 #define TCB_MAX_NAME_LENGTH (64)
@@ -89,6 +97,7 @@ struct KeTaskControlBlock
     struct ObObjectHeader objectHeader; /**< Object manager header */
 
     enum KeTaskType type; /**< Task type */
+    uint32_t flags; /**< Task flags */
 
     struct HalCpuState cpu; /**< Architecture-specific CPU context */
     void *mathState; /**< Architecture-specific FPU context */
@@ -120,7 +129,12 @@ struct KeTaskControlBlock
     } files;
     
     KE_TASK_ID tid; //unique task ID
-    struct KeTaskControlBlock *parent; //parent process of this thread
+    union
+    {
+        struct KeTaskControlBlock *child;
+        struct KeTaskControlBlock *parent; //parent process of this thread
+    };
+    struct KeTaskControlBlock *sibling;
 
     enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
     uint8_t minorPriority; //task minor priority

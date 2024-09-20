@@ -8,4 +8,3 @@ Kernel virtual memory organization:
 0xF8000000 - dynamically mapped memory (124 MiB) - for memory mapped I/O and mapping previously allocated physical memory
 0xFFC00000 - kernel page tables (4 MiB - 4 kiB)
 0xFFFFF000 - kernel page directory (4 kiB)
-Whole lower pool (below 0xD0000000) can be used by the bootloader to store some data and pass it to kernel.

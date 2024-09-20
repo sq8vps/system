@@ -3,20 +3,18 @@
 #include "config.h"
 
 #define GDT_MAX_ENTRIES (4 + MAX_CPU_COUNT)
-#define GDT_PRESENT_FLAG 128
-#define GDT_PRIVILEGE_LEVEL_0 0
-#define GDT_PRIVILEGE_LEVEL_3 (64 | 32)
-#define GDT_CODE_FLAG 16
-#define GDT_DATA_FLAG 16
-#define GDT_EXECUTABLE_FLAG 8
-#define GDT_READABLE_FLAG 2
-#define GDT_WRITABLE_FLAG 2
+#define GDT_PRESENT_FLAG (1 << 7)
+#define GDT_PRIVILEGE_LEVEL_0 (0)
+#define GDT_PRIVILEGE_LEVEL_3 ((1 << 6) | (1 << 5))
+#define GDT_DATA_CODE_FLAG (1 << 4)
+#define GDT_SYSTEM_FLAG (0)
+#define GDT_EXECUTABLE_FLAG (1 << 3)
+#define GDT_RW_FLAG (1 << 1)
 
-#define GDT_32BIT_TSS_FLAG 9
+#define GDT_32BIT_TSS 0x9
 
-#define GDT_PAGE_GRANURALITY 128
-#define GDT_PROTECTED_MODE_FLAG 64
-#define GDT_LONG_MODE_FLAG 32
+#define GDT_GRANURALITY_FLAG (1 << 7)
+#define GDT_PROTECTED_MODE_FLAG (1 << 6)
 
 /**
  * @brief A structure for generic GDT entry
@@ -31,16 +29,16 @@ struct GdtEntry
     uint8_t base3;
 } PACKED;
 
-static struct GdtEntry gdt[GDT_MAX_ENTRIES + 1]; //table of GDTs
+struct GdtEntry I686Gdt[GDT_MAX_ENTRIES + 1] ALIGN(8); //table of GDTs
 
 /**
  * @brief A GDTR structure
 */
-struct GdtRegister
+struct
 {
     uint16_t size;
     uintptr_t offset;
-} PACKED static gdtr;
+} PACKED I686GdtRegister;
 
 struct TssEntry 
 {
@@ -92,34 +90,40 @@ struct TssEntry
     uint32_t ssp;
 } PACKED;
 
-static struct TssEntry tss[MAX_CPU_COUNT];
+static struct TssEntry I686Tss[MAX_CPU_COUNT];
 
 void GdtInit(void)
 {
-    CmMemset(gdt, 0, sizeof(gdt)); //clear all GDT entries
-    CmMemset(tss, 0, sizeof(tss));
-    gdt[GDT_KERNEL_CS].limit1 = 0xFFFF;
-    gdt[GDT_KERNEL_CS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_0 | GDT_CODE_FLAG | GDT_EXECUTABLE_FLAG | GDT_READABLE_FLAG;
-    gdt[GDT_KERNEL_CS].flagsAndLimit2 = 0xF | GDT_PAGE_GRANURALITY | GDT_PROTECTED_MODE_FLAG;
-    gdt[GDT_KERNEL_DS].limit1 = 0xFFFF;
-    gdt[GDT_KERNEL_DS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_0 | GDT_DATA_FLAG | GDT_WRITABLE_FLAG;
-    gdt[GDT_KERNEL_DS].flagsAndLimit2 = 0xF | GDT_PAGE_GRANURALITY | GDT_PROTECTED_MODE_FLAG;
-    gdt[GDT_USER_CS].limit1 = 0xFFFF;
-    gdt[GDT_USER_CS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_CODE_FLAG | GDT_EXECUTABLE_FLAG | GDT_READABLE_FLAG;
-    gdt[GDT_USER_CS].flagsAndLimit2 = 0xF | GDT_PAGE_GRANURALITY | GDT_PROTECTED_MODE_FLAG;
-    gdt[GDT_USER_DS].limit1 = 0xFFFF;
-    gdt[GDT_USER_DS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_FLAG | GDT_WRITABLE_FLAG;
-    gdt[GDT_USER_DS].flagsAndLimit2 = 0xF | GDT_PAGE_GRANURALITY | GDT_PROTECTED_MODE_FLAG;
+    CmMemset(I686Gdt, 0, sizeof(I686Gdt)); //clear all GDT entries
+    CmMemset(I686Tss, 0, sizeof(I686Tss));
+    I686Gdt[GDT_KERNEL_CS].limit1 = 0xFFFF;
+    I686Gdt[GDT_KERNEL_CS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_0 | GDT_DATA_CODE_FLAG | GDT_EXECUTABLE_FLAG | GDT_RW_FLAG;
+    I686Gdt[GDT_KERNEL_CS].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;
+    I686Gdt[GDT_KERNEL_DS].limit1 = 0xFFFF;
+    I686Gdt[GDT_KERNEL_DS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_0 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
+    I686Gdt[GDT_KERNEL_DS].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;
+    I686Gdt[GDT_USER_CS].limit1 = 0xFFFF;
+    I686Gdt[GDT_USER_CS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_EXECUTABLE_FLAG | GDT_RW_FLAG;
+    I686Gdt[GDT_USER_CS].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;
+    I686Gdt[GDT_USER_DS].limit1 = 0xFFFF;
+    I686Gdt[GDT_USER_DS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
+    I686Gdt[GDT_USER_DS].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;
 
-    gdtr.size = (sizeof(gdt)) - 1;
-    gdtr.offset = (uintptr_t)gdt;
+    I686GdtRegister.size = (sizeof(I686Gdt)) - 1;
+    I686GdtRegister.offset = (uintptr_t)I686Gdt;
 
     GdtApply();
 }
 
 void GdtApply(void)
 {
-    ASM("lgdt %0" : : "m" (gdtr));
+    ASM("lgdt %0" : : "m" (I686GdtRegister) : "memory"); //load new GDT register
+    ASM("jmp %0:.1\n.1:" : : "X" (GDT_OFFSET(GDT_KERNEL_CS)) : "memory"); //perform far jump with code selector, CS can't be set directly
+    ASM("mov ds,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory"); //set up segment registers
+    ASM("mov ss,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
+    ASM("mov es,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
+    ASM("mov fs,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
+    ASM("mov gs,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
 }
 
 STATUS GdtAddCpu(uint16_t cpu)
@@ -127,16 +131,16 @@ STATUS GdtAddCpu(uint16_t cpu)
     if(cpu >= MAX_CPU_COUNT)
         return MM_GDT_ENTRY_LIMIT_EXCEEDED;
 
-    tss[cpu].ss0 = GDT_OFFSET(GDT_KERNEL_DS);
-    tss[cpu].esp0 = 0;
-    tss[cpu].iopb = sizeof(struct TssEntry);
+    I686Tss[cpu].ss0 = GDT_OFFSET(GDT_KERNEL_DS);
+    I686Tss[cpu].esp0 = 0;
+    I686Tss[cpu].iopb = sizeof(struct TssEntry);
 
-    gdt[GDT_TSS(cpu)].limit1 = sizeof(struct TssEntry) - 1;
-    gdt[GDT_TSS(cpu)].base1 = (uintptr_t)(&tss[cpu]) & (uintptr_t)0xFFFF;
-    gdt[GDT_TSS(cpu)].base2 = ((uintptr_t)(&tss[cpu]) & (uintptr_t)0xFF0000) >> 16;
-    gdt[GDT_TSS(cpu)].base3 = ((uintptr_t)(&tss[cpu]) & (uintptr_t)0xFF000000) >> 24;
-    gdt[GDT_TSS(cpu)].flagsAndLimit2 = 0;
-    gdt[GDT_TSS(cpu)].accessByte = GDT_PRESENT_FLAG | GDT_32BIT_TSS_FLAG;
+    I686Gdt[GDT_TSS(cpu)].limit1 = sizeof(struct TssEntry) - 1;
+    I686Gdt[GDT_TSS(cpu)].base1 = (uintptr_t)(&I686Tss[cpu]) & (uintptr_t)0xFFFF;
+    I686Gdt[GDT_TSS(cpu)].base2 = ((uintptr_t)(&I686Tss[cpu]) & (uintptr_t)0xFF0000) >> 16;
+    I686Gdt[GDT_TSS(cpu)].base3 = ((uintptr_t)(&I686Tss[cpu]) & (uintptr_t)0xFF000000) >> 24;
+    I686Gdt[GDT_TSS(cpu)].flagsAndLimit2 = 0;
+    I686Gdt[GDT_TSS(cpu)].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_0 | GDT_SYSTEM_FLAG | GDT_32BIT_TSS;
 
     return OK;
 }
@@ -153,5 +157,5 @@ void GdtUpdateTss(uintptr_t esp0)
     //get GDT descriptor with TSS from task register
     ASM("str %0" : "=r" (t) :);
     //convert GDT descriptor offset to CPU number and update kernel stack pointer
-    tss[GDT_CPU(GDT_ENTRY(t))].esp0 = esp0;
+    I686Tss[GDT_CPU(GDT_ENTRY(t))].esp0 = esp0;
 }

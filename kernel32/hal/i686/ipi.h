@@ -16,7 +16,7 @@ struct I686IpiData
 {
     enum I686IpiType type; /**< IPI type, used to determine payload type */
     uint16_t source; /**< Source CPU number */
-    volatile uint16_t *remainingAcks; /**< Remaining acknowledges, must be atomically decremented by each recipient */
+    volatile uint16_t * volatile remainingAcks; /**< Remaining acknowledges, must be atomically decremented by each recipient */
     union
     {
         struct

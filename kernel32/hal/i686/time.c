@@ -6,17 +6,25 @@
 #include "lapic.h"
 #include <stdbool.h>
 
-static bool HalUseTsc = false;
+/*
+The local APIC timer does not run before starting the scheduler, so
+no timestamp can be taken from LAPIC. Initially use TSC, even if not invariant,
+to provide timestamps.
+ */
+static bool HalUseTsc = true;
 
 STATUS I686InitTimeController(void)
 {
-    if(CpuidCheckIfTscAvailable() && CpuidCheckIfTscInvariant())
-    {
-        HalUseTsc = true;
-        TscInit();
-    }
-    
+    TscInit();
     return OK;
+}
+
+void I686NotifyLapicTimerStarted(void)
+{
+    // if(CpuidCheckIfTscInvariant())
+    //     HalUseTsc = true;
+    // else
+    //     HalUseTsc = false;
 }
 
 uint64_t HalGetTimestamp(void)
@@ -50,7 +58,7 @@ STATUS HalConfigureSystemTimer(uint8_t vector)
 
 STATUS HalStartSystemTimer(uint64_t time)
 {
-    ApicStartSystemTimer(time);
+    //ApicStartSystemTimer(time);
     return OK;
 }
 

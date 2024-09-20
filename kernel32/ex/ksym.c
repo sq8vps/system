@@ -1,212 +1,101 @@
 #include "ksym.h"
 #include "elf.h"
-#include "mm/heap.h"
-#include "io/fs/fs.h"
 #include "common.h"
+#include "multiboot.h"
+#include "mm/dynmap.h"
+#include "mm/heap.h"
+#include "ke/core/panic.h"
 
-struct KernelSymbol
+struct
 {
-	uintptr_t value;
-	char *name;
-} PACKED;
+    const char *name;
+    uintptr_t value;
+}
+static *ExKernelSymbolTable;
+static uint32_t ExKernelSymbolCount = 0;
 
-static char *kernelSymbolStrings = NULL;
-static struct KernelSymbol *kernelSymbolTable = NULL;
-static uint32_t kernelSymbolCount = 0;
-
-STATUS ExLoadKernelSymbols(char *path)
+STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h)
 {
-    STATUS ret = OK;
-    IoFileHandle *f;
-    if(OK != (ret = IoOpenKernelFile(path, IO_FILE_READ, 0, &f)))
-        return ret;
-    
-    struct Elf32_Ehdr *h = MmAllocateKernelHeap(sizeof(struct Elf32_Ehdr));
-    if(NULL == h)
+    const struct Multiboot2InfoTag *tag = Multiboot2FindTag(mb2h, NULL, MB2_ELF_SYMBOLS);
+    if(NULL != tag)
     {
-        IoCloseKernelFile(f);
-        return OUT_OF_RESOURCES;
-    }
-
-    uint64_t bytesRead;
-    if(OK != (ret = IoReadKernelFileSync(f, h, sizeof(*h), 0, &bytesRead)))
-    {
-        IoCloseKernelFile(f);
-        MmFreeKernelHeap(h);
-        return ret;
-    }
-    
-    if(bytesRead != sizeof(*h))
-    {
-        IoCloseKernelFile(f);
-        MmFreeKernelHeap(h);
-        return EXEC_ELF_BROKEN;
-    }
-
-    if(OK != (ret = ExVerifyElf32Header(h))) //verify header
-    {
-        IoCloseKernelFile(f);
-        MmFreeKernelHeap(h);
-        return EXEC_ELF_BROKEN;
-    }
-
-    /**
-     * Calculate required symbol table size first
-    */
-
-    struct Elf32_Sym *symbolTab = NULL;
-
-    struct Elf32_Shdr *s = MmAllocateKernelHeap(sizeof(struct Elf32_Shdr)); //section header
-    if(NULL == s)
-    {
-        ret = OUT_OF_RESOURCES;
-        goto ExLoadKernelSymbolsFailed;
-    }
-
-    uint32_t symbolCount = 0;
-    struct Elf32_Shdr *stringTabHdr = NULL;
-    for(uint16_t i = 0; i < h->e_shnum; i++) //loop for all sections
-	{
-        if(OK != (ret = IoReadKernelFileSync(f, s, sizeof(*s), (uintptr_t)ExGetElf32SectionHeader(h, i) - (uintptr_t)h, &bytesRead)))
-            goto ExLoadKernelSymbolsFailed;
-        
-        if(bytesRead != sizeof(*s))
+        const struct Multiboot2ElfSymbolsTag *elf = (const struct Multiboot2ElfSymbolsTag*)tag;
+        uint16_t count = elf->num; //get section header count
+        const struct Elf32_Shdr *s = (const struct Elf32_Shdr*)(elf + 1);
+        while(0 != count)
         {
-            ret = EXEC_ELF_BROKEN;
-            goto ExLoadKernelSymbolsFailed;
-        }
-
-		if(SHT_SYMTAB == s->sh_type) //symbol table header
-		{
-			symbolTab = MmAllocateKernelHeap(sizeof(struct Elf32_Sym) * s->sh_size);
-            if(NULL == symbolTab)
+            if(SHT_SYMTAB == s->sh_type)
             {
-                ret = OUT_OF_RESOURCES;
-                goto ExLoadKernelSymbolsFailed;
-            }
-            if(OK != (ret = IoReadKernelFileSync(f, symbolTab, s->sh_size, s->sh_offset, &bytesRead)))
-                goto ExLoadKernelSymbolsFailed;
-
-            if(bytesRead != s->sh_size)
-            {
-                ret = EXEC_ELF_BROKEN;
-                goto ExLoadKernelSymbolsFailed;
-            }
-            
-            for(uint32_t i = 0; i < (s->sh_size / s->sh_entsize); i++) //loop for symbol entries
-            {
-                //skip hidden symbols
-				if(STV_DEFAULT != ELF32_ST_VISIBILITY(symbolTab[i].st_other))
-					continue;
-                //check for symbol type
-		        if(ELF32_ST_TYPE(symbolTab[i].st_info) == STT_FUNC || ELF32_ST_TYPE(symbolTab[i].st_info) == STT_OBJECT)
+                const struct Elf32_Sym *symtab = MmMapDynamicMemory(s->sh_addr, s->sh_size, MM_FLAG_READ_ONLY);
+                if(NULL == symtab)
+                    FAIL_BOOT("cannot map kernel symbol table");
+                
+                //first pass - calculate number of usable symbols
+                for(uint32_t i = 0; i < (s->sh_size / s->sh_entsize); i++)
                 {
-                    //FIXME: awful assumption that all symbols have strings in the same string table
-                    if(NULL == stringTabHdr)
-                        stringTabHdr = ExGetElf32SectionHeader(h, s->sh_link); //get string table header
-                    symbolCount++; //increment symbol count
+                    //skip hidden symbols
+                    if(STV_DEFAULT != ELF32_ST_VISIBILITY(symtab[i].st_other))
+                        continue;
+                    //check for symbol type
+                    if((STT_FUNC == ELF32_ST_TYPE(symtab[i].st_info)) || (STT_OBJECT == ELF32_ST_TYPE(symtab[i].st_info)))
+                    {
+                        ExKernelSymbolCount++;
+                    }
                 }
-            }
-            MmFreeKernelHeap(symbolTab);
-		}
-	}
 
-    /**
-     * Once the symbol count is known, allocate memory
-    */
-	kernelSymbolTable = MmAllocateKernelHeap(symbolCount * sizeof(struct KernelSymbol)); //allocate
-    if(NULL == kernelSymbolTable) //check if allocation successful
-    {
-        ret = OUT_OF_RESOURCES;
-        goto ExLoadKernelSymbolsFailed;
-    }
+                ExKernelSymbolTable = MmAllocateKernelHeap(ExKernelSymbolCount * sizeof(*ExKernelSymbolTable));
+                if(NULL == ExKernelSymbolTable)
+                    FAIL_BOOT("cannot allocate memory for kernel symbol table");
 
-    if(OK != (ret = IoReadKernelFileSync(f, s, sizeof(*s), (uintptr_t)stringTabHdr - (uintptr_t)h, &bytesRead)))
-        goto ExLoadKernelSymbolsFailed;
-    
-    if(bytesRead != sizeof(*s))
-    {
-        ret = EXEC_ELF_BROKEN;
-        goto ExLoadKernelSymbolsFailed;
-    }
-    
-    kernelSymbolStrings = MmAllocateKernelHeap(s->sh_size);
-    if(NULL == kernelSymbolStrings)
-    {
-        ret = OUT_OF_RESOURCES;
-        goto ExLoadKernelSymbolsFailed;
-    }
-
-    if(OK != (ret = IoReadKernelFileSync(f, kernelSymbolStrings, s->sh_size, s->sh_offset, &bytesRead)))
-        goto ExLoadKernelSymbolsFailed;
-    
-    if(bytesRead != s->sh_size)
-    {
-        ret = EXEC_ELF_BROKEN;
-        goto ExLoadKernelSymbolsFailed;
-    }
-
-    for(uint16_t i = 0; i < h->e_shnum; i++) //loop for all sections
-	{
-        if(OK != (ret = IoReadKernelFileSync(f, s, sizeof(*s), (uintptr_t)ExGetElf32SectionHeader(h, i) - (uintptr_t)h, &bytesRead)))
-            goto ExLoadKernelSymbolsFailed;
-        
-        if(bytesRead != sizeof(*s))
-        {
-            ret = EXEC_ELF_BROKEN;
-            goto ExLoadKernelSymbolsFailed;
-        }
-
-		if(SHT_SYMTAB == s->sh_type) //symbol table header
-		{
-			symbolTab = MmAllocateKernelHeap(sizeof(struct Elf32_Sym) * s->sh_size);
-            if(NULL == symbolTab)
-            {
-                ret = OUT_OF_RESOURCES;
-                goto ExLoadKernelSymbolsFailed;
-            }
-            if(OK != (ret = IoReadKernelFileSync(f, symbolTab, s->sh_size, s->sh_offset, &bytesRead)))
-                goto ExLoadKernelSymbolsFailed;
-
-            if(bytesRead != s->sh_size)
-            {
-                ret = EXEC_ELF_BROKEN;
-                goto ExLoadKernelSymbolsFailed;
-            }
-            for(uint32_t i = 0; i < (s->sh_size / s->sh_entsize); i++) //loop for symbol entries
-            {
-                //skip hidden symbols
-				if(STV_DEFAULT != ELF32_ST_VISIBILITY(symbolTab[i].st_other))
-					continue;
-                //check for symbol type
-		        if(ELF32_ST_TYPE(symbolTab[i].st_info) == STT_FUNC || ELF32_ST_TYPE(symbolTab[i].st_info) == STT_OBJECT)
+                //sh_link should contain the associated string table index
+                if(s->sh_link > elf->num)
+                    FAIL_BOOT("kernel string table index out of bounds");
+                struct Elf32_Shdr *str = (struct Elf32_Shdr*)((uintptr_t)(elf + 1) + (s->sh_link * elf->entsize));
+                if(SHT_STRTAB != str->sh_type)
+                    FAIL_BOOT("kernel symbol table is broken");
+                //this must remain allocated
+                const char *const strtab = MmMapDynamicMemory(str->sh_addr, str->sh_size, MM_FLAG_READ_ONLY);
+                if(NULL == strtab)
+                    FAIL_BOOT("cannot map kernel string table");
+                
+                //second pass - store symbols
+                ExKernelSymbolCount = 0;
+                for(uint32_t i = 0; i < (s->sh_size / s->sh_entsize); i++)
                 {
-                    kernelSymbolTable[kernelSymbolCount].value = symbolTab[i].st_value; //store symbol value
-                    kernelSymbolTable[kernelSymbolCount].name = &kernelSymbolStrings[symbolTab[i].st_name];
-			        kernelSymbolCount++;
+                    //skip hidden symbols
+                    if(STV_DEFAULT != ELF32_ST_VISIBILITY(symtab[i].st_other))
+                        continue;
+                    //check for symbol type
+                    if((STT_FUNC == ELF32_ST_TYPE(symtab[i].st_info)) || (STT_OBJECT == ELF32_ST_TYPE(symtab[i].st_info)))
+                    {
+                        ExKernelSymbolTable[ExKernelSymbolCount].value = symtab[i].st_value;
+                        ExKernelSymbolTable[ExKernelSymbolCount].name = &(strtab[symtab[i].st_name]);
+                        ExKernelSymbolCount++;
+                    }
                 }
-            }
-            MmFreeKernelHeap(symbolTab);
-		}
-	}
 
-    ExLoadKernelSymbolsFailed:
-    if(OK != ret)
-        kernelSymbolCount = 0;
-    MmFreeKernelHeap(h);
-    MmFreeKernelHeap(s);
-    MmFreeKernelHeap(symbolTab);
-    IoCloseKernelFile(f);
-    return ret;
+                MmUnmapDynamicMemory(symtab);
+                return OK;
+            }
+            s = (const struct Elf32_Shdr*)((uintptr_t)s + elf->entsize);
+            --count;
+        }
+    }
+
+    FAIL_BOOT("kernel symbol table missing");
+
+    return EXEC_ELF_BROKEN;
 }
 
 uintptr_t ExGetKernelSymbol(const char *name)
 {
-    //look for kernel symbol
-    for(uint32_t i = 0; i < kernelSymbolCount; i++)
+    if(unlikely(NULL == ExKernelSymbolTable))
+        return 0;
+    
+    for(uint32_t i = 0; i < ExKernelSymbolCount; i++)
     {
-        if(0 == CmStrcmp(name, kernelSymbolTable[i].name))
-            return kernelSymbolTable[i].value;
+        if(0 == CmStrcmp(name, ExKernelSymbolTable[i].name))
+            return ExKernelSymbolTable[i].value;
     }
     return 0;
 }

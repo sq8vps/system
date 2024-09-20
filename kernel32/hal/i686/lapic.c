@@ -313,6 +313,8 @@ STATUS ApicSetTaskPriority(uint8_t priority)
         return APIC_LAPIC_NOT_AVAILABLE;
     
     LAPIC(LAPIC_TPR_OFFSET) = (priority & 0xF) << 4;
+    while(((LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF) < priority)
+        TIGHT_LOOP_HINT();
     return OK;
 }
 
@@ -321,7 +323,7 @@ uint8_t ApicGetTaskPriority(void)
     if(NULL == lapic)
         return 0;
     
-    return (LAPIC(LAPIC_TPR_OFFSET) >> 4) & 0xFF;
+    return (LAPIC(LAPIC_TPR_OFFSET) >> 4) & 0xF;
 }
 
 uint8_t ApicGetProcessorPriority(void)
@@ -329,7 +331,7 @@ uint8_t ApicGetProcessorPriority(void)
     if(NULL == lapic)
         return 0;
     
-    return (LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xFF;
+    return (LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF;
 }
 
 uint8_t ApicGetCurrentId(void)

@@ -23,6 +23,15 @@
  * @{
 */
 
+/**
+ * @brief i686-specific additional physical memory pools
+ */
+enum
+{
+    I686_PHYSICAL_POOL_LOWER = 1, /**< Lower-memory pool */
+    I686_PHYSICAL_POOL_ISA = I686_PHYSICAL_POOL_LOWER, /**< Pool for ISA DMA memory */
+};
+
 struct KeTaskControlBlock;
 
 #define I686_INVALIDATE_TLB(address) ASM("invlpg [%0]" : : "r" (address) : "memory")

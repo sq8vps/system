@@ -171,6 +171,7 @@ HalPerformTaskSwitch:
     ;store EFLAGS
     pushfd
     pop edx
+    or edx,(1 << 9) ;add IF bit
     mov [esp+8],edx
 
     ;store task context immediately

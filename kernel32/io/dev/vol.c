@@ -29,8 +29,6 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     if(NULL == devNode)
         return IO_FILE_NOT_FOUND;
 
-    
-
     if(IO_VFS_DEVICE != devNode->type)
         status = IO_BAD_FILE_TYPE;
     
@@ -39,14 +37,11 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     
     if(OK != status)
     {
-        
         return status;
     }
 
     //get underlying disk device node
     struct IoDeviceObject *dev = devNode->device;
-
-    
 
     if(IO_DEVICE_TYPE_DISK != dev->type)
         status = IO_NOT_DISK_DEVICE_FILE;
@@ -54,9 +49,6 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
     if(NULL == dev->associatedVolume)
         status = IO_VOLUME_NOT_REGISTERED;
     
-    
-    
-
     if(OK != status)
         return status;
     
@@ -74,26 +66,26 @@ STATUS IoMountVolume(char *devPath, char *mountPoint)
         return status;
     }
 
+
     if(IoVfsCheckIfNodeExists(mountPoint))
         return IO_FILE_ALREADY_EXISTS;
     
-    struct IoVfsNode *mountPointNode = NULL;
-    mountPointNode = IoVfsCreateNode(mountPoint);
-    if(NULL == mountPointNode)
+    struct IoVfsNode *node = NULL;
+    node = IoVfsCreateNode(CmGetFileName(mountPoint));
+    if(NULL == node)
     {
         return OUT_OF_RESOURCES;
     }
 
     
-    mountPointNode->type = IO_VFS_MOUNT_POINT;
-    mountPointNode->fsType = IO_VFS_FS_PHYSICAL;
-    mountPointNode->device = dev->associatedVolume->fsdo;
+    node->type = IO_VFS_MOUNT_POINT;
+    node->fsType = IO_VFS_FS_PHYSICAL;
+    node->device = dev->associatedVolume->fsdo;
 
-    dev->associatedVolume->mountPoint = mountPointNode;
+    dev->associatedVolume->mountPoint = node;
     dev->referenceCount++;
     
-
-    return IoVfsInsertNodeByPath(mountPointNode, "/");
+    return IoVfsInsertNodeByFilePath(node, mountPoint);
 }
 
 STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)

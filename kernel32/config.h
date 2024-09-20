@@ -15,6 +15,11 @@ EXPORT_API
  */
 #define MAX_KERNEL_MODE_THREADS 48
 
+/**
+ * @brief Initial ramdisk mount point
+ */
+#define INITRD_MOUNT_POINT "/initrd"
+
 END_EXPORT_API
 
 #endif

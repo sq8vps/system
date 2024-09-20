@@ -18,13 +18,25 @@ struct KeSpinlock;
      * @brief Physical address data type
      */
     typedef uint64_t PADDRESS;
+    /**
+     * @brief Physical memory size data type
+     */
+    typedef uint64_t PSIZE;
 #else
     /**
      * @brief Physical address data type
      */
     typedef uintptr_t PADDRESS;
+    /**
+     * @brief Physical memory size data type
+     */
+    typedef uintptr_t PSIZE;
 #endif
 
+/**
+ * @brief Number of defined physical memory pools
+ */
+#define HAL_PHYSICAL_MEMORY_POOLS 2
 
 /**
  * @brief Processor priority levels

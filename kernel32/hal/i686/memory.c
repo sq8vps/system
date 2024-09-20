@@ -27,8 +27,8 @@ typedef uint32_t MmPageTableEntry;
 #define MM_PAGE_DIRECTORY_ADDRESS 0xFFFFF000
 #define MM_FIRST_PAGE_TABLE_ADDRESS 0xFFC00000
 
-MmPageDirectoryEntry *pageDir = (MmPageDirectoryEntry*)MM_PAGE_DIRECTORY_ADDRESS;
-MmPageTableEntry *pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TABLE_ADDRESS;
+volatile MmPageDirectoryEntry *const pageDir = (MmPageDirectoryEntry*)MM_PAGE_DIRECTORY_ADDRESS;
+volatile MmPageTableEntry *const pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TABLE_ADDRESS;
 #define PAGETABLE(table, entry) pageTable[MM_PAGE_TABLE_ENTRY_COUNT * (table) + (entry)]
 
 #define MM_PAGE_DIRECTORY_SIZE 4096 //page directory size
@@ -37,7 +37,7 @@ MmPageTableEntry *pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TABLE_ADDRESS;
 #define MM_PAGE_TABLE_ENTRY_COUNT 1024 //number of entries in page table
 
 #define IS_KERNEL_MEMORY(address) ((((address) >= MM_KERNEL_SPACE_START) && ((address) < MM_FIRST_PAGE_TABLE_ADDRESS)) \
-		|| ((((address) >= (uintptr_t)&pageTable[MM_KERNEL_SPACE_START >> 12]) && ((address) < MM_PAGE_DIRECTORY_ADDRESS))))
+		|| ((address) >= (uintptr_t)&pageTable[MM_KERNEL_SPACE_START >> 12]))
 
 static KeSpinlock I686KernelMemoryLock = KeSpinlockInitializer;
 
@@ -123,7 +123,7 @@ STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags)
 	if(f & PAGE_FLAG_USER)
 		*flags |= MM_FLAG_USER_MODE;
 	if(f & PAGE_FLAG_PWT)
-		*flags |= MM_FLAG_WRITE_THORUGH;
+		*flags |= MM_FLAG_WRITE_THROUGH;
 	if(f & PAGE_FLAG_PCD)
 		*flags |= MM_FLAG_CACHE_DISABLE;
 	I686ReleaseMemoryLock(vAddress, prio);
@@ -166,7 +166,7 @@ MmMemoryFlags I686GetPageFlagsFromPageFault(uintptr_t address)
 	if(f & PAGE_FLAG_USER)
 		flags |= MM_FLAG_USER_MODE;
 	if(f & PAGE_FLAG_PWT)
-		flags |= MM_FLAG_WRITE_THORUGH;
+		flags |= MM_FLAG_WRITE_THROUGH;
 	if(f & PAGE_FLAG_PCD)
 		flags |= MM_FLAG_CACHE_DISABLE;
 	return OK;	
@@ -207,11 +207,11 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 	}
 
 	uint16_t f = 0;
-	if(flags & MM_FLAG_WRITABLE)
+	if((flags & MM_FLAG_WRITABLE) && !(flags & MM_FLAG_READ_ONLY))
 		f |= PAGE_FLAG_WRITABLE;
 	if(flags & MM_FLAG_USER_MODE)
 		f |= PAGE_FLAG_USER;
-	if(flags & MM_FLAG_WRITE_THORUGH)
+	if(flags & MM_FLAG_WRITE_THROUGH)
 		f |= PAGE_FLAG_PWT;
 	if(flags & MM_FLAG_CACHE_DISABLE)
 		f |= PAGE_FLAG_PCD;
@@ -335,30 +335,31 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 void I686InitVirtualAllocator(void)
 {
 	GdtInit();
-	//iterate through the kernel space mapping
-	for(uintptr_t i = (MM_KERNEL_ADDRESS >> 22); i < (MM_MEMORY_SIZE >> 22); i++)
+	/*
+	The bootstrap code in boot.asm sets up initial paging that includes:
+	1. Full kernel image mapping - so we can execute the kernel code
+	2. Self-referencing page directory trick - so we can access the paging structures
+	3. 1:1 bootstrap code mapping - which is not needed anymore, but it sits below the kernel space anyway
+	When creating a process, only the kernel space mappings are copied, so no need to worry about point 3
+
+	However, we want to create all kernel page tables, so that we don't have to propagate a page table creation
+	from one CPU to the others.
+	*/
+	for(uintptr_t i = MM_KERNEL_SPACE_START; 
+		i < MM_FIRST_PAGE_TABLE_ADDRESS; 
+		i += (MM_PAGE_SIZE * MM_PAGE_DIRECTORY_ENTRY_COUNT))
 	{
-		/*
-		The kernel space mapping must be kept consistent accross all tasks.
-		Create all page tables for kernel and insert appropriate page directory entries.
-		This way there will be only one set of kernel page tables for all tasks.
-		*/
-
-		if(pageDir[i] & PAGE_FLAG_PRESENT) //page table is already present, skip
+		if(pageDir[i >> 22] & PAGE_FLAG_PRESENT)
 			continue;
-		
-		uintptr_t newPageTable = allocatePageTable(); //allocate new page table
-		
-		pageDir[i] = newPageTable | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //add page directory entry
 
-		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i, 0))); //invalidate old entry in TLB
-
-		//clear page table
-		CmMemset(&PAGETABLE(i, 0), 0, MM_PAGE_TABLE_ENTRY_COUNT * sizeof(MmPageTableEntry));
+		uintptr_t pta = allocatePageTable();
+		if(0 == pta)
+			FAIL_BOOT("page table allocation failed");
+		pageDir[i >> 22] = pta | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i >> 22, 0)));
+		//now the table can be accessed
+		CmMemset(&PAGETABLE(i >> 22, 0), 0, MM_PAGE_TABLE_SIZE);
 	}
-
-	//clear all entries below kernel space
-	CmMemset(pageDir, 0, (MM_KERNEL_ADDRESS >> 22) * sizeof(MmPageDirectoryEntry));
 }
 
 uintptr_t I686GetPageDirectoryAddress(void)
@@ -460,7 +461,7 @@ STATUS I686CreateThreadKernelStack(const struct KeTaskControlBlock *parent, uint
 
 	if(newPageTable)
 	{
-		pd[(stackAddress - MM_PAGE_SIZE) >> 2] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+		pd[(stackAddress - MM_PAGE_SIZE) >> 22] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
 		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
 	}
 
@@ -547,7 +548,7 @@ I686CreateThreadKernelStackFailure:
 // 		f |= PAGE_FLAG_WRITABLE;
 // 	if(flags & MM_FLAG_USER_MODE)
 // 		f |= PAGE_FLAG_USER;
-// 	if(flags & MM_FLAG_WRITE_THORUGH)
+// 	if(flags & MM_FLAG_WRITE_THROUGH)
 // 		f |= PAGE_FLAG_PWT;
 // 	if(flags & MM_FLAG_CACHE_DISABLE)
 // 		f |= PAGE_FLAG_PCD;

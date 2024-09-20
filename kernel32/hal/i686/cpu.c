@@ -15,6 +15,7 @@
 #include "ke/sched/sched.h"
 #include "ke/sched/idle.h"
 #include "ipi.h"
+#include "mm/palloc.h"
 
 #ifdef SMP
 
@@ -77,7 +78,7 @@ STATUS I686StartProcessors(void)
 
     status = HalMapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS, I686_AP_BOOTSTRAP_ADDRESS, 
         ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, MM_PAGE_SIZE), 
-        MM_FLAG_WRITABLE | MM_FLAG_CACHE_DISABLE | MM_FLAG_WRITE_THORUGH);
+        MM_FLAG_WRITABLE | MM_FLAG_CACHE_DISABLE | MM_FLAG_WRITE_THROUGH);
     if(OK != status)
         FAIL_BOOT("cannot map memory for CPU bootstrap");
 
@@ -167,6 +168,9 @@ STATUS I686StartProcessors(void)
     return OK;
 }
 
+#include "mm/dynmap.h"
+#include "mm/palloc.h"
+
 void I686CpuBootstrap(uint32_t cpuId)
 {
     __atomic_fetch_add(&I686StartedCpuCount, 1, __ATOMIC_SEQ_CST);
@@ -182,10 +186,17 @@ void I686CpuBootstrap(uint32_t cpuId)
     while(0 == __atomic_load_n(&I686ApCanContinue, __ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 
-    KeJoinScheduler();
-    
     while(1)
-        ;
+    {
+        void *t = MmMapDynamicMemory(0x1000, 10000, 0);
+        MmUnmapDynamicMemory(t);
+    }
+    // KeJoinScheduler();
+    
+    // while(1)
+    // {
+    //     KeTaskYield();
+    // }
 }
 
 uint16_t HalGetCurrentCpu(void)

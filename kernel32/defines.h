@@ -134,6 +134,7 @@ typedef enum
     IO_FILE_ALREADY_EXISTS,
     IO_NOT_DISK_DEVICE_FILE,
     IO_NOT_A_DIRECTORY,
+    IO_IS_A_DIRECTORY,
     IO_FILE_COUNT_LIMIT_REACHED,
     IO_BAD_FILE_TYPE,
     IO_FILE_CLOSED,
@@ -249,6 +250,10 @@ typedef uint64_t time_t;
 */
 #define ASM asm volatile
 
+/**
+ * @brief Memory barrier
+ */
+#define barrier() ASM("" ::: "memory")
 
 /**
  * @brief Check if character \a x is alphanumeric

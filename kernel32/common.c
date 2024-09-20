@@ -162,24 +162,18 @@ int CmToupper(int c)
     return c;
 }
 
-char *CmGetFileName(char *path)
+const char *CmGetFileName(const char *path)
 {
     uint32_t size = CmStrlen(path);
-    if(0 == size)
-        return path;
 
-    if('/' == path[size - 1])
-    {
-        path[size - 1] = '\0';
-        size--;
-    }
-    while(size > 0)
+    while(0 != size)
     {
         if('/' == path[size - 1])
-            break;
-        size--;
+            return &(path[size]);
+        --size;
     }
-    return &path[size];
+    
+    return path;
 }
 
 uint64_t CmPow10(uint16_t x)
@@ -236,7 +230,7 @@ void CmFreeStringTable(char **table, uint32_t count)
     MmFreeKernelHeap(table);
 }
 
-bool CmCheckFileName(char *name)
+bool CmCheckFileName(const char *name)
 {
     uint32_t length = CmStrlen(name);
     for(uint32_t i = 0; i < length; i++)
@@ -246,4 +240,30 @@ bool CmCheckFileName(char *name)
     }
 
     return true;
+}
+
+bool CmCheckPath(const char *path)
+{
+    uint32_t length = CmStrlen(path);
+    for(uint32_t i = 0; i < length; i++)
+    {
+        if(('|' == path[i]) || ('\\' == path[i]) || ('*' == path[i]) || ('?' == path[i]) || (':' == path[i]))
+            return false;
+    }
+
+    return true;
+}
+
+uint32_t CmOctalToU32(const char *octal)
+{
+    uint32_t result = 0;
+    while('\0' != *octal)
+    {
+        result <<= 3;
+        if((*octal - '0') & 0xF8)
+            return 0;
+        result |= (*octal - '0');
+        octal++;
+    }
+    return result;
 }

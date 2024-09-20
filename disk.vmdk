@@ -5,8 +5,8 @@ parentCID=ffffffff
 createType="fullDevice"
 
 # Extent description
-#RW 1000000 FLAT "C:\programy\system\os-image.img" 0
-RW 1000000 FLAT "\\.\PhysicalDrive1" 0
+#RW 1000000 FLAT "D:\programy\system\os-image.img" 0
+RW 1000000 FLAT "\\.\PhysicalDrive2" 0
 
 # The disk Data Base 
 #DDB

@@ -40,7 +40,7 @@ $(NAME) : $(C_OBJ) $(CPP_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
 	objcopy --only-keep-debug $@ ${@:.drv=.sym}
 	objcopy --strip-debug $@
-	cp $@ ../../output/
+	cp $@ ../../output/drivers/
 	cp ${@:.drv=.sym} ../../symbols/
 	
 clean:

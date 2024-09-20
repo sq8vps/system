@@ -12,6 +12,7 @@
 #include "mm/dynmap.h"
 #include "assert.h"
 #include "config.h"
+#include "time.h"
 
 #define I686_KERNEL_STACK_SPACE_START (MM_KERNEL_SPACE_START_ADDRESS)
 #define I686_KERNEL_STACK_SPACE_SIZE 0x100000 //1 MiB
@@ -50,10 +51,23 @@ STATUS HalCreateThread(struct KeTaskControlBlock *parent, const char *name,
         goto HalCreateThreadExit;
     }
 
+    (*tcb)->type = KE_TASK_TYPE_THREAD;
     (*tcb)->cpu.userMemoryLock = parent->cpu.userMemoryLock;
 
     (*tcb)->threadId = parent->freeTaskIds[MAX_KERNEL_MODE_THREADS - parent->taskCount - 1];
     parent->taskCount++;
+    (*tcb)->parent = parent;
+    
+    if(NULL == parent->child)
+        parent->child = *tcb;
+    else
+    {
+        struct KeTaskControlBlock *t = parent->child;
+        while(NULL != t->sibling)
+            t = t->sibling;
+        
+        t->sibling = *tcb;
+    }
 
     if(KeGetCurrentTaskParent() == parent)
     {
@@ -125,6 +139,18 @@ HalCreateThreadExit:
         {
             parent->taskCount--;
             parent->freeTaskIds[MAX_KERNEL_MODE_THREADS - parent->taskCount - 1] = (*tcb)->threadId;
+            if((*tcb) == parent->child)
+            {
+                parent->child = (*tcb)->sibling;
+            }
+            else
+            {
+                struct KeTaskControlBlock *t = parent->child;
+                while((*tcb) != t->sibling)
+                    t = t->sibling;
+                
+                t->sibling = (*tcb)->sibling;
+            }
         }
         if(NULL != (*tcb)->cpu.userMemoryLock)
             KeDestroySpinlock((*tcb)->cpu.userMemoryLock);
@@ -152,6 +178,7 @@ STATUS HalCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl
         goto HalCreateProcessRawExit;
     }
 
+    (*tcb)->type = KE_TASK_TYPE_PROCESS;
     (*tcb)->cpu.userMemoryLock = KeCreateSpinlock();
     if(NULL == (*tcb)->cpu.userMemoryLock)
     {
@@ -219,7 +246,7 @@ HalCreateProcessRawExit:
 
 void HalInitializeScheduler(void)
 {
-    
+    I686NotifyLapicTimerStarted();
 }
 
 STATUS HalAttachToTask(struct KeTaskControlBlock *target)

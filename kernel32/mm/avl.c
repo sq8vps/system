@@ -9,7 +9,7 @@
  
 static int mmAvlHeight(struct MmAvlNode *node)
 {
-    if (NULL == node)
+    if(NULL == node)
         return 0;
 
     return node->height;
@@ -105,7 +105,7 @@ static struct MmAvlNode* mmAvlLowestNode(struct MmAvlNode* node)
 static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, struct MmAvlNode *node)
 {
     if(NULL == root)
-        return root;
+        return NULL;
  
     if(node->key < root->key)
     {
@@ -124,6 +124,12 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, struct MmAvlNod
     }
     else
     {
+        if(NULL != root->buddy)
+        {
+            ASSERT(root->buddy->buddy == root);
+            root->buddy->buddy = NULL;
+        }
+
         //1 or 0 children
         if((NULL == root->left) || (NULL == root->right))
         {
@@ -152,9 +158,10 @@ static struct MmAvlNode* mmAvlDeleteNode(struct MmAvlNode *root, struct MmAvlNod
             root->key = child->key; //copy value
             root->val = child->val;
             root->buddy = child->buddy; //copy buddy pointer
-            if(NULL != child->buddy)
-                child->buddy->buddy = root; //update buddy of the other node
+            if(NULL != root->buddy)
+                root->buddy->buddy = root; //update buddy of the other node
 
+            child->buddy = NULL;
             root->right = mmAvlDeleteNode(root->right, child);
         }
     }
@@ -284,6 +291,7 @@ struct MmAvlNode* MmAvlInsert(struct MmAvlNode **root, uintptr_t key)
     node->left = NULL;
     node->right = NULL;
     node->buddy = NULL;
+    node->val = 0;
     node->dynamic = true;
 
     *root = MmAvlInsertExisting(*root, node);

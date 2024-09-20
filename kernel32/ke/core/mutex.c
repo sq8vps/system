@@ -12,7 +12,9 @@ static KeSpinlock listLock = KeSpinlockInitializer;
 
 PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 {
+    ASM("mfence" : : : "memory");
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_SPINLOCK);
+    barrier();
 #ifndef SMP
     if(0 != spinlock->lock)
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
@@ -24,7 +26,7 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
         //if previous value was 0, then we've acquired the lock
         if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_SEQ_CST))
             break;
-        
+
         //else we haven't acquired the lock
         //loop until the lock appears to be free
         //do not use atomic operations to avoid locking CPU memory bus
@@ -33,12 +35,14 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
         while(0 != spinlock->lock)
             TIGHT_LOOP_HINT();
     }
+    
 #endif
     return prio;
 }
 
 void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 {
+    ASM("mfence" : : : "memory");
 #ifndef SMP
     if(0 == spinlock->lock)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
@@ -48,6 +52,7 @@ void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
     __atomic_store_n(&spinlock->lock, 0, __ATOMIC_SEQ_CST);
 #endif
+    barrier();
     HalLowerPriorityLevel(previousPriority);
 }
 
@@ -265,7 +270,7 @@ void KeTimedExclusionRefresh(void)
             s->previousAux = NULL;
             if(NULL != s->mutex)
             {
-                PRIO prio = KeAcquireSpinlock(&(s->mutex->spinlock));
+                PRIO pr = KeAcquireSpinlock(&(s->mutex->spinlock));
                 if(s->previous)
                     s->previous->next = s->next;
                 else
@@ -276,11 +281,11 @@ void KeTimedExclusionRefresh(void)
                 else
                     s->mutex->queueBottom = s->previous;
 
-                KeReleaseSpinlock(&(s->mutex->spinlock), prio);
+                KeReleaseSpinlock(&(s->mutex->spinlock), pr);
             }
             else if(s->semaphore)
             {
-                PRIO prio = KeAcquireSpinlock(&(s->semaphore->spinlock));
+                PRIO pr = KeAcquireSpinlock(&(s->semaphore->spinlock));
                 if(s->previous)
                     s->previous->next = s->next;
                 else
@@ -291,11 +296,11 @@ void KeTimedExclusionRefresh(void)
                 else
                     s->semaphore->queueBottom = s->previous;
 
-                KeReleaseSpinlock(&(s->semaphore->spinlock), prio);
+                KeReleaseSpinlock(&(s->semaphore->spinlock), pr);
             }
             else
             {
-                PRIO prio = KeAcquireSpinlock(&(s->rwLock->lock));
+                PRIO pr = KeAcquireSpinlock(&(s->rwLock->lock));
                 if(s->previous)
                     s->previous->next = s->next;
                 else
@@ -306,10 +311,11 @@ void KeTimedExclusionRefresh(void)
                 else
                     s->rwLock->queueBottom = s->previous;
 
-                KeReleaseSpinlock(&(s->rwLock->lock), prio);
+                KeReleaseSpinlock(&(s->rwLock->lock), pr);
             }
             s->mutex = NULL;
             s->semaphore = NULL;
+            s->rwLock = NULL;
             KeUnblockTask(s);
         }
         else

@@ -234,23 +234,10 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
 
                     if (NULL != ret)
                     {
-                        if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
-                        ((NULL != ret->next) && (ret->next->previous != ret)))
-                        {
-                            asm("nop");
-                        }
                         KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
                         return (void *)((uintptr_t)ret + META_SIZE);
                     }
                 }
-            }
-            if((NULL != block->next) && (block->next->size == 0))
-            {
-                asm("nop");
-            }
-            if(!((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START)))
-            {
-                asm("nop");
             }
             block = block->next;
         }
@@ -263,11 +250,6 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
             if (MmHeapExtendLastBlock(n + padding))
             {
                 ret = MmSplitBlock(MmHeapBlockTail, n, align);
-                    if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
-                        ((NULL != ret->next) && (ret->next->previous != ret)))
-                    {
-                        asm("nop");
-                    }
                 if (NULL != ret)
                 {
                     KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
@@ -283,11 +265,6 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
     KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
     if (NULL != ret)
     {
-                            if(!((NULL == ret->next) || ((uintptr_t)ret->next >= MM_KERNEL_HEAP_START)) ||
-                        ((NULL != ret->next) && (ret->next->previous != ret)))
-                    {
-                        asm("nop");
-                    }
         return (void *)((uintptr_t)ret + META_SIZE);
     }
     else
@@ -315,18 +292,10 @@ void MmFreeKernelHeap(const void *ptr)
     
     PRIO prio = KeAcquireSpinlock(&(MmHeapAllocatorLock));
     struct MmHeapBlock *block = (struct MmHeapBlock *)((uintptr_t)ptr - META_SIZE);
+    
+    ASSERT(!block->free);
+
     block->free = true;
-
-    if((uintptr_t)block == 0xd8014140)
-    {
-        asm("nop");
-    }
-
-    if(!((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START)) ||
-        ((NULL != block->next) && (block->next->previous != block)))
-    {
-        asm("nop");
-    }
 
     ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
 

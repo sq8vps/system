@@ -8,6 +8,7 @@
 #include "ke/sched/sched.h"
 #include "mm/slab.h"
 #include "hal/arch.h"
+#include "assert.h"
 
 #define KE_DPC_CHUNK_PER_SLAB 64
 
@@ -94,7 +95,6 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
 
 static void KeDpcProcess(uint16_t cpu)
 {
-    PRIO dpcPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
     while(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
     {
         __atomic_store_n(&(KeDpcState[cpu].isPending), false, __ATOMIC_SEQ_CST);
@@ -115,13 +115,13 @@ static void KeDpcProcess(uint16_t cpu)
             KeReleaseSpinlock(&(KeDpcState[cpu].queue[i].lock), prio);
         }
     }
-    HalLowerPriorityLevel(dpcPrio);
 }
 
 void KeProcessDpcQueue(void)
 {
-    if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_DPC)
+    if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE)
         return;
+    PRIO dpcPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
     uint16_t cpu = 0;
 #ifdef SMP
         cpu = HalGetCurrentCpu();
@@ -129,9 +129,11 @@ void KeProcessDpcQueue(void)
     if(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
     {
         KeDpcProcess(cpu);
-        HalPerformTaskSwitch();
-        return;
+        // HalLowerPriorityLevel(dpcPrio);
+        // HalPerformTaskSwitch();
+        // return;
     }
+    HalLowerPriorityLevel(dpcPrio);
 }
 
 STATUS KeDpcInitialize(void)

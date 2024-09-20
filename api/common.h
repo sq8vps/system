@@ -162,11 +162,11 @@ uint64_t CmPow10(uint16_t x);
 
 
 /**
- * @brief Extract file name from path
+ * @brief Get pointer to file name in given path
  * @param *path Input path
- * @return Pointer to the first character of file name
+ * @return Pointer to the first character of the file name
 */
-char *CmGetFileName(char *path);
+const char *CmGetFileName(const char *path);
 
 
 /**
@@ -190,11 +190,24 @@ void CmFreeStringTable(char **table, uint32_t count);
 
 /**
  * @brief Check correctness of a file name
- * @param *name File name (not path!)
+ * @param *name File name
  * @return True if correct, false if not
 */
-bool CmCheckFileName(char *name);
+bool CmCheckFileName(const char *name);
 
+/**
+ * @brief Check correctness of a path
+ * @param *path Path 
+ * @return True if correct, false if not
+*/
+bool CmCheckPath(const char *name);
+
+/**
+ * @brief Convert octal number string to uint32_t
+ * @param *octal String containing octal number
+ * @return Number converted to uint32_t
+ */
+uint32_t CmOctalToU32(const char *octal);
 
 
 #ifdef DEBUG

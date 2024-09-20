@@ -2,6 +2,12 @@
     "files.associations": {
         "*.cpp": "cpp",
         "task.h": "c",
-        "fpu.h": "c"
+        "fpu.h": "c",
+        "multiboot.h": "c",
+        "vol.h": "c",
+        "defines.h": "c",
+        "it.h": "c",
+        "typeinfo": "c",
+        "assert.h": "c"
     }
 }

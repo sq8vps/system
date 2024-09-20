@@ -284,6 +284,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 
         AcpiReadEntries(madt);
         MmUnmapDynamicMemory(madt);
+        MmUnmapDynamicMemory(rxsdt);
         return OK;
     }
     

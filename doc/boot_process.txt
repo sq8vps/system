@@ -1,8 +1,0 @@
-The boot process is as follows:
-1. The 1st stage bootloader (boot.bin) is read from the MBR.
-2. The 1st stage bootloader scans the boot drive for the 2nd stage bootloader (loader.bin) and loads it at 0x7E00 (lower memory).
-3. The 2nd stage bootloader reads BIOS memory map and loads the 3rd stage bootloader (LDR32) from FAT32 partition to some 
-free space in LOWER memory. Then it creates GDT, enables PM and jumps to the 3rd stage bootloader.
-4. The 3rd stage bootloader reads the memory map provided by the 2nd stage bootloader and configures paging.
-The kernel is loaded to some free space in HIGHER memory. The bootloader provides the usable memory map
-and the list of loaded components, its virtual memory location and size to the kernel.

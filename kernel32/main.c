@@ -17,7 +17,7 @@
 #include "io/fs/vfs.h"
 #include "io/fs/fs.h"
 #include "hal/interrupt.h"
-#include "sdrv/initrd/initrd.h"
+#include "io/initrd.h"
 #include "ex/ksym.h"
 #include "defines.h"
 #include "ke/task/task.h"
@@ -29,13 +29,7 @@
 #include "io/dev/vol.h"
 #include "ddk/fs.h"
 #include "hal/arch.h"
-
-extern uintptr_t _KERNEL_INITIAL_STACK_ADDRESS; //linker-defined temporary kernel stack address symbol
-
-static struct KernelEntryArgs kernelArgs; //copy of kernel entry arguments
-
-//TODO:
-//dealokacja sterty
+#include "multiboot.h"
 
 KeMutex s = KeMutexInitializer;
 KeSemaphore sem = KeSemaphoreInitializer;
@@ -69,38 +63,41 @@ void task2(void *c)
 	}
 }
 
+struct KeTaskControlBlock *t1, *t2;
+
 static void KeInitProcess(void *context)
 {
 	STATUS ret = OK;
-	if(OK != (ret = InitrdInit((uintptr_t)context)))
-	{
-		PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
-		while(1)
-			;
-	}
 
-	if(OK != ExLoadKernelSymbols("/initrd/kernel32.elf"))
-	{
-		PRINT("Kernel symbol loading failed. Unable to boot.\n");
-		while(1)
-			;
-	}
-	
+	// if(OK != ExLoadKernelSymbols(context))
+	// {
+	// 	PRINT("Kernel symbol loading failed. Unable to boot.\n");
+	// 	while(1)
+	// 		;
+	// }
 
-	if(OK != IoInitDeviceManager("ACPI"))
-	{
-		PRINT("FAILURE");
-	}
+	// if(OK != (ret = IoInitrdInit(context)))
+	// {
+	// 	PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
+	// 	while(1)
+	// 		;
+	// }
 
-	static struct KeTaskControlBlock *t1, *t2;
+	// if(OK != (ret = IoInitrdMount(INITRD_MOUNT_POINT)))
+	// 	FAIL_BOOT("initial ramdisk mount failed");
 
-	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
-	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
-	KeEnableTask(t1);
-	KeEnableTask(t2);
+	// if(OK != IoInitDeviceManager("ACPI"))
+	// {
+	// 	PRINT("FAILURE");
+	// }
 
-	KeSleep(MS_TO_NS(4000));
-	IoMountVolume("/dev/hda0", "disk1");
+	// KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
+	// KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
+	// KeEnableTask(t1);
+	// KeEnableTask(t2);
+
+	// KeSleep(MS_TO_NS(4000));
+	// IoMountVolume("/dev/hda0", "disk1");
 
 	// struct IoFileHandle *h;
 	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
@@ -113,21 +110,33 @@ static void KeInitProcess(void *context)
 
 	while(1)
 	{
-		//KeTaskYield();
+		KeTaskYield();
 	}
 }
 
-NORETURN static void KeInit(void)
+/**
+ * @brief Kernel entry point
+ * 
+ * This function is called by the architecture-specific bootstrap code.
+ * It is required to provide a Multiboot2 information structures to start the kernel.
+ * The Multiboot2 info structures should be copied to kernel memory space anyway,
+ * so the \a *mb2h pointer is just for convenience.
+ * 
+ * @param *mb2h Multiboot2 header pointer
+ * @attention This function never returns
+ */
+NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 {	
 	CmDetectEndianness();
+
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
-	MmInitPhysicalAllocator(&kernelArgs);
+	MmInitPhysicalAllocator(mb2h);
 
 	HalInitPhase1();
 
 	MmInitializeMemoryDescriptorAllocator();
-	MmInitDynamicMemory(&kernelArgs);
+	MmInitDynamicMemory();
 
 	HalInitPhase2();
 
@@ -138,31 +147,10 @@ NORETURN static void KeInit(void)
 	IoVfsInit();
 	IoFsInit();
 	KeDpcInitialize();
-	
-	if(0 == kernelArgs.initrdSize)
-	{
-		PRINT("Initial ramdisk not found. Unable to boot.\n");
-		while(1)
-			;
-	}
 
-	KeStartScheduler(KeInitProcess, (void*)kernelArgs.initrdAddress);
+	//KeStartScheduler(KeInitProcess, mb2h);
 
 	//never reached
 	while(1)
 		;
-}
-
-NORETURN void KeEntry(struct KernelEntryArgs args)
-{
-	//store kernel arguments locally as the previous stack will be destroyed
-	CmMemcpy(&kernelArgs, &args, sizeof(args));
-	
-	uintptr_t kernelStackAddress = (uintptr_t)&_KERNEL_INITIAL_STACK_ADDRESS; //get temporary stack address
-	ASM("mov esp, %0" : : "m" (kernelStackAddress) : ); //set up stack top address in ESP register
-	ASM("mov ebp, %0" : : "m" (kernelStackAddress) : ); //set up base address in EBP register
-	//do not declare any local variables here
-	//stack and base pointers were changed and the compiler is not aware of this fact
-	//just jump to the initialization routine
-	KeInit();
 }

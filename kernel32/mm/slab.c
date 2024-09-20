@@ -57,7 +57,6 @@ void *MmSlabCreate(uintptr_t chunkSize, uintptr_t chunkCount)
     
     slab->chunkCount = chunkCount;
     slab->chunkSize = chunkSize;
-    slab->lock.lock = 0;
 
     return slab;
 }

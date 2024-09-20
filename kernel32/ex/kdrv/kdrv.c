@@ -76,7 +76,7 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
     {
         *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
         (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/acpi.drv", &((*drivers)->this));
+        STATUS ret = ExLoadKernelDriver("/initrd/drivers/acpi.drv", &((*drivers)->this));
         if(OK != ret)
             return ret;
         
@@ -91,7 +91,7 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
     {
         *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
         (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/pci.drv", &((*drivers)->this));
+        STATUS ret = ExLoadKernelDriver("/initrd/drivers/pci.drv", &((*drivers)->this));
         if(OK != ret)
             return ret;
         
@@ -108,7 +108,7 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
     {
         *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
         (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/ide.drv", &((*drivers)->this));
+        STATUS ret = ExLoadKernelDriver("/initrd/drivers/ide.drv", &((*drivers)->this));
         if(OK != ret)
             return ret;
         
@@ -124,7 +124,7 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectL
         *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
         // (*drivers)->next = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
         (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/disk.drv", &((*drivers)->this));
+        STATUS ret = ExLoadKernelDriver("/initrd/drivers/disk.drv", &((*drivers)->this));
         if(OK != ret)
             return ret;
         // ret = ExLoadKernelDriver("/initrd/partmgr.drv", &((*drivers)->next->this));

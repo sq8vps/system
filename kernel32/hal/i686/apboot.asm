@@ -34,13 +34,13 @@ I686StartAp:
     db 0x0 ;base
     gdt_end:
     align 16
-    gdt_descriptor equ 0x1030
+    %define gdt_descriptor 0x1030
     ;0x1030
     dw gdt_end - gdt_start - 1 ;GDT size
     dd 0x1010 ;GDT address
 
-    CODE_SEG equ gdt_code - gdt_start
-    DATA_SEG equ gdt_data - gdt_start
+    %define CODE_SEG gdt_code - gdt_start
+    %define DATA_SEG gdt_data - gdt_start
 
     align 64
 ; 0x1040 - continue execution:

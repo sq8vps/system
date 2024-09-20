@@ -15,6 +15,15 @@
 #include "pic.h"
 #include "it/it.h"
 #include "interrupts/it.h"
+#include "mm/palloc.h"
+
+struct MmMemoryPool HalPhysicalPool[HAL_PHYSICAL_MEMORY_POOLS] = 
+{
+    //standard pool - non-real-mode memory (>=1 MiB)
+    [MM_PHYSICAL_POOL_STANDARD] = {.base = 0x100000, .size = 0x100000000 - 0x100000},
+    //real mode memory pool - (>=4 KiB to keep real mode IVT and <1 MiB) - ISA DMA, CPU bootstrap
+    [I686_PHYSICAL_POOL_LOWER] = {.base = 0x1000, .size = 0x100000 - 0x1000},
+};
 
 void HalInitPhase1(void)
 {
@@ -25,6 +34,9 @@ void HalInitPhase1(void)
 
     if(!CpuidCheckIfFpuAvailable())
         FAIL_BOOT("FPU not available");
+    
+    if(!CpuidCheckIfTscAvailable())
+        FAIL_BOOT("TSC not available");
     
     MsrInit();
 

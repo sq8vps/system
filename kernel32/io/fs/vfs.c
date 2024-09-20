@@ -1,7 +1,7 @@
 #include "vfs.h"
 #include "common.h"
 #include "io/dev/dev.h"
-#include "sdrv/initrd/initrd.h"
+#include "io/initrd.h"
 #include "assert.h"
 #include "devfs.h"
 #include "mm/slab.h"
@@ -74,23 +74,6 @@ STATUS IoVfsInit(void)
     IoVfsState.root->status.open = 1;
 
     return IoInitDeviceFs(IoVfsState.root);
-}
-
-char* IoVfsDetachFileName(char *path)
-{
-    ASSERT(path);
-    char *c = path + CmStrlen(path);
-    while(c >= path)
-    {
-        if('/' == *c)
-        {
-            *c = '\0';
-            return c + 1;
-        }
-        c--;
-    }
-    //no slash was found, whole path is the file name
-    return path;
 }
 
 STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoVfsFlags flags)
@@ -251,7 +234,7 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
     return NULL;
 }
 
-static struct IoVfsNode *IoVfsGetNodeFromCache(struct IoVfsNode *parent, char *name)
+static inline struct IoVfsNode *IoVfsGetNodeFromCache(struct IoVfsNode *parent, char *name)
 {
     ASSERT(parent && name);
 
@@ -287,47 +270,32 @@ static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, char *na
 
     //child not found in cached tree, must ask driver to find it on a physical storage
 
-    uint64_t size = 0;
-    union IoVfsReference ref; 
     switch(parent->fsType)
     {
         case IO_VFS_FS_PHYSICAL:
             status = FsGetNode(parent, name, &node);
-            if(OK == status)
-            {
-                IoVfsInsertNode(node, parent);
-                return node;
-            }
-            else
-                return NULL;
             break;
         case IO_VFS_FS_INITRD:
-            ref.u64 = InitrdGetFileReference(name, &size);
-            if(0 != ref.u64)
-            {
-                node = IoVfsCreateNode(name);
-                if(NULL == node)
-                    return NULL;
-
-                node->ref[0] = ref;
-                node->flags = IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
-                node->fsType = IO_VFS_FS_INITRD;
-                node->type = IO_VFS_FILE;
-                node->size = size;
-                IoVfsInsertNode(node, parent);
-                return node;
-            }
+            status = IoInitrdGetNode(parent, name, &node);
             break;
         case IO_VFS_FS_TASKFS:
-            
+            return NULL;
+            break;
+        default:
+            return NULL;
             break;
     }
 
-
-    return NULL;
+    if(OK == status)
+    {
+        IoVfsInsertNode(node, parent);
+        return node;
+    }
+    else
+        return NULL;
 }
 
-struct IoVfsNode *IoVfsGetNode(char *path)
+struct IoVfsNode *IoVfsGetNodeEx(char *path, bool excludeLastElement)
 {
     struct IoVfsNode *node = IoVfsState.root;
 
@@ -340,38 +308,49 @@ struct IoVfsNode *IoVfsGetNode(char *path)
         return NULL;
     
     //skip '/'
-    path++;
+    ++path;
 
-    while('\0' != *path)
+    char *buffer = MmAllocateKernelHeap(CmStrlen(path) + 1);
+    if(NULL == buffer)
+        return NULL;
+    
+    char *p = buffer;
+    
+    CmStrcpy(p, path);
+
+    while('\0' != *p)
     {
-        char *element = path;
+        char *element = p;
         //find separator or end of path
-        while(!(('/' == *path) || ('\0' == *path)))
+        while(('/' != *p) && ('\0' != *p))
         {
-            path++;
+            ++p;
         }
-        //avoid altering the path
-        //store original character and replace with null to tokenize
-        char t = *path;
-        *path = '\0';
-        //get node
-        node = IoVfsGetNodeByParent(node, element);
-        //restore character
-        *path = t; 
-        //check if node was found
-        if(NULL == node)
-            return NULL;
-
-        //check if this is the end of the path
-        //treat ".../file/" the same as ".../file", doesn't matter if it's a directory or not
-        if(('\0' == path[0])
-            || (('/' == path[0]) && ('\0' == path[1])))
+        if(excludeLastElement && (('\0' == p[0])
+            || (('/' == p[0]) && ('\0' == p[1]))))
         {
             return node;
         }
+        char rep = *p;
+        *p = '\0'; //tokenize
+        node = IoVfsGetNodeByParent(node, element);
+        //check if node was found
+        if(NULL == node)
+        {
+            break;
+        }
+        *p = rep;
+
+        //check if this is the end of the path
+        //treat ".../file/" the same as ".../file", doesn't matter if it's a directory or not
+        if(('\0' == p[0])
+            || (('/' == p[0]) && ('\0' == p[1])))
+        {
+            break;
+        }
 
         //go to the next character
-        path++;
+        ++p;
 
         //now check if given node is a symbolic link
         //if so, then resolve
@@ -379,10 +358,11 @@ struct IoVfsNode *IoVfsGetNode(char *path)
         {
             node = IoVfsResolveLink(node);
             if(NULL == node)
-                return node;
+                break;
         }
     }
 
+    MmFreeKernelHeap(buffer);
     return node;
 }
 
@@ -409,10 +389,15 @@ void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent)
     node->next = NULL;
 }
 
-STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path)
+STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path, bool isFilePath)
 {
     ASSERT(node && path);
-    struct IoVfsNode *target = IoVfsGetNode(path);
+    if(isFilePath)
+    {
+        if(0 != CmStrcmp(node->name, CmGetFileName(path))) //check for node name and path file name match
+            return IO_FILE_NOT_FOUND;
+    }
+    struct IoVfsNode *target = IoVfsGetNodeEx(path, isFilePath);
     if(NULL == target)
     {
         ERROR("Node %s not found\n", path);
@@ -440,7 +425,6 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path)
     node->next = NULL;
     return OK;
 }
-
 
 bool IoVfsCheckIfNodeExists(char *path)
 {
@@ -504,7 +488,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_
         Initrd flag implies no caching and no writing.
         */
         case IO_VFS_FS_INITRD:
-            callback(OK, InitrdReadFile(node->ref[0].u64, buffer, size, offset), context);
+            callback(OK, IoInitrdRead(node, buffer, size, offset), context);
             return OK;
             break;
         case IO_VFS_FS_PHYSICAL:
@@ -579,19 +563,17 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
     ASSERT(path && linkDestination);
     if(IoVfsCheckIfNodeExists(path))
         return IO_FILE_ALREADY_EXISTS;
-    
-    char *file;
-    file = IoVfsDetachFileName(path);
 
     IoVfsLockTreeForWriting();
 
-    struct IoVfsNode *parent = IoVfsGetNode(path);
+    struct IoVfsNode *parent = IoVfsGetNodeEx(path, true);
     if(NULL == parent)
     {
         IoVfsUnlockTree();
         ERROR("Link path %s not found\n", path);
         return IO_FILE_NOT_FOUND;
     }
+
     if(IO_VFS_DIRECTORY != parent->type)
     {
         IoVfsUnlockTree();
@@ -606,7 +588,7 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
         return IO_FILE_NOT_FOUND;
     }
     
-    struct IoVfsNode *link = IoVfsCreateNode(file);
+    struct IoVfsNode *link = IoVfsCreateNode(CmGetFileName(path));
     if(NULL == link)
     {
         IoVfsUnlockTree();

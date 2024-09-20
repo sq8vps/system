@@ -247,8 +247,9 @@ PRIO HalRaisePriorityLevel(PRIO prio)
     if(prio > HAL_PRIORITY_LEVEL_HIGHEST)
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
     PRIO old = HalGetTaskPriority();
-    if(prio < old)
-        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
+    barrier();
+    if(prio < HalGetProcessorPriority())
+        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, HalGetProcessorPriority(), 0, 0);
     HalSetTaskPriority(prio);
     return old;
 }
@@ -257,7 +258,8 @@ void HalLowerPriorityLevel(PRIO prio)
 {
     if(prio > HAL_PRIORITY_LEVEL_HIGHEST)
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
-    PRIO old = HalGetTaskPriority();
+    PRIO old = HalGetProcessorPriority();
+    barrier();
     if(prio > old)
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
     HalSetTaskPriority(prio);

@@ -127,11 +127,15 @@ uint32_t IoVfsGetMaxFileNameLength(void);
 STATUS IoVfsInit(void);
 
 /**
- * @brief Detach file name from given path
- * @param *path Input: path to detach the file name from, output: path without file name
- * @return File name pointer
+ * @brief Get VFS node for given path, optionally excluding the last path element
+ * @param *path Path string
+ * @param excludeLastElement True to exclude last path element
+ * @return VFS node or NULL if not found
+ * @attention This function resolves links along the path.
+ * If the final file is a link, it is not resolved.
 */
-char* IoVfsDetachFileName(char *path);
+struct IoVfsNode *IoVfsGetNodeEx(char *path, bool excludeLastElement);
+
 /**
  * @brief Get VFS node for given path
  * @param *path Path string
@@ -139,7 +143,7 @@ char* IoVfsDetachFileName(char *path);
  * @attention This function resolves links along the path.
  * If the final file is a link, it is not resolved.
 */
-struct IoVfsNode* IoVfsGetNode(char *path);
+#define IoVfsGetNode(path) IoVfsGetNodeEx(path, false)
 
 /**
  * @brief Check if VFS node with given path exists
@@ -157,13 +161,32 @@ bool IoVfsCheckIfNodeExists(char *path);
 bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, char *name);
 
 /**
- * @brief Insert previously prepared node at given position in the tree
+ * @brief Insert previously prepared node at given path
  * @param *node VFS node to insert
- * @param *path Parent directory path to insert the node to
+ * @param *path Path to insert the file to, either including the target file name or not
+ * @param isFilePath Set to true if \a *path is a file path rather than parent directory path
  * @return Status code
  * @warning This function does NOT check if node with given name already exists
 */
-STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path);
+STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path, bool isFilePath);
+
+/**
+ * @brief Insert previously prepared node at given parent directory path
+ * @param *node VFS node to insert
+ * @param *path Parent directory path
+ * @return Status code
+ * @warning This function does NOT check if node with given name already exists
+*/
+#define IoVfsInsertNodeByParentPath(node, path) IoVfsInsertNodeByPath(node, path, false)
+
+/**
+ * @brief Insert previously prepared node at given position
+ * @param *node VFS node to insert
+ * @param *path Target file path. Node name and path file name must match.
+ * @return Status code
+ * @warning This function does NOT check if node with given name already exists
+*/
+#define IoVfsInsertNodeByFilePath(node, path) IoVfsInsertNodeByPath(node, path, true)
 
 /**
  * @brief Insert previously prepared node under given parent node

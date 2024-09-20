@@ -64,10 +64,8 @@ END_EXPORT_API
 
 /**
  * @brief Initialize dynamic kernel memory module
- * @param *kernelArgs Kernel entry arguments
- * @warning Prepares trees taking into account space reserved for initial ramdisk.
 */
-INTERNAL void MmInitDynamicMemory(struct KernelEntryArgs *kernelArgs);
+INTERNAL void MmInitDynamicMemory();
 
 /**
  * @}

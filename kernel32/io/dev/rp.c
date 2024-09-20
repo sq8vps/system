@@ -51,7 +51,7 @@ STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
     
     CmMemset(*queue, 0, sizeof(**queue));
     (*queue)->callback = callback;
-    (*queue)->queueLock.lock = 0;
+    (*queue)->queueLock = (KeSpinlock)KeSpinlockInitializer;
     return OK;
 }
 

@@ -32,7 +32,7 @@ struct KeTaskControlBlock;
 */
 typedef struct KeSpinlock
 {
-    uint32_t lock;
+    volatile uint32_t lock;
 } KeSpinlock;
 
 

@@ -160,12 +160,13 @@ STATUS ItInit(void)
 void ItHandleIrq(uint8_t vector)
 {
 	HalEnableInterrupts();
-	if(HalIsInterruptSpurious())                                               
-        return;            
-	for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)        
-	{                                
-		if(ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].enabled)              
-			ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].callback(ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].context);
+	if(!HalIsInterruptSpurious())                                               
+	{
+		for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)        
+		{                                
+			if(ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].enabled)              
+				ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].callback(ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].consumer[i].context);
+		}
 	}
 	HalClearInterruptFlag(vector);
 	KeProcessDpcQueue();

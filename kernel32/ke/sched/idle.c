@@ -8,7 +8,8 @@ NORETURN static void KeIdleWorker(void *unused)
 {
     while(1)
     {
-        HALT();
+        KeTaskYield();
+        //HALT();
     }
 }
 
@@ -29,6 +30,8 @@ STATUS KeCreateIdleTask(void)
         if(OK != ret)
             return ret;
     }
+
+    tcb->flags |= KE_TASK_FLAG_IDLE;
     
     //set lowest possible priority for this task
     if(OK != (ret = KeChangeTaskMajorPriority(tcb, PRIORITY_LOWEST)))

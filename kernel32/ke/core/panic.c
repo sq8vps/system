@@ -75,7 +75,8 @@ NORETURN void KePanicInternal(uintptr_t ip, uintptr_t code)
 NORETURN void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
     HalHaltAllCpus();
-    HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+    //HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+    HalDisableInterrupts();
     printPanic(ip, code);
     BootVgaPrintString("Additional informations: ");
     printHex(arg1);

@@ -47,7 +47,7 @@ struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t s
         uintptr_t physical;
         uintptr_t bytesToBoundary;
         if(OK != HalGetPhysicalAddress((uintptr_t)memory, &physical))
-            goto _MmBuildMemoryDescriptorListFailure;
+            goto MmBuildMemoryDescriptorListFailure;
 
         if(physical & (MM_PAGE_SIZE - 1))
             bytesToBoundary = ALIGN_UP(physical, MM_PAGE_SIZE) - physical;
@@ -69,7 +69,7 @@ struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t s
         {
             d->next = MmAllocateMemoryDescriptor();
             if(NULL == d->next)
-                goto _MmBuildMemoryDescriptorListFailure;
+                goto MmBuildMemoryDescriptorListFailure;
             
             d = d->next;
             d->physical = physical;
@@ -83,7 +83,7 @@ struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t s
     }
     return head;
 
-_MmBuildMemoryDescriptorListFailure:
+MmBuildMemoryDescriptorListFailure:
     MmFreeMemoryDescriptorList(head);
     return NULL;
 }

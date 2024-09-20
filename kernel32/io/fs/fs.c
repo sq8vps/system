@@ -140,7 +140,7 @@ STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flags, stru
     *handle = NULL;
 
     IoVfsLockTreeForWriting();
-    struct IoVfsNode *fileNode = IoVfsGetNode(file);
+    const struct IoVfsNode *fileNode = IoVfsGetNode(file);
     if(NULL == fileNode)
         status = IO_FILE_NOT_FOUND;
     else if((IO_VFS_FILE != fileNode->type) && (IO_VFS_DEVICE != fileNode->type))
@@ -364,8 +364,6 @@ STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint
         
         KeTaskYield();
     }
-    else
-        
 
     *actualSize = handle->operation.actualSize;
     return handle->operation.status;
@@ -410,7 +408,6 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *bu
         
         KeTaskYield();
     }
-    else
         
 
     *actualSize = h->operation.actualSize;
