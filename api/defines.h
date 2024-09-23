@@ -233,7 +233,7 @@ typedef uint64_t time_t;
 /**
  * @brief Memory barrier
  */
-#define barrier() ASM(""::: "memory")
+#define barrier() ASM("" ::: "memory")
 
 /**
  * @brief Check if character \a x is alphanumeric

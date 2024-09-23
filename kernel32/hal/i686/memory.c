@@ -358,7 +358,7 @@ void I686InitVirtualAllocator(void)
 		pageDir[i >> 22] = pta | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
 		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i >> 22, 0)));
 		//now the table can be accessed
-		CmMemset(&PAGETABLE(i >> 22, 0), 0, MM_PAGE_TABLE_SIZE);
+		CmMemsetV(&PAGETABLE(i >> 22, 0), 0, MM_PAGE_TABLE_SIZE);
 	}
 }
 
@@ -396,7 +396,7 @@ STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress,
 	CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
 
 	//copy entries for kernel space
-	CmMemcpy(&pd[MM_KERNEL_SPACE_START >> 22], 
+	CmMemcpyV(&pd[MM_KERNEL_SPACE_START >> 22], 
 		&pageDir[MM_KERNEL_SPACE_START >> 22], 
 		((MM_KERNEL_SPACE_SIZE >> 22) - 1) * sizeof(MmPageDirectoryEntry));
 	

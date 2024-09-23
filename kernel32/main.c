@@ -69,35 +69,35 @@ static void KeInitProcess(void *context)
 {
 	STATUS ret = OK;
 
-	// if(OK != ExLoadKernelSymbols(context))
-	// {
-	// 	PRINT("Kernel symbol loading failed. Unable to boot.\n");
-	// 	while(1)
-	// 		;
-	// }
+	if(OK != ExLoadKernelSymbols(context))
+	{
+		PRINT("Kernel symbol loading failed. Unable to boot.\n");
+		while(1)
+			;
+	}
 
-	// if(OK != (ret = IoInitrdInit(context)))
-	// {
-	// 	PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
-	// 	while(1)
-	// 		;
-	// }
+	if(OK != (ret = IoInitrdInit(context)))
+	{
+		PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
+		while(1)
+			;
+	}
 
-	// if(OK != (ret = IoInitrdMount(INITRD_MOUNT_POINT)))
-	// 	FAIL_BOOT("initial ramdisk mount failed");
+	if(OK != (ret = IoInitrdMount(INITRD_MOUNT_POINT)))
+		FAIL_BOOT("initial ramdisk mount failed");
 
-	// if(OK != IoInitDeviceManager("ACPI"))
-	// {
-	// 	PRINT("FAILURE");
-	// }
+	if(OK != IoInitDeviceManager("ACPI"))
+	{
+		PRINT("FAILURE");
+	}
 
-	// KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
-	// KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
-	// KeEnableTask(t1);
-	// KeEnableTask(t2);
+	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
+	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
+	KeEnableTask(t1);
+	KeEnableTask(t2);
 
-	// KeSleep(MS_TO_NS(4000));
-	// IoMountVolume("/dev/hda0", "disk1");
+	KeSleep(MS_TO_NS(4000));
+	IoMountVolume("/dev/hda0", "disk1");
 
 	// struct IoFileHandle *h;
 	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
@@ -148,7 +148,7 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 	IoFsInit();
 	KeDpcInitialize();
 
-	//KeStartScheduler(KeInitProcess, mb2h);
+	KeStartScheduler(KeInitProcess, mb2h);
 
 	//never reached
 	while(1)

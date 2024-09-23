@@ -23,7 +23,7 @@ static struct
 IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH, .lock = KeRwLockInitializer};
 
 
-struct IoVfsNode* IoVfsCreateNode(char *name)
+struct IoVfsNode* IoVfsCreateNode(const char *name)
 {
     if(CmStrlen(name) > IoVfsState.maxFileNameLength)
         return NULL;
@@ -234,13 +234,13 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
     return NULL;
 }
 
-static inline struct IoVfsNode *IoVfsGetNodeFromCache(struct IoVfsNode *parent, char *name)
+static inline struct IoVfsNode *IoVfsGetNodeFromCache(const struct IoVfsNode *parent, const char *name)
 {
     ASSERT(parent && name);
 
     //"." file, which points to the same directory
     if(0 == CmStrcmp(name, "."))
-        return parent;
+        return (struct IoVfsNode*)parent;
     
     //".." file, which points to parent directory
     if(0 == CmStrcmp(name, ".."))
@@ -259,7 +259,7 @@ static inline struct IoVfsNode *IoVfsGetNodeFromCache(struct IoVfsNode *parent, 
     return NULL;
 }
 
-static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, char *name)
+static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, const char *name)
 {
     ASSERT(parent && name);
     STATUS status = OK;
@@ -295,7 +295,7 @@ static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, char *na
         return NULL;
 }
 
-struct IoVfsNode *IoVfsGetNodeEx(char *path, bool excludeLastElement)
+struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement)
 {
     struct IoVfsNode *node = IoVfsState.root;
 
@@ -426,7 +426,7 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path, bool isFilePath
     return OK;
 }
 
-bool IoVfsCheckIfNodeExists(char *path)
+bool IoVfsCheckIfNodeExists(const char *path)
 {
     IoVfsLockTreeForWriting();
     bool status = (NULL != IoVfsGetNode(path));
@@ -434,7 +434,7 @@ bool IoVfsCheckIfNodeExists(char *path)
     return status;
 }
 
-bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, char *name)
+bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, const char *name)
 {
     return (NULL != IoVfsGetNodeByParent(parent, name));
 }

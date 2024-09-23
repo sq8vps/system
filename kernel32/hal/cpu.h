@@ -22,6 +22,11 @@ typedef struct
 #define HAL_CPU_ALL (HalCpuBitmap){.u32[0 ... CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8) - 1] = UINT32_MAX}
 
 /**
+ * @brief A constant representing no CPUs in \a HalCpuBitmap
+ */
+#define HAL_CPU_NONE (HalCpuBitmap){.u32[0 ... CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8) - 1] = 0}
+
+/**
  * @brief Get number of bits set in \a HalCpuBitmap
  * @param bitmap CPU bitmap
  * @param count Variable to store the count to

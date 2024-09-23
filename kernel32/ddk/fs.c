@@ -5,7 +5,7 @@
 #include "assert.h"
 #include "io/fs/vfs.h"
 
-STATUS FsGetNode(struct IoVfsNode *parent, char *name, struct IoVfsNode **node)
+STATUS FsGetNode(const struct IoVfsNode *parent, const char *name, struct IoVfsNode **node)
 {
     STATUS status = OK;
 
@@ -47,7 +47,7 @@ STATUS FsGetNode(struct IoVfsNode *parent, char *name, struct IoVfsNode **node)
     return status;
 }
 
-STATUS FsGetNodeChildren(struct IoVfsNode *node, struct IoVfsNode **children)
+STATUS FsGetNodeChildren(const struct IoVfsNode *node, struct IoVfsNode **children)
 {
     STATUS status = OK;
 

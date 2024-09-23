@@ -51,7 +51,7 @@ KeStoreTaskContext:
     ;check if KeCurrentCpuState is NULL
     ;if so, we are probably just starting and the currently executed code is not a task
     ;just drop all data and switch to the next task, the scheduler is aware of it
-    test edi,0xFFFFFFFF
+    test edi,edi
     jz .skip
 
     mov [edi + CPUState.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
@@ -150,13 +150,13 @@ HalPerformTaskSwitch:
 %endif
 
     mov dl,[KeTaskSwitchPending+eax]
-    test dl,0xFF
+    test dl,dl
     jz .returnFromSwitch
 
     mov byte [KeTaskSwitchPending+eax],0
 
     mov edx,[KeNextTask+4*eax]
-    test edx,0xFFFFFFFF ;check if there is a next task
+    test edx,edx ;check if there is a next task
     ;if not, then continue with the current one
     jz .returnFromSwitch
 

@@ -1,6 +1,7 @@
 #include "idle.h"
 #include "ke/task/task.h"
 #include "sched.h"
+#include "hal/arch.h"
 
 static struct KeTaskControlBlock *KeIdleTaskMain = NULL;
 
@@ -8,8 +9,8 @@ NORETURN static void KeIdleWorker(void *unused)
 {
     while(1)
     {
-        KeTaskYield();
-        //HALT();
+        //KeTaskYield();
+        HALT();
     }
 }
 

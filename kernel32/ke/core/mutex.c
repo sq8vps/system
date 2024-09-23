@@ -12,9 +12,7 @@ static KeSpinlock listLock = KeSpinlockInitializer;
 
 PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 {
-    ASM("mfence" : : : "memory");
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_SPINLOCK);
-    barrier();
 #ifndef SMP
     if(0 != spinlock->lock)
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
@@ -42,7 +40,6 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 
 void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 {
-    ASM("mfence" : : : "memory");
 #ifndef SMP
     if(0 == spinlock->lock)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
@@ -52,7 +49,6 @@ void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
     __atomic_store_n(&spinlock->lock, 0, __ATOMIC_SEQ_CST);
 #endif
-    barrier();
     HalLowerPriorityLevel(previousPriority);
 }
 

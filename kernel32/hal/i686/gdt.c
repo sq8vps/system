@@ -118,7 +118,7 @@ void GdtInit(void)
 void GdtApply(void)
 {
     ASM("lgdt %0" : : "m" (I686GdtRegister) : "memory"); //load new GDT register
-    ASM("jmp %0:.1\n.1:" : : "X" (GDT_OFFSET(GDT_KERNEL_CS)) : "memory"); //perform far jump with code selector, CS can't be set directly
+    ASM("jmp %0:.1%=\n.1%=:" : : "X" (GDT_OFFSET(GDT_KERNEL_CS)) : "memory"); //perform far jump with code selector, CS can't be set directly
     ASM("mov ds,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory"); //set up segment registers
     ASM("mov ss,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
     ASM("mov es,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");

@@ -21,10 +21,10 @@ STATUS I686InitTimeController(void)
 
 void I686NotifyLapicTimerStarted(void)
 {
-    // if(CpuidCheckIfTscInvariant())
-    //     HalUseTsc = true;
-    // else
-    //     HalUseTsc = false;
+    if(CpuidCheckIfTscInvariant())
+        HalUseTsc = true;
+    else
+        HalUseTsc = false;
 }
 
 uint64_t HalGetTimestamp(void)
@@ -58,7 +58,7 @@ STATUS HalConfigureSystemTimer(uint8_t vector)
 
 STATUS HalStartSystemTimer(uint64_t time)
 {
-    //ApicStartSystemTimer(time);
+    ApicStartSystemTimer(time);
     return OK;
 }
 

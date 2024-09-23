@@ -23,11 +23,9 @@ void KeDestroyTCB(struct KeTaskControlBlock *tcb)
 
 struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, const char *path)
 {
-    struct KeTaskControlBlock *tcb = MmAllocateKernelHeap(sizeof(struct KeTaskControlBlock));
+    struct KeTaskControlBlock *tcb = MmAllocateKernelHeapZeroed(sizeof(struct KeTaskControlBlock));
     if(NULL == tcb)
         return NULL;
-    
-    CmMemset((void*)tcb, 0, sizeof(*tcb));
 
     ObInitializeObjectHeader(tcb);
 

@@ -168,9 +168,6 @@ STATUS I686StartProcessors(void)
     return OK;
 }
 
-#include "mm/dynmap.h"
-#include "mm/palloc.h"
-
 void I686CpuBootstrap(uint32_t cpuId)
 {
     __atomic_fetch_add(&I686StartedCpuCount, 1, __ATOMIC_SEQ_CST);
@@ -186,17 +183,12 @@ void I686CpuBootstrap(uint32_t cpuId)
     while(0 == __atomic_load_n(&I686ApCanContinue, __ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 
+    KeJoinScheduler();
+    
     while(1)
     {
-        void *t = MmMapDynamicMemory(0x1000, 10000, 0);
-        MmUnmapDynamicMemory(t);
+        KeTaskYield();
     }
-    // KeJoinScheduler();
-    
-    // while(1)
-    // {
-    //     KeTaskYield();
-    // }
 }
 
 uint16_t HalGetCurrentCpu(void)

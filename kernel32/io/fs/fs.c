@@ -140,7 +140,7 @@ STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flags, stru
     *handle = NULL;
 
     IoVfsLockTreeForWriting();
-    const struct IoVfsNode *fileNode = IoVfsGetNode(file);
+    struct IoVfsNode *fileNode = IoVfsGetNode(file);
     if(NULL == fileNode)
         status = IO_FILE_NOT_FOUND;
     else if((IO_VFS_FILE != fileNode->type) && (IO_VFS_DEVICE != fileNode->type))

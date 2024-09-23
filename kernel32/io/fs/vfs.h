@@ -134,7 +134,7 @@ STATUS IoVfsInit(void);
  * @attention This function resolves links along the path.
  * If the final file is a link, it is not resolved.
 */
-struct IoVfsNode *IoVfsGetNodeEx(char *path, bool excludeLastElement);
+struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement);
 
 /**
  * @brief Get VFS node for given path
@@ -150,7 +150,7 @@ struct IoVfsNode *IoVfsGetNodeEx(char *path, bool excludeLastElement);
  * @param *path Node path
  * @return True if exists, false otherwise
 */
-bool IoVfsCheckIfNodeExists(char *path);
+bool IoVfsCheckIfNodeExists(const char *path);
 
 /**
  * @brief Check if VFS node with given name exists under a given parent
@@ -158,7 +158,7 @@ bool IoVfsCheckIfNodeExists(char *path);
  * @param *name Node name
  * @return True if exists, false otherwise
 */
-bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, char *name);
+bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, const char *name);
 
 /**
  * @brief Insert previously prepared node at given path
@@ -270,7 +270,7 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64
  * @param *name Node name
  * @return Node pointer or NULL on failure
 */
-struct IoVfsNode* IoVfsCreateNode(char *name);
+struct IoVfsNode* IoVfsCreateNode(const char *name);
 
 
 /**

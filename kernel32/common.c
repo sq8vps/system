@@ -72,6 +72,18 @@ void* CmMemcpy(void *to, const void *from, uintptr_t n)
     return to;
 }
 
+volatile void* CmMemcpyV(volatile void *to, volatile const void *from, uintptr_t n)
+{
+    volatile uint8_t *cto = (volatile uint8_t*)to;
+    volatile const uint8_t *cfrom = (volatile const uint8_t*)from;
+    while(n)
+    {
+        *(cto++) = *(cfrom++);
+        --n;
+    }
+    return to;
+}
+
 uint64_t CmAbs(int64_t x)
 {
     return (x > 0) ? x : -x;
@@ -80,6 +92,17 @@ uint64_t CmAbs(int64_t x)
 void* CmMemset(void *ptr, int c, uintptr_t num)
 {
     uint8_t *p = ptr;
+    while(num)
+    {
+        *p++ = (uint8_t)c;
+        num--;
+    }
+    return ptr;
+}
+
+volatile void* CmMemsetV(volatile void *ptr, int c, uintptr_t num)
+{
+    volatile uint8_t *p = ptr;
     while(num)
     {
         *p++ = (uint8_t)c;

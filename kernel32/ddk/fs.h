@@ -39,13 +39,13 @@ union FsGetRequest
 {
     struct
     {
-        struct IoVfsNode *parent;
-        char *name;
+        const struct IoVfsNode *parent;
+        const char *name;
         struct IoVfsNode *node;
     } getNode;
     struct
     {
-        struct IoVfsNode *node;
+        const struct IoVfsNode *node;
         struct IoVfsNode *children;
     } getChildren;
 };
@@ -59,7 +59,7 @@ END_EXPORT_API
  * @param **node Output node or NULL if not found (check return code)
  * @return Status code
 */
-INTERNAL STATUS FsGetNode(struct IoVfsNode *parent, char *name, struct IoVfsNode **node);
+INTERNAL STATUS FsGetNode(const struct IoVfsNode *parent, const char *name, struct IoVfsNode **node);
 
 /**
  * @brief Get VFS node children list
@@ -67,6 +67,6 @@ INTERNAL STATUS FsGetNode(struct IoVfsNode *parent, char *name, struct IoVfsNode
  * @param **children Output children list or NULL if no children (check return code)
  * @return Status code
 */
-INTERNAL STATUS FsGetNodeChildren(struct IoVfsNode *node, struct IoVfsNode **children);
+INTERNAL STATUS FsGetNodeChildren(const struct IoVfsNode *node, struct IoVfsNode **children);
 
 #endif

@@ -43,13 +43,13 @@ union FsGetRequest
 {
     struct
     {
-        struct IoVfsNode *parent;
-        char *name;
+        const struct IoVfsNode *parent;
+        const char *name;
         struct IoVfsNode *node;
     } getNode;
     struct
     {
-        struct IoVfsNode *node;
+        const struct IoVfsNode *node;
         struct IoVfsNode *children;
     } getChildren;
 };

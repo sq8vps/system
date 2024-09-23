@@ -41,7 +41,7 @@ void *MmReserveDynamicMemory(uintptr_t n);
  * @return Count of bytes previously reserved
  * @attention This function does not unmap the memory.
 */
-uintptr_t MmFreeDynamicMemoryReservation(void *ptr);
+uintptr_t MmFreeDynamicMemoryReservation(const void *ptr);
 
 
 /**
@@ -58,7 +58,7 @@ void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
  * @brief Unmap dynamic kernel memory
  * @param *ptr Memory pointer (from MmMapDynamicMemory)
 */
-void MmUnmapDynamicMemory(void *ptr);
+void MmUnmapDynamicMemory(const void *ptr);
 
 END_EXPORT_API
 

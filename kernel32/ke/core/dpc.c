@@ -129,9 +129,9 @@ void KeProcessDpcQueue(void)
     if(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
     {
         KeDpcProcess(cpu);
-        // HalLowerPriorityLevel(dpcPrio);
-        // HalPerformTaskSwitch();
-        // return;
+        HalLowerPriorityLevel(dpcPrio);
+        HalPerformTaskSwitch();
+        return;
     }
     HalLowerPriorityLevel(dpcPrio);
 }

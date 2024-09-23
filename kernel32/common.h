@@ -68,7 +68,6 @@ int CmStrcmp(const char *s1, const char *s2);
 */
 int CmStrncmp(const char *s1, const char *s2, int n);
 
-
 /**
  * @brief Copy memory
  * @param to Destination buffer
@@ -78,6 +77,14 @@ int CmStrncmp(const char *s1, const char *s2, int n);
 */
 void* CmMemcpy(void *to, const void *from, uintptr_t n);
 
+/**
+ * @brief Copy volatile memory
+ * @param to Destination buffer
+ * @param from Source buffer
+ * @param n Number of bytes to copy
+ * @return Destination buffer
+*/
+volatile void* CmMemcpyV(volatile void *to, volatile const void *from, uintptr_t n);
 
 /**
  * @brief Calculate absolute value of an integer
@@ -95,6 +102,13 @@ uint64_t CmAbs(int64_t x);
 */
 void* CmMemset(void *ptr, int c, uintptr_t num);
 
+/**
+ * @brief Fill volatile memory with given value
+ * @param *ptr Memory pointer
+ * @param c Filler value
+ * @param num Byte count
+*/
+volatile void* CmMemsetV(volatile void *ptr, int c, uintptr_t num);
 
 /**
  * @brief Compare memory

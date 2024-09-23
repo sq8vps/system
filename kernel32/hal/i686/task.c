@@ -33,7 +33,7 @@ STATUS HalCreateThread(struct KeTaskControlBlock *parent, const char *name,
     *tcb = NULL;
     PRIO prio;
 
-    if(NULL != parent->parent) //routine called for a thread, get parent process
+    if(KE_TASK_TYPE_THREAD == parent->type) //routine called for a thread, get parent process
         parent = parent->parent;
 
     prio = ObLockObject(parent);

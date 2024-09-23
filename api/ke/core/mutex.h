@@ -23,7 +23,7 @@ struct KeTaskControlBlock;
 /**
  * @brief Acquire mutex when possible. Wait otherwise (indefinitely).
 */
-#define KE_MUTEX_NO_TIMEOUT 0xFFFFFFFFFFFFFFFF
+#define KE_MUTEX_NO_TIMEOUT UINT64_MAX
 
 
 /**
@@ -114,7 +114,6 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock);
  * @param previousPriority Priority level returned by \a KeAcquireSpinlock()
 */
 void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority);
-
 
 /**
  * @brief Acquire mutex (yielding)
