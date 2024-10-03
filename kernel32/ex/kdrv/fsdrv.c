@@ -3,73 +3,51 @@
 #include "io/dev/dev.h"
 #include "ke/core/mutex.h"
 #include "ob/ob.h"
+#include "io/dev/vol.h"
+#include "mm/heap.h"
 
-struct
-{
-    struct ExDriverObject *list;
-    KeMutex mutex;
-} static ExFsDriverState = {.list = NULL, .mutex = KeMutexInitializer};
-
-
-STATUS ExMountVolume(struct IoDeviceObject *disk)
+STATUS ExMountVolume(struct IoVolumeNode *volume)
 {
     STATUS status = OK;
+    struct ExDriverObjectList *drivers = NULL;
+    uint16_t driverCount = 0;
 
-    struct ExDriverObject *drv = NULL;
-    KeAcquireMutex(&(ExFsDriverState.mutex));
-    if(NULL != ExFsDriverState.list)
+    status = ExLoadKernelDriversForFilesystem(volume, &drivers, &driverCount);
+    if(OK != status)
+        return status;
+    if((0 == driverCount) || (NULL == drivers))
+        return status;
+
+    struct ExDriverObjectList *d = drivers;
+    //first driver is assumed to be the main driver
+    if(NULL == d->this->mount)
     {
-        drv = ExFsDriverState.list;
-        
-        while(drv)
-        {
-            if(NULL != drv->mount)
-            {
-                drv->referenceCount++;
-                
-
-                status = drv->mount(drv, disk);
-
-                
-                drv->referenceCount--;
-                if(OK == status)
-                {
-                    
-                    KeReleaseMutex(&(ExFsDriverState.mutex));
-                    return OK;
-                }
-            }
-            struct ExDriverObject *next = drv->next;
-            
-            drv = next;
-            
-        }
-        
+        status = DEVICE_NOT_AVAILABLE;
+        goto ExMountVolumeFailed;
     }
-    else
+
+    status = d->this->mount(d->this, volume->pdo);
+    if(OK != status)
+        goto ExMountVolumeFailed;
+
+    for(uint16_t i = 1; i < driverCount; i++)
     {
-        status = ExLoadKernelDriver("/initrd/fat.drv", &drv);
+        if(NULL == d)
+            goto ExMountVolumeFailed;
+        status = d->this->addDevice(d->this, volume->fsdo);
         if(OK != status)
-        {
-            KeReleaseMutex(&(ExFsDriverState.mutex));
-            return status;
-        }
-        
-        
-        drv->referenceCount++;
-        
-
-        status = drv->mount(drv, disk);
-
-        
-        drv->referenceCount--;
-        if(OK == status)
-        {
-            ExFsDriverState.list = drv;
-        }
-        
+            goto ExMountVolumeFailed;
+        d = d->next;
     }
 
-    KeReleaseMutex(&(ExFsDriverState.mutex));
+ExMountVolumeFailed:
+    
+    while(NULL != drivers)
+    {
+        d = drivers->next;
+        MmFreeKernelHeap(drivers);
+        drivers = d;
+    }
+
     return status;
 }

@@ -8,4 +8,6 @@
 
 STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk);
 
+STATUS FatVerify(struct ExDriverObject *drv, struct IoDeviceObject *disk);
+
 #endif

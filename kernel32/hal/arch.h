@@ -217,6 +217,11 @@ INTERNAL void HalInitPhase2(void);
 INTERNAL void HalInitPhase3(void);
 
 /**
+ * @brief Call global constructor for C++ support
+ */
+INTERNAL void HalCallConstructors(void);
+
+/**
  * @}
 */
 

@@ -43,7 +43,11 @@ SECTIONS
   . = ALIGN(__KERNEL_PAGE_SIZE);
   .data           :
   {
-    *(.data .data.*)
+    *(.data .data.*);
+    PROVIDE(_ctors = .);
+    *(.ctors .ctors.*);
+    PROVIDE(_ctors_end = .);
+    *(.dtors .dtors.*);
   }
   . = ALIGN(__KERNEL_PAGE_SIZE);
   . = .;

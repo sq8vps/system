@@ -11,11 +11,25 @@ extern "C"
 #include "defines.h"
 
 /**
+ * @brief Free memory allocated on kernel heap
+ * @param ptr Allocated memory address
+*/
+void MmFreeKernelHeap(const void *ptr);
+
+
+/**
+ * @brief Free memory allocated on kernel heap
+ * @param ptr Allocated memory address
+*/
+#define free(ptr) MmFreeKernelHeap(ptr)
+
+/**
  * @brief Allocate aligned memory on kernel heap
  * @param n Count of bytes to allocate
  * @param align Alignment in bytes, must be a power of 2
  * @return Pointer to allocated memory or NULL on failure
 */
+__attribute__((malloc, malloc(MmFreeKernelHeap)))
 void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
 
 
@@ -25,6 +39,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
+__attribute__((malloc, malloc(MmFreeKernelHeap)))
 void *MmAllocateKernelHeap(uintptr_t n);
 
 
@@ -34,8 +49,17 @@ void *MmAllocateKernelHeap(uintptr_t n);
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
+__attribute__((malloc, malloc(MmFreeKernelHeap)))
 void *MmAllocateKernelHeapZeroed(uintptr_t n);
 
+/**
+ * @brief Reallocate memory on kernel heap
+ * @param n Count of bytes to reallocate
+ * @return Pointer to allocated memory or NULL on failure
+ * @note The address returned is aligned to a non-zero multiple of 16 bytes
+*/
+__attribute__((malloc, malloc(MmFreeKernelHeap)))
+void *MmReallocateKernelHeap(void *ptr, uintptr_t n);
 
 /**
  * @brief Allocate memory on kernel heap
@@ -54,19 +78,14 @@ void *MmAllocateKernelHeapZeroed(uintptr_t n);
 */
 #define calloc(n, size) MmAllocateKernelHeapZeroed((n) * (size))
 
-
 /**
- * @brief Free memory allocated on kernel heap
- * @param ptr Allocated memory address
+ * @brief Reallocate memory on kernel heap
+ * @param n Count of bytes to reallocate
+ * @return Pointer to allocated memory or NULL on failure
+ * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-void MmFreeKernelHeap(const void *ptr);
+#define realloc(ptr, n) MmReallocateKernelHeap(ptr, n);
 
-
-/**
- * @brief Free memory allocated on kernel heap
- * @param ptr Allocated memory address
-*/
-#define free(ptr) MmFreeKernelHeap(ptr)
 
 
 #ifdef __cplusplus

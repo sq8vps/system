@@ -214,9 +214,11 @@ char ** CmAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, u
     if(0 == countInTable)
         return NULL;
 
-    char **t = MmAllocateKernelHeapZeroed(sizeof(char*) * countInTable);
+    char **t = MmAllocateKernelHeapZeroed(sizeof(char*) * (countInTable + 1));
     if(NULL == t)
         return NULL;
+    
+    t[countInTable] = NULL;
     
     if(0 == length)
         return t;

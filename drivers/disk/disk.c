@@ -1,5 +1,7 @@
 #include "disk.h"
 #include "mm/mm.h"
+#include "rtl/uuid.h"
+#include "common.h"
 
 STATUS DiskReadWrite(struct IoRp *rp)
 {
@@ -92,4 +94,55 @@ STATUS DiskReadWrite(struct IoRp *rp)
         IoFinalizeRp(rp);
         return OK;
     }
+}
+
+STATUS DiskGetSig(struct DiskData *info, char **signature)
+{
+    char *t = MmAllocateKernelHeap(RTL_UUID_STRING_LENGTH + 64);
+    if(NULL == t)
+        return OUT_OF_RESOURCES;
+    
+    CmStrcpy(t, "DISK:SIG={");
+
+
+    if(!info->isMdo) //if it is a BDO, and since there are no BDOs for partition 0, this must be a partition x
+    {
+        //get partition 0 UUID
+        struct DiskData *part0info = info->part0device->privateData;
+        if(part0info->isGpt)
+        {
+
+        }
+        else if(part0info->isMbr)
+            DiskMbrGetUuid(part0info, t + CmStrlen(t));
+        //no need to check for non-partitioned disks, since we would never end here
+    }
+    else //if this is an MDO, this must be partition 0
+    {
+        if(info->isGpt)
+        {
+
+        }
+        else if(info->isMbr)
+            DiskMbrGetUuid(info, t + CmStrlen(t));
+        else
+        {
+            //fail on non-partitioned disks, since there is no obtainable UUID
+            MmFreeKernelHeap(t);
+            return IO_RP_PROCESSING_FAILED;
+        }
+    }
+
+    if(info->isMdo) //MDO of a partition 0
+    {
+        CmStrcat(t, "}&PAR=0");
+    }
+    else //BDO of partition x
+    {
+        sprintf(t + CmStrlen(t), "}&PAR=%lu", info->partition.number + 1);
+    }
+
+    *signature = t;
+
+    return OK;
 }

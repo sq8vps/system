@@ -172,7 +172,7 @@ bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, const char *name);
  * @return Status code
  * @warning This function does NOT check if node with given name already exists
 */
-STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path, bool isFilePath);
+STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, const char *path, bool isFilePath);
 
 /**
  * @brief Insert previously prepared node at given parent directory path
@@ -289,7 +289,7 @@ void IoVfsDestroyNode(struct IoVfsNode *node);
  * @param *size Pointer to where to store the size
  * @return Status code
 */
-STATUS IoVfsGetSize(char *path, uint64_t *size);
+STATUS IoVfsGetSize(const char *path, uint64_t *size);
 
 
 /**

@@ -82,7 +82,8 @@
 			"stdarg.h": "c",
 			"stdatomic.h": "c",
 			"op.h": "c",
-			"dynmap.h": "c"
+			"dynmap.h": "c",
+			"uuid.h": "c"
 		}
 	}
 }

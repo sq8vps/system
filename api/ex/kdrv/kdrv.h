@@ -15,12 +15,27 @@ extern "C"
 struct ExDriverObject;
 struct IoDeviceObject;
 struct IoRp;
+struct IoVolumeNode;
 
 
 #define DRIVER_ENTRY DriverEntry
 typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 
+/**
+ * @brief Driver was initialized successfully
+ * @warning This flag is set and cleared by the kernel
+ */
+#define EX_DRIVER_OBJECT_FLAG_INITIALIZED 0x80000000
 
+/**
+ * @brief Driver is a filesystem driver
+ * @warning This flag must be set by the driver in \a DriverEntry() routine
+ */
+#define EX_DRIVER_OBJECT_FLAG_FILESYSTEM 0x00000001
+
+/**
+ * @brief Driver object structure
+ */
 struct ExDriverObject
 {
     struct ObObjectHeader objectHeader;
@@ -35,22 +50,28 @@ struct ExDriverObject
     STATUS (*unload)(struct ExDriverObject *driverObject);
     STATUS (*dispatch)(struct IoRp *rp);
     STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject);
+    STATUS (*verifyFs)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk);
     STATUS (*mount)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk);
 
+    char *imageName;
     struct ExDriverObject *next;
     struct ExDriverObject *previous;
 };
 
-
+/**
+ * @brief Helper driver object list passed to \a ExLoadKernelDriver...() caller
+ */
 struct ExDriverObjectList
 {
     struct ExDriverObject *this;
     struct ExDriverObjectList *next;
+    bool isMain;
 };
 
 /**
  * @brief Load and initialize drivers for given device ID
  * @param *deviceId Device ID string
+ * @param **compatbileIds Compatible IDs table of strings
  * @param **drivers Dynamically allocated table of loaded driver objects pointers
  * @param *driverCount Number of loaded drivers
  * @return Status code. \a **drivers is NULL when function fails.
@@ -58,7 +79,19 @@ struct ExDriverObjectList
  * @note Freeing the \a **drivers table must be done by the caller.
  * @note This function reuses already loaded drivers.
 */
-STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectList **drivers, uint16_t *driverCount);
+STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const *compatibleIds, struct ExDriverObjectList **drivers, uint16_t *driverCount);
+
+/**
+ * @brief Load and initialize filesystem drivers for given volume
+ * @param *volume Volume node
+ * @param **drivers Dynamically allocated table of loaded driver objects pointers
+ * @param *driverCount Number of loaded drivers
+ * @return Status code. \a **drivers is NULL when function fails.
+ * @warning This function fails when at least one required driver was not loaded.
+ * @note Freeing the \a **drivers table must be done by the caller.
+ * @note This function reuses already loaded drivers.
+*/
+STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, uint16_t *driverCount);
 
 /**
  * @brief Find driver by memory address (e.g. for debugging)

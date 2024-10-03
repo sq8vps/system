@@ -106,8 +106,8 @@ static struct TarHeader* IoInitrdFindFile(const char *path)
                 {
                     return h;
                 }
-                uint32_t blocks = ALIGN_UP(CmOctalToU32((const char*)h->size), 512) / 512;
-                h += blocks + 1;
+                uint32_t blocks = ALIGN_UP(CmOctalToU32((const char*)h->size) + sizeof(*h), 512) / 512;
+                h += blocks;
             }
             else
                 return NULL;
@@ -147,8 +147,6 @@ STATUS IoInitrdMount(char *mountPoint)
     //sanity check
     if(!CmCheckPath(mountPoint))
         return IO_ILLEGAL_NAME;
-
-    STATUS status = OK;
 
     if(IoVfsCheckIfNodeExists(mountPoint))
         return IO_FILE_ALREADY_EXISTS;

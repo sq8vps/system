@@ -16,7 +16,7 @@
 
 struct KeSchedulerQueue
 {
-    struct KeTaskControlBlock *volatile head;
+    struct KeTaskControlBlock *head;
     KeSpinlock spinlock;
 };
 

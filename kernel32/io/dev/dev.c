@@ -2,7 +2,7 @@
 #include "mm/heap.h"
 #include "common.h"
 #include "assert.h"
-#include "enumeration.h"
+#include "ex/worker.h"
 #include "ke/sched/sched.h"
 #include "io/dev/vol.h"
 #include "ex/kdrv/kdrv.h"
@@ -10,6 +10,17 @@
 
 //root device (ACPI or MP) node
 static struct IoDeviceNode rootNode = {};
+
+struct IoEnumerationQueue
+{
+    struct IoDeviceNode *node;
+    struct IoEnumerationQueue *next;
+};
+static struct IoEnumerationQueue *IoEnumerationQueueHead = NULL;
+static KeSpinlock IoEnumerationQueueLock = KeSpinlockInitializer;
+static struct KeTaskControlBlock *IoEnumerationThread = NULL;
+
+static void IoDeviceEnumeratorWorker(void *unused);
 
 STATUS IoCreateDevice(
     struct ExDriverObject *driver, 
@@ -37,7 +48,7 @@ STATUS IoCreateDevice(
 
 STATUS IoDestroyDevice(struct IoDeviceObject *device)
 {
-    if(device->attachedTo || device->attachedDevice || device->node || (device->flags & IO_DEVICE_FLAG_PERSISTENT))
+    if(device->attachedTo || device->attachedDevice || device->node.deviceNode || device->node.volumeNode || (device->flags & IO_DEVICE_FLAG_PERSISTENT))
         return OPERATION_NOT_ALLOWED;
     
     MmFreeKernelHeap(device);
@@ -73,24 +84,24 @@ STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enume
     node->previous = node;
 
     //attach BDO to a node
-    bdo->node = node;
+    bdo->node.deviceNode = node;
     //store BDO pointer
     node->bdo = bdo;
 
     //store parent node
-    node->parent = enumerator->node;
+    node->parent = enumerator->node.deviceNode;
 
     //update parent node child list
-    if(NULL == enumerator->node->child)
+    if(NULL == enumerator->node.deviceNode->child)
     {
-        enumerator->node->child = node;
+        enumerator->node.deviceNode->child = node;
     }
     else
     {
-        node->next = enumerator->node->child;
-        node->previous = enumerator->node->child->previous;
-        enumerator->node->child->previous->next = node;
-        enumerator->node->child->previous = node;
+        node->next = enumerator->node.deviceNode->child;
+        node->previous = enumerator->node.deviceNode->child->previous;
+        enumerator->node.deviceNode->child->previous->next = node;
+        enumerator->node.deviceNode->child->previous = node;
     }
 
     node->flags |= IO_DEVICE_FLAG_INITIALIZED;
@@ -117,7 +128,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     uint16_t driverCount = 0;
 
     //find and load required drivers
-    if(OK != (ret = ExLoadKernelDriversForDevice(deviceId, &drivers, &driverCount)))
+    if(OK != (ret = ExLoadKernelDriversForDevice(deviceId, compatibleIds, &drivers, &driverCount)))
     {
         node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
         MmFreeKernelHeap(drivers);
@@ -137,9 +148,11 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
             MmFreeKernelHeap(drivers);
             return ret;
         }
-        //TODO: remove!!!!!!
-        if(i == 0)
-            node->mdo = node->bdo->attachedDevice;
+        //store main device object pointer
+        //since the currently processed driver should create main device object,
+        //get the topmost device from the stack
+        if(d->isMain)
+            node->mdo = IoGetDeviceStackTop(node->bdo);
         d = d->next;
     }
     node->flags |= IO_DEVICE_FLAG_READY_TO_RUN;
@@ -159,10 +172,15 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     struct ExDriverObjectList *drivers = NULL;
     uint16_t driverCount = 0;
     
-    if(OK != (ret = IoStartDeviceEnumerationThread()))
+    ret = ExCreateKernelWorker("Device enumeration", IoDeviceEnumeratorWorker, NULL, &IoEnumerationThread);
+    if(OK != ret)
+        return ret;
+
+    ret = IoInitializeVolumeManager();
+    if(OK != ret)
         return ret;
     
-    if(OK != (ret = ExLoadKernelDriversForDevice(rootDeviceId, &drivers, &driverCount)))
+    if(OK != (ret = ExLoadKernelDriversForDevice(rootDeviceId, NULL, &drivers, &driverCount)))
         return ret;
     
     if(1 != driverCount)
@@ -184,7 +202,7 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     rootNode.child = NULL;
     rootNode.next = NULL;
     rootNode.previous = NULL;
-    rootBaseDevice->node = &rootNode;
+    rootBaseDevice->node.deviceNode = &rootNode;
     rootBaseDevice->flags |= IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
     rootNode.flags |= IO_DEVICE_FLAG_INITIALIZED;
@@ -376,4 +394,78 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
     IoFreeRp(rp);
     
     return status;       
+}
+
+static void IoDeviceEnumeratorWorker(void *unused)
+{
+    STATUS status;
+    while(1)
+    {
+        PRIO prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
+        while(NULL != IoEnumerationQueueHead)
+        {
+            struct IoEnumerationQueue *t = IoEnumerationQueueHead;
+            IoEnumerationQueueHead = t->next;
+            KeReleaseSpinlock(&IoEnumerationQueueLock, prio);
+            
+            if((NULL != t->node->mdo)
+                || (OK == IoBuildDeviceStack(t->node)))
+            {
+                if((IO_DEVICE_TYPE_BUS == t->node->mdo->type)
+                    || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
+                {
+                    struct IoRp *rp = IoCreateRp();
+                    if(NULL != rp)
+                    {
+                        rp->code = IO_RP_ENUMERATE;
+                        status = IoSendRp(t->node->mdo, rp);
+                        if(OK == status)
+                        {
+                            IoWaitForRpCompletion(rp);
+                            status = rp->status;
+                        }
+
+                        if(OK != status)
+                        {
+                            t->node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+                        }
+                        
+                        IoFreeRp(rp);
+                    }
+                }
+            }
+            MmFreeKernelHeap(t);
+            
+            prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
+        }
+        KeReleaseSpinlock(&IoEnumerationQueueLock, prio); 
+
+        KeBlockTask(KeGetCurrentTask(), TASK_BLOCK_EVENT);
+        KeTaskYield();
+    }
+}
+
+STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node)
+{
+    struct IoEnumerationQueue *t = MmAllocateKernelHeap(sizeof(*t));
+    if(NULL == t)
+        return OUT_OF_RESOURCES;
+
+    t->node = node;
+    t->next = NULL;
+    PRIO prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
+    if(NULL == IoEnumerationQueueHead)
+    {
+        IoEnumerationQueueHead = t;
+    }
+    else
+    {
+        struct IoEnumerationQueue *last = IoEnumerationQueueHead;
+        while(last->next)
+            last = last->next;
+        last->next = t;
+    }
+    KeReleaseSpinlock(&IoEnumerationQueueLock, prio);
+    KeUnblockTask(IoEnumerationThread);
+    return OK;
 }

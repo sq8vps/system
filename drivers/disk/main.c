@@ -15,6 +15,8 @@ static STATUS DiskDispatch(struct IoRp *rp)
     if(IoGetCurrentRpPosition(rp) == rp->device)
     {
         struct DiskData *info = IoGetCurrentRpPosition(rp)->privateData;
+        //if we are the MDO of partition X, then pass RP down to our BDO,
+        //so the RP is processed in a BDO of partition X or MDO of partition 0 (since there is no BDO for partition 0)
         if(info->isMdo && !info->isPartition0)
         {
             return IoSendRpDown(rp);
@@ -30,6 +32,18 @@ static STATUS DiskDispatch(struct IoRp *rp)
                     return IoSendRpDown(rp);
                 else //is BDO of partition x, call partition 0 MDO
                     return IoSendRp(info->part0device, rp);
+                break;
+            case IO_RP_DISK_CONTROL:
+                switch(rp->payload.deviceControl.code)
+                {
+                    case DISK_GET_SIGNATURE:
+                        rp->status = DiskGetSig(info, (char**)&(rp->payload.deviceControl.data));
+                        return rp->status;
+                        break;
+                    default:
+                        return IO_RP_CODE_UNKNOWN;
+                        break;
+                }
                 break;
             default:
                 rp->status = IO_RP_CODE_UNKNOWN;
@@ -78,8 +92,8 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
     //we were enumerated by a disk BDO, so we are a partition
     if(IO_DEVICE_TYPE_DISK == baseDeviceObject->type)
     {
-        
         info->isPartition0 = 0;
+        IoAttachDevice(device, baseDeviceObject);
         //represent a dummy pass-through device and pass RPs to underlying BDO
     }
     else if(IO_DEVICE_TYPE_STORAGE == baseDeviceObject->type) //if enumerated by the storage driver, then we are a partition 0 (flat disk)
@@ -100,6 +114,8 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         info->index = atomic_fetch_add_explicit(&(DiskDriverState.diskCount), 1, __ATOMIC_RELAXED);
         MmFreeKernelHeap(geo);
 
+        IoAttachDevice(device, baseDeviceObject);
+
         status = DiskCreateDeviceFile(device, info);
         if(OK != status)
             LOG(SYSLOG_ERROR, "Failed to create device file for partition 0 on disk %lu with status 0x%X", info->index, status);
@@ -107,6 +123,8 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         status = IoRegisterVolume(device, 0);
         if(OK != status)
             LOG(SYSLOG_ERROR, "Failed to register volume for partition 0 on disk %lu with status 0x%X", info->index, status);
+
+        DiskInitializeVolume(baseDeviceObject, device, info);
     }
     else //incorrect scenario
     {
@@ -116,13 +134,6 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         return DEVICE_NOT_AVAILABLE;
     }
         
-    IoAttachDevice(device, baseDeviceObject);
-
-    if(info->isPartition0)
-    {
-        DiskInitializeVolume(baseDeviceObject, device, info);
-    }
-
     return OK;
 }
 

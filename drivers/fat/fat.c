@@ -150,7 +150,7 @@ static void FatFillVfsNode(struct IoVfsNode *n, struct FatDirectory *e, struct F
 {
     //store cluster for file data start
     n->ref[1].u32 = ((uint32_t)CmLeU16(e->fstClusLo) | ((uint32_t)CmLeU16(e->fstClusHi) << 16));
-    n->device = vol->vol;
+    n->device = IoGetDeviceStackTop(vol->vol);
     n->fsType = IO_VFS_FS_PHYSICAL;
     n->type = (e->attributes & FAT_ATTR_DIRECTORY) ? IO_VFS_DIRECTORY : IO_VFS_FILE;
     n->flags |= (e->attributes & (FAT_ATTR_HIDDEN | FAT_ATTR_SYSTEM)) ? IO_VFS_FLAG_HIDDEN : 0;

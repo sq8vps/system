@@ -65,6 +65,12 @@ EXPORT_API
  */
 #define CEIL_DIV(dividend, divisor) ((dividend) / (divisor) + (((dividend) % (divisor)) ? 1 : 0))
 
+#ifdef SMP
+#define SMP_VOLATILE volatile
+#else
+#define SMP_VOLATILE
+#endif
+
 /**
  * @brief Kernel status codes
 */
@@ -121,6 +127,8 @@ typedef enum
     EXEC_BAD_DRIVER_CLASS,
     EXEC_PROCESS_PAGE_DIRECTORY_CREATION_FAILURE,
     EXEC_DRIVER_INIT_FAILED,
+    EX_DATABASE_BROKEN,
+    EX_DATABASE_ENTRY_NOT_FOUND,
 
     KE_TSS_ENTRY_LIMIT_EXCEEDED = 0x00004000,
     KE_SCHEDULER_INITIALIZATION_FAILURE,

@@ -255,7 +255,7 @@ STATUS MmFreeMemory(uintptr_t address, uintptr_t size)
             HalUnmapMemory(address);
             MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
         }
-        address -= MM_PAGE_SIZE;
+        address += MM_PAGE_SIZE;
         if(size >= MM_PAGE_SIZE)
             size -= MM_PAGE_SIZE;
         else

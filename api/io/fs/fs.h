@@ -121,7 +121,7 @@ STATUS IoCloseFile(struct KeTaskControlBlock *task, int handleNumber);
  * @param **handle Output file handle
  * @return Status code
 */
-STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle);
+STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle);
 
 
 /**
@@ -274,7 +274,7 @@ STATUS IoWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer
  * @param *file File path
  * @return True if exists, false if not
 */
-bool IoCheckIfFileExists(char *file);
+bool IoCheckIfFileExists(const char *file);
 
 
 /**
@@ -283,7 +283,7 @@ bool IoCheckIfFileExists(char *file);
  * @param *size Pointer to where to store size
  * @return Status code
 */
-STATUS IoGetFileSize(char *file, uint64_t *size);
+STATUS IoGetFileSize(const char *file, uint64_t *size);
 
 
 #ifdef __cplusplus

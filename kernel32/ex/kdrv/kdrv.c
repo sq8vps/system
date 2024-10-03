@@ -10,6 +10,10 @@
 #include "mm/mm.h"
 #include "ex/ksym.h"
 #include <stdbool.h>
+#include "ex/db/db.h"
+#include "config.h"
+#include "ke/core/panic.h"
+#include "io/dev/vol.h"
 
 uint32_t ExAssignDriverId(void);
 void ExFreeDriverId(uint32_t id);
@@ -18,6 +22,7 @@ struct
 {
     struct ExDriverObject *list;
     KeMutex mutex;
+    char *databasePath;
 } static ExKernelDriverState = {.list = NULL, .mutex = KeMutexInitializer};
 
 static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
@@ -30,6 +35,8 @@ static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
 
     if(0 != object->id)
         ExFreeDriverId(object->id);
+    
+    MmFreeKernelHeap(object->imageName);
     
     //last object in the list, deallocate memory and remove completely
     if(NULL == object->next)
@@ -70,85 +77,29 @@ static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
     KeReleaseMutex(&(ExKernelDriverState.mutex));
 }
 
-STATUS ExLoadKernelDriversForDevice(const char *deviceId, struct ExDriverObjectList **drivers, uint16_t *driverCount)
-{
-    if(0 == CmStrcmp("ACPI", deviceId))
-    {
-        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/drivers/acpi.drv", &((*drivers)->this));
-        if(OK != ret)
-            return ret;
-        
-        ret = (*drivers)->this->init((*drivers)->this);
-
-        if(OK == ret)
-            *driverCount = 1;
-        
-        return ret;
-    }
-    else if((0 == CmStrcmp("ACPI/PNP0A03", deviceId)) || (0 == CmStrcmp("ACPI/PNP0A08", deviceId)))
-    {
-        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/drivers/pci.drv", &((*drivers)->this));
-        if(OK != ret)
-            return ret;
-        
-        ret = (*drivers)->this->init((*drivers)->this);
-
-        if(OK == ret)
-            *driverCount = 1;
-        
-        return ret;
-    }
-    else if((0 == CmStrcmp("PCI/8086/7010", deviceId))
-            || (0 == CmStrcmp("PCI/8086/7111", deviceId))
-    )
-    {
-        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/drivers/ide.drv", &((*drivers)->this));
-        if(OK != ret)
-            return ret;
-        
-        ret = (*drivers)->this->init((*drivers)->this);
-
-        if(OK == ret)
-            *driverCount = 1;
-        
-        return ret;
-    }
-    else if(0 == CmStrncmp("DISK", deviceId, 4))
-    {
-        *drivers = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        // (*drivers)->next = MmAllocateKernelHeap(sizeof(struct ExDriverObjectList));
-        (*drivers)->next = NULL;
-        STATUS ret = ExLoadKernelDriver("/initrd/drivers/disk.drv", &((*drivers)->this));
-        if(OK != ret)
-            return ret;
-        // ret = ExLoadKernelDriver("/initrd/partmgr.drv", &((*drivers)->next->this));
-        // if(OK != ret)
-        //     return ret;
-
-        ret = (*drivers)->this->init((*drivers)->this);
-        // ret = (*drivers)->next->this->init((*drivers)->next->this);
-
-        if(OK == ret)
-            *driverCount = 1;
-        
-        return ret; 
-    }
-    
-    return IO_FILE_NOT_FOUND;
-}
-
-STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
+static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject **driverObject)
 {
     STATUS status = OK;
     struct ExDriverObject *object = NULL;
     uint64_t imageSize = 0, freeSize = 0, requiredSize = 0;
     uintptr_t bssSize = 0;
+
+    KeAcquireMutex(&ExKernelDriverState.mutex);
+    struct ExDriverObject *drv = ExKernelDriverState.list;
+    const char *imageName = CmGetFileName(path);
+    while(NULL != drv)
+    {
+        if(!CmStrcmp(drv->imageName, imageName))
+            break;
+        drv = drv->next;
+    }
+    KeReleaseMutex(&ExKernelDriverState.mutex);
+
+    if(NULL != drv)
+    {
+        *driverObject = drv;
+        return OK;
+    }
 
     if(!IoCheckIfFileExists(path))
         return IO_FILE_NOT_FOUND;
@@ -248,14 +199,9 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
     object->id = ExAssignDriverId();
     if(0 == object->id)
     {
-        //TODO: implement correct C++ support and get rid of these hacks
-        object->id = ExAssignDriverId();
-        if(0 == object->id)
-        {
-            object->free = true;
-            status = OUT_OF_RESOURCES;
-            goto LoadKernelDriverFailure;
-        }
+        object->free = true;
+        status = OUT_OF_RESOURCES;
+        goto LoadKernelDriverFailure;
     }
 
     LOG("Driver %s with ID %lu loaded at 0x%lX\n", path, object->id, object->address);
@@ -329,6 +275,16 @@ STATUS ExLoadKernelDriver(char *path, struct ExDriverObject **driverObject)
 		goto LoadKernelDriverFailure;
     }
 
+    const char *c = CmGetFileName(path);
+    object->imageName = MmAllocateKernelHeap(CmStrlen(c) + 1);
+    if(NULL == object->imageName)
+    {
+        status = OUT_OF_RESOURCES;
+        goto LoadKernelDriverFailure;
+    }
+
+    CmStrcpy(object->imageName, c);
+
     status = ((DRIVER_ENTRY_T*)entry)(object);
     if(OK != status)
     {
@@ -350,6 +306,222 @@ LoadKernelDriverFailure:
     return status;
 }
 
+static STATUS ExLoadKernelDrivers(bool fs, const char *deviceId, char * const * compatibleIds, struct IoDeviceObject *disk,
+    struct ExDriverObjectList **drivers, uint16_t *driverCount)
+{
+    STATUS status;
+    struct ExDbHandle *dbConfig = NULL, *driverConfig = NULL;
+    char *dbSearchPath = NULL, *imageSearchPath = NULL;
+    char *dbPath = NULL, *imagePath = NULL;
+    struct ExDriverObject *drv = NULL;
+    
+    uint32_t maxNameLength = IoVfsGetMaxFileNameLength();
+
+    *driverCount = 0;
+
+    dbPath = MmAllocateKernelHeap(maxNameLength);
+    if(NULL == dbPath)
+    {
+        status = OUT_OF_RESOURCES;
+        goto ExLoadKernelDriversForDeviceFailed;
+    }
+
+    imagePath = MmAllocateKernelHeap(maxNameLength);
+    if(NULL == imagePath)
+    {
+        status = OUT_OF_RESOURCES;
+        goto ExLoadKernelDriversForDeviceFailed;
+    }
+
+    KeAcquireMutex(&ExKernelDriverState.mutex);
+    status = ExDbOpen(ExKernelDriverState.databasePath, &dbConfig);
+    KeReleaseMutex(&ExKernelDriverState.mutex);
+
+    if(OK != status)
+        goto ExLoadKernelDriversForDeviceFailed;
+    
+    status = ExDbGetNextString(dbConfig, "DatabasePath", &dbSearchPath);
+    if(OK != status)
+        goto ExLoadKernelDriversForDeviceFailed;
+
+    CmStrncpy(dbPath, dbSearchPath, maxNameLength);
+    char *dbFileNamePart = dbPath + CmStrlen(dbPath);
+
+    status = ExDbGetNextString(dbConfig, "ImagePath", &imageSearchPath);
+    if(OK != status)
+        goto ExLoadKernelDriversForDeviceFailed;
+
+    CmStrncpy(imagePath, imageSearchPath, maxNameLength);
+    char *imageFileNamePart = imagePath + CmStrlen(imagePath);
+
+    while(1) //driver database loop
+    {
+ExLoadKernelDriversLoop:
+        char *t = NULL;
+        status = ExDbGetNextString(dbConfig, "DriverDatabaseName", &t);
+        if(OK != status)
+            goto ExLoadKernelDriversForDeviceFailed;
+        
+        CmStrncpy(dbFileNamePart, t, maxNameLength - (dbFileNamePart - dbPath));
+
+        status = ExDbOpen(dbPath, &driverConfig);
+        if(OK != status)
+        {
+            driverConfig = NULL;
+            continue;
+        }
+
+        status = ExDbGetNextString(driverConfig, "ImageName", &t);
+        if(OK != status)
+        {
+            ExDbClose(driverConfig);
+            continue;
+        }
+        
+        CmStrncpy(imageFileNamePart, t, maxNameLength - (imageFileNamePart - imagePath));
+
+        if(!fs)
+        {
+            bool b = false;
+            if((OK != ExDbGetNextBool(driverConfig, "DeviceDriver", &b)) || (false == b))
+            {
+                ExDbClose(driverConfig);
+                driverConfig = NULL;
+                continue;
+            }
+
+            while(1) //device id loop
+            {
+                status = ExDbGetNextString(driverConfig, "DeviceId", &t);
+                if(OK != status)
+                {
+                    ExDbClose(driverConfig);
+                    driverConfig = NULL;
+                    goto ExLoadKernelDriversLoop;
+                }
+
+                if(!CmStrcmp(t, deviceId))
+                    //TODO: include best-match search
+                    break;
+
+                if(NULL != compatibleIds)
+                {
+                    uint32_t i = 0;
+                    while(NULL != compatibleIds[i])
+                    {
+                        if(!CmStrcmp(compatibleIds[i], t))
+                            goto ExLoadKernelDriversFound;
+                        ++i;
+                    }
+                }
+            }
+        }
+        else //if(fs)
+        {
+            bool b = false;
+            if((OK != ExDbGetNextBool(driverConfig, "FsDriver", &b)) || (false == b))
+            {
+                ExDbClose(driverConfig);
+                driverConfig = NULL;
+                continue;
+            }
+
+            status = ExDbGetNextString(driverConfig, "ImageName", &t);
+            if(OK != status)
+            {
+                ExDbClose(driverConfig);
+                driverConfig = NULL;
+                continue;
+            }
+        }
+
+ExLoadKernelDriversFound:
+        status = ExLoadKernelDriverFromFile(imagePath, &drv);
+        if(OK != status)
+        {
+            ExDbClose(driverConfig);
+            driverConfig = NULL;
+            continue;
+        }
+        
+        if(!(drv->flags & EX_DRIVER_OBJECT_FLAG_INITIALIZED))
+        {
+            if(NULL != drv->init)
+                status = drv->init(drv);
+            else
+                status = OK;
+
+            if(OK != status)
+            {
+                ExDbClose(driverConfig);
+                driverConfig = NULL;
+                continue;
+            }
+            drv->flags |= EX_DRIVER_OBJECT_FLAG_INITIALIZED;
+        }
+
+        if(fs)
+        {
+            if(NULL != drv->verifyFs)
+            {
+                if(OK == drv->verifyFs(drv, disk))
+                    break;
+            }
+
+            ExDbClose(driverConfig);
+            driverConfig = NULL;
+            continue;
+        }
+        else //if(!fs)
+            break;
+    }
+
+    //TODO: implement multiple drivers
+    struct ExDriverObjectList *d = MmAllocateKernelHeap(sizeof(*d));
+    if(NULL == d)
+    {
+        status = OUT_OF_RESOURCES;
+        goto ExLoadKernelDriversForDeviceFailed;
+    }
+
+    d->next = NULL;
+    d->this = drv;
+    d->isMain = true;
+
+    *drivers = d;
+    *driverCount = 1;
+    
+ExLoadKernelDriversForDeviceFailed:
+    MmFreeKernelHeap(dbPath);
+    MmFreeKernelHeap(imagePath);
+
+    ExDbClose(driverConfig);
+    ExDbClose(dbConfig);
+
+    if(OK == status)
+        return OK;
+
+    while(NULL != *drivers)
+    {
+        d = (*drivers)->next;
+        MmFreeKernelHeap(*drivers);
+        *drivers = d;
+    }
+
+    return status;
+}
+
+STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const * compatibleIds, struct ExDriverObjectList **drivers, uint16_t *driverCount)
+{
+    return ExLoadKernelDrivers(false, deviceId, compatibleIds, NULL, drivers, driverCount);
+}
+
+STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, uint16_t *driverCount)
+{
+    return ExLoadKernelDrivers(true, NULL, NULL, volume->pdo, drivers, driverCount);
+}
+
+
 struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address)
 {
     struct ExDriverObject *t = ExKernelDriverState.list;
@@ -366,3 +538,30 @@ struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address)
     return NULL;
 }
 
+STATUS ExInitializeDriverManager(void)
+{
+    struct ExDbHandle *h = NULL;
+    STATUS status;
+    
+    status = ExDbOpen(INITIAL_CONFIG_DATABASE, &h);
+    if(OK != status)
+        FAIL_BOOT("Unable to open initial system configuration database\n");
+    
+    char *t = NULL;
+    status = ExDbGetNextString(h, "DriverDatabasePath", &t);
+    if(OK != status)
+        FAIL_BOOT("Unable to locate initial driver database\n");
+    
+    ExKernelDriverState.databasePath = MmAllocateKernelHeap(CmStrlen(t) + 1);
+    if(NULL == ExKernelDriverState.databasePath)
+        FAIL_BOOT("memory allocation failed");
+    
+    CmStrcpy(ExKernelDriverState.databasePath, t);
+
+    ExDbClose(h);
+
+    if(!IoCheckIfFileExists(ExKernelDriverState.databasePath))
+        FAIL_BOOT("Missing initial driver database\n");
+    
+    return OK;
+}

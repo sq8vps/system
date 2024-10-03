@@ -86,6 +86,9 @@ static void KeInitProcess(void *context)
 	if(OK != (ret = IoInitrdMount(INITRD_MOUNT_POINT)))
 		FAIL_BOOT("initial ramdisk mount failed");
 
+	if(OK != (ret = ExInitializeDriverManager()))
+		FAIL_BOOT("driver manager initialization failed");
+
 	if(OK != IoInitDeviceManager("ACPI"))
 	{
 		PRINT("FAILURE");
@@ -96,17 +99,7 @@ static void KeInitProcess(void *context)
 	KeEnableTask(t1);
 	KeEnableTask(t2);
 
-	KeSleep(MS_TO_NS(4000));
-	IoMountVolume("/dev/hda0", "disk1");
-
-	// struct IoFileHandle *h;
-	// IoOpenKernelFile("/disk1/system/abc.cfg", IO_FILE_APPEND, 0, &h);
-	// char *t = MmAllocateKernelHeapAligned(8192, 512);
-	// CmMemset(t, 'A', 8142);
-	// CmStrcpy(&t[8142], "Test dopisywania z przekroczeniem granicy klastra");
-	// uint64_t actualSize = 0;
-	// IoWriteKernelFileSync(h, t, 8192, 0, &actualSize);
-	// asm("nop");
+	KeSleep(MS_TO_NS(6000));
 
 	while(1)
 	{
@@ -132,6 +125,8 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
 	MmInitPhysicalAllocator(mb2h);
+
+	HalCallConstructors();
 
 	HalInitPhase1();
 

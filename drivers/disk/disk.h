@@ -32,9 +32,13 @@ struct DiskData
 
         uint64_t startBytes;
         uint64_t sizeBytes;
+
+        uint32_t number;
     } partition;
 };
 
 STATUS DiskReadWrite(struct IoRp *rp);
+
+STATUS DiskGetSig(struct DiskData *info, char **signature);
 
 #endif

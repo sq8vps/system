@@ -68,7 +68,8 @@ enum KeTaskType
  */
 enum KeTaskFlags
 {
-    KE_TASK_FLAG_IDLE = 1, /**< Idle task flag */
+    KE_TASK_FLAG_IDLE = 0x01, /**< Idle task flag */
+    KE_TASK_FLAG_CRITICAL = 0x02, /**< Critical task, kernel must panic if terminated */
 };
 
 /**

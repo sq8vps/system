@@ -132,7 +132,7 @@ STATUS IoOpenFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct KeT
     return OK;
 }
 
-STATUS IoOpenKernelFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle)
+STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle)
 {   
     ASSERT(file && handle);
     STATUS status = OK;
@@ -443,7 +443,7 @@ STATUS IoFsInit(void)
         return IO_VFS_INITIALIZATION_FAILED;
 }
 
-bool IoCheckIfFileExists(char *file)
+bool IoCheckIfFileExists(const char *file)
 {
     IoVfsLockTreeForWriting();
     bool status = (NULL != IoVfsGetNode(file));
@@ -451,7 +451,7 @@ bool IoCheckIfFileExists(char *file)
     return status;
 }
 
-STATUS IoGetFileSize(char *file, uint64_t *size)
+STATUS IoGetFileSize(const char *file, uint64_t *size)
 {
     return IoVfsGetSize(file, size);
 }

@@ -1,10 +1,15 @@
 #include "mbr.h"
 #include "assert.h"
 #include "common/order.h"
+#include "disk.h"
+#include "rtl/uuid.h"
+#include "common/order.h"
 
 #define MBR_COPY_PROTECTION_FLAG 0x5A5A
 #define MBR_BOOT_SIGNATURE 0xAA55
 #define MBR_BOOT_FLAG 0x80
+
+#define MBR_UUID_HEADER {0xb9, 0xa4, 0x2e, 0x5b, 0xfc, 0x03, 0x4b, 0x8c, 0x90, 0x37, 0x00, 0x00}
 
 struct RawChs
 {
@@ -78,4 +83,16 @@ bool DiskMbrIsPartitionUsable(struct MbrPartition *part)
             return true;
             break;
     }
+}
+
+STATUS DiskMbrGetUuid(struct DiskData *info, char *str)
+{
+    if(!info->isMbr)
+        return SYSTEM_INCOMPATIBLE;
+    
+    uint8_t uuid[16] = MBR_UUID_HEADER;
+    *(uint32_t*)(uuid + 12) = CmBeU32(info->mbr->signature);
+
+    RtlUuidToString(uuid, str, false);
+    return OK;
 }

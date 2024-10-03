@@ -40,8 +40,15 @@ struct IoVolumeNode
  * @param *mountPoint Mount point name
  * @return Status code
 */
-STATUS IoMountVolume(char *devPath, char *mountPoint);
+STATUS IoMountVolume(const char *devPath, const char *mountPoint);
 
+/**
+ * @brief Mount volume
+ * @param *dev Disk device object
+ * @param *mountPoint Mount point name
+ * @return Status code
+*/
+STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint);
 
 /**
  * @brief Register volume associated with a device

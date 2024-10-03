@@ -220,6 +220,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
         return NULL;
 
     PRIO prio = KeAcquireSpinlock(&MmHeapAllocatorLock);
+    barrier();
     if(NULL != MmHeapBlockHead)
     {
         struct MmHeapBlock *block = MmHeapBlockHead;
@@ -234,6 +235,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
 
                     if (NULL != ret)
                     {
+                        barrier();
                         KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
                         return (void *)((uintptr_t)ret + META_SIZE);
                     }
@@ -252,6 +254,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
                 ret = MmSplitBlock(MmHeapBlockTail, n, align);
                 if (NULL != ret)
                 {
+                    barrier();
                     KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
                     return (void *)((uintptr_t)ret + META_SIZE);
                 }
@@ -261,7 +264,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
 
     ret = MmHeapAllocateNewBlock(n, align);
 
-    
+    barrier();
     KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
     if (NULL != ret)
     {
@@ -291,6 +294,7 @@ void MmFreeKernelHeap(const void *ptr)
         return;
     
     PRIO prio = KeAcquireSpinlock(&(MmHeapAllocatorLock));
+    barrier();
     struct MmHeapBlock *block = (struct MmHeapBlock *)((uintptr_t)ptr - META_SIZE);
     
     ASSERT(!block->free);
@@ -332,7 +336,22 @@ void MmFreeKernelHeap(const void *ptr)
 
     ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
 
+    barrier();
     KeReleaseSpinlock(&MmHeapAllocatorLock, prio);
+}
+
+void *MmReallocateKernelHeap(void *ptr, uintptr_t n)
+{
+    void *p = MmAllocateKernelHeap(n);
+    if(NULL == p)
+        return NULL;
+    if(NULL == ptr)
+        return p;
+    
+    CmMemcpy(p, ptr, n);
+    MmFreeKernelHeap(ptr);
+
+    return p;
 }
 
 #if MM_KERNEL_HEAP_START & (MM_KERNEL_HEAP_ALIGNMENT - 1)

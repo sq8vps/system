@@ -4,8 +4,13 @@
 #include <stdint.h>
 #include "defines.h"
 
-struct IoDeviceObject;
+struct IoVolumeNode;
 
-INTERNAL STATUS ExMountVolume(struct IoDeviceObject *disk);
+/**
+ * @brief Load filesystem driver and build device stack for a volume
+ * @param *volume Volume pointer
+ * @return Status code
+ */
+INTERNAL STATUS ExMountVolume(struct IoVolumeNode *volume);
 
 #endif

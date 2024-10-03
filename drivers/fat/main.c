@@ -53,6 +53,7 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
     driverObject->init = FatInit;
     driverObject->dispatch = FatDispatch;
     driverObject->addDevice = FatAddDevice;
+    driverObject->verifyFs = FatVerify;
     driverObject->mount = FatMount;
     FatLoggingInit();
 

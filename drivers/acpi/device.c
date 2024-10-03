@@ -2,6 +2,7 @@
 #include "kernel.h"
 #include "logging.h"
 #include "common.h"
+#include "acclib.h"
 
 static bool alreadyEnumerated = false;
 static bool pciHostBridgeFound = false; //allow only one PCI/PCI-E host bridge

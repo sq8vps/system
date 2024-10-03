@@ -6,6 +6,7 @@
 #include "ke/core/dpc.h"
 #include "ata.h"
 #include "config.h"
+#include "io/disp/print.h"
 
 #define IDE_DEVICE_ID_PREFIX "DISK"
 #define IDE_DEVICE_ID_GENERIC "GENERIC"

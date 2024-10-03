@@ -26,7 +26,7 @@ typedef uint32_t IoDeviceFlags;
 #define IO_DEVICE_FLAG_PERSISTENT 0x80000000
 #define IO_DEVICE_FLAG_REMOVABLE_MEDIA 0x40000000
 #define IO_DEVICE_FLAG_ENUMERATION_CAPABLE 0x20000000
-
+#define IO_DEVICE_FLAG_NO_AUTOMOUNT 0x10000000
 
 enum IoDeviceType
 {
@@ -48,6 +48,7 @@ struct IoVolumeNode;
 struct IoDeviceResource;
 struct ExDeviceObject;
 struct IoRp;
+struct IoVfsNode;
 
 
 /**
@@ -93,9 +94,9 @@ struct IoDeviceObject
 
     union
     {
-        struct IoDeviceNode *node; /**< Device node this object is a part of */
+        struct IoDeviceNode *deviceNode; /**< Device node this object is a part of */
         struct IoVolumeNode *volumeNode; /**< Parent volume node if this device is a filesystem device */
-    };
+    } node;
 };
 
 
@@ -167,7 +168,6 @@ STATUS IoRegisterDevice(
 */
 STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp);
 
-
 /**
  * @brief Send/pass Request Packet down the stack
  * @param *rp RP to be sent down
@@ -227,6 +227,13 @@ STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource 
  * @return Status code
 */
 STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, union IoBusId *location);
+
+/**
+ * @brief Get top device in the stack containing given device
+ * @param *dev Any device in the stack
+ * @return Topmost stack device
+ */
+struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev);
 
 
 #ifdef __cplusplus

@@ -152,3 +152,29 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
 
     return IoRegisterFilesystem(disk, dev, 0);
 }
+
+STATUS FatVerify(struct ExDriverObject *drv, struct IoDeviceObject *disk)
+{
+    STATUS status = OK;
+    struct FatBpb *bpb = NULL;
+
+    //read BIOS Parameter Block, which sits in the first partition sector
+    status = IoReadDeviceSync(disk, 0, disk->blockSize, (void**)&bpb);
+    if(OK != status)
+        return status;
+
+    bpb->bytesPerSector = CmLeU16(bpb->bytesPerSector);
+    
+    if((CmLeU16(bpb->signature) != FAT_BPB_SIGNATURE_VALUE)
+        || (0 == bpb->bytesPerSector)
+        || (0 == bpb->sectorsPerCluster))
+    {
+        MmFreeKernelHeap(bpb);
+        return IO_UNKNOWN_FILE_SYSTEM;
+    }
+    else
+    {
+        MmFreeKernelHeap(bpb);
+        return OK;
+    }
+}

@@ -149,9 +149,15 @@ static void MmMarkAsUsed(PADDRESS index, PSIZE count)
         for(PSIZE k = 0; k < count; k++)
             BUDDY(i, index + (k << i)) |= BUDDY_BIT(i, index + (k << i)); //mark all blocks
         
-        count >>= 1;
-        if(0 == count)
-            count = 1;
+        if((count & 1) || (0 == count))
+        {
+            count >>= 1;
+            ++count;
+        }
+        else
+        {
+            count >>= 1;
+        }
     }
 }
 
@@ -205,10 +211,12 @@ inline PSIZE MmAllocatePhysicalMemoryFromPool(PSIZE n, PADDRESS *address, uint32
     uint8_t order = MmGetBlockOrderForSize(n); //calculate required order
     PADDRESS index = 0; //block index
     PRIO prio = KeAcquireSpinlock(&MmPhysicalAllocatorLock);
+    barrier();
     while(0 == MmAllocateBlock(order, &index, pool)) //try to allocate biggest matching block
     {
         if(0 == order) //order 0 reached and no block was found - no memory
         {
+            barrier();
             KeReleaseSpinlock(&MmPhysicalAllocatorLock, prio);
             *address = 0;
             return 0;
@@ -216,6 +224,7 @@ inline PSIZE MmAllocatePhysicalMemoryFromPool(PSIZE n, PADDRESS *address, uint32
         order--; //try smaller block if not found
     }
     
+    barrier();
     KeReleaseSpinlock(&MmPhysicalAllocatorLock, prio);
     *address = index * MM_BUDDY_SMALLEST; //calculate physical address
     PSIZE actualSize = MM_BUDDY_SMALLEST << order; //calculate number of bytes actually allocated
@@ -242,6 +251,7 @@ PSIZE MmAllocateContiguousPhysicalMemoryFromPool(PSIZE n, PADDRESS *address, PSI
     PADDRESS freeBlocks = 0;
 
     PRIO prio = KeAcquireSpinlock(&MmPhysicalAllocatorLock);
+    barrier();
 
 	for(PADDRESS i = (HalPhysicalPool[pool].base / MM_BUDDY_SMALLEST) >> 5; 
         i < (((HalPhysicalPool[pool].base + HalPhysicalPool[pool].size) / MM_BUDDY_SMALLEST) >> 5); 
@@ -271,6 +281,7 @@ PSIZE MmAllocateContiguousPhysicalMemoryFromPool(PSIZE n, PADDRESS *address, PSI
                             }
                             
                             MmMarkAsUsed(firstBlock, blocks);
+                            barrier();
                             KeReleaseSpinlock(&MmPhysicalAllocatorLock, prio);
 							*address = firstBlock * MM_BUDDY_SMALLEST;
                             return blocks * MM_BUDDY_SMALLEST;
@@ -285,6 +296,7 @@ PSIZE MmAllocateContiguousPhysicalMemoryFromPool(PSIZE n, PADDRESS *address, PSI
 
 						if(i == MM_BUDDY_ENTRIES) //end of MmBuddy reached, allocation failed
                         {
+                            barrier();
                             KeReleaseSpinlock(&MmPhysicalAllocatorLock, prio);
                             *address = 0;
 							return 0;
@@ -294,6 +306,7 @@ PSIZE MmAllocateContiguousPhysicalMemoryFromPool(PSIZE n, PADDRESS *address, PSI
 			}
 		}
 	}
+    barrier();
     KeReleaseSpinlock(&MmPhysicalAllocatorLock, prio);
     *address = 0;
 	return 0;
@@ -319,10 +332,12 @@ void MmFreePhysicalMemory(PADDRESS address, PSIZE n)
     PADDRESS index = address / MM_PAGE_SIZE; //calculate page number from address
     PSIZE blocks = n / MM_BUDDY_SMALLEST + ((n %  MM_BUDDY_SMALLEST) ? 1 : 0); //calculate number of blocks
     PRIO prio = KeAcquireSpinlock(&MmPhysicalAllocatorLock);
+    barrier();
     for(PSIZE i = 0; i < blocks; i++)
     {
         MmFreeBlock(index + i); //free blocks
     }
+    barrier();
     KeReleaseSpinlock(&MmPhysicalAllocatorLock, prio);
 }
 

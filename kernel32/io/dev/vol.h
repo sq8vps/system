@@ -36,8 +36,15 @@ struct IoVolumeNode
  * @param *mountPoint Mount point name
  * @return Status code
 */
-STATUS IoMountVolume(char *devPath, char *mountPoint);
+STATUS IoMountVolume(const char *devPath, const char *mountPoint);
 
+/**
+ * @brief Mount volume
+ * @param *dev Disk device object
+ * @param *mountPoint Mount point name
+ * @return Status code
+*/
+STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint);
 
 /**
  * @brief Register volume associated with a device
@@ -82,5 +89,11 @@ STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
 STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
 
 END_EXPORT_API
+
+/**
+ * @brief Initialize volume manager
+ * @return Status code
+ */
+INTERNAL STATUS IoInitializeVolumeManager(void);
 
 #endif

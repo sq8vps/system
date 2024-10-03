@@ -107,7 +107,6 @@ typedef struct KeRwLock
 */
 PRIO KeAcquireSpinlock(KeSpinlock *spinlock);
 
-
 /**
  * @brief Release spinlock
  * @param *spinlock Spinlock structure

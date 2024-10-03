@@ -41,6 +41,7 @@ static STATUS PciDispatch(struct IoRp *rp)
             {
                 struct PciDeviceData *info = dev->privateData;
                 rp->payload.location.id = info->address;
+                rp->payload.location.type = IO_BUS_TYPE_PCI;
                 status = OK;
                 break;
             }

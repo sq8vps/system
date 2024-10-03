@@ -8,6 +8,8 @@
         "defines.h": "c",
         "it.h": "c",
         "typeinfo": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "fsdrv.h": "c",
+        "numbers": "c"
     }
 }

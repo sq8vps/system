@@ -7,23 +7,24 @@
 
 #define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (MM_PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
-static struct BstNode *dynamicMemoryTree[3] = {NULL, NULL, NULL};
-#define MM_DYNAMIC_ADDRESS_FREE_TREE dynamicMemoryTree[0]
-#define MM_DYNAMIC_SIZE_FREE_TREE dynamicMemoryTree[1]
-#define MM_DYNAMIC_ADDRESS_USED_TREE dynamicMemoryTree[2]
+static struct BstNode *MmDynamicMemoryTree[3] = {NULL, NULL, NULL};
+#define MM_DYNAMIC_ADDRESS_FREE_TREE MmDynamicMemoryTree[0]
+#define MM_DYNAMIC_SIZE_FREE_TREE MmDynamicMemoryTree[1]
+#define MM_DYNAMIC_ADDRESS_USED_TREE MmDynamicMemoryTree[2]
 
-static KeSpinlock dynamicAllocatorMutex = KeSpinlockInitializer;
+static KeSpinlock MmDynamicAllocatorLock = KeSpinlockInitializer;
 
 void *MmReserveDynamicMemory(uintptr_t n)
 {
     n = ALIGN_UP(n, MM_PAGE_SIZE);
     
-    PRIO prio = KeAcquireSpinlock(&dynamicAllocatorMutex);
+    PRIO prio = KeAcquireSpinlock(&MmDynamicAllocatorLock);
+    barrier();
 
     struct BstNode *region = BstFindGreaterOrEqual(MM_DYNAMIC_SIZE_FREE_TREE, n);
     if(NULL == region) //no fitting region available
     {
-        KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
+        KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
         return NULL;
     }
     //else region is available
@@ -50,11 +51,13 @@ void *MmReserveDynamicMemory(uintptr_t n)
             node->val = n;
     }
 
-    KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
+    barrier();
+    KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
     return (void*)vAddress;
 
 MmMapDynamicMemoryFail:
-    KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
+    barrier();
+    KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
     return NULL;
 }
 
@@ -62,11 +65,12 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
 {
     ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE);
 
-    PRIO prio = KeAcquireSpinlock(&dynamicAllocatorMutex);
+    PRIO prio = KeAcquireSpinlock(&MmDynamicAllocatorLock);
+    barrier();
     struct BstNode *this = BstFindExactMatch(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
     if(NULL == this)
     {
-        KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
+        KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
         return 0;
     }
 
@@ -100,9 +104,10 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
 
     if(unmap && (0 != originalSize))
         if(OK != HalUnmapMemoryEx((uintptr_t)originalPtr, originalSize))
-            KePanic(UNEXPECTED_FAULT);
+            originalSize = 0;
 
-    KeReleaseSpinlock(&dynamicAllocatorMutex, prio);
+    barrier();
+    KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
     return originalSize;
 }
 

@@ -49,6 +49,7 @@ enum IoRpCode
     //device type specific control requests
     IO_RP_STORAGE_CONTROL = 0x2000,
     IO_RP_FILESYSTEM_CONTROL,
+    IO_RP_DISK_CONTROL,
 };
 
 
@@ -126,6 +127,7 @@ struct IoRp
             uint32_t code;
             void *data;
         } deviceControl;
+        
 
     } payload;
     IoRpCompletionCallback completionCallback;

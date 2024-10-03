@@ -12,6 +12,8 @@
 #define MBR_PARTITION_TYPE_EMPTY 0x00
 #define MBR_PARTITION_TYPE_PROTECTIVE 0xEE
 
+struct DiskData;
+
 struct MbrPartition
 {
     uint8_t used : 1;
@@ -34,5 +36,7 @@ struct Mbr
 bool DiskMbrParse(const void *data, struct Mbr *mbr);
 
 bool DiskMbrIsPartitionUsable(struct MbrPartition *part);
+
+STATUS DiskMbrGetUuid(struct DiskData *info, char *str);
 
 #endif

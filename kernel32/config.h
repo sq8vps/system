@@ -20,6 +20,8 @@ EXPORT_API
  */
 #define INITRD_MOUNT_POINT "/initrd"
 
+#define INITIAL_CONFIG_DATABASE (INITRD_MOUNT_POINT "/config.ndb")
+
 END_EXPORT_API
 
 #endif

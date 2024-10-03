@@ -389,7 +389,7 @@ void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent)
     node->next = NULL;
 }
 
-STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, char *path, bool isFilePath)
+STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, const char *path, bool isFilePath)
 {
     ASSERT(node && path);
     if(isFilePath)
@@ -629,7 +629,7 @@ STATUS IoVfsRemoveLink(char *path)
     return OK;
 }
 
-STATUS IoVfsGetSize(char *path, uint64_t *size)
+STATUS IoVfsGetSize(const char *path, uint64_t *size)
 {
     ASSERT(path && size);
     
