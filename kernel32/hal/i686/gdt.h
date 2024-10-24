@@ -49,7 +49,7 @@
 /**
  * @brief Get GDT offset from entry number
  */
-#define GDT_OFFSET(entry) (8 *(entry))
+#define GDT_OFFSET(entry) (8 * (entry))
 
 /**
  * @brief Get GDT entry number from offset
@@ -88,6 +88,7 @@ INTERNAL void GdtLoadTss(uint16_t cpu);
  * @brief Update kernel stack pointer for current CPU
  * @param esp0 New kernel stack pointer
  */
+__attribute__((fastcall))
 INTERNAL void GdtUpdateTss(uintptr_t esp0);
 
 /**

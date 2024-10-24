@@ -20,7 +20,7 @@ STATUS KeCreateIdleTask(void)
     struct KeTaskControlBlock *tcb = NULL;
     if(NULL == KeIdleTaskMain)
     {
-        ret = KeCreateProcessRaw("Idle task", NULL, PL_KERNEL, KeIdleWorker, NULL, &tcb);
+        ret = KeCreateKernelProcess("Idle task", KeIdleWorker, NULL, &tcb);
         if(OK != ret)
             return ret;
         KeIdleTaskMain = tcb;

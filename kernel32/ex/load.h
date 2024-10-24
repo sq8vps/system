@@ -4,6 +4,6 @@
 #include <stdint.h>
 #include "defines.h"
 
-INTERNAL void ExProcessLoadWorker(char *path);
+INTERNAL STATUS ExLoadProcessImage(const char *path, void (**entry)());
 
 #endif

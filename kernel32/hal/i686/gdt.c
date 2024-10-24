@@ -151,6 +151,7 @@ void GdtLoadTss(uint16_t cpu)
     ASM("ltr %0" : : "r" GDT_OFFSET(GDT_TSS(cpu)));
 }
 
+__attribute__((fastcall))
 void GdtUpdateTss(uintptr_t esp0)
 {
     uint16_t register t;

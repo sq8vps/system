@@ -113,6 +113,10 @@ enum Elf32_p_type
 	PT_HIPROC = 0x7fffffff,
 };
 
+#define PF_X 0x1
+#define PF_W 0x2
+#define PF_R 0x4
+
 //ELF program header
 struct Elf32_Phdr
 {

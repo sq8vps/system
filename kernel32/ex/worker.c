@@ -15,7 +15,7 @@ STATUS ExCreateKernelWorker(const char *name, void(*entry)(void *), void *entryC
     PRIO prio = KeAcquireSpinlock(&ExKernelWorkerLock);
     if(NULL == ExKernelWorker)
     {
-        status = KeCreateProcessRaw(name, NULL, PL_KERNEL, entry, entryContext, &ExKernelWorker);
+        status = KeCreateKernelProcess(name, entry, entryContext, &ExKernelWorker);
         *tcb = ExKernelWorker;
     }
     else
@@ -25,7 +25,6 @@ STATUS ExCreateKernelWorker(const char *name, void(*entry)(void *), void *entryC
 
     if(NULL != *tcb)
     {
-
         KeChangeTaskMajorPriority(*tcb, TCB_DEFAULT_MAJOR_PRIORITY);
         KeChangeTaskMinorPriority(*tcb, TCB_DEFAULT_MINOR_PRIORITY);
         KeEnableTask(*tcb);

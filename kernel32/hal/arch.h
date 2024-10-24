@@ -97,6 +97,12 @@ uint16_t HalGetCurrentCpu(void);
 
 END_EXPORT_API
 
+/**
+ * @brief Free task structures
+ * @param *tcb Target Task Control Block
+ * @return Status code
+ */
+INTERNAL STATUS HalFreeTaskStructures(struct KeTaskControlBlock *tcb);
 
 /**
  * @brief Register architecture-specific IRQ
@@ -133,18 +139,18 @@ INTERNAL bool HalIrqIsVectorRelatedToIrq(void);
 INTERNAL STATUS ItInitializeArchitectureInterrupts(void);
 
 /**
- * @brief Create process without default bootstrapping routine
+ * @brief Create process
  * @param *name Process name
- * @param *path Process image path. Not used by the kernel when using this routine.
- * @param pl Initial privilege level
+ * @param *path Process image path
+ * @param pl Process privilege level
  * @param *entry Program entry point
  * @param *entryContext Entry point parameter
  * @param **tcb Output Task Control Block
  * @return Status code
- * @warning Image loading and memory allocation is responsibility of caller.
- * @attention This function returns immidiately. The created process will be started by the scheduler later.
+ * @warning This function is for internal use only. User \a KeCreateKernelProcess() or \a KeCreateUserProcess()
+ * @attention This function returns immidiately
 */
-INTERNAL STATUS HalCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
+INTERNAL STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**

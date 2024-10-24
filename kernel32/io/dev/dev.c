@@ -439,9 +439,8 @@ static void IoDeviceEnumeratorWorker(void *unused)
             prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
         }
         KeReleaseSpinlock(&IoEnumerationQueueLock, prio); 
-
-        KeBlockTask(KeGetCurrentTask(), TASK_BLOCK_EVENT);
-        KeTaskYield();
+        
+        KeEventSleep();
     }
 }
 
@@ -466,6 +465,6 @@ STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node)
         last->next = t;
     }
     KeReleaseSpinlock(&IoEnumerationQueueLock, prio);
-    KeUnblockTask(IoEnumerationThread);
+    KeWakeUpTask(IoEnumerationThread);
     return OK;
 }

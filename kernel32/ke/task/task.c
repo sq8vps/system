@@ -72,15 +72,16 @@ struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, con
     return tcb;
 }
 
-STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
-    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
+STATUS KeCreateKernelProcess(const char *name, void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
 {  
-    return HalCreateProcessRaw(name, path, pl, entry, entryContext, tcb);
+    return HalCreateProcess(name, NULL, PL_KERNEL, entry, entryContext, tcb);
 }
 
-STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb)
+STATUS KeCreateUserProcess(const char *name, const char *path, struct KeTaskControlBlock **tcb)
 {
-    return KeCreateProcessRaw(name, path, pl, (void(*)(void*))ExProcessLoadWorker, (*tcb)->path, tcb);
+    if((NULL == path) || ('\0' == path[0]))
+        return IO_FILE_NOT_FOUND;
+    return HalCreateProcess(name, path, PL_USER, NULL, NULL, tcb);
 }
 
 STATUS KeCreateThread(struct KeTaskControlBlock *parent, const char *name,

@@ -83,7 +83,8 @@
 			"stdatomic.h": "c",
 			"op.h": "c",
 			"dynmap.h": "c",
-			"uuid.h": "c"
+			"uuid.h": "c",
+			"random.h": "c"
 		}
 	}
 }

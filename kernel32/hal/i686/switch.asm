@@ -11,22 +11,30 @@ extern KeNextCpuState
 ;struct KeTaskControlBlock *KeLastTask[]
 extern KeLastTask
 
+;__attribute__((fastcall))
 ;void GdtUpdateTss(uintptr_t esp0)
 ;This is the function that updates the TSS for current CPU
 extern GdtUpdateTss
 
+;__attribute__((fastcall))
 ;void HalStoreMathState(struct KeTaskControlBlock *tcb)
 extern HalStoreMathState
 
+;__attribute__((fastcall))
 ;void HalRestoreMathState(struct KeTaskControlBlock *tcb)
 extern HalRestoreMathState
 
+;__attribute__((fastcall))
 ;void KeAttachLastTask(uint16_t cpu)
 extern KeAttachLastTask
 
 ;volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] - SMP systems
 ;volatile bool KeTaskSwitchPending - UP systems
 extern KeTaskSwitchPending
+
+;volatile bool KeTaskSwitchInProgress[MAX_CPU_COUNT] - SMP systems
+;volatile bool KeTaskSwitchInProgress - UP systems
+extern KeTaskSwitchInProgress
 
 section .text
 
@@ -63,9 +71,8 @@ KeStoreTaskContext:
     push eax
 
     cld
-    push edi
+    mov ecx,edi ;fastcall
     call HalStoreMathState
-    add esp,4
 
     pop eax
 
@@ -79,9 +86,8 @@ KeStoreTaskContext:
 ;This function performs task switch, that is, it loads and executes
 ;the task which TCB is stored in *nextTask.
 ;Also, the stack must contain all GP registers, EFLAGS, CS and EIP.
-;This function does not return to it's caller.
+;This function must be called using jmp!
 KeSwitchToTask:
-    add esp,4 ;remove return address - not needed
 
     mov edi,eax ;get CPU number
     
@@ -90,9 +96,8 @@ KeSwitchToTask:
     mov [KeNextTask+4*edi],DWORD 0
 
     cld
-    push esi
+    mov ecx,esi ;fastcall
     call HalRestoreMathState
-    add esp,4
 
     mov esi,[KeNextCpuState+4*edi]
     mov [KeCurrentCpuState+4*edi],esi
@@ -107,12 +112,10 @@ KeSwitchToTask:
 
     .skipCR3switch:
 
-    ; ;update ESP0 in TSS for privilege level switches
-    ; mov eax,[esi + CPUState.esp0] 
-    ; ;push arguments
-    ; push eax ;esp0
-    ; call GdtUpdateTss
-    ; add esp,4 ;remove arguments
+    ;update ESP0 in TSS for privilege level switches
+    mov ecx,[esi + CPUState.esp0] 
+    ;GdtUpdateTss uses fastcall
+    call GdtUpdateTss
 
     ; restore segment registers
     mov ax,[esi + CPUState.ds]
@@ -123,6 +126,10 @@ KeSwitchToTask:
     mov fs,ax
     mov ax,[esi + CPUState.gs]
     mov gs,ax 
+
+    cli
+    mov byte [KeTaskSwitchInProgress+edi],0
+    sti
 
     pop ebp
     pop edi
@@ -139,7 +146,6 @@ KeSwitchToTask:
 ;This function returns when the calling task is scheduled again
 global HalPerformTaskSwitch:function
 HalPerformTaskSwitch:
-    cli
 
 %ifdef SMP
     str eax ;get TSS offset from task register
@@ -153,12 +159,16 @@ HalPerformTaskSwitch:
     test dl,dl
     jz .returnFromSwitch
 
+    cli
     mov byte [KeTaskSwitchPending+eax],0
 
     mov edx,[KeNextTask+4*eax]
     test edx,edx ;check if there is a next task
     ;if not, then continue with the current one
     jz .returnFromSwitch
+
+    mov byte [KeTaskSwitchInProgress+eax],1
+    sti
 
     sub esp,12 ;make room for EIP, CS and EFLAGS
 
@@ -181,16 +191,15 @@ HalPerformTaskSwitch:
     push eax
 
     cld
-    push ax
+    mov ecx,eax ;fastcall
     call KeAttachLastTask
-    add esp,2
 
     pop eax
 
     ;new task pointer is in nextTask
     ;switch to the new task
     ;pass CPU number in EAX
-    call KeSwitchToTask
+    jmp KeSwitchToTask
 
     ;this point should be unreachable
     jmp $
@@ -199,6 +208,30 @@ HalPerformTaskSwitch:
     sti
     ret
 
+
+;NORETURN void I686StartUserTask(uint16_t ds, uintptr_t esp, uint16_t cs, void (*entry)())
+global I686StartUserTask:function
+I686StartUserTask:
+    ;build stack for iret
+    sub esp,20
+    mov eax,[esp + 24] ;data/stack segment selector
+    mov [esp + 16],eax
+    mov ds,ax
+    mov es,ax
+    mov fs,ax
+    mov gs,ax
+    mov eax,[esp + 28] ;stack pointer
+    mov [esp + 12],eax
+    mov eax,(1 << 1) | (1 << 9) ;eflags (reserved, interrupt enable)
+    mov [esp + 8],eax
+    mov eax,[esp + 32] ;code segment selector
+    mov [esp + 4],eax
+    mov eax,[esp + 36] ;entry point (EIP)
+    mov [esp],eax
+
+    iret
+
+    jmp $
 
 struc CPUState
     .esp resd 1

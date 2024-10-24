@@ -13,15 +13,24 @@
 #include "assert.h"
 #include "config.h"
 #include "time.h"
+#include "rtl/random.h"
+#include "ex/load.h"
 
 #define I686_KERNEL_STACK_SPACE_START (MM_KERNEL_SPACE_START_ADDRESS)
 #define I686_KERNEL_STACK_SPACE_SIZE 0x100000 //1 MiB
 #define I686_SINGLE_KERNEL_STACK_SPACE_SIZE ALIGN_DOWN(I686_KERNEL_STACK_SPACE_SIZE / MAX_KERNEL_MODE_THREADS, MM_PAGE_SIZE)
 #define I686_SINGLE_KERNEL_MAX_STACK_SIZE (I686_SINGLE_KERNEL_STACK_SPACE_SIZE - MM_PAGE_SIZE)
 
+#define I686_USER_SPACE_TOP (MM_KERNEL_SPACE_START_ADDRESS - MM_PAGE_SIZE)
+#define I686_USER_STACK_DEFAULT_BASE I686_USER_SPACE_TOP
+#define I686_USER_STACK_MAX_SIZE (0x1000000 - MM_PAGE_SIZE) //16 MiB - 4 KiB (guard page)
+#define I686_USER_STACK_DEFAULT_SIZE 0x8000 //32 KiB
+
 #define I686_EFLAGS_IF (1 << 9) //interrupt flag
 #define I686_EFLAGS_RESERVED (1 << 1) //reserved EFLAGS bits
 #define I686_EFLAGS_IOPL_USER (3 << 12) //user mode EFLAGS bits
+
+NORETURN void I686StartUserTask(uint16_t ss, uintptr_t esp, uint16_t cs, void (*entry)());
 
 static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context);
 
@@ -163,7 +172,7 @@ HalCreateThreadExit:
     return status;
 }
 
-STATUS HalCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
+STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
 {
     STATUS status = OK;
@@ -171,11 +180,14 @@ STATUS HalCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl
     uint32_t *stack = NULL;
     *tcb = NULL;
 
+    if((NULL == name) && (NULL != path))
+        name = CmGetFileName(path);
+        
     *tcb = KePrepareTCB(pl, name, path);
     if(NULL == *tcb)
     {
         status = OUT_OF_RESOURCES;
-        goto HalCreateProcessRawExit;
+        goto HalCreateProcessExit;
     }
 
     (*tcb)->type = KE_TASK_TYPE_PROCESS;
@@ -183,19 +195,19 @@ STATUS HalCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl
     if(NULL == (*tcb)->cpu.userMemoryLock)
     {
         status = OUT_OF_RESOURCES;
-        goto HalCreateProcessRawExit;
+        goto HalCreateProcessExit;
     }
 
-    //TODO: randomize stack location
+    //TODO: randomize kernel stack location?
     status = I686CreateProcessMemorySpace(&cr3, I686_KERNEL_STACK_SPACE_START + I686_SINGLE_KERNEL_STACK_SPACE_SIZE, (void*)&stack);
     if(OK != status)
-        goto HalCreateProcessRawExit;
+        goto HalCreateProcessExit;
     
     CmMemset((void*)((uintptr_t)stack - MM_PAGE_SIZE), 0, MM_PAGE_SIZE);
 
     (*tcb)->cpu.cr3 = cr3;
-    (*tcb)->cpu.esp = I686_KERNEL_STACK_SPACE_START + I686_SINGLE_KERNEL_STACK_SPACE_SIZE;
-    (*tcb)->cpu.esp0 = (*tcb)->cpu.esp0;
+    (*tcb)->cpu.esp0 = I686_KERNEL_STACK_SPACE_START + I686_SINGLE_KERNEL_STACK_SPACE_SIZE;
+    (*tcb)->cpu.esp = (*tcb)->cpu.esp0;
     
     (*tcb)->cpu.ds = GDT_OFFSET(GDT_KERNEL_DS);
     (*tcb)->cpu.es = (*tcb)->cpu.ds;
@@ -235,7 +247,7 @@ STATUS HalCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl
     MmUnmapDynamicMemory((void*)((uintptr_t)stack - MM_PAGE_SIZE));
     return OK;
 
-HalCreateProcessRawExit:
+HalCreateProcessExit:
     if(NULL != (*tcb)->cpu.userMemoryLock)
         KeDestroySpinlock((*tcb)->cpu.userMemoryLock);
     KeDestroyTCB(*tcb);
@@ -243,6 +255,7 @@ HalCreateProcessRawExit:
 
     return status;
 }
+
 
 void HalInitializeScheduler(void)
 {
@@ -258,7 +271,64 @@ STATUS HalAttachToTask(struct KeTaskControlBlock *target)
 
 static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context)
 {
-    entry(context);
+    STATUS status = OK;
+    //this is the very first starting point when the task is scheduled for the first time
+    //if this is a kernel task, then there is nothing more needed and the user space is unused
+    //if this is a user task, then we must create the stack and load the image
+    //since we are in the context (and address space) of the target task, everything is much easier
+    struct KeTaskControlBlock *tcb = KeGetCurrentTask();
+    if(PL_USER == tcb->pl)
+    {
+        //randomize stack base (20 bits giving 1048576 positions)
+        int32_t location = RtlRandom(0, 1 << 20);
+        //calculate stack base with 16 byte granularity, so that the stack the stack is somewhere within the 16 MiB region
+        if(KE_TASK_TYPE_THREAD == tcb->type)
+            tcb->userStackTop = (void*)(I686_USER_STACK_DEFAULT_BASE 
+                - (2 * (I686_USER_STACK_MAX_SIZE + MM_PAGE_SIZE) * (tcb->threadId + 1)) - (location * 16));
+        else //KE_TASK_TYPE_PROCESS
+            tcb->userStackTop = (void*)(I686_USER_STACK_DEFAULT_BASE - (location * 16));
+        uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->userStackTop - I686_USER_STACK_DEFAULT_SIZE, MM_PAGE_SIZE);
+        uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->userStackTop, MM_PAGE_SIZE) - alignedBase;
+        tcb->userStackSize = (uintptr_t)tcb->userStackTop - alignedBase;
+
+        //there is a risk that the stack might not fit
+        //in such a case, the function below should fail almost immediately, since the memory is allocated from the base
+        status = MmAllocateMemory(alignedBase, alignedSize, MM_FLAG_USER_MODE | MM_FLAG_WRITABLE);
+        if(OK == status)
+        {
+            uint32_t *stack = (uint32_t*)tcb->userStackTop;
+            //TODO: place entry arguments on user stack
+
+            if(KE_TASK_TYPE_PROCESS == tcb->type)
+            {
+                status = ExLoadProcessImage(tcb->path, &entry);
+            }
+
+            if(OK == status)
+            {
+                if(KE_TASK_TYPE_PROCESS == tcb->type)
+                {
+                    struct KeTaskControlBlock *t;
+                    KeCreateThread(tcb, NULL, (void(*)(void*))0x8048080, NULL, &t);
+                    KeEnableTask(t);
+                }
+
+                tcb->cpu.ds = GDT_OFFSET(GDT_USER_DS) | 0x3;
+                tcb->cpu.es = tcb->cpu.ds;
+                tcb->cpu.fs = tcb->cpu.ds;
+                tcb->cpu.gs = tcb->cpu.ds;
+
+                //the following function can never return
+                //since we do a jump to the user stack using iret, we can't return to the kernel code (here)
+                //the only way to enter the kernel from user mode is through int or syscall/sysenter
+                I686StartUserTask(GDT_OFFSET(GDT_USER_DS) | 0x3, (uintptr_t)stack, GDT_OFFSET(GDT_USER_CS) | 0x3, entry);   
+            } //TODO: else terminate
+        }
+    }
+    else
+        entry(context);
+    
+    
     while(1)
         ;
 }

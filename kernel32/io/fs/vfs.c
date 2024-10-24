@@ -35,6 +35,8 @@ struct IoVfsNode* IoVfsCreateNode(const char *name)
     if(NULL == node)
         return NULL;
     
+    CmMemset(node, 0, sizeof(*node));
+    
     ObInitializeObjectHeader(node);
     
     CmStrncpy(node->name, name, IoVfsState.maxFileNameLength);

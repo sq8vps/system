@@ -114,7 +114,7 @@ ACPI_THREAD_ID AcpiOsGetThreadId(void)
 ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context)
 {
     struct KeTaskControlBlock *tcb;
-    if(OK != KeCreateProcessRaw("ACPI worker", NULL, PL_KERNEL, Function, Context, &tcb))
+    if(OK != KeCreateKernelProcess("ACPI worker", Function, Context, &tcb))
         return AE_ERROR;
     
     KeEnableTask(tcb);

@@ -72,7 +72,8 @@ enum KeTaskType
  */
 enum KeTaskFlags
 {
-    KE_TASK_FLAG_IDLE = 1, /**< Idle task flag */
+    KE_TASK_FLAG_IDLE = 0x01, /**< Idle task flag */
+    KE_TASK_FLAG_CRITICAL = 0x02, /**< Critical task, kernel must panic if terminated */
 };
 
 /**
@@ -202,34 +203,27 @@ struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, con
 
 
 /**
- * @brief Create process without default bootstrapping routine
+ * @brief Create kernel mode process
  * @param *name Process name
- * @param *path Process image path. Not used by the kernel when using this routine.
- * @param pl Initial privilege level
- * @param *entry Program entry point
+ * @param *entry Process entry point, must be within the kernel space
  * @param *entryContext Entry point parameter
  * @param **tcb Output Task Control Block
  * @return Status code
- * @warning Image loading and memory allocation is responsibility of caller.
- * @attention This function returns immidiately. The created process will be started by the scheduler later.
+ * @attention This function returns immidiately
+ * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateProcessRaw(const char *name, const char *path, PrivilegeLevel pl, 
-    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
-
+STATUS KeCreateKernelProcess(const char *name, void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
- * @brief Create process
- * 
- * This function spawns process and sets the entry point to the proces bootstrap routine. The bootstrap routine
- * tries to load process image passed by "path".
+ * @brief Create user mode process
  * @param *name Process name
- * @param *path Process image path
- * @param pl Privilege level
+ * @param *path Program image path
  * @param **tcb Output Task Control Block
  * @return Status code
- * @attention This function returns immidiately. The created process will be started by the scheduler later.
+ * @attention This function returns immidiately
+ * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateProcess(const char *name, const char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb);
+STATUS KeCreateUserProcess(const char *name, const char *path, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create thread within the given process

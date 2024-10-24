@@ -33,7 +33,8 @@ typedef uint16_t MmMemoryFlags;
 #define MM_FLAG_USER_MODE 4 /**< Memory is available in user mode */
 #define MM_FLAG_WRITE_THROUGH 8 /**< Memory is write trough */
 #define MM_FLAG_CACHE_DISABLE 16 /**< Memory caching is disabled */
-#define MM_FLAG_READ_ONLY 32 /**< Memory is read-only. This flag supersedes \a MM_FLAG_WRITABLE if specified */
+#define MM_FLAG_READ_ONLY 32 /**< Memory is read-only (which is default). This flag supersedes \a MM_FLAG_WRITABLE if specified */
+#define MM_FLAG_EXECUTABLE 64 /**< Memory is executable. This might or might not be implemented */
 
 
 /**

@@ -6,21 +6,6 @@
 #include "elf.h"
 #include "common.h"
 
-STATUS ExCreateProcess(char *name, char *path, PrivilegeLevel pl, struct KeTaskControlBlock **tcb)
-{
-    if((NULL == path) || (NULL == name))
-        return NULL_POINTER_GIVEN;
-    
-    STATUS ret = OK;
-    
-    if(!IoCheckIfFileExists(path))
-        return IO_FILE_NOT_FOUND;
-    
-    if(OK != (ret = KeCreateProcess(name, path, pl, tcb)))
-        return ret;
-    
-    return KeEnableTask(*tcb);
-}
 
 STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
 {

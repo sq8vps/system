@@ -3,92 +3,115 @@
 #include "io/fs/fs.h"
 #include "mm/mm.h"
 #include "ke/sched/sched.h"
+#include "common.h"
 
-// STATUS ElfAllocateBss(struct Elf32_Ehdr *h)
-// {
-// 	struct Elf32_Shdr *sectionHdr;
-
-// 	for(uint16_t i = 0; i < h->e_shnum; i++) //iterate through all sections
-// 	{
-// 		sectionHdr = ElfGetSectionHeader(h, i); //get header
-
-// 		if(SHT_NOBITS != sectionHdr->sh_type) //process only no-bits/bss sections
-// 			continue;
-		
-// 		if(0 == sectionHdr->sh_size) //skip empty
-// 			continue;
-
-// 		if(sectionHdr->sh_flags & SHF_ALLOC) //check if memory for this section should be allocated in memory
-// 		{
-// 			void *m = MmAllocateKernelHeap(sectionHdr->sh_size);
-// 			if(NULL == m)
-// 				return OUT_OF_RESOURCES;
-// 			CmMemset(m, 0, sectionHdr->sh_size);
-// 			//store offset between allocated memory and ELF header in sh_offset
-// 			sectionHdr->sh_offset = (uintptr_t)m - (uintptr_t)h;
-// 		}
-// 	}
-// 	return OK;
-// }
-
-void ExProcessLoadWorker(char *path)
+STATUS ExLoadProcessImage(const char *path, void (**entry)())
 {
-    // if(!IoCheckIfFileExists(path))
-	// {
-    //     return;
-	// }
+	STATUS status = OK;
+	IoFileHandle *f = NULL;
+	struct Elf32_Ehdr *ehdr = NULL;
+	struct Elf32_Phdr *phdr = NULL;
+	uint64_t actualSize = 0;
+
+    if(!IoCheckIfFileExists(path))
+	{
+        return IO_FILE_NOT_FOUND;
+	}
 	
-	// struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-
-    // uint64_t imageSize, freeSize;
-    // uintptr_t address = MM_PAGE_SIZE;
-	// STATUS ret = OK;
-    // if(OK != (ret = IoGetFileSize(path, &imageSize)))
-    // {
-	// 	tcb->finishReason = ret;
-	// 	return;
-	// }
-
-    // freeSize = KeGetHighestAvailableMemory() - address;
-    // IoFileHandle *f = NULL;
-    // if((OK != (ret = IoOpenKernelFile(path, IO_FILE_READ | IO_FILE_BINARY, 0, &f)) || (NULL == f)))
-    // {
-	// 	tcb->finishReason = ret;
-	// 	return;
-	// }
+	struct KeTaskControlBlock *tcb = KeGetCurrentTask();
     
-    // if(OK != (ret = MmAllocateMemory(address, imageSize, ((PL_USER == tcb->pl) ? MM_PAGE_FLAG_USER : 0) | MM_PAGE_FLAG_WRITABLE)))
-    // {
-    //     IoCloseKernelFile(f);
-	// 	tcb->finishReason = ret;
-    //     return;
-    // }
+    status = IoOpenKernelFile(path, IO_FILE_READ, 0, &f);
+	if(OK != status)
+		return status;
+    
+    ehdr = MmAllocateKernelHeap(sizeof(struct Elf32_Ehdr));
+	if(NULL == ehdr)
+	{
+		status = OUT_OF_RESOURCES;
+		goto ExProcessLoadWorkerFailed;
+	}
 
-	// uint64_t actualSize = 0;
-	// if((OK != (ret = IoReadKernelFile(f, (void*)address, imageSize, 0, &actualSize))) || (actualSize != imageSize))
-	// {
-	// 	IoCloseKernelFile(f);
-	// 	MmFreeMemory(address, imageSize);
-	// 	if(OK != ret)
-	// 		tcb->finishReason = ret;
-	// 	else
-	// 		tcb->finishReason = IO_READ_INCOMPLETE;
-	// 	return;
-	// }
+	status = IoReadKernelFileSync(f, ehdr, sizeof(struct Elf32_Ehdr), 0, &actualSize);
+	if(OK != status)
+		goto ExProcessLoadWorkerFailed;
+	else if(actualSize < sizeof(struct Elf32_Ehdr))
+	{
+		status = IO_READ_INCOMPLETE;
+		goto ExProcessLoadWorkerFailed;
+	}
 
-	// IoCloseKernelFile(f);
+	status = ExVerifyElf32Header(ehdr);
+	if(OK != status)
+		goto ExProcessLoadWorkerFailed;
 
-	// struct Elf32_Ehdr *elfHeader = (struct Elf32_Ehdr*)address;
-	// if(OK != (ret = ExVerifyElf32Header(elfHeader)))
-	// {
-	// 	MmFreeMemory(address, imageSize);
-	// 	tcb->finishReason = ret;
-	// 	return;
-	// }
+	if(ET_EXEC != ehdr->e_type)
+	{
+		status = EXEC_ELF_UNSUPPORTED_TYPE;
+		goto ExProcessLoadWorkerFailed;
+	}
+	//TODO: implement PIE handling
 
-	// // if(PL_USER == tcb->pl)
-	// // {
-	// // 	if(TYPE_REL elfHeader->e_type)
-	// // }
+	uint32_t phdrSize = ehdr->e_phentsize * ehdr->e_phnum;
+    phdr = MmAllocateKernelHeap(phdrSize);
+	if(NULL == phdr)
+	{
+		status = OUT_OF_RESOURCES;
+		goto ExProcessLoadWorkerFailed;
+	}
 
+	status = IoReadKernelFileSync(f, phdr, phdrSize, ehdr->e_phoff, &actualSize);
+	if(OK != status)
+		goto ExProcessLoadWorkerFailed;
+	else if(actualSize < phdrSize)
+	{
+		status = IO_READ_INCOMPLETE;
+		goto ExProcessLoadWorkerFailed;
+	}
+
+	for(uint16_t i = 0; i < ehdr->e_phnum; ++i)
+	{
+		if(PT_LOAD == phdr[i].p_type)
+		{
+			if(phdr[i].p_vaddr + phdr[i].p_memsz > ((uintptr_t)tcb->userStackTop - tcb->userStackSize))
+			{
+				status = OUT_OF_RESOURCES;
+				goto ExProcessLoadWorkerFailed;
+			}
+			uintptr_t base = ALIGN_DOWN(phdr[i].p_vaddr, MM_PAGE_SIZE);
+			uintptr_t top = ALIGN_UP(base + phdr[i].p_memsz, MM_PAGE_SIZE);
+			uint16_t flags = MM_FLAG_USER_MODE;
+			if(phdr[i].p_flags & PF_W)
+				flags |= MM_FLAG_WRITABLE;
+			else
+				flags |= MM_FLAG_READ_ONLY;
+			if(phdr[i].p_flags & PF_X)
+				flags |= MM_FLAG_EXECUTABLE;
+			status = MmAllocateMemory(base, top - base, flags);
+			if(OK != status)
+				goto ExProcessLoadWorkerFailed;
+			
+			CmMemset((void*)base, 0, top - base);
+
+			status = IoReadKernelFileSync(f, (void*)phdr[i].p_vaddr, phdr[i].p_filesz, phdr[i].p_offset, &actualSize);
+			if(OK != status)
+			{
+				goto ExProcessLoadWorkerFailed;
+			}
+			else if(phdr[i].p_filesz != actualSize)
+			{
+				status = IO_READ_INCOMPLETE;
+				goto ExProcessLoadWorkerFailed;
+			}
+		}
+	}
+
+	*entry = (void(*)())(ehdr->e_entry);
+
+ExProcessLoadWorkerFailed:
+	if(NULL != f)
+		IoCloseKernelFile(f);
+	MmFreeKernelHeap(ehdr);
+	MmFreeKernelHeap(phdr);
+
+	return status;
 }

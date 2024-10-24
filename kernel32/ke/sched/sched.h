@@ -40,24 +40,22 @@ STATUS KeEnableTask(struct KeTaskControlBlock *tcb);
 void KeTaskYield(void);
 
 /**
- * @brief Block task (remove from ready-to-run queue)
- * @param *tcb Task Control Block
- * @param reason Reason for task block
+ * @brief Put current task to indefinite sleep and yield
+ * @note Task can be woken up using \a KeWakeUpTask()
+ * @note If there is a wake-up request pending, this function 
+ * returns immediately and the task is not put to sleep
  */
-void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
+void KeEventSleep(void);
 
 /**
- * @brief Unblock task (insert to ready-to-run queue)
- * @param *tcb Task Control Block
-*/
-void KeUnblockTask(struct KeTaskControlBlock *tcb);
-
-/**
- * @brief Get task block state
- * @param *tcb Task Control Block
- * @return Block state/block reason
+ * @brief Notify and wake up task
+ * 
+ * Notify sleeping task that tit should wake up.
+ * If the target task is blocked because of sleep, it will be unblocked.
+ * If the target task is block because of any other event, it will not be unblocked.
+ * @param *tcb Target Task Control Block
  */
-enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb);
+void KeWakeUpTask(struct KeTaskControlBlock *tcb);
 
 
 /**
@@ -73,6 +71,22 @@ struct KeTaskControlBlock* KeGetCurrentTask(void);
 struct KeTaskControlBlock* KeGetCurrentTaskParent(void);
 
 END_EXPORT_API
+
+/**
+ * @brief Block task (remove from ready-to-run queue)
+ * @param *tcb Task Control Block
+ * @param reason Reason for task block
+ * @warning This function is in general for kernel use only
+ */
+INTERNAL void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
+
+/**
+ * @brief Unblock task (insert to ready-to-run queue)
+ * @param *tcb Task Control Block
+ * @note Task must not be in \a TASK_BLOCK_SLEEP block state
+ * @warning This function is in general for kernel use only
+*/
+INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);
 
 /**
  * @brief Start scheduler
@@ -94,6 +108,7 @@ INTERNAL void KeJoinScheduler(void);
  * @param cpu CPU number
  * @attention This function is for context switch code use only
  */
+__attribute__ ((fastcall))
 INTERNAL void KeAttachLastTask(uint16_t cpu);
 
 #endif

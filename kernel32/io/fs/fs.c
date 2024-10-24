@@ -20,8 +20,7 @@ static void IoFileReadWriteCallback(STATUS status, uint64_t actualSize, void *co
     struct IoFileHandle *h = context;
     if(NULL != h)
     {
-        
-        h->operation.completed = 1;
+        PRIO prio = ObLockObject(h);
         h->operation.actualSize = actualSize;
         h->operation.status = status;
         if(OK == status)
@@ -36,9 +35,10 @@ static void IoFileReadWriteCallback(STATUS status, uint64_t actualSize, void *co
                 }
             }
         }
-        if(TASK_BLOCK_NOT_BLOCKED != KeGetTaskBlockState(h->task))
-            KeUnblockTask(h->task);
         
+        h->operation.completed = 1;
+        KeUnblockTask(h->task);
+        ObUnlockObject(h, prio);
     }
 }
 
@@ -343,9 +343,10 @@ STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint
 {
     struct KeTaskControlBlock *task = KeGetCurrentTask();
     
+    PRIO prio = ObLockObject(handle);
     handle->task = task;
     handle->operation.completed = 0;
-    
+    ObUnlockObject(handle, prio);
 
     STATUS status = OK;
     if(!write)
@@ -356,14 +357,17 @@ STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint
     if(OK != status)
         return status;
     
-    
+    prio = ObLockObject(handle);
     if(!handle->operation.completed)
     {
         //operation waiting to be completed
         KeBlockTask(task, TASK_BLOCK_IO);
+        ObUnlockObject(handle, prio);
         
         KeTaskYield();
     }
+    else
+        ObUnlockObject(handle, prio);
 
     *actualSize = handle->operation.actualSize;
     return handle->operation.status;
@@ -386,9 +390,10 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *bu
     if(NULL == h)
         return IO_FILE_NOT_FOUND;
 
-    
+    PRIO prio = ObLockObject(h);
     h->task = task;
     h->operation.completed = 0;
+    ObUnlockObject(h, prio);
     
 
     STATUS status = OK;
@@ -400,14 +405,17 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *bu
     if(OK != status)
         return status;
     
-    
+    prio = ObLockObject(h);
     if(!h->operation.completed)
     {
         //operation waiting to be completed
         KeBlockTask(task, TASK_BLOCK_IO);
+        ObUnlockObject(h, prio);
         
         KeTaskYield();
     }
+    else
+        ObUnlockObject(h, prio);
         
 
     *actualSize = h->operation.actualSize;

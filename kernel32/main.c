@@ -30,6 +30,7 @@
 #include "ddk/fs.h"
 #include "hal/arch.h"
 #include "multiboot.h"
+#include "rtl/random.h"
 
 KeMutex s = KeMutexInitializer;
 KeSemaphore sem = KeSemaphoreInitializer;
@@ -94,12 +95,16 @@ static void KeInitProcess(void *context)
 		PRINT("FAILURE");
 	}
 
-	KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
-	KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
-	KeEnableTask(t1);
-	KeEnableTask(t2);
+	// KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
+	// KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
+	// KeEnableTask(t1);
+	// KeEnableTask(t2);
 
 	KeSleep(MS_TO_NS(6000));
+
+	struct KeTaskControlBlock *tcb;
+	KeCreateUserProcess("test", "/main/system/test", &tcb);
+	KeEnableTask(tcb);
 
 	while(1)
 	{
@@ -138,6 +143,8 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 	ItInit(); //initialize interrupts and exceptions
 
 	HalInitPhase3();
+
+	RtlInitializeRandom();
 
 	IoVfsInit();
 	IoFsInit();

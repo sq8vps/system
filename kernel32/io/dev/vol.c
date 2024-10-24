@@ -287,8 +287,7 @@ static void IoAutoMountWorker(void *unused)
             ExDbClose(h);
         }
 
-        KeBlockTask(KeGetCurrentTask(), TASK_BLOCK_EVENT);
-        KeTaskYield();
+        KeEventSleep();
     }
 }
 
@@ -313,6 +312,6 @@ static STATUS IoNotifyAutoMount(struct IoVolumeNode *node)
         last->next = t;
     }
     KeReleaseSpinlock(&IoAutoMountQueueLock, prio);
-    KeUnblockTask(IoAutoMountThread);
+    KeWakeUpTask(IoAutoMountThread);
     return OK;
 }

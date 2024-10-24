@@ -153,23 +153,21 @@ STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress)
 MmMemoryFlags I686GetPageFlagsFromPageFault(uintptr_t address)
 {
 	MmMemoryFlags flags = 0;
-	if(0 == (pageDir[address >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
+	if(pageDir[address >> 22] & PAGE_FLAG_PRESENT) //check if page table is present
 	{
-		return 0;
+		uint16_t f = PAGETABLE(address >> 22, (address >> 12) & 0x3FF) & 0xFFF;
+		if(f & PAGE_FLAG_PRESENT)
+			flags |= MM_FLAG_PRESENT;
+		if(f & PAGE_FLAG_WRITABLE)
+			flags |= MM_FLAG_WRITABLE;
+		if(f & PAGE_FLAG_USER)
+			flags |= MM_FLAG_USER_MODE;
+		if(f & PAGE_FLAG_PWT)
+			flags |= MM_FLAG_WRITE_THROUGH;
+		if(f & PAGE_FLAG_PCD)
+			flags |= MM_FLAG_CACHE_DISABLE;
 	}
-
-	uint16_t f = PAGETABLE(address >> 22, (address >> 12) & 0x3FF) & 0xFFF;
-	if(f & PAGE_FLAG_PRESENT)
-		flags |= MM_FLAG_PRESENT;
-	if(f & PAGE_FLAG_WRITABLE)
-		flags |= MM_FLAG_WRITABLE;
-	if(f & PAGE_FLAG_USER)
-		flags |= MM_FLAG_USER_MODE;
-	if(f & PAGE_FLAG_PWT)
-		flags |= MM_FLAG_WRITE_THROUGH;
-	if(f & PAGE_FLAG_PCD)
-		flags |= MM_FLAG_CACHE_DISABLE;
-	return OK;	
+	return flags;	
 }
 
 STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
@@ -187,7 +185,8 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 			return MM_NO_MEMORY;
 		}
 
-		pageDir[vAddress >> 22] = pageTableAddr | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //store page directory entry
+		pageDir[vAddress >> 22] = pageTableAddr | PAGE_FLAG_WRITABLE 
+			| PAGE_FLAG_PRESENT | ((flags & MM_FLAG_USER_MODE) ? PAGE_FLAG_USER : 0); //store page directory entry
 		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(vAddress >> 22, 0)));
 		//now the table can be accessed
 
@@ -367,6 +366,78 @@ uintptr_t I686GetPageDirectoryAddress(void)
 	uintptr_t pageDir;
 	ASM("mov eax,cr3" : "=a" (pageDir) : : );
 	return pageDir;
+}
+
+static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectoryEntry *pd, uintptr_t base, uintptr_t size)
+{
+	base = ALIGN_DOWN(base, MM_PAGE_SIZE);
+	size = ALIGN_UP(size, MM_PAGE_SIZE);
+
+	while(size > 0)
+	{
+		MmPageTableEntry *pt = MmMapDynamicMemory(pd[base >> 22] & 0xFFFFF000, MM_PAGE_TABLE_SIZE, MM_FLAG_WRITABLE);
+		if(NULL == pt)
+		{
+			return OUT_OF_RESOURCES;
+		}
+
+		PRIO prio = KeAcquireSpinlock(tcb->cpu.userMemoryLock);
+		uintptr_t initialBase = base;
+		uint16_t pages = 0;
+		for(uint16_t i = (MM_PAGE_TABLE_ENTRY_COUNT - ((base >> 12) & 0x3FF)); i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
+		{
+			pt[(base >> 12) & 0x3FF] = 0;
+			I686_INVALIDATE_TLB(base);
+			size -= MM_PAGE_SIZE;
+			size += MM_PAGE_SIZE;
+			++pages;
+			if(0 == size)
+				break;
+		}
+		I686SendInvalidateTlb(&(tcb->affinity), tcb->cpu.cr3, initialBase, pages);
+		KeReleaseSpinlock(tcb->cpu.userMemoryLock, prio);
+		MmUnmapDynamicMemory(pt);
+	}
+
+	return OK;
+}
+
+STATUS HalFreeTaskStructures(struct KeTaskControlBlock *tcb)
+{
+	MmPageDirectoryEntry *pd = NULL;
+
+	pd = MmMapDynamicMemory(tcb->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, MM_FLAG_WRITABLE);
+	if(NULL == pd)
+		return OUT_OF_RESOURCES;
+
+	//we can always remove kernel and user stack
+	//closing open handles is the responsibility of higher kernel layers
+	if(NULL != tcb->userStackTop)
+	{
+		uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->userStackTop - tcb->userStackSize, MM_PAGE_SIZE);
+		uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->userStackTop, MM_PAGE_SIZE) - alignedBase;
+		I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
+	}
+	if(NULL != tcb->kernelStackTop)
+	{
+		uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->kernelStackTop - tcb->kernelStackSize, MM_PAGE_SIZE);
+		uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->kernelStackTop, MM_PAGE_SIZE) - alignedBase;
+		I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
+	}
+
+	MmUnmapDynamicMemory(pd);
+
+	if(KE_TASK_TYPE_PROCESS == tcb->type)
+	{
+		PRIO prio = ObLockObject(tcb);
+		if(1 == tcb->taskCount)
+		{
+			KeDestroySpinlock(tcb->cpu.userMemoryLock);
+		}
+		ObUnlockObject(tcb, prio);
+	}
+
+	return OK;
 }
 
 STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress, void **stack)
