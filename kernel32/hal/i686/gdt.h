@@ -52,6 +52,11 @@
 #define GDT_OFFSET(entry) (8 * (entry))
 
 /**
+ * @brief Get user mode selector from GDT entry number
+ */
+#define USER_SELECTOR(gdtEntry) (GDT_OFFSET((gdtEntry)) | 0x3)
+
+/**
  * @brief Get GDT entry number from offset
  */
 #define GDT_ENTRY(offset) ((offset) / 8)

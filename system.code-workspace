@@ -84,7 +84,8 @@
 			"op.h": "c",
 			"dynmap.h": "c",
 			"uuid.h": "c",
-			"random.h": "c"
+			"random.h": "c",
+			"math.h": "c"
 		}
 	}
 }

@@ -8,6 +8,19 @@
 EXPORT_API
 
 /**
+ * @brief Kernel object types
+ */
+enum ObObjectType
+{
+    OB_SPINLOCK = 0x1,
+    OB_MUTEX = 0x2,
+    OB_SEMAPHORE = 0x3,
+    OB_RW_LOCK = 0x4,
+    OB_PCB = 0x5,
+    OB_TCB = 0x6,
+};
+
+/**
  * @brief Header structure for all kernel objects
 */
 struct ObObjectHeader
@@ -15,6 +28,8 @@ struct ObObjectHeader
     uint32_t magic;
     KeSpinlock lock;
 };
+
+#define OBJECT struct ObObjectHeader _object
 
 /**
  * @brief Lock object

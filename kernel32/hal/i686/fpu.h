@@ -22,6 +22,12 @@ INTERNAL void FpuHandleException(void);
 INTERNAL void *FpuCreateStateBuffer(void);
 
 /**
+ * @brief Destroy FPU state storage buffer
+ * @param *math Buffer pointer
+ */
+INTERNAL void FpuDestroyStateBuffer(const void *math);
+
+/**
  * @brief Store x87 and MMX state
  * @param *buffer Buffer to store the FPU state
  * @warning If SSE is available, then \a SseStore() must be used

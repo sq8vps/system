@@ -29,6 +29,7 @@
 EXPORT_API
 
 struct KeTaskControlBlock;
+struct KeProcessControlBlock;
 
 /**
  * @brief Get page table entry flags
@@ -37,7 +38,6 @@ struct KeTaskControlBlock;
  * @return Status code
 */
 STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags);
-
 
 /**
  * @brief Get current process physical address corresponding to the virtual address
@@ -143,6 +143,7 @@ INTERNAL STATUS ItInitializeArchitectureInterrupts(void);
  * @param *name Process name
  * @param *path Process image path
  * @param pl Process privilege level
+ * @param flags Main task flags
  * @param *entry Program entry point
  * @param *entryContext Entry point parameter
  * @param **tcb Output Task Control Block
@@ -150,22 +151,23 @@ INTERNAL STATUS ItInitializeArchitectureInterrupts(void);
  * @warning This function is for internal use only. User \a KeCreateKernelProcess() or \a KeCreateUserProcess()
  * @attention This function returns immidiately
 */
-INTERNAL STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, 
+INTERNAL STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, uint32_t flags, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create thread within the given process
- * @param *parent Parent process TCB
+ * @param *parent Parent PCB
  * @param *name Thread name
+ * @param flags Main task flags
  * @param *entry Thread entry point
  * @param *entryContext Entry point parameter
+ * @param *userStack User mode stack top pointer
  * @param **tcb Output Task Control Block
  * @return Status code
  * @attention This function returns immidiately. The created thread will be started by the scheduler later.
- * @note This function can be called by any task on behalf of any task
 */
-INTERNAL STATUS HalCreateThread(struct KeTaskControlBlock *parent, const char *name,
-    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+INTERNAL STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
+    void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Initialize architecture-dependent scheduler part

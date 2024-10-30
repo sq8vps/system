@@ -309,9 +309,8 @@ void ApicSetRealTime(uint64_t realTime)
 
 STATUS ApicSetTaskPriority(uint8_t priority)
 {
-    if(NULL == lapic)
+    if(unlikely(NULL == lapic))
         return APIC_LAPIC_NOT_AVAILABLE;
-    
     LAPIC(LAPIC_TPR_OFFSET) = (priority & 0xF) << 4;
     while(((LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF) < priority)
         TIGHT_LOOP_HINT();
@@ -320,17 +319,15 @@ STATUS ApicSetTaskPriority(uint8_t priority)
 
 uint8_t ApicGetTaskPriority(void)
 {
-    if(NULL == lapic)
+    if(unlikely(NULL == lapic))
         return 0;
-    
     return (LAPIC(LAPIC_TPR_OFFSET) >> 4) & 0xF;
 }
 
 uint8_t ApicGetProcessorPriority(void)
 {
-    if(NULL == lapic)
+    if(unlikely(NULL == lapic))
         return 0;
-    
     return (LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF;
 }
 

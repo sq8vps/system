@@ -97,7 +97,7 @@ typedef uint8_t PRIO;
 
 
 #if defined(__i686__)
-struct HalCpuState
+struct HalTaskData
 {
     uint32_t esp; //stack pointer
     uint32_t esp0; //kernel stack pointer for privilege level change
@@ -106,8 +106,13 @@ struct HalCpuState
     uint16_t es; //task extra segment register
     uint16_t fs; //task extra segment register
     uint16_t gs; //task extra segment register
+    void *fpu; /**< FPU buffer */
+} PACKED;
 
-    struct KeSpinlock *userMemoryLock;
+struct HalProcessData
+{
+    uint32_t cr3; /**< Process page directory */
+    struct KeSpinlock *userMemoryLock; /**< Spinlock for modyfing process memory */
 } PACKED;
 #endif
 

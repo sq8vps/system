@@ -25,6 +25,11 @@ void *SseCreateStateBuffer(void)
     return ret;
 }
 
+void SseDestroyStateBuffer(const void *math)
+{
+    MmFreeKernelHeap(math);
+}
+
 void SseStore(void *buffer)
 {
     ASM("fxsave [eax]" : : "a" (buffer) : );

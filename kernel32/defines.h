@@ -95,6 +95,7 @@ typedef enum
     BAD_ALIGNMENT,
     NOT_COMPATIBLE,
     TIMEOUT,
+    ILLEGAL_OPERATION,
 
     //interrupt module errors
     IT_BAD_VECTOR = 0x00001000, //bad interrupt vector number

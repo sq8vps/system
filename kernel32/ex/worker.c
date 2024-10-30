@@ -6,20 +6,21 @@
 #include "mm/heap.h"
 #include "io/dev/rp.h"
 
-static struct KeTaskControlBlock *ExKernelWorker = NULL;
+static struct KeProcessControlBlock *ExKernelWorkerPCB = NULL;
 static KeSpinlock ExKernelWorkerLock = KeSpinlockInitializer;
 
 STATUS ExCreateKernelWorker(const char *name, void(*entry)(void *), void *entryContext, struct KeTaskControlBlock **tcb)
 {
     STATUS status;
     PRIO prio = KeAcquireSpinlock(&ExKernelWorkerLock);
-    if(NULL == ExKernelWorker)
+    if(NULL == ExKernelWorkerPCB)
     {
-        status = KeCreateKernelProcess(name, entry, entryContext, &ExKernelWorker);
-        *tcb = ExKernelWorker;
+        status = KeCreateKernelProcess(name, 0, entry, entryContext, tcb);
+        if(NULL != *tcb)
+            ExKernelWorkerPCB = (*tcb)->parent;
     }
     else
-        status = KeCreateThread(ExKernelWorker, name, entry, entryContext, tcb);
+        status = KeCreateKernelThread(ExKernelWorkerPCB, name, 0, entry, entryContext, tcb);
     barrier();
     KeReleaseSpinlock(&ExKernelWorkerLock, prio);
 

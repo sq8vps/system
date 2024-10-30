@@ -72,7 +72,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 	{
 		if(PT_LOAD == phdr[i].p_type)
 		{
-			if(phdr[i].p_vaddr + phdr[i].p_memsz > ((uintptr_t)tcb->userStackTop - tcb->userStackSize))
+			if(phdr[i].p_vaddr + phdr[i].p_memsz > ((uintptr_t)tcb->stack.user.top - tcb->stack.user.size))
 			{
 				status = OUT_OF_RESOURCES;
 				goto ExProcessLoadWorkerFailed;

@@ -55,15 +55,6 @@ enum KeTaskBlockReason
 };
 
 /**
- * @brief Task type
- */
-enum KeTaskType
-{
-    KE_TASK_TYPE_PROCESS, /**< Process, that is, the very first task with given memory space */
-    KE_TASK_TYPE_THREAD, /**< Thread, that is, a child task created for given parent process */
-};
-
-/**
  * @brief Task flags
  */
 enum KeTaskFlags
@@ -89,53 +80,38 @@ enum KeTaskFlags
 typedef int KE_TASK_ID;
 
 struct KeSchedulerQueue;
+struct KeProcessControlBlock;
 
 /**
  * @brief A structure storing all task data
 */
 struct KeTaskControlBlock
 {
-    struct ObObjectHeader objectHeader; /**< Object manager header */
+    OBJECT;
 
-    enum KeTaskType type; /**< Task type */
+    KE_TASK_ID tid; /**< Task ID */
     uint32_t flags; /**< Task flags */
-
-    struct HalCpuState cpu; /**< Architecture-specific CPU context */
-    void *mathState; /**< Architecture-specific FPU context */
-
-    uintptr_t userStackSize; /**< Current user mode stack size */
-    void *userStackTop; /**< Initial user mode stack top */
-    uintptr_t kernelStackSize; /**< Current kernel mode stack size */
-    void *kernelStackTop; /**< Initial kernel mode stack top */
-    void *heapTop; /**< Current user mode heap top */
-    uintptr_t heapSize; /**< Current user mode heap size */
+    struct HalTaskData data; /**< Architecture-specific task data */
     HalCpuBitmap affinity; /**< CPU affinity */
+    bool main; /**< Task is the main task in the process */
 
-    void *image; /**< Image start address */
-    uintptr_t imageSize; /**< Image size */
-    
-    PrivilegeLevel pl; /**< Task privilege level */
-
-    char name[TCB_MAX_NAME_LENGTH + 1]; /**< Task name */
-    char *path; /**< Task image path */
-
-    int taskCount; /**< Number of tasks associated with this process */
-    int freeTaskIds[MAX_KERNEL_MODE_THREADS - 1]; /**< Free local IDs for children tasks */
-    int threadId; /**< Thread ID within a task, starting from 1 */
-
+    /**
+     * @brief Task stack parameters
+     */
     struct
     {
-        struct IoFileHandle *fileList;
-        uint32_t openFileCount;
-    } files;
-    
-    KE_TASK_ID tid; //unique task ID
-    union
-    {
-        struct KeTaskControlBlock *child;
-        struct KeTaskControlBlock *parent; //parent process of this thread
-    };
-    struct KeTaskControlBlock *sibling;
+        /**
+         * @brief Kernel and user stack parameters
+         */
+        struct
+        {
+            void *top; /**< Stack top */
+            uintptr_t size; /**< Current stack size */
+        } kernel, user;
+    } stack;
+
+    struct KeProcessControlBlock *parent; /**< Task parent process */
+    struct KeTaskControlBlock *sibling; /**< Next thread */
 
     enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
     uint8_t minorPriority; //task minor priority
@@ -155,7 +131,6 @@ struct KeTaskControlBlock
     //     KeMutex *mutex; /**< Mutex to be acquired in order to attach to this task */
     // } attach; /**< Task memory space attachment state */
     
-
     struct KeMutex *mutex;
     struct KeSemaphore *semaphore;
     struct KeRwLock *rwLock;
@@ -176,65 +151,154 @@ struct KeTaskControlBlock
         
     } blockParameters;
     
-
     struct KeTaskControlBlock *next; //next task in queue
     struct KeTaskControlBlock *previous; //previous task in queue
     struct KeSchedulerQueue *queue; //queue this task belongs to
+
+    char name[]; /**< Task name */
 };
 
+struct KeProcessControlBlock
+{
+    OBJECT;
+    
+    uint32_t flags; /**< Process flags - currently unused */
+    PrivilegeLevel pl; /**< Task privilege level */
+
+    struct HalProcessData data; /**< Architecture-specific process data */
+
+    /**
+     * @brief Image data
+     */
+    struct
+    {
+        void *base; /**< Image base address */
+        uintptr_t size; /**< Image size */
+    } image;
+    
+    /**
+     * @brief File handle container
+     */
+    struct
+    {
+        struct IoFileHandle *list; /**< File list head */
+        uint32_t count; /**< Open files count */
+    } files;
+    
+    /**
+     * @brief Tasks (threads) container
+     */
+    struct
+    {
+        struct KeTaskControlBlock *list; /**< Task (thread) list */
+        uint32_t count; /**< Task count */
+    } tasks;
+
+    char path[]; /**< Image path */
+};
+
+
 /**
- * @brief Free TCB-related structures and destroy TCB
- * @param *tcb TCB to be destroyed
+ * @brief Allocate and prepare process control block
+ * @param pl Privilege level
+ * @param *path Process image path - might be NULL
+ * @param flags Process flags
+ * @return Process control block pointer or NULL on memory allocation failure
+ * @warning This function is used to allocate and initialize structures and is for internal use only
+*/
+struct KeProcessControlBlock* KePreparePCB(PrivilegeLevel pl, const char *path, uint32_t flags);
+
+/**
+ * @brief Allocate and prepare task control block
+ * @param *name Task name - must be provided
+ * @param flags Task flags
+ * @return Task control block pointer or NULL on memory allocation failure
+ * @warning This function is used to allocate and initialize structures and is for internal use only
+*/
+struct KeTaskControlBlock* KePrepareTCB(const char *name, uint32_t flags);
+
+/**
+ * @brief Associate Task Control Block with given Process Control Block, i.e., register task (thread)
+ * @param *pcb Target (parent) Process Control Block
+ * @param *tcb Task Control Block to be associated
+ * @return Status code
+ */
+STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlock *tcb);
+
+/**
+ * @brief Dissociate Task Control Block from its parent Process Control Block
+ * @param *tcb Task Control Block to be dissociated
+ * @note This function does nothing if TCB is not associated
+ */
+void KeDissociateTCB(struct KeTaskControlBlock *tcb);
+
+/**
+ * @brief Destroy Task Control Block
+ * @param *tcb Task Control Block to be destroyed
+ * @note This function will dissociate the TCB from it's parent PCB
  */
 void KeDestroyTCB(struct KeTaskControlBlock *tcb);
 
 /**
- * @brief Allocate and prepare task control block
- * @param pl Privilege level
- * @param *name Task name
- * @param *path Task image path - might be NULL
- * @return Task control block pointer or NULL on memory allocation failure
- * @warning This function is used internally. Use KeCreateProcess() to create process.
-*/
-struct KeTaskControlBlock* KePrepareTCB(PrivilegeLevel pl, const char *name, const char *path);
-
+ * @brief Destroy Process Control Block
+ * @param *pcb Process Control Block to be destroyed
+ * @warning It's the caller's responsibility to make sure that there are no remaining associated TCBs.
+ */
+void KeDestroyPCB(struct KeProcessControlBlock *pcb);
 
 /**
  * @brief Create kernel mode process
  * @param *name Process name
+ * @param flags Main task flags
  * @param *entry Process entry point, must be within the kernel space
  * @param *entryContext Entry point parameter
  * @param **tcb Output Task Control Block
  * @return Status code
- * @attention This function returns immidiately
+ * @attention This function returns immediately
  * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateKernelProcess(const char *name, void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+STATUS KeCreateKernelProcess(const char *name, uint32_t flags, void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create user mode process
  * @param *name Process name
  * @param *path Program image path
+ * @param flags Main task flags
  * @param **tcb Output Task Control Block
  * @return Status code
- * @attention This function returns immidiately
+ * @attention This function returns immediately
  * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateUserProcess(const char *name, const char *path, struct KeTaskControlBlock **tcb);
+STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, struct KeTaskControlBlock **tcb);
 
 /**
- * @brief Create thread within the given process
- * @param *parent Parent process TCB
+ * @brief Create thread within the given kernel mode process
+ * @param *pcb Parent PCB
  * @param *name Thread name
+ * @param flags Task flags
  * @param *entry Thread entry point
  * @param *entryContext Entry point parameter
  * @param **tcb Output Task Control Block
  * @return Status code
- * @attention This function returns immidiately. The created thread will be started by the scheduler later.
- * @note This function can be called by any task on behalf of any task
+ * @attention This function returns immediately. The created thread will be started by the scheduler later.
+ * @note This function can be called by any task on behalf of any kernel mode process
 */
-STATUS KeCreateThread(struct KeTaskControlBlock *parent, const char *name,
+STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+
+/**
+ * @brief Create thread within the current user mode process
+ * @param *name Thread name
+ * @param flags Task flags
+ * @param *entry Thread entry point
+ * @param *entryContext Entry point parameter
+ * @param *userStack User mode stack top pointer
+ * @param **tcb Output Task Control Block
+ * @return Status code
+ * @attention This function returns immediately. The created thread will be started by the scheduler later.
+*/
+STATUS KeCreateUserThread(const char *name, uint32_t flags,
+    void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
 
 END_EXPORT_API
 

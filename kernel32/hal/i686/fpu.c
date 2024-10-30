@@ -26,6 +26,11 @@ void *FpuCreateStateBuffer(void)
     return ret;
 }
 
+void FpuDestroyStateBuffer(const void *math)
+{
+    MmFreeKernelHeap(math);
+}
+
 void FpuHandleException(void)
 {
     ASM("fnclex"); //clear exception flags

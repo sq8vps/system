@@ -3,7 +3,7 @@
 #include "sched.h"
 #include "hal/arch.h"
 
-static struct KeTaskControlBlock *KeIdleTaskMain = NULL;
+static struct KeProcessControlBlock *KeIdlePCB = NULL;
 
 NORETURN static void KeIdleWorker(void *unused)
 {
@@ -18,21 +18,19 @@ STATUS KeCreateIdleTask(void)
 {
     STATUS ret = OK;
     struct KeTaskControlBlock *tcb = NULL;
-    if(NULL == KeIdleTaskMain)
+    if(NULL == KeIdlePCB)
     {
-        ret = KeCreateKernelProcess("Idle task", KeIdleWorker, NULL, &tcb);
+        ret = KeCreateKernelProcess("Idle task", KE_TASK_FLAG_IDLE | KE_TASK_FLAG_CRITICAL, KeIdleWorker, NULL, &tcb);
         if(OK != ret)
             return ret;
-        KeIdleTaskMain = tcb;
+        KeIdlePCB = tcb->parent;
     }
     else
     {
-        ret = KeCreateThread(KeIdleTaskMain, "Idle task", KeIdleWorker, NULL, &tcb);
+        ret = KeCreateKernelThread(KeIdlePCB, "Idle task", KE_TASK_FLAG_IDLE | KE_TASK_FLAG_CRITICAL, KeIdleWorker, NULL, &tcb);
         if(OK != ret)
             return ret;
     }
-
-    tcb->flags |= KE_TASK_FLAG_IDLE;
     
     //set lowest possible priority for this task
     if(OK != (ret = KeChangeTaskMajorPriority(tcb, PRIORITY_LOWEST)))

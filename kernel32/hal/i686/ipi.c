@@ -39,7 +39,7 @@ static STATUS I686HandleIpi(void *context)
                     case I686_IPI_TLB_SHOOTDOWN:
                         if(!I686IpiState[cpu].data[i].payload.tlb.kernel)
                         {
-                            if(KeGetCurrentTask()->cpu.cr3 != I686IpiState[cpu].data[i].payload.tlb.cr3)
+                            if(KeGetCurrentTask()->data.cr3 != I686IpiState[cpu].data[i].payload.tlb.cr3)
                                 break;
                         }
                         while(I686IpiState[cpu].data[i].payload.tlb.count)

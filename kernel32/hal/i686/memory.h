@@ -44,29 +44,19 @@ struct KeTaskControlBlock;
 INTERNAL MmMemoryFlags I686GetPageFlagsFromPageFault(uintptr_t address);
 
 /**
- * @brief Create process memory space and map stack on dynamic memory
+ * @brief Create new memory space
  * 
- * This function creates page directory for a new process, copies kernel space page tables
- * and allocates ONE page for an initial stack. Then it returns the dynamically mapped stack top.
+ * This function creates new page directory and copies kernel space page tables.
  * 
- * @param *pdAddress Physical address of newly allocated page directory
- * @param stackAddress Stack top virtual address (in new process memory space)
- * @param **stack Dynamically mapped stack top pointer
- * @return Status code
+ * @return Page directory physical address or 0 on memory allocation failure
 */
-INTERNAL STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress, void **stack);
+INTERNAL PADDRESS I686CreateNewMemorySpace(void);
 
 /**
- * @brief Create kernel stack for a thread and map stack on dynamic memory
- * 
- * This function allocates ONE page for an initial stack. Then it returns the dynamically mapped stack top.
- * 
- * @param *parent Parent Task Control Block
- * @param stackAddress Stack top virtual address (in target process memory space)
- * @param **stack Dynamically mapped stack top pointer
- * @return Status code
-*/
-INTERNAL STATUS I686CreateThreadKernelStack(const struct KeTaskControlBlock *parent, uintptr_t stackAddress, void **stack);
+ * @brief Destroy memory space
+ * @param pdAddress Page directory physical address
+ */
+INTERNAL void I686DestroyMemorySpace(PADDRESS pdAddress);
 
 /**
  * @brief Get current page directory physical address

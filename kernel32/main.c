@@ -103,7 +103,7 @@ static void KeInitProcess(void *context)
 	KeSleep(MS_TO_NS(6000));
 
 	struct KeTaskControlBlock *tcb;
-	KeCreateUserProcess("test", "/main/system/test", &tcb);
+	KeCreateUserProcess("test", "/main/system/test", 0, &tcb);
 	KeEnableTask(tcb);
 
 	while(1)

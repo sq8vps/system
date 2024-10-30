@@ -18,6 +18,12 @@ INTERNAL void SseInit(void);
 INTERNAL void *SseCreateStateBuffer(void);
 
 /**
+ * @brief Destroy x87/MMX/SSE state storage buffer
+ * @param *math Buffer pointer
+ */
+INTERNAL void SseDestroyStateBuffer(const void *math);
+
+/**
  * @brief Store x87/MMX/SSE state
  * @param *buffer Buffer to store the SSE state
 */

@@ -84,7 +84,7 @@ static inline PRIO I686AcquireMemoryLock(uintptr_t address)
 	}
 	else
 	{
-		return KeAcquireSpinlock(KeGetCurrentTask()->cpu.userMemoryLock);
+		return KeAcquireSpinlock(KeGetCurrentTask()->parent->data.userMemoryLock);
 	}
 #endif
 }
@@ -100,7 +100,7 @@ static inline void I686ReleaseMemoryLock(uintptr_t address, PRIO lastPriority)
 	}
 	else
 	{
-		KeReleaseSpinlock(KeGetCurrentTask()->cpu.userMemoryLock, lastPriority);
+		KeReleaseSpinlock(KeGetCurrentTask()->parent->data.userMemoryLock, lastPriority);
 	}
 #endif
 }
@@ -271,7 +271,7 @@ STATUS HalUnmapMemory(uintptr_t vAddress)
 		I686SendInvalidateKernelTlb(vAddress, 1);
 	else if(NULL != (task = KeGetCurrentTask()))
 	{
-		I686SendInvalidateTlb(&(task->affinity), task->cpu.cr3, vAddress, 1);
+		I686SendInvalidateTlb(&(task->affinity), task->data.cr3, vAddress, 1);
 	}
 #endif
 	I686ReleaseMemoryLock(vAddress, prio);
@@ -324,7 +324,7 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 		if(IS_KERNEL_MEMORY(base))
 			I686SendInvalidateKernelTlb(base, sameTypeSize / MM_PAGE_SIZE);
 		else if(NULL != task)
-			I686SendInvalidateTlb(&(task->affinity), task->cpu.cr3, base, sameTypeSize / MM_PAGE_SIZE);
+			I686SendInvalidateTlb(&(task->affinity), task->data.cr3, base, sameTypeSize / MM_PAGE_SIZE);
 	}
 #endif
 	I686ReleaseMemoryLock(start, prio);
@@ -381,7 +381,7 @@ static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectory
 			return OUT_OF_RESOURCES;
 		}
 
-		PRIO prio = KeAcquireSpinlock(tcb->cpu.userMemoryLock);
+		PRIO prio = KeAcquireSpinlock(tcb->parent->data.userMemoryLock);
 		uintptr_t initialBase = base;
 		uint16_t pages = 0;
 		for(uint16_t i = (MM_PAGE_TABLE_ENTRY_COUNT - ((base >> 12) & 0x3FF)); i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
@@ -394,8 +394,8 @@ static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectory
 			if(0 == size)
 				break;
 		}
-		I686SendInvalidateTlb(&(tcb->affinity), tcb->cpu.cr3, initialBase, pages);
-		KeReleaseSpinlock(tcb->cpu.userMemoryLock, prio);
+		I686SendInvalidateTlb(&(tcb->affinity), tcb->data.cr3, initialBase, pages);
+		KeReleaseSpinlock(tcb->parent->data.userMemoryLock, prio);
 		MmUnmapDynamicMemory(pt);
 	}
 
@@ -404,67 +404,56 @@ static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectory
 
 STATUS HalFreeTaskStructures(struct KeTaskControlBlock *tcb)
 {
-	MmPageDirectoryEntry *pd = NULL;
+	// MmPageDirectoryEntry *pd = NULL;
 
-	pd = MmMapDynamicMemory(tcb->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, MM_FLAG_WRITABLE);
-	if(NULL == pd)
-		return OUT_OF_RESOURCES;
+	// pd = MmMapDynamicMemory(tcb->data.cr3, MM_PAGE_DIRECTORY_SIZE, MM_FLAG_WRITABLE);
+	// if(NULL == pd)
+	// 	return OUT_OF_RESOURCES;
 
-	//we can always remove kernel and user stack
-	//closing open handles is the responsibility of higher kernel layers
-	if(NULL != tcb->userStackTop)
-	{
-		uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->userStackTop - tcb->userStackSize, MM_PAGE_SIZE);
-		uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->userStackTop, MM_PAGE_SIZE) - alignedBase;
-		I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
-	}
-	if(NULL != tcb->kernelStackTop)
-	{
-		uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->kernelStackTop - tcb->kernelStackSize, MM_PAGE_SIZE);
-		uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->kernelStackTop, MM_PAGE_SIZE) - alignedBase;
-		I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
-	}
+	// //we can always remove kernel and user stack
+	// //closing open handles is the responsibility of higher kernel layers
+	// if(NULL != tcb->userStackTop)
+	// {
+	// 	uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->userStackTop - tcb->userStackSize, MM_PAGE_SIZE);
+	// 	uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->userStackTop, MM_PAGE_SIZE) - alignedBase;
+	// 	I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
+	// }
+	// if(NULL != tcb->kernelStackTop)
+	// {
+	// 	uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->kernelStackTop - tcb->kernelStackSize, MM_PAGE_SIZE);
+	// 	uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->kernelStackTop, MM_PAGE_SIZE) - alignedBase;
+	// 	I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
+	// }
 
-	MmUnmapDynamicMemory(pd);
+	// MmUnmapDynamicMemory(pd);
 
-	if(KE_TASK_TYPE_PROCESS == tcb->type)
-	{
-		PRIO prio = ObLockObject(tcb);
-		if(1 == tcb->taskCount)
-		{
-			KeDestroySpinlock(tcb->cpu.userMemoryLock);
-		}
-		ObUnlockObject(tcb, prio);
-	}
+	// if(KE_TASK_TYPE_PROCESS == tcb->type)
+	// {
+	// 	PRIO prio = ObLockObject(tcb);
+	// 	if(1 == tcb->taskCount)
+	// 	{
+	// 		KeDestroySpinlock(tcb->cpu.userMemoryLock);
+	// 	}
+	// 	ObUnlockObject(tcb, prio);
+	// }
 
 	return OK;
 }
 
-STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress, void **stack)
+PADDRESS I686CreateNewMemorySpace(void)
 {
 	MmPageDirectoryEntry *pd = NULL;
-	MmPageTableEntry *pt = NULL;
-	PADDRESS ptAddress = 0;
-	PADDRESS stackPhysical = 0;
-	*pdAddress = 0;
-	*stack = NULL;
+	PADDRESS pdAddress = 0;
 
-	*pdAddress = allocatePageDirectory();
-	ptAddress = allocatePageTable();
-	if((0 == pdAddress) || (0 == ptAddress)
-	|| (0 == MmAllocatePhysicalMemory(MM_PAGE_SIZE, &stackPhysical)))
-		goto I686CreateProcessMemorySpaceFailure;
+	pdAddress = allocatePageDirectory();
+	if(0 == pdAddress)
+		goto I686CreateNewMemorySpaceFailure;
 	
-	pd = MmMapDynamicMemory(*pdAddress, MM_PAGE_DIRECTORY_SIZE, 0);
+	pd = MmMapDynamicMemory(pdAddress, MM_PAGE_DIRECTORY_SIZE, 0);
 	if(NULL == pd)
-		goto I686CreateProcessMemorySpaceFailure;
-
-	pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, 0);
-	if(NULL == pt)
-		goto I686CreateProcessMemorySpaceFailure;
+		goto I686CreateNewMemorySpaceFailure;
 
 	CmMemset(pd, 0, MM_PAGE_DIRECTORY_SIZE);
-	CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
 
 	//copy entries for kernel space
 	CmMemcpyV(&pd[MM_KERNEL_SPACE_START >> 22], 
@@ -472,89 +461,22 @@ STATUS I686CreateProcessMemorySpace(PADDRESS *pdAddress, uintptr_t stackAddress,
 		((MM_KERNEL_SPACE_SIZE >> 22) - 1) * sizeof(MmPageDirectoryEntry));
 	
 	//apply self-referencing page directory trick
-	pd[MM_PAGE_DIRECTORY_ENTRY_COUNT - 1] = *pdAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
-	//store page table address is page directory
-	pd[(stackAddress - MM_PAGE_SIZE) >> 22] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
-	pt[((stackAddress - MM_PAGE_SIZE) >> 12) & 0x3FF] = stackPhysical | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
+	pd[MM_PAGE_DIRECTORY_ENTRY_COUNT - 1] = pdAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
 
-	*stack = MmMapDynamicMemory(stackPhysical, MM_PAGE_SIZE, 0);
-	if(NULL != *stack)
-	{
-		*stack = (void*)((uintptr_t)*stack + MM_PAGE_SIZE);
-		MmUnmapDynamicMemory(pt);
-		MmUnmapDynamicMemory(pd);
-		return OK;
-	}
-
-I686CreateProcessMemorySpaceFailure:
-	MmUnmapDynamicMemory(*stack);
-	MmUnmapDynamicMemory(pt);
 	MmUnmapDynamicMemory(pd);
-	if(0 != ptAddress)
-		MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
+	return pdAddress;
+
+I686CreateNewMemorySpaceFailure:
+	MmUnmapDynamicMemory(pd);
 	if(0 != pdAddress)
-		MmFreePhysicalMemory(*pdAddress, MM_PAGE_DIRECTORY_SIZE);
-	*pdAddress = 0;
-	*stack = NULL;
-	return OUT_OF_RESOURCES;
+		MmFreePhysicalMemory(pdAddress, MM_PAGE_DIRECTORY_SIZE);
+	return 0;
 }
 
-STATUS I686CreateThreadKernelStack(const struct KeTaskControlBlock *parent, uintptr_t stackAddress, void **stack)
+void I686DestroyMemorySpace(PADDRESS pdAddress)
 {
-	MmPageDirectoryEntry *pd = NULL;
-	MmPageTableEntry *pt = NULL;
-	PADDRESS ptAddress = 0;
-	PADDRESS stackPhysical = 0;
-	*stack = NULL;
-	bool newPageTable = false;
-
-	if(0 == MmAllocatePhysicalMemory(MM_PAGE_SIZE, &stackPhysical))
-		goto I686CreateThreadKernelStackFailure;
-	
-	pd = MmMapDynamicMemory(parent->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
-	if(NULL == pd)
-		goto I686CreateThreadKernelStackFailure;
-
-	if(0 == (pd[(stackAddress - MM_PAGE_SIZE) >> 22] & PAGE_FLAG_PRESENT)) //page table for given stack address not present?
-	{
-		//create new page table
-		ptAddress = allocatePageTable();
-		if(0 == ptAddress)
-			goto I686CreateThreadKernelStackFailure;
-		newPageTable = true;
-	}
-	else
-		ptAddress = pd[(stackAddress - MM_PAGE_SIZE) >> 22] & 0xFFFFF000;
-
-	pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, 0);
-	if(NULL == pt)
-		goto I686CreateThreadKernelStackFailure;
-
-	if(newPageTable)
-	{
-		pd[(stackAddress - MM_PAGE_SIZE) >> 22] = ptAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
-		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
-	}
-
-	pt[((stackAddress - MM_PAGE_SIZE) >> 12) & 0x3FF] = stackPhysical | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
-
-	*stack = MmMapDynamicMemory(stackPhysical, MM_PAGE_SIZE, 0);
-	if(NULL != *stack)
-	{
-		*stack = (void*)((uintptr_t)*stack + MM_PAGE_SIZE);
-		MmUnmapDynamicMemory(pt);
-		MmUnmapDynamicMemory(pd);
-		return OK;
-	}
-
-I686CreateThreadKernelStackFailure:
-	MmUnmapDynamicMemory(*stack);
-	MmUnmapDynamicMemory(pt);
-	MmUnmapDynamicMemory(pd);
-	if(0 != ptAddress)
-		MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
-	*stack = NULL;
-	return OUT_OF_RESOURCES;
+	if(0 != pdAddress)
+		MmFreePhysicalMemory(pdAddress, MM_PAGE_DIRECTORY_SIZE);
 }
 
 //TODO: when mapping kernel space memory, TLBs must be invalidated across all processors

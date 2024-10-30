@@ -44,24 +44,22 @@ STATUS KeEnableTask(struct KeTaskControlBlock *tcb);
 void KeTaskYield(void);
 
 /**
- * @brief Block task (remove from ready-to-run queue)
- * @param *tcb Task Control Block
- * @param reason Reason for task block
+ * @brief Put current task to indefinite sleep and yield
+ * @note Task can be woken up using \a KeWakeUpTask()
+ * @note If there is a wake-up request pending, this function 
+ * returns immediately and the task is not put to sleep
  */
-void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
+void KeEventSleep(void);
 
 /**
- * @brief Unblock task (insert to ready-to-run queue)
- * @param *tcb Task Control Block
-*/
-void KeUnblockTask(struct KeTaskControlBlock *tcb);
-
-/**
- * @brief Get task block state
- * @param *tcb Task Control Block
- * @return Block state/block reason
+ * @brief Notify and wake up task
+ * 
+ * Notify sleeping task that tit should wake up.
+ * If the target task is blocked because of sleep, it will be unblocked.
+ * If the target task is block because of any other event, it will not be unblocked.
+ * @param *tcb Target Task Control Block
  */
-enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb);
+void KeWakeUpTask(struct KeTaskControlBlock *tcb);
 
 
 /**
@@ -71,10 +69,10 @@ enum KeTaskBlockReason KeGetTaskBlockState(struct KeTaskControlBlock *tcb);
 struct KeTaskControlBlock* KeGetCurrentTask(void);
 
 /**
- * @brief Get current task's parent (if has a parent) or self (if doesn't have a parent) pointer
- * @return Current task's parent Task Control Block
+ * @brief Get current task's parent process pointer
+ * @return Current task's parent ProcessControlBlock
 */
-struct KeTaskControlBlock* KeGetCurrentTaskParent(void);
+struct KeProcessControlBlock* KeGetCurrentTaskParent(void);
 
 
 #ifdef __cplusplus

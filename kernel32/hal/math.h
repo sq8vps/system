@@ -26,6 +26,12 @@ struct KeTaskControlBlock;
 INTERNAL void *HalCreateMathStateBuffer(void);
 
 /**
+ * @brief Destroy coprocessor state storage buffer
+ * @param *math Buffer pointer
+*/
+INTERNAL void HalDestroyMathStateBuffer(const void *math);
+
+/**
  * @brief Store coprocessor state
  * @param *tcb Task control block
 */

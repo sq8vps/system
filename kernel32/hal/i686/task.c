@@ -15,11 +15,9 @@
 #include "time.h"
 #include "rtl/random.h"
 #include "ex/load.h"
+#include "hal/math.h"
 
-#define I686_KERNEL_STACK_SPACE_START (MM_KERNEL_SPACE_START_ADDRESS)
-#define I686_KERNEL_STACK_SPACE_SIZE 0x100000 //1 MiB
-#define I686_SINGLE_KERNEL_STACK_SPACE_SIZE ALIGN_DOWN(I686_KERNEL_STACK_SPACE_SIZE / MAX_KERNEL_MODE_THREADS, MM_PAGE_SIZE)
-#define I686_SINGLE_KERNEL_MAX_STACK_SIZE (I686_SINGLE_KERNEL_STACK_SPACE_SIZE - MM_PAGE_SIZE)
+#define I686_KERNEL_STACK_SIZE 0x2000 //8 KiB
 
 #define I686_USER_SPACE_TOP (MM_KERNEL_SPACE_START_ADDRESS - MM_PAGE_SIZE)
 #define I686_USER_STACK_DEFAULT_BASE I686_USER_SPACE_TOP
@@ -34,81 +32,55 @@ NORETURN void I686StartUserTask(uint16_t ss, uintptr_t esp, uint16_t cs, void (*
 
 static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context);
 
-STATUS HalCreateThread(struct KeTaskControlBlock *parent, const char *name,
-    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
+STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
+    void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb)
 {
     STATUS status = OK;
     uint32_t *stack = NULL;
     *tcb = NULL;
-    PRIO prio;
 
-    if(KE_TASK_TYPE_THREAD == parent->type) //routine called for a thread, get parent process
-        parent = parent->parent;
-
-    prio = ObLockObject(parent);
-
-    if(MAX_KERNEL_MODE_THREADS == parent->taskCount)
-    {
-        status = KE_KERNEL_THREAD_LIMIT_REACHED;
-        goto HalCreateThreadExit;
-    }
-
-    *tcb = KePrepareTCB(parent->pl, (NULL != name) ? name : parent->name, NULL);
+    *tcb = KePrepareTCB((NULL != name) ? name : CmGetFileName(pcb->path), flags);
     if(NULL == *tcb)
     {
         status = OUT_OF_RESOURCES;
         goto HalCreateThreadExit;
     }
 
-    (*tcb)->type = KE_TASK_TYPE_THREAD;
-    (*tcb)->cpu.userMemoryLock = parent->cpu.userMemoryLock;
-
-    (*tcb)->threadId = parent->freeTaskIds[MAX_KERNEL_MODE_THREADS - parent->taskCount - 1];
-    parent->taskCount++;
-    (*tcb)->parent = parent;
-    
-    if(NULL == parent->child)
-        parent->child = *tcb;
-    else
+    (*tcb)->data.fpu = HalCreateMathStateBuffer();
+    if(NULL == (*tcb)->data.fpu)
     {
-        struct KeTaskControlBlock *t = parent->child;
-        while(NULL != t->sibling)
-            t = t->sibling;
-        
-        t->sibling = *tcb;
+        status = OUT_OF_RESOURCES;
+        goto HalCreateThreadExit; 
     }
 
-    if(KeGetCurrentTaskParent() == parent)
-    {
-        status = MmAllocateMemory(I686_KERNEL_STACK_SPACE_START + 
-            ((*tcb)->threadId + 1) * I686_SINGLE_KERNEL_STACK_SPACE_SIZE - MM_PAGE_SIZE, MM_PAGE_SIZE, MM_FLAG_WRITABLE);
-        
-        stack = (void*)(I686_KERNEL_STACK_SPACE_START + 
-            ((*tcb)->threadId + 1) * I686_SINGLE_KERNEL_STACK_SPACE_SIZE);
-    }
-    else
-    {
-        status = I686CreateThreadKernelStack(parent, I686_KERNEL_STACK_SPACE_START + 
-            ((*tcb)->threadId + 1) * I686_SINGLE_KERNEL_STACK_SPACE_SIZE, (void**)&stack);
-    }
+    status = KeAssociateTCB(pcb, *tcb);
     if(OK != status)
         goto HalCreateThreadExit;
+
+    stack = MmAllocateKernelHeapAligned(I686_KERNEL_STACK_SIZE, 16);
+    if(NULL == stack)
+    {
+        status = OUT_OF_RESOURCES;
+        goto HalCreateThreadExit;
+    }
+
+    CmMemset(stack, 0, I686_KERNEL_STACK_SIZE);
+    stack = (uint32_t*)((uintptr_t)stack + I686_KERNEL_STACK_SIZE);
+
+    (*tcb)->stack.kernel.top = (void*)stack;
+    (*tcb)->stack.kernel.size = I686_KERNEL_STACK_SIZE;
+
+    (*tcb)->stack.user.top = userStack;
+    (*tcb)->stack.user.size = 0; //FIXME: do something with this? Is this even necessary?
+
+    (*tcb)->data.cr3 = pcb->data.cr3;
+    (*tcb)->data.esp0 = (uintptr_t)((*tcb)->stack.kernel.top);
+    (*tcb)->data.esp = (*tcb)->data.esp0;
     
-    CmMemset((void*)((uintptr_t)stack - MM_PAGE_SIZE), 0, MM_PAGE_SIZE);
-
-    (*tcb)->cpu.cr3 = parent->cpu.cr3;
-    (*tcb)->cpu.esp0 = (uintptr_t)(I686_KERNEL_STACK_SPACE_START + 
-        ((*tcb)->threadId + 1) * I686_SINGLE_KERNEL_STACK_SPACE_SIZE);
-
-    (*tcb)->cpu.esp = (*tcb)->cpu.esp0;
-    
-    (*tcb)->cpu.ds = GDT_OFFSET(GDT_KERNEL_DS);
-    (*tcb)->cpu.es = (*tcb)->cpu.ds;
-    (*tcb)->cpu.fs = (*tcb)->cpu.ds;
-    (*tcb)->cpu.gs = (*tcb)->cpu.ds;
-
-    (*tcb)->userStackSize = 0;
-    (*tcb)->kernelStackSize = MM_PAGE_SIZE;
+    (*tcb)->data.ds = GDT_OFFSET(GDT_KERNEL_DS);
+    (*tcb)->data.es = (*tcb)->data.ds;
+    (*tcb)->data.fs = (*tcb)->data.ds;
+    (*tcb)->data.gs = (*tcb)->data.ds;
 
     //all processes start executing by calling a fundamental bootstrap routine
     //this routine sets up stack and then calls the provided entry point
@@ -132,126 +104,61 @@ STATUS HalCreateThread(struct KeTaskControlBlock *parent, const char *name,
     stack[-5] = GDT_OFFSET(GDT_KERNEL_CS);
     stack[-6] = (uintptr_t)I686ProcessBootstrap;
     //all 7 GP register, which are zeroed
-    (*tcb)->cpu.esp -= (13 * sizeof(uint32_t)); //update ESP
-
-    if(KeGetCurrentTaskParent() != parent)
-        MmUnmapDynamicMemory((void*)((uintptr_t)stack - MM_PAGE_SIZE));
-    
-    ObUnlockObject(parent, prio);
+    (*tcb)->data.esp -= (13 * sizeof(uint32_t)); //update ESP
 
     return OK;
 
 HalCreateThreadExit:
-    if(NULL != *tcb)
-    {
-        if(0 != (*tcb)->threadId)
-        {
-            parent->taskCount--;
-            parent->freeTaskIds[MAX_KERNEL_MODE_THREADS - parent->taskCount - 1] = (*tcb)->threadId;
-            if((*tcb) == parent->child)
-            {
-                parent->child = (*tcb)->sibling;
-            }
-            else
-            {
-                struct KeTaskControlBlock *t = parent->child;
-                while((*tcb) != t->sibling)
-                    t = t->sibling;
-                
-                t->sibling = (*tcb)->sibling;
-            }
-        }
-        if(NULL != (*tcb)->cpu.userMemoryLock)
-            KeDestroySpinlock((*tcb)->cpu.userMemoryLock);
-    }   
+    MmFreeKernelHeap(stack);
+    if(NULL != tcb)
+        KeDissociateTCB(*tcb);
+    HalDestroyMathStateBuffer((*tcb)->data.fpu);
     KeDestroyTCB(*tcb);
     *tcb = NULL;
-
-    ObUnlockObject(parent, prio);
 
     return status;
 }
 
-STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, 
+STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, uint32_t flags,
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
 {
     STATUS status = OK;
     PADDRESS cr3 = 0;
-    uint32_t *stack = NULL;
     *tcb = NULL;
+    struct KeProcessControlBlock *pcb = NULL;
 
     if((NULL == name) && (NULL != path))
         name = CmGetFileName(path);
-        
-    *tcb = KePrepareTCB(pl, name, path);
-    if(NULL == *tcb)
+
+    pcb = KePreparePCB(pl, path, 0);
+    if(NULL == pcb)
+        return OUT_OF_RESOURCES;
+
+    pcb->data.userMemoryLock = KeCreateSpinlock();
+    if(NULL == pcb->data.userMemoryLock)
     {
         status = OUT_OF_RESOURCES;
         goto HalCreateProcessExit;
     }
 
-    (*tcb)->type = KE_TASK_TYPE_PROCESS;
-    (*tcb)->cpu.userMemoryLock = KeCreateSpinlock();
-    if(NULL == (*tcb)->cpu.userMemoryLock)
+    cr3 = I686CreateNewMemorySpace();
+    if(0 == cr3)
+        goto HalCreateProcessExit;
+
+    pcb->data.cr3 = cr3;
+
+    status = HalCreateThread(pcb, name, flags, entry, entryContext, NULL, tcb);
+    if(OK == status)
     {
-        status = OUT_OF_RESOURCES;
-        goto HalCreateProcessExit;
+        (*tcb)->main = true;
+        return OK;
     }
-
-    //TODO: randomize kernel stack location?
-    status = I686CreateProcessMemorySpace(&cr3, I686_KERNEL_STACK_SPACE_START + I686_SINGLE_KERNEL_STACK_SPACE_SIZE, (void*)&stack);
-    if(OK != status)
-        goto HalCreateProcessExit;
-    
-    CmMemset((void*)((uintptr_t)stack - MM_PAGE_SIZE), 0, MM_PAGE_SIZE);
-
-    (*tcb)->cpu.cr3 = cr3;
-    (*tcb)->cpu.esp0 = I686_KERNEL_STACK_SPACE_START + I686_SINGLE_KERNEL_STACK_SPACE_SIZE;
-    (*tcb)->cpu.esp = (*tcb)->cpu.esp0;
-    
-    (*tcb)->cpu.ds = GDT_OFFSET(GDT_KERNEL_DS);
-    (*tcb)->cpu.es = (*tcb)->cpu.ds;
-    (*tcb)->cpu.fs = (*tcb)->cpu.ds;
-    (*tcb)->cpu.gs = (*tcb)->cpu.ds;
-
-    (*tcb)->kernelStackSize = MM_PAGE_SIZE;
-    (*tcb)->kernelStackTop = (void*)(I686_KERNEL_STACK_SPACE_START + I686_SINGLE_KERNEL_STACK_SPACE_SIZE);
-    
-    (*tcb)->taskCount = 1;
-    (*tcb)->threadId = 0;
-
-    //all processes start executing by calling a fundamental bootstrap routine
-    //this routine sets up stack and then calls the provided entry point
-    //after the entry point routine returns (the process exits), control is returned
-    //to the bootstrap routine again
-    //the stack layout is as follows (top to bottom):
-    //1. arguments for the bootstrap routine: entry point and entry context
-    //2. architecture specific elements - these are popped by the CPU on IRET:
-    //- EFLAGS - interrupt flag, reserved bits
-    //- CS - privileged mode code segment
-    //- EIP - process entry point
-    //3. return (jump) address on returning from interrupt - this is also popped by the CPU on IRET
-    //4. GP registers (7): eax, ebx, ecx, edx, esi, edi, ebp - these are popped by the context switch code
-    //there is no ESP and SS, because there is no privilege level switch
-
-
-    stack[-1] = (uintptr_t)entryContext;
-    stack[-2] = (uintptr_t)entry;
-    stack[-3] = 0; //return address for bootstrap routine - never returns
-    stack[-4] = I686_EFLAGS_IF | I686_EFLAGS_RESERVED;
-    stack[-5] = GDT_OFFSET(GDT_KERNEL_CS);
-    stack[-6] = (uintptr_t)I686ProcessBootstrap;
-    //all 7 GP register, which are zeroed
-    (*tcb)->cpu.esp -= (13 * sizeof(uint32_t)); //update ESP
-
-    MmUnmapDynamicMemory((void*)((uintptr_t)stack - MM_PAGE_SIZE));
-    return OK;
 
 HalCreateProcessExit:
-    if(NULL != (*tcb)->cpu.userMemoryLock)
-        KeDestroySpinlock((*tcb)->cpu.userMemoryLock);
-    KeDestroyTCB(*tcb);
-    *tcb = NULL;
+    if(NULL != pcb->data.userMemoryLock)
+        KeDestroySpinlock(pcb->data.userMemoryLock);
+    KeDestroyPCB(pcb);
+    I686DestroyMemorySpace(cr3);
 
     return status;
 }
@@ -262,13 +169,6 @@ void HalInitializeScheduler(void)
     I686NotifyLapicTimerStarted();
 }
 
-STATUS HalAttachToTask(struct KeTaskControlBlock *target)
-{
-    //struct KeTaskControlBlock *current = KeGetCurrentTask();
-
-    return OK;
-}
-
 static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context)
 {
     STATUS status = OK;
@@ -277,53 +177,43 @@ static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context)
     //if this is a user task, then we must create the stack and load the image
     //since we are in the context (and address space) of the target task, everything is much easier
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-    if(PL_USER == tcb->pl)
+    if(PL_USER == tcb->parent->pl)
     {
-        //randomize stack base (20 bits giving 1048576 positions)
-        int32_t location = RtlRandom(0, 1 << 20);
-        //calculate stack base with 16 byte granularity, so that the stack the stack is somewhere within the 16 MiB region
-        if(KE_TASK_TYPE_THREAD == tcb->type)
-            tcb->userStackTop = (void*)(I686_USER_STACK_DEFAULT_BASE 
-                - (2 * (I686_USER_STACK_MAX_SIZE + MM_PAGE_SIZE) * (tcb->threadId + 1)) - (location * 16));
-        else //KE_TASK_TYPE_PROCESS
-            tcb->userStackTop = (void*)(I686_USER_STACK_DEFAULT_BASE - (location * 16));
-        uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->userStackTop - I686_USER_STACK_DEFAULT_SIZE, MM_PAGE_SIZE);
-        uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->userStackTop, MM_PAGE_SIZE) - alignedBase;
-        tcb->userStackSize = (uintptr_t)tcb->userStackTop - alignedBase;
-
-        //there is a risk that the stack might not fit
-        //in such a case, the function below should fail almost immediately, since the memory is allocated from the base
-        status = MmAllocateMemory(alignedBase, alignedSize, MM_FLAG_USER_MODE | MM_FLAG_WRITABLE);
-        if(OK == status)
+        uint32_t *stack = (uint32_t*)tcb->stack.user.top;
+        if(tcb->main)
         {
-            uint32_t *stack = (uint32_t*)tcb->userStackTop;
-            //TODO: place entry arguments on user stack
+            //randomize stack base (20 bits giving 1048576 positions)
+            int32_t location = RtlRandom(0, 1 << 20);
+            //calculate stack base with 16 byte granularity, so that the stack the stack is somewhere within the 16 MiB region
+            tcb->stack.user.top = (void*)(I686_USER_STACK_DEFAULT_BASE - (location * 16));
+            uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->stack.user.top - I686_USER_STACK_DEFAULT_SIZE, MM_PAGE_SIZE);
+            uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->stack.user.top, MM_PAGE_SIZE) - alignedBase;
+            tcb->stack.user.size = (uintptr_t)tcb->stack.user.top - alignedBase;
 
-            if(KE_TASK_TYPE_PROCESS == tcb->type)
-            {
-                status = ExLoadProcessImage(tcb->path, &entry);
-            }
-
+            status = MmAllocateMemory(alignedBase, alignedSize, MM_FLAG_USER_MODE | MM_FLAG_WRITABLE);
             if(OK == status)
             {
-                if(KE_TASK_TYPE_PROCESS == tcb->type)
-                {
-                    struct KeTaskControlBlock *t;
-                    KeCreateThread(tcb, NULL, (void(*)(void*))0x8048080, NULL, &t);
-                    KeEnableTask(t);
-                }
-
-                tcb->cpu.ds = GDT_OFFSET(GDT_USER_DS) | 0x3;
-                tcb->cpu.es = tcb->cpu.ds;
-                tcb->cpu.fs = tcb->cpu.ds;
-                tcb->cpu.gs = tcb->cpu.ds;
-
-                //the following function can never return
-                //since we do a jump to the user stack using iret, we can't return to the kernel code (here)
-                //the only way to enter the kernel from user mode is through int or syscall/sysenter
-                I686StartUserTask(GDT_OFFSET(GDT_USER_DS) | 0x3, (uintptr_t)stack, GDT_OFFSET(GDT_USER_CS) | 0x3, entry);   
-            } //TODO: else terminate
+                stack = (uint32_t*)tcb->stack.user.top;
+                status = ExLoadProcessImage(tcb->parent->path, &entry);
+            }
         }
+        else if(NULL == stack)
+            status = OUT_OF_RESOURCES;
+        
+        if(OK == status)
+        {
+            //TODO: place entry arguments on user stack
+
+            tcb->data.ds = USER_SELECTOR(GDT_USER_DS);
+            tcb->data.es = tcb->data.ds;
+            tcb->data.fs = tcb->data.ds;
+            tcb->data.gs = tcb->data.ds;
+
+            //the following function can never return
+            //since we do a jump to the user stack using iret, we can't return to the kernel code (here)
+            //the only way to enter the kernel from user mode is through int or syscall/sysenter
+            I686StartUserTask(USER_SELECTOR(GDT_USER_DS), (uintptr_t)stack, USER_SELECTOR(GDT_USER_CS), entry);   
+        } //TODO: else terminate
     }
     else
         entry(context);

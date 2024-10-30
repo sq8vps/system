@@ -65,10 +65,10 @@ void KeWakeUpTask(struct KeTaskControlBlock *tcb);
 struct KeTaskControlBlock* KeGetCurrentTask(void);
 
 /**
- * @brief Get current task's parent (if has a parent) or self (if doesn't have a parent) pointer
- * @return Current task's parent Task Control Block
+ * @brief Get current task's parent process pointer
+ * @return Current task's parent ProcessControlBlock
 */
-struct KeTaskControlBlock* KeGetCurrentTaskParent(void);
+struct KeProcessControlBlock* KeGetCurrentTaskParent(void);
 
 END_EXPORT_API
 

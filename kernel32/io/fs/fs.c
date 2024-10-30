@@ -42,94 +42,95 @@ static void IoFileReadWriteCallback(STATUS status, uint64_t actualSize, void *co
     }
 }
 
-STATUS IoOpenFile(char *file, IoFileOpenMode mode, IoFileFlags flags, struct KeTaskControlBlock *task, int *handleNumber)
+STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, const struct KeTaskControlBlock *tcb, int *handleNumber)
 {
-    ASSERT(file && handleNumber && task);
-    if(task->parent)
-        task = task->parent;
+    // ASSERT(file && handleNumber && tcb);
+    // struct KeProcessControlBlock *pcb = tcb->parent;
+    // PRIO prio = ObLockObject(pcb);
 
-    if(task->files.openFileCount > IoFsState.fileHandleLimit)
-    {
-        *handleNumber = -1;
-        return IO_FILE_COUNT_LIMIT_REACHED;
-    }
+    // if(pcb->files.count > IoFsState.fileHandleLimit)
+    // {
+    //     ObUnlockObject(pcb, prio);
+    //     *handleNumber = -1;
+    //     return IO_FILE_COUNT_LIMIT_REACHED;
+    // }
 
-    struct IoFileHandle *handle = NULL;
-    STATUS ret = OK;
-    if(OK != (ret = IoOpenKernelFile(file, mode, flags, &handle)))
-        return ret;
+    // struct IoFileHandle *handle = NULL;
+    // STATUS ret = OK;
+    // if(OK != (ret = IoOpenKernelFile(file, mode, flags, &handle)))
+    //     return ret;
 
-    //handle for free handle range entry
-    struct IoFileHandle *freeHandle;
-    if(NULL == task->files.fileList)
-    {
-        freeHandle = MmSlabAllocate(IoFsState.slabHandle);
-        if(NULL == freeHandle)
-        {
-            *handleNumber = -1;
-            MmSlabFree(IoFsState.slabHandle, handle);
-            return OUT_OF_RESOURCES;
-        }
-        ObInitializeObjectHeader(freeHandle);
-        freeHandle->free = true;
-        freeHandle->previous = NULL;
-        freeHandle->type.freeHandleRange.first = 1;
-        freeHandle->type.freeHandleRange.last = IoFsState.fileHandleLimit + 1;
-        freeHandle->next = NULL;
-        task->files.fileList = freeHandle;
-    }
-    else
-    {
-        freeHandle = task->files.fileList;
-        while(freeHandle->next)
-        {
-            if(freeHandle->free)
-            {
-                *handleNumber = freeHandle->type.freeHandleRange.first;
-                break;
-            }
-            freeHandle = freeHandle->next;
-        }
-    }
+    // //handle for free handle range entry
+    // struct IoFileHandle *freeHandle;
+    // if(NULL == pcb->files.list)
+    // {
+    //     freeHandle = MmSlabAllocate(IoFsState.slabHandle);
+    //     if(NULL == freeHandle)
+    //     {
+    //         *handleNumber = -1;
+    //         MmSlabFree(IoFsState.slabHandle, handle);
+    //         return OUT_OF_RESOURCES;
+    //     }
+    //     ObInitializeObjectHeader(freeHandle);
+    //     freeHandle->free = true;
+    //     freeHandle->previous = NULL;
+    //     freeHandle->type.freeHandleRange.first = 1;
+    //     freeHandle->type.freeHandleRange.last = IoFsState.fileHandleLimit + 1;
+    //     freeHandle->next = NULL;
+    //     pcb->files.list = freeHandle;
+    // }
+    // else
+    // {
+    //     freeHandle = pcb->files.list;
+    //     while(freeHandle->next)
+    //     {
+    //         if(freeHandle->free)
+    //         {
+    //             *handleNumber = freeHandle->type.freeHandleRange.first;
+    //             break;
+    //         }
+    //         freeHandle = freeHandle->next;
+    //     }
+    // }
     
-    if(0 == *handleNumber)
-    {
-        *handleNumber = -1;
-        MmSlabFree(IoFsState.slabHandle, handle);
-        return OUT_OF_RESOURCES;
-    }
+    // if(0 == *handleNumber)
+    // {
+    //     *handleNumber = -1;
+    //     MmSlabFree(IoFsState.slabHandle, handle);
+    //     return OUT_OF_RESOURCES;
+    // }
 
-    handle->free = false;
-    handle->type.fileHandle.id = *handleNumber;
-    handle->type.fileHandle.flags = flags;
+    // handle->free = false;
+    // handle->type.fileHandle.id = *handleNumber;
+    // handle->type.fileHandle.flags = flags;
 
-    freeHandle->type.freeHandleRange.first++;
-    //free handle range exhausted
-    if(freeHandle->type.freeHandleRange.first > freeHandle->type.freeHandleRange.last)
-    {
-        if(freeHandle->previous)
-            freeHandle->previous->next = handle;
-        else
-            task->files.fileList = handle;
-        if(freeHandle->next)
-            freeHandle->next->previous = handle;
-        handle->previous = freeHandle->previous;
-        handle->next = freeHandle->next;
-        MmSlabFree(IoFsState.slabHandle, freeHandle);
-    }
-    else
-    {
-        handle->next = freeHandle->next;
-        handle->previous = freeHandle;
-        if(handle->next)
-            handle->next->previous = handle;
-        freeHandle->next = handle;
-    }
+    // freeHandle->type.freeHandleRange.first++;
+    // //free handle range exhausted
+    // if(freeHandle->type.freeHandleRange.first > freeHandle->type.freeHandleRange.last)
+    // {
+    //     if(freeHandle->previous)
+    //         freeHandle->previous->next = handle;
+    //     else
+    //         pcb->files.list = handle;
+    //     if(freeHandle->next)
+    //         freeHandle->next->previous = handle;
+    //     handle->previous = freeHandle->previous;
+    //     handle->next = freeHandle->next;
+    //     MmSlabFree(IoFsState.slabHandle, freeHandle);
+    // }
+    // else
+    // {
+    //     handle->next = freeHandle->next;
+    //     handle->previous = freeHandle;
+    //     if(handle->next)
+    //         handle->next->previous = handle;
+    //     freeHandle->next = handle;
+    // }
     
-    task->files.openFileCount++;
-    //TODO: update last use and flags
+    // pcb->files.count++;
+    // //TODO: update last use and flags
 
-    return OK;
+    return NOT_IMPLEMENTED;
 }
 
 STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle)
@@ -181,78 +182,79 @@ STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags
     return status;
 }
 
-STATUS IoCloseFile(struct KeTaskControlBlock *task, int handleNumber)
+STATUS IoCloseFile(struct KeTaskControlBlock *tcb, int handleNumber)
 {
-    ASSERT(task);
-    STATUS status = OK;
-    if(task->parent)
-        task = task->parent;
+    // ASSERT(tcb);
+    // struct KeProcessControlBlock *pcb = tcb->parent;
 
-    if(NULL == task->files.fileList)
-        return IO_FILE_NOT_FOUND;
+    // STATUS status = OK;
+
+    // if(NULL == pcb->files.list)
+    //     return IO_FILE_NOT_FOUND;
     
-    if(handleNumber < 1)
-        return IO_FILE_NOT_FOUND;
+    // if(handleNumber < 1)
+    //     return IO_FILE_NOT_FOUND;
     
-    struct IoFileHandle *handle = task->files.fileList;
-    while(handle)
-    {
-        if((false == handle->free) && (handle->type.fileHandle.id == handleNumber))
-        {
-            break;
-        }
-        handle = handle->next;
-    }
-    if(NULL == handle)
-    {
-        return IO_FILE_NOT_FOUND;
-    }
+    // struct IoFileHandle *handle = pcb->files.list;
+    // while(handle)
+    // {
+    //     if((false == handle->free) && (handle->type.fileHandle.id == handleNumber))
+    //     {
+    //         break;
+    //     }
+    //     handle = handle->next;
+    // }
+    // if(NULL == handle)
+    // {
+    //     return IO_FILE_NOT_FOUND;
+    // }
 
-    status = IoVfsClose(handle->type.fileHandle.node);
+    // status = IoVfsClose(handle->type.fileHandle.node);
 
-    bool foundFreeEntry = false;
-    struct IoFileHandle *freeHandle = task->files.fileList;
-    while(freeHandle->next)
-    {
-        if(true == freeHandle->free)
-        {
-            if(freeHandle->type.freeHandleRange.first == (handleNumber + 1))
-            {
-                freeHandle->type.freeHandleRange.first--;
-                foundFreeEntry = true;
-                break;
-            }
-            else if(freeHandle->type.freeHandleRange.last == (handleNumber - 1))
-            {
-                freeHandle->type.freeHandleRange.last++;
-                foundFreeEntry = true;
-                break;
-            }
-        }
-        freeHandle = freeHandle->next;
-    }
+    // bool foundFreeEntry = false;
+    // struct IoFileHandle *freeHandle = pcb->files.list;
+    // while(freeHandle->next)
+    // {
+    //     if(true == freeHandle->free)
+    //     {
+    //         if(freeHandle->type.freeHandleRange.first == (handleNumber + 1))
+    //         {
+    //             freeHandle->type.freeHandleRange.first--;
+    //             foundFreeEntry = true;
+    //             break;
+    //         }
+    //         else if(freeHandle->type.freeHandleRange.last == (handleNumber - 1))
+    //         {
+    //             freeHandle->type.freeHandleRange.last++;
+    //             foundFreeEntry = true;
+    //             break;
+    //         }
+    //     }
+    //     freeHandle = freeHandle->next;
+    // }
 
-    if(false == foundFreeEntry) //free range entry not found, reuse file handle then
-    {
-        handle->free = true;
-        handle->type.freeHandleRange.first = handleNumber;
-        handle->type.freeHandleRange.last = handleNumber;
-    }
-    else
-    {
-        if(handle->previous)
-            handle->previous->next = handle->next;
-        else
-            task->files.fileList = handle->next;
+    // if(false == foundFreeEntry) //free range entry not found, reuse file handle then
+    // {
+    //     handle->free = true;
+    //     handle->type.freeHandleRange.first = handleNumber;
+    //     handle->type.freeHandleRange.last = handleNumber;
+    // }
+    // else
+    // {
+    //     if(handle->previous)
+    //         handle->previous->next = handle->next;
+    //     else
+    //         pcb->files.list = handle->next;
         
-        if(handle->next)
-            handle->next->previous = handle->previous;
+    //     if(handle->next)
+    //         handle->next->previous = handle->previous;
         
-        MmSlabFree(IoFsState.slabHandle, handle);
-    }
+    //     MmSlabFree(IoFsState.slabHandle, handle);
+    // }
 
-    //TODO: flags
-    return status;
+    // //TODO: flags
+    // return status;
+    return NOT_IMPLEMENTED;
 }
 
 STATUS IoCloseKernelFile(struct IoFileHandle *handle)
@@ -269,14 +271,12 @@ STATUS IoCloseKernelFile(struct IoFileHandle *handle)
     return OK;
 }
 
-STATUS IoReadFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context)
 {
-    ASSERT(task && buffer);
-    if(task->parent)
-        task = task->parent;
+    ASSERT(tcb && buffer);
     
-    struct IoFileHandle *h = task->files.fileList;
+    struct IoFileHandle *h = tcb->parent->files.list;
     while(h)
     {
         if(h->type.fileHandle.id == handle)
@@ -302,14 +302,13 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size
     return IoVfsRead(handle->type.fileHandle.node, handle->type.fileHandle.flags, buffer, size, offset, callback, context);
 }
 
-STATUS IoWriteFile(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context)
 {
-    ASSERT(task && buffer);
-    if(task->parent)
-        task = task->parent;
+    ASSERT(tcb && buffer);
     
-    struct IoFileHandle *h = task->files.fileList;
+    
+    struct IoFileHandle *h = tcb->parent->files.list;
     while(h)
     {
         if(h->type.fileHandle.id == handle)
@@ -373,13 +372,11 @@ STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint
     return handle->operation.status;
 }
 
-STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize, bool write)
+STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize, bool write)
 {
-    ASSERT(task && buffer);
-    if(task->parent)
-        task = task->parent;
+    ASSERT(tcb && buffer);
     
-    struct IoFileHandle *h = task->files.fileList;
+    struct IoFileHandle *h = tcb->parent->files.list;
     while(h)
     {
         if(h->type.fileHandle.id == handle)
@@ -391,7 +388,7 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *bu
         return IO_FILE_NOT_FOUND;
 
     PRIO prio = ObLockObject(h);
-    h->task = task;
+    h->task = tcb;
     h->operation.completed = 0;
     ObUnlockObject(h, prio);
     
@@ -409,7 +406,7 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *task, int handle, void *bu
     if(!h->operation.completed)
     {
         //operation waiting to be completed
-        KeBlockTask(task, TASK_BLOCK_IO);
+        KeBlockTask(tcb, TASK_BLOCK_IO);
         ObUnlockObject(h, prio);
         
         KeTaskYield();

@@ -11,11 +11,6 @@ EXPORT_API
 #define MAX_CPU_COUNT 64
 
 /**
- * @brief Max count of kernel mode tasks associated with one process 
- */
-#define MAX_KERNEL_MODE_THREADS 48
-
-/**
  * @brief Initial ramdisk mount point
  */
 #define INITRD_MOUNT_POINT "/initrd"
