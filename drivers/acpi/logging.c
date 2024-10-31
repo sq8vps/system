@@ -4,5 +4,5 @@ struct IoSyslogHandle *AcpiLogHandle = NULL;
 
 void AcpiLoggingInit(void)
 {
-    AcpiLogHandle = IoOpenSyslog(DRIVER_NAME);
+    AcpiLogHandle = IoOpenSyslog(DRIVER_NAME, SYSLOG_OUTPUT_DEFAULT);
 }

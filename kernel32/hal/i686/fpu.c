@@ -2,7 +2,7 @@
 
 #include "fpu.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "rtl/string.h"
 
 #define FPU_STATE_BUFFER_SIZE 108
 static char FpuDefaultState[FPU_STATE_BUFFER_SIZE];
@@ -22,7 +22,7 @@ void *FpuCreateStateBuffer(void)
 {
     void *ret = MmAllocateKernelHeapAligned(FPU_STATE_BUFFER_SIZE, 16);
     if(NULL != ret)
-        CmMemcpy(ret, FpuDefaultState, FPU_STATE_BUFFER_SIZE);
+        RtlMemcpy(ret, FpuDefaultState, FPU_STATE_BUFFER_SIZE);
     return ret;
 }
 

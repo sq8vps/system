@@ -45,7 +45,7 @@ static STATUS I686HandleIpi(void *context)
                         while(I686IpiState[cpu].data[i].payload.tlb.count)
                         {
                             I686_INVALIDATE_TLB(I686IpiState[cpu].data[i].payload.tlb.address);
-                            I686IpiState[cpu].data[i].payload.tlb.address += MM_PAGE_SIZE;
+                            I686IpiState[cpu].data[i].payload.tlb.address += PAGE_SIZE;
                             --I686IpiState[cpu].data[i].payload.tlb.count;
                         }
                         break;

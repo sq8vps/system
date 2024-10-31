@@ -1,7 +1,7 @@
 #include "rp.h"
 #include "mm/heap.h"
 #include "assert.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "ke/core/panic.h"
 #include "ke/sched/sched.h"
 #include "mm/slab.h"
@@ -28,7 +28,7 @@ struct IoRp *IoCreateRp(void)
     if(NULL == rp)
         return NULL;
     
-    CmMemset(rp, 0, sizeof(*rp));
+    RtlMemset(rp, 0, sizeof(*rp));
     ObInitializeObjectHeader(rp);
     return rp;
 }
@@ -49,7 +49,7 @@ STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
     if(NULL == *queue)
         return OUT_OF_RESOURCES;
     
-    CmMemset(*queue, 0, sizeof(**queue));
+    RtlMemset(*queue, 0, sizeof(**queue));
     (*queue)->callback = callback;
     (*queue)->queueLock = (KeSpinlock)KeSpinlockInitializer;
     return OK;
@@ -211,7 +211,7 @@ struct IoRp *IoCloneRp(struct IoRp *rp)
     if(NULL == n)
         return NULL;
     
-    CmMemcpy(n, rp, sizeof(*rp));
+    RtlMemcpy(n, rp, sizeof(*rp));
     ObInitializeObjectHeader(n);
     n->queue = NULL;
     n->next = NULL;

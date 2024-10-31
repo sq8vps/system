@@ -461,9 +461,9 @@ typedef struct acpi_aspt_sev_mbox_regs
     ACPI_ASPT_HEADER        Header;
     UINT8                   MboxIrqId;
     UINT8                   Reserved[3];
-    UINT64                  CmdRespRegAddr;
-    UINT64                  CmdBufLoRegAddr;
-    UINT64                  CmdBufHiRegAddr;
+    UINT64                  RtldRespRegAddr;
+    UINT64                  RtldBufLoRegAddr;
+    UINT64                  RtldBufHiRegAddr;
 
 } ACPI_ASPT_SEV_MBOX_REGS;
 
@@ -474,7 +474,7 @@ typedef struct acpi_aspt_acpi_mbox_regs
 {
     ACPI_ASPT_HEADER        Header;
     UINT32                  Reserved1;
-    UINT64                  CmdRespRegAddr;
+    UINT64                  RtldRespRegAddr;
     UINT64                  Reserved2[2];
 
 } ACPI_ASPT_ACPI_MBOX_REGS;
@@ -570,7 +570,7 @@ typedef struct acpi_table_bgrt
 typedef struct acpi_table_boot
 {
     ACPI_TABLE_HEADER       Header;             /* Common ACPI table header */
-    UINT8                   CmosIndex;          /* Index in CMOS RAM for the boot register */
+    UINT8                   RtlosIndex;          /* Index in CMOS RAM for the boot register */
     UINT8                   Reserved[3];
 
 } ACPI_TABLE_BOOT;

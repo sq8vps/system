@@ -444,7 +444,7 @@ AcpiEvPciConfigRegionSetup (
     void                    **RegionContext);
 
 ACPI_STATUS
-AcpiEvCmosRegionSetup (
+AcpiEvRtlosRegionSetup (
     ACPI_HANDLE             Handle,
     UINT32                  Function,
     void                    *HandlerContext,

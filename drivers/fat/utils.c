@@ -1,6 +1,6 @@
 #include "utils.h"
 #include <stdint.h>
-#include "common.h"
+#include "rtl/ctype.h"
 
 int FatUcs2ToUtf8(char *utf8, const char *ucs2, size_t limit)
 {
@@ -93,7 +93,7 @@ int FatFileNameToDosName(const char *name, char *dosName)
         if(k == 8)
             return -1;
 
-        dosName[k] = CmToupper(name[i]);
+        dosName[k] = RtlToupper(name[i]);
         
         k++;
         i++;
@@ -107,7 +107,7 @@ int FatFileNameToDosName(const char *name, char *dosName)
         if(k == 11)
             return -1; 
 
-        dosName[k] = CmToupper(name[i]);
+        dosName[k] = RtlToupper(name[i]);
         
         k++;
         i++;
@@ -122,7 +122,7 @@ int FatDosNameToFileName(char *name, const char *dosName)
     {
         if(' ' != dosName[i])
         {
-            name[i] = CmTolower(dosName[i]);
+            name[i] = RtlTolower(dosName[i]);
             k++;
         }
     }
@@ -133,7 +133,7 @@ int FatDosNameToFileName(char *name, const char *dosName)
         for(uint8_t i = 8; i < 11; i++)
         {
             if(' ' != dosName[i])
-                name[k++] = CmTolower(dosName[i]);
+                name[k++] = RtlTolower(dosName[i]);
         }
     }
     name[k] = '\0';

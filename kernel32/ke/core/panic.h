@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/disp/print.h"
+#include "io/log/syslog.h"
 
 /**
  * @defgroup panic Kernel panic routines
@@ -160,7 +160,7 @@ END_EXPORT_API
  * @brief Print message and halt on boot failure
  * @param str Message to be printed
  */
-#define FAIL_BOOT(str) do{IoPrint("Boot failed: %s", str); while(1);} while(0);
+#define FAIL_BOOT(str) do{LOG(SYSLOG_ERROR, "Boot failed: %s", str); while(1) {HALT();};} while(0);
 
 /**
  * @}

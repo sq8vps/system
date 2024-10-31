@@ -4,5 +4,5 @@ struct IoSyslogHandle *PciLogHandle = NULL;
 
 void PciLoggingInit(void)
 {
-    PciLogHandle = IoOpenSyslog(DRIVER_NAME);
+    PciLogHandle = IoOpenSyslog(DRIVER_NAME, SYSLOG_OUTPUT_DEFAULT);
 }

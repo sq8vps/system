@@ -2,7 +2,7 @@
 
 #include "sse.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "rtl/string.h"
 
 #define SSE_STATE_BUFFER_SIZE 512
 #define SSE_STATE_BUFFER_ALIGNMENT 16
@@ -21,7 +21,7 @@ void *SseCreateStateBuffer(void)
 {
     void *ret = MmAllocateKernelHeap(SSE_STATE_BUFFER_SIZE);
     if(NULL != ret)
-        CmMemcpy(ret, SseDefaultState, SSE_STATE_BUFFER_SIZE);
+        RtlMemcpy(ret, SseDefaultState, SSE_STATE_BUFFER_SIZE);
     return ret;
 }
 

@@ -3,6 +3,7 @@
 #include "io/fs/fs.h"
 #include "assert.h"
 #include "mm/heap.h"
+#include "rtl/string.h"
 
 STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
 {
@@ -86,12 +87,12 @@ static struct NablaDbEntry* ExDbGetNext(struct ExDbHandle *h, const char *name, 
 {
     struct NablaDbEntry *e = NULL;
     if((NULL == h->last) 
-        || (!NABLADB_IS_ARRAY_ELEMENT(h->last->type) && (0 != CmStrcmp(h->last->name, name)))
-        || ((NULL != h->array) && (0 != CmStrcmp(h->array->name, name))))
+        || (!NABLADB_IS_ARRAY_ELEMENT(h->last->type) && (0 != RtlStrcmp(h->last->name, name)))
+        || ((NULL != h->array) && (0 != RtlStrcmp(h->array->name, name))))
     {
         e = NablaDbFind(h->db, name);
     }
-    else if((NULL != h->array) && (!CmStrcmp(h->array->name, name)))
+    else if((NULL != h->array) && (!RtlStrcmp(h->array->name, name)))
         e = h->array;
 
     if(NULL == e)

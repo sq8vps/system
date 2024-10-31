@@ -2,12 +2,13 @@
 #include "mm/mm.h"
 #include <stdbool.h>
 #include "ke/core/mutex.h"
-#include "common.h"
+#include "io/log/syslog.h"
 #include "assert.h"
+#include "hal/mm.h"
+#include "ke/core/panic.h"
+#include "rtl/string.h"
 
-#define MM_KERNEL_HEAP_START 0xD8000000                // kernel heap start address
-#define MM_KERNEL_HEAP_MAX_SIZE 0x10000000             // kernel heap max size
-#define MM_KERNEL_HEAP_ALIGNMENT 16                    // required kernel heap block address alignment
+#define MM_KERNEL_HEAP_ALIGNMENT 16
 
 /**
  * @brief A heap block metadata (header) structure
@@ -51,7 +52,8 @@ static void mmInsertFreeHeapBlock(struct MmHeapBlock *block)
 
 static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
 {
-    uintptr_t heapTop = MM_KERNEL_HEAP_START;
+    uintptr_t heapTop = HalGetHeapSpaceBase();
+    uintptr_t heapLimit = heapTop + HalGetHeapSpaceSize();
     if (NULL != MmHeapBlockTail)
     {
         heapTop = (uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE;
@@ -62,7 +64,7 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
     uintptr_t bytesToAllocate = ALIGN_UP(n + META_SIZE + padding, 4096);
     uintptr_t pageRemainder = bytesToAllocate - (n + META_SIZE + padding);
 
-    if (bytesToAllocate > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - heapTop))
+    if (bytesToAllocate > (heapLimit - heapTop))
         return NULL;
 
     if (OK != MmAllocateMemory(heapTop, bytesToAllocate, 0))
@@ -77,7 +79,6 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
         MmHeapBlockTail->size += padding;
         ASSERT(MmHeapBlockTail->size != 0);
         MmHeapBlockTail->next = block;
-        ASSERT((NULL == block) || ((uintptr_t)block >= MM_KERNEL_HEAP_START));
 
         block->previous = MmHeapBlockTail;
         if (MmHeapBlockHead == MmHeapBlockTail)
@@ -109,8 +110,7 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
     
     ASSERT(block->size != 0);
 
-    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
 
     return block;
 }
@@ -160,7 +160,6 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
         ASSERT(newBlock->size != 0);
         newBlock->previous = block;
         newBlock->next = block->next;
-        ASSERT((NULL == newBlock->next) || ((uintptr_t)newBlock->next >= MM_KERNEL_HEAP_START));
         if (NULL == newBlock->next)
             MmHeapBlockTail = newBlock;
         else
@@ -176,9 +175,7 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
     }
 
     ASSERT(block->size != 0);
-    ASSERT((NULL == block) || ((uintptr_t)block >= MM_KERNEL_HEAP_START));
-    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
 
     block->free = false;
     return block;
@@ -189,7 +186,7 @@ static bool MmHeapExtendLastBlock(uintptr_t n)
     uintptr_t heapTop = (uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE;
     uintptr_t bytesToAllocate = ALIGN_UP(n - MmHeapBlockTail->size, 4096);
 
-    if (bytesToAllocate > (MM_KERNEL_HEAP_START + MM_KERNEL_HEAP_MAX_SIZE - heapTop))
+    if (bytesToAllocate > (HalGetHeapSpaceBase() + HalGetHeapSpaceSize() - heapTop))
         return false;
 
     if (OK != MmAllocateMemory(heapTop, bytesToAllocate, 0))
@@ -198,7 +195,7 @@ static bool MmHeapExtendLastBlock(uintptr_t n)
     MmHeapBlockTail->size += bytesToAllocate;
 
     ASSERT(MmHeapBlockTail->size != 0);
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
 
     return true;
 }
@@ -207,7 +204,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
 {
 #ifdef DEBUG
     if(n <= sizeof(uintptr_t))
-        PRINT("Suspicious heap allocation of %lu bytes\n", n);
+        LOG(SYSLOG_WARNING, "Suspicious heap allocation of %lu bytes", n);
 #endif
     struct MmHeapBlock *ret;
 
@@ -226,7 +223,6 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
         struct MmHeapBlock *block = MmHeapBlockHead;
         while(block)
         {
-            ASSERT((NULL == block) || ((uintptr_t)block >= MM_KERNEL_HEAP_START));
             if(block->free)
             {
                 if(block->size >= n)
@@ -283,7 +279,7 @@ void *MmAllocateKernelHeapZeroed(uintptr_t n)
 {
     void *ptr = MmAllocateKernelHeap(n);
     if (NULL != ptr)
-        CmMemset(ptr, 0, n);
+        RtlMemset(ptr, 0, n);
 
     return ptr;
 }
@@ -300,8 +296,6 @@ void MmFreeKernelHeap(const void *ptr)
     ASSERT(!block->free);
 
     block->free = true;
-
-    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
 
     if ((NULL != block->next) && (block->next->free))
     {
@@ -332,9 +326,8 @@ void MmFreeKernelHeap(const void *ptr)
     }
 
     ASSERT(MmHeapBlockTail->next == NULL);
-    ASSERT((NULL == block->next) || ((uintptr_t)block->next >= MM_KERNEL_HEAP_START));
 
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (MM_PAGE_SIZE - 1)));
+    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
 
     barrier();
     KeReleaseSpinlock(&MmHeapAllocatorLock, prio);
@@ -348,7 +341,7 @@ void *MmReallocateKernelHeap(void *ptr, uintptr_t n)
     if(NULL == ptr)
         return p;
     
-    CmMemcpy(p, ptr, n);
+    RtlMemcpy(p, ptr, n);
     MmFreeKernelHeap(ptr);
 
     return p;

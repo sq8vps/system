@@ -5,7 +5,7 @@
 #include "acpi.h"
 #include "dcpuid.h"
 #include "hal/hal.h"
-#include "common.h"
+
 #include "ke/core/panic.h"
 #include "irq.h"
 
@@ -18,12 +18,10 @@ STATUS I686InitRoot(void)
 
     if(OK == AcpiInit(&address)) //try to initialize ACPI
     {
-        LOG("ACPI-compliant system\n");
         HalSetRootDeviceId("ACPI");
     }
     else if(OK == (status = MpInit(&address))) //fallback to MP if ACPI not available
     {
-        LOG("MPS-compliant system\n");
         HalSetRootDeviceId("MP");
     }
     else

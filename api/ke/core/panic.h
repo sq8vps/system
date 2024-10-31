@@ -9,7 +9,7 @@ extern "C"
 
 #include <stdint.h>
 #include "defines.h"
-#include "io/disp/print.h"
+#include "io/log/syslog.h"
 
 /**
  * @brief Get nth caller address

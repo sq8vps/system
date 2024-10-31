@@ -646,8 +646,8 @@ typedef struct acpi_resource_i2c_serialbus
 
 /* Values for AccessMode field above */
 
-#define ACPI_I2C_7BIT_MODE                      0
-#define ACPI_I2C_10BIT_MODE                     1
+#define ACPI_I2C_7BHAL_IT_MODE                      0
+#define ACPI_I2C_10BHAL_IT_MODE                     1
 
 
 typedef struct acpi_resource_spi_serialbus

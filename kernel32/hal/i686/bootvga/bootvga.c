@@ -4,7 +4,7 @@
 #include "hal/i686/ioport.h"
 #include "mm/mmio.h"
 #include "font.h"
-#include "common.h"
+#include "rtl/string.h"
 
 //uncomment to enable 640x480 mode
 //otherwise 320x200 mode is used
@@ -249,7 +249,7 @@ static inline void setPlane(uint8_t plane)
 }
 #endif
 
-static inline uint8_t normalizeColor(CmRGB color)
+static inline uint8_t normalizeColor(RtlRGB color)
 {
 #ifdef BOOT_VGA_USE_640_480
 	color.r >>= 7;
@@ -266,17 +266,17 @@ static inline uint8_t normalizeColor(CmRGB color)
 #endif
 }
 
-void BootVgaSetBackgroundColor(CmRGB color)
+void BootVgaSetBackgroundColor(RtlRGB color)
 {
 	currentBgColor = normalizeColor(color);
 }
 
-void BootVgaSetForegroundColor(CmRGB color)
+void BootVgaSetForegroundColor(RtlRGB color)
 {
 	currentFgColor = normalizeColor(color);
 }
 
-void BootVgaSetColor(CmRGB fg, CmRGB bg)
+void BootVgaSetColor(RtlRGB fg, RtlRGB bg)
 {
 	BootVgaSetForegroundColor(fg);
 	BootVgaSetBackgroundColor(bg);
@@ -332,12 +332,12 @@ static inline void setPixelInCurrentPlane(uint16_t x, uint16_t y, uint8_t plane,
 }
 #endif
 
-void BootVgaSetPixel(uint16_t x, uint16_t y, CmRGB color)
+void BootVgaSetPixel(uint16_t x, uint16_t y, RtlRGB color)
 {
 	setPixel(x, y, normalizeColor(color));
 }
 
-void BootVgaFillScreen(CmRGB color)
+void BootVgaFillScreen(RtlRGB color)
 {
 	if(NULL == vmem)
 		return;
@@ -413,16 +413,16 @@ static void handleScroll(uint16_t objectHeight)
 		setPlane(plane);
 		for(uint16_t i = objectHeight; i < BOOTVGA_HEIGHT; i++)
 		{
-			CmMemcpy(&vmem[BOOTVGA_WIDTH * (i - objectHeight) / 8], &vmem[BOOTVGA_WIDTH * i / 8], BOOTVGA_WIDTH / 8);
+			RtlMemcpy(&vmem[BOOTVGA_WIDTH * (i - objectHeight) / 8], &vmem[BOOTVGA_WIDTH * i / 8], BOOTVGA_WIDTH / 8);
 		}
-		CmMemset(&vmem[BOOTVGA_WIDTH * (BOOTVGA_HEIGHT - objectHeight) / 8], 0, (objectHeight * BOOTVGA_WIDTH) / 8);
+		RtlMemset(&vmem[BOOTVGA_WIDTH * (BOOTVGA_HEIGHT - objectHeight) / 8], 0, (objectHeight * BOOTVGA_WIDTH) / 8);
 	}
 #else
 	for(uint16_t i = objectHeight; i < BOOTVGA_HEIGHT; i++)
 	{
-		CmMemcpy(&vmem[BOOTVGA_WIDTH * (i - objectHeight)], &vmem[BOOTVGA_WIDTH * i], BOOTVGA_WIDTH);
+		RtlMemcpy(&vmem[BOOTVGA_WIDTH * (i - objectHeight)], &vmem[BOOTVGA_WIDTH * i], BOOTVGA_WIDTH);
 	}
-	CmMemset(&vmem[BOOTVGA_WIDTH * (BOOTVGA_HEIGHT - objectHeight)], 0, (objectHeight * BOOTVGA_WIDTH));
+	RtlMemset(&vmem[BOOTVGA_WIDTH * (BOOTVGA_HEIGHT - objectHeight)], 0, (objectHeight * BOOTVGA_WIDTH));
 
 #endif
 	currentY -= objectHeight;
@@ -509,7 +509,7 @@ void BootVgaGetCurrentResolution(uint16_t *x, uint16_t *y)
 	*y = BOOTVGA_HEIGHT;
 }
 
-void BootVgaDisplayBitmap(uint16_t x, uint16_t y, CmRGB *bitmap, uint16_t width, uint16_t height)
+void BootVgaDisplayBitmap(uint16_t x, uint16_t y, RtlRGB *bitmap, uint16_t width, uint16_t height)
 {
 	if(NULL == vmem)
 		return;

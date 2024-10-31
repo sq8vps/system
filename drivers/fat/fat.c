@@ -5,10 +5,9 @@
 #include "mm/heap.h"
 #include "io/fs/vfs.h"
 #include "io/dev/rp.h"
-#include "common.h"
 #include "utils.h"
 #include "ddk/fs.h"
-#include "common/order.h"
+#include "rtl/order.h"
 #include "logging.h"
 
 struct FatGetEntryContext
@@ -28,10 +27,10 @@ uint32_t FatGetNextCluster(struct FatVolume *vol, uint32_t currentCluster)
     switch(vol->type)
     {
         case FAT16:
-            c = CmLeU16(((uint16_t*)vol->fat)[currentCluster]);
+            c = RtlLeU16(((uint16_t*)vol->fat)[currentCluster]);
             break;
         case FAT32:
-            c = CmLeU32(((uint32_t*)vol->fat)[currentCluster]) & 0xFFFFFFF;
+            c = RtlLeU32(((uint32_t*)vol->fat)[currentCluster]) & 0xFFFFFFF;
             break;
         case FAT12:
             //TODO: untested for FAT16 and FAT12
@@ -58,13 +57,13 @@ bool FatIsClusterEof(struct FatVolume *vol, uint32_t cluster)
     switch(vol->type)
     {
         case FAT16:
-            return (CmLeU16(val) == 0xFFFF);
+            return (RtlLeU16(val) == 0xFFFF);
             break;
         case FAT32:
-            return (CmLeU32(val) == 0xFFFFFFF);
+            return (RtlLeU32(val) == 0xFFFFFFF);
             break;
         case FAT12:
-            return (CmLeU16(val) == 0xFFF);
+            return (RtlLeU16(val) == 0xFFF);
             break;
     }
     return false;
@@ -79,11 +78,11 @@ void FatWriteNextCluster(struct FatVolume *vol, uint32_t currentCluster, uint32_
     switch(vol->type)
     {
         case FAT16:
-            ((uint16_t*)vol->fat)[currentCluster] = CmLeU16(nextCluster);
+            ((uint16_t*)vol->fat)[currentCluster] = RtlLeU16(nextCluster);
             break;
         case FAT32:
             ((uint32_t*)vol->fat)[currentCluster] &= 0xF0000000;
-            ((uint32_t*)vol->fat)[currentCluster] |= (CmLeU32(nextCluster) & 0xFFFFFFF);
+            ((uint32_t*)vol->fat)[currentCluster] |= (RtlLeU32(nextCluster) & 0xFFFFFFF);
             break;
         case FAT12:
             if(currentCluster & 1) //odd cluster number
@@ -149,12 +148,12 @@ void FatFreeClusters(struct FatVolume *vol, uint32_t cluster)
 static void FatFillVfsNode(struct IoVfsNode *n, struct FatDirectory *e, struct FatVolume *vol)
 {
     //store cluster for file data start
-    n->ref[1].u32 = ((uint32_t)CmLeU16(e->fstClusLo) | ((uint32_t)CmLeU16(e->fstClusHi) << 16));
+    n->ref[1].u32 = ((uint32_t)RtlLeU16(e->fstClusLo) | ((uint32_t)RtlLeU16(e->fstClusHi) << 16));
     n->device = IoGetDeviceStackTop(vol->vol);
     n->fsType = IO_VFS_FS_PHYSICAL;
     n->type = (e->attributes & FAT_ATTR_DIRECTORY) ? IO_VFS_DIRECTORY : IO_VFS_FILE;
     n->flags |= (e->attributes & (FAT_ATTR_HIDDEN | FAT_ATTR_SYSTEM)) ? IO_VFS_FLAG_HIDDEN : 0;
-    n->size = CmLeU32(e->fileSize);
+    n->size = RtlLeU32(e->fileSize);
     //TODO: implement dates handling
 }
 
@@ -186,9 +185,9 @@ static void FatGetEntryCallback(STATUS status, uint64_t actualSize, void *contex
                     goto FatGetEntryCallbackContinue;
                 }
                 offset = (offset - 1) * 26; //13 UCS-2 characters per entry
-                CmMemcpy(&(ctx->lastFileName[offset]), lfn->name1, sizeof(lfn->name1));
-                CmMemcpy(&(ctx->lastFileName[offset + sizeof(lfn->name1)]), lfn->name2, sizeof(lfn->name2));
-                CmMemcpy(&(ctx->lastFileName[offset + sizeof(lfn->name1) + sizeof(lfn->name2)]), lfn->name3, sizeof(lfn->name3));
+                RtlMemcpy(&(ctx->lastFileName[offset]), lfn->name1, sizeof(lfn->name1));
+                RtlMemcpy(&(ctx->lastFileName[offset + sizeof(lfn->name1)]), lfn->name2, sizeof(lfn->name2));
+                RtlMemcpy(&(ctx->lastFileName[offset + sizeof(lfn->name1) + sizeof(lfn->name2)]), lfn->name3, sizeof(lfn->name3));
                 i++;
                 continue;
             }
@@ -219,7 +218,7 @@ static void FatGetEntryCallback(STATUS status, uint64_t actualSize, void *contex
                     {
                         goto FatGetEntryCallbackContinue;
                     }
-                    if(0 != CmStrncmp(dosName, ctx->list[i].name, 11))
+                    if(0 != RtlStrncmp(dosName, ctx->list[i].name, 11))
                     {
                         goto FatGetEntryCallbackContinue;
                     }

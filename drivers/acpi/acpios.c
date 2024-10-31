@@ -84,7 +84,7 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
         if((flags & MM_FLAG_PRESENT) == 0)
             return false;
         
-        k += MM_PAGE_SIZE;
+        k += PAGE_SIZE;
     }
     return true;
 }
@@ -101,7 +101,7 @@ BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
         if(((flags & MM_FLAG_PRESENT) == 0) || ((flags & MM_FLAG_WRITABLE) == 0))
             return false;
         
-        k += MM_PAGE_SIZE;
+        k += PAGE_SIZE;
     }
     return true;
 }
@@ -273,8 +273,8 @@ void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context)
 {   
     STATUS ret = HalRegisterIrq(InterruptLevel, Handler, Context, 
-        (struct HalInterruptParams){.mode = IT_MODE_FIXED, .polarity = IT_POLARITY_ACTIVE_LOW, .trigger = IT_TRIGGER_LEVEL, 
-            .wake = IT_WAKE_CAPABLE, .shared = IT_NOT_SHAREABLE});
+        (struct HalInterruptParams){.mode = HAL_IT_MODE_FIXED, .polarity = HAL_IT_POLARITY_ACTIVE_LOW, .trigger = HAL_IT_TRIGGER_LEVEL, 
+            .wake = HAL_IT_WAKE_CAPABLE, .shared = HAL_IT_NOT_SHAREABLE});
     
     if(OK == ret)
         HalEnableIrq(InterruptLevel, Handler);
@@ -307,7 +307,7 @@ in ACPICA examples.
 
 ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width)
 {
-    uint64_t *mem = MmMapMmIo(Address, MM_PAGE_SIZE);
+    uint64_t *mem = MmMapMmIo(Address, PAGE_SIZE);
     if(NULL == mem)
     {
         return AE_NO_MEMORY;
@@ -338,7 +338,7 @@ ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT3
 
 ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT32 Width)
 {
-    uint64_t *mem = MmMapMmIo(Address, MM_PAGE_SIZE);
+    uint64_t *mem = MmMapMmIo(Address, PAGE_SIZE);
     if(NULL == mem)
     {
         return AE_NO_MEMORY;

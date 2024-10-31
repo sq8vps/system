@@ -1,7 +1,8 @@
 #include "disk.h"
 #include "mm/mm.h"
 #include "rtl/uuid.h"
-#include "common.h"
+#include "rtl/string.h"
+#include "rtl/stdio.h"
 
 STATUS DiskReadWrite(struct IoRp *rp)
 {
@@ -102,7 +103,7 @@ STATUS DiskGetSig(struct DiskData *info, char **signature)
     if(NULL == t)
         return OUT_OF_RESOURCES;
     
-    CmStrcpy(t, "DISK:SIG={");
+    RtlStrcpy(t, "DISK:SIG={");
 
 
     if(!info->isMdo) //if it is a BDO, and since there are no BDOs for partition 0, this must be a partition x
@@ -114,7 +115,7 @@ STATUS DiskGetSig(struct DiskData *info, char **signature)
 
         }
         else if(part0info->isMbr)
-            DiskMbrGetUuid(part0info, t + CmStrlen(t));
+            DiskMbrGetUuid(part0info, t + RtlStrlen(t));
         //no need to check for non-partitioned disks, since we would never end here
     }
     else //if this is an MDO, this must be partition 0
@@ -124,7 +125,7 @@ STATUS DiskGetSig(struct DiskData *info, char **signature)
 
         }
         else if(info->isMbr)
-            DiskMbrGetUuid(info, t + CmStrlen(t));
+            DiskMbrGetUuid(info, t + RtlStrlen(t));
         else
         {
             //fail on non-partitioned disks, since there is no obtainable UUID
@@ -135,11 +136,11 @@ STATUS DiskGetSig(struct DiskData *info, char **signature)
 
     if(info->isMdo) //MDO of a partition 0
     {
-        CmStrcat(t, "}&PAR=0");
+        RtlStrcat(t, "}&PAR=0");
     }
     else //BDO of partition x
     {
-        sprintf(t + CmStrlen(t), "}&PAR=%lu", info->partition.number + 1);
+        sprintf(t + RtlStrlen(t), "}&PAR=%lu", info->partition.number + 1);
     }
 
     *signature = t;

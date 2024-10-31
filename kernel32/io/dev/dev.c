@@ -1,6 +1,6 @@
 #include "dev.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "assert.h"
 #include "ex/worker.h"
 #include "ke/sched/sched.h"
@@ -135,7 +135,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
         return ret;
     }
 
-    CmFreeStringTable(compatibleIds, IO_MAX_COMPATIBLE_DEVICE_IDS);
+    RtlFreeStringTable(compatibleIds, IO_MAX_COMPATIBLE_DEVICE_IDS);
     MmFreeKernelHeap(deviceId);
 
     //invoke AddDevice routine for all drivers to form a device stack

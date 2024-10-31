@@ -4,7 +4,7 @@
 #include "io/fs/fs.h"
 #include "mm/heap.h"
 #include "elf.h"
-#include "common.h"
+#include "rtl/string.h"
 
 
 STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
@@ -105,7 +105,7 @@ STATUS ExPrepareExecutableBss(void *fileStart, void *bss)
 
 		if(s->sh_flags & SHF_ALLOC)
 		{
-			CmMemset(bss, 0, s->sh_size);
+			RtlMemset(bss, 0, s->sh_size);
             s->sh_offset = (uintptr_t)bss - (uintptr_t)fileStart;
             bss = (void*)((uintptr_t)bss + (uintptr_t)s->sh_size);
 		}

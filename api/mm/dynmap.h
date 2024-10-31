@@ -8,7 +8,6 @@ extern "C"
 #endif
 
 #include <stdint.h>
-#include "../cdefines.h"
 #include "defines.h"
 #include "mm/mm.h"
 

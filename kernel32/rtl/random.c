@@ -1,4 +1,3 @@
-#include "random.h"
 #include "config.h"
 #include "hal/arch.h"
 #include "hal/cpu.h"

@@ -1,7 +1,7 @@
 #if defined(__i686__) || defined(__amd64__)
 
 #include "ioport.h"
-#include "common.h"
+
 
 uint8_t IoPortReadByte(uint16_t port)
 {
@@ -90,7 +90,7 @@ void IoPortWriteDWord(uint16_t port, uint32_t d)
 
 // void HalIoPortInit(void)
 // {
-//     CmMemset(HalIoPortUsage, 0, sizeof(HalIoPortUsage));
+//     RtlMemset(HalIoPortUsage, 0, sizeof(HalIoPortUsage));
 //     MARK_IO_PORT_USED(0);
 
 //     //reserve legacy/compatibility mode I/O ports

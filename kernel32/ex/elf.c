@@ -1,6 +1,6 @@
 #include "elf.h"
-#include "../cdefines.h"
-#include "common.h"
+#include "io/log/syslog.h"
+#include "rtl/string.h"
 
 // STATUS elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
 // {
@@ -16,7 +16,7 @@
 // 		if(p->p_filesz > p->p_memsz) //file size must not be bigger than memory size
 // 			return EXEC_ELF_BROKEN;
 
-// 		// ret = Mm_allocateEx(p->vAddr, p->memSize / MM_PAGE_SIZE + ((p->memSize % MM_PAGE_SIZE) ? 1 : 0), 0); //allocate page(s)
+// 		// ret = Mm_allocateEx(p->vAddr, p->memSize / PAGE_SIZE + ((p->memSize % PAGE_SIZE) ? 1 : 0), 0); //allocate page(s)
 // 		// if(ret != OK)
 // 		// 	return ret;
 
@@ -59,7 +59,7 @@ STATUS ExGetElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *
 		        if(ELF32_ST_TYPE(symbol[i].st_info) == STT_FUNC || ELF32_ST_TYPE(symbol[i].st_info) == STT_OBJECT)
                 {
                     struct Elf32_Shdr *strTab = ExGetElf32SectionHeader(h, s->sh_link); //get string table header
-                    if(0 != CmStrcmp((char*)h + strTab->sh_offset + symbol[i].st_name, name)) //compare names
+                    if(0 != RtlStrcmp((char*)h + strTab->sh_offset + symbol[i].st_name, name)) //compare names
 						continue;
 
 					if(SHN_UNDEF == symbol[i].st_shndx) //symbol is undefined
@@ -122,7 +122,7 @@ STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t inde
 			}
 			else //no definition found and this symbol is not weak: failure
 			{
-				PRINT("Undefined symbol %s\n", name);
+				LOG(SYSLOG_ERROR, "Unknown symbol: %s", name);
 				return EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL;
 			}
 		}

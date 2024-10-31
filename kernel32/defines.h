@@ -10,8 +10,8 @@
  * @defgroup defines Common kernel definitions
 */
 
-#include "../cdefines.h"
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @ingroup defines
@@ -309,7 +309,7 @@ union UID
 
 END_EXPORT_API
 
-#include "hal/archdefs.h"
+#include "hal/arch.h"
 
 /**
  * @}

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include "ob/ob.h"
-#include "hal/archdefs.h"
+#include "hal/arch.h"
 #include "config.h"
 #include "hal/cpu.h"
 

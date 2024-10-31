@@ -1,5 +1,5 @@
 #include "ndb.h"
-#include "common.h"
+#include "rtl/string.h"
 
 #define CRC32_POLYNOMIAL 0xEDB88320
 #define CRC32_INITIAL 0xFFFFFFFF
@@ -117,7 +117,7 @@ struct NablaDbEntry* NablaDbFind(const struct NablaDbHeader *h, const char *name
     {
         if(NABLADB_ARRAY_ELEMENT != (e->type & NABLADB_ARRAY_ELEMENT)) //standard entry
         {
-            if(0 == CmStrcmp(e->name, name))
+            if(0 == RtlStrcmp(e->name, name))
             {
                 return e;
             }

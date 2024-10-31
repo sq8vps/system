@@ -2,7 +2,7 @@
 #include "hal/i686/bootvga/bootvga.h"
 #include "ex/kdrv/kdrv.h"
 #include "it/it.h"
-#include "hal/arch.h"
+#include "hal/cpu.h"
 
 #define PANIC_STRING(code) [code] = STRINGIFY(code)
 

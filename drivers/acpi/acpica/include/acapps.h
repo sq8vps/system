@@ -273,7 +273,7 @@ extern char                 *AcpiGbl_Optarg;
  * cmfsize - Common get file size function
  */
 UINT32
-CmGetFileSize (
+RtlGetFileSize (
     ACPI_FILE               File);
 
 

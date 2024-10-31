@@ -40,8 +40,8 @@ static volatile const Multiboot2Data __attribute__ ((section(".multiboot"))) =
             .flags = 0, //"optional" bit not set
         },
         .min_addr = 0, //place image somewhere between 0 and virtual kernel space
-        .max_addr = MM_KERNEL_ADDRESS - 1,
-        .align = MM_PAGE_SIZE, //align to page size
+        .max_addr = HAL_KERNEL_IMAGE_ADDRESS - 1,
+        .align = PAGE_SIZE, //align to page size
         .preference = 0, //no location preference
     },
     .request = //pass information requests to the bootloader

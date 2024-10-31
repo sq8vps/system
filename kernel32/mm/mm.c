@@ -2,6 +2,7 @@
 #include "palloc.h"
 #include "slab.h"
 #include "dynmap.h"
+#include "hal/mm.h"
 #include "hal/arch.h"
 
 static void *MmMemoryDescriptorSlabHandle = NULL;
@@ -49,10 +50,10 @@ struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t s
         if(OK != HalGetPhysicalAddress((uintptr_t)memory, &physical))
             goto MmBuildMemoryDescriptorListFailure;
 
-        if(physical & (MM_PAGE_SIZE - 1))
-            bytesToBoundary = ALIGN_UP(physical, MM_PAGE_SIZE) - physical;
+        if(physical & (PAGE_SIZE - 1))
+            bytesToBoundary = ALIGN_UP(physical, PAGE_SIZE) - physical;
         else
-            bytesToBoundary = MM_PAGE_SIZE;
+            bytesToBoundary = PAGE_SIZE;
         if(bytesToBoundary > size)
             bytesToBoundary = size;
 
@@ -147,15 +148,15 @@ void *HalMapMemoryDescriptorList(struct MmMemoryDescriptor *list)
         return NULL;
     
     struct MmMemoryDescriptor first = list[0];
-    uintptr_t offset = first.physical - ALIGN_DOWN(first.physical, MM_PAGE_SIZE);
+    uintptr_t offset = first.physical - ALIGN_DOWN(first.physical, PAGE_SIZE);
     first.physical -= offset;
     first.size += offset;
-    first.size = ALIGN_UP(first.size, MM_PAGE_SIZE);
+    first.size = ALIGN_UP(first.size, PAGE_SIZE);
 
     uint64_t size = 0;
 
     if(NULL != first.next)
-        size = ALIGN_UP(MmGetMemoryDescriptorListSize(first.next) + first.size, MM_PAGE_SIZE);
+        size = ALIGN_UP(MmGetMemoryDescriptorListSize(first.next) + first.size, PAGE_SIZE);
     else
         size = first.size;
 
@@ -208,7 +209,7 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
     uintptr_t initialAddress = address;
     while(size)
     {
-        if(address & (MM_PAGE_SIZE - 1)) //check if memory is aligned
+        if(address & (PAGE_SIZE - 1)) //check if memory is aligned
             return MM_UNALIGNED_MEMORY;
         
         uintptr_t pAddress = 0;
@@ -222,7 +223,7 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
         if(OK != (ret = HalMapMemoryEx(address, pAddress, allocated, flags)))
         {
             //mapping failed
-            MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE); //free physical page that wasn't mapped
+            MmFreePhysicalMemory(pAddress, PAGE_SIZE); //free physical page that wasn't mapped
             goto mmAllocateKernelMemoryFailed;
         }
         address += allocated;
@@ -232,15 +233,15 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
     return OK;
 
     mmAllocateKernelMemoryFailed:
-    address -= MM_PAGE_SIZE;
+    address -= PAGE_SIZE;
     uintptr_t pAddress = 0;
     //unmap and free previously mapped and allocated pages
     while(address != initialAddress)
     {
         HalGetPhysicalAddress(address, &pAddress);
-        MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
+        MmFreePhysicalMemory(pAddress, PAGE_SIZE);
         HalUnmapMemory(address);
-        address -= MM_PAGE_SIZE;
+        address -= PAGE_SIZE;
     }
     return ret;
 }
@@ -253,11 +254,11 @@ STATUS MmFreeMemory(uintptr_t address, uintptr_t size)
         if(OK == HalGetPhysicalAddress(address, &pAddress))
         {
             HalUnmapMemory(address);
-            MmFreePhysicalMemory(pAddress, MM_PAGE_SIZE);
+            MmFreePhysicalMemory(pAddress, PAGE_SIZE);
         }
-        address += MM_PAGE_SIZE;
-        if(size >= MM_PAGE_SIZE)
-            size -= MM_PAGE_SIZE;
+        address += PAGE_SIZE;
+        if(size >= PAGE_SIZE)
+            size -= PAGE_SIZE;
         else
             size = 0;
     }

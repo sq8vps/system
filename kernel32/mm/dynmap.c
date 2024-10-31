@@ -4,8 +4,9 @@
 #include "ke/core/panic.h"
 #include "ke/core/mutex.h"
 #include "hal/arch.h"
+#include "hal/mm.h"
 
-#define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (MM_PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
+#define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
 static struct BstNode *MmDynamicMemoryTree[3] = {NULL, NULL, NULL};
 #define MM_DYNAMIC_ADDRESS_FREE_TREE MmDynamicMemoryTree[0]
@@ -16,7 +17,7 @@ static KeSpinlock MmDynamicAllocatorLock = KeSpinlockInitializer;
 
 void *MmReserveDynamicMemory(uintptr_t n)
 {
-    n = ALIGN_UP(n, MM_PAGE_SIZE);
+    n = ALIGN_UP(n, PAGE_SIZE);
     
     PRIO prio = KeAcquireSpinlock(&MmDynamicAllocatorLock);
     barrier();
@@ -63,7 +64,7 @@ MmMapDynamicMemoryFail:
 
 static uintptr_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
 {
-    ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE);
+    ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, PAGE_SIZE);
 
     PRIO prio = KeAcquireSpinlock(&MmDynamicAllocatorLock);
     barrier();
@@ -118,22 +119,22 @@ uintptr_t MmFreeDynamicMemoryReservation(const void *ptr)
 
 void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags)
 {
-    n = ALIGN_UP(pAddress + n, MM_PAGE_SIZE) - ALIGN_DOWN(pAddress, MM_PAGE_SIZE);
+    n = ALIGN_UP(pAddress + n, PAGE_SIZE) - ALIGN_DOWN(pAddress, PAGE_SIZE);
 
     void *ptr = MmReserveDynamicMemory(n);
     if(NULL == ptr)
         return NULL;
     
     STATUS ret;
-    if(OK != (ret = HalMapMemoryEx(ALIGN_DOWN((uintptr_t)ptr, MM_PAGE_SIZE), 
-        ALIGN_DOWN(pAddress, MM_PAGE_SIZE), 
+    if(OK != (ret = HalMapMemoryEx(ALIGN_DOWN((uintptr_t)ptr, PAGE_SIZE), 
+        ALIGN_DOWN(pAddress, PAGE_SIZE), 
         n, 
         MM_FLAG_WRITABLE | flags)))
     {
         MmFreeDynamicMemoryReservation(ptr);
         return NULL;
     }
-    return (void*)((uintptr_t)ptr + (pAddress % MM_PAGE_SIZE));
+    return (void*)((uintptr_t)ptr + (pAddress % PAGE_SIZE));
 }
 
 void MmUnmapDynamicMemory(const void *ptr)
@@ -146,7 +147,7 @@ void MmUnmapDynamicMemory(const void *ptr)
 void MmInitDynamicMemory(void)
 {
     if(NULL == BstInsertPair(&MM_DYNAMIC_ADDRESS_FREE_TREE, &MM_DYNAMIC_SIZE_FREE_TREE, 
-        MM_DYNAMIC_START_ADDRESS, MM_DYNAMIC_MAX_SIZE))
+        HalGetDynamicSpaceBase(), HalGetDynamicSpaceSize()))
         KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
 }
 

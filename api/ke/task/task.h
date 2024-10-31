@@ -10,7 +10,7 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include "ob/ob.h"
-#include "hal/archdefs.h"
+#include "hal/arch.h"
 #include "config.h"
 #include "hal/cpu.h"
 
@@ -296,12 +296,13 @@ STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name,
  * @param flags Task flags
  * @param *entry Thread entry point
  * @param *entryContext Entry point parameter
+ * @param *userStack User mode stack top pointer
  * @param **tcb Output Task Control Block
  * @return Status code
  * @attention This function returns immediately. The created thread will be started by the scheduler later.
 */
 STATUS KeCreateUserThread(const char *name, uint32_t flags,
-    void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+    void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
 
 
 #ifdef __cplusplus

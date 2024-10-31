@@ -2,8 +2,8 @@
 #include <stdbool.h>
 #include "ke/core/panic.h"
 #include "idle.h"
-#include "common.h"
-#include "hal/hal.h"
+#include "rtl/string.h"
+#include "hal/task.h"
 #include "hal/interrupt.h"
 #include "ke/core/mutex.h"
 #include "it/it.h"
@@ -12,6 +12,7 @@
 #include "hal/arch.h"
 #include "hal/time.h"
 #include "ex/worker.h"
+#include "hal/hal.h"
 
 #define KE_SCHEDULER_TIME_SLICE 100000 //microseconds
 

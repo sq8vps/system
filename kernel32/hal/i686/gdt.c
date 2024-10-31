@@ -1,5 +1,5 @@
 #include "gdt.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "config.h"
 
 #define GDT_MAX_ENTRIES (4 + MAX_CPU_COUNT)
@@ -94,8 +94,8 @@ static struct TssEntry I686Tss[MAX_CPU_COUNT];
 
 void GdtInit(void)
 {
-    CmMemset(I686Gdt, 0, sizeof(I686Gdt)); //clear all GDT entries
-    CmMemset(I686Tss, 0, sizeof(I686Tss));
+    RtlMemset(I686Gdt, 0, sizeof(I686Gdt)); //clear all GDT entries
+    RtlMemset(I686Tss, 0, sizeof(I686Tss));
     I686Gdt[GDT_KERNEL_CS].limit1 = 0xFFFF;
     I686Gdt[GDT_KERNEL_CS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_0 | GDT_DATA_CODE_FLAG | GDT_EXECUTABLE_FLAG | GDT_RW_FLAG;
     I686Gdt[GDT_KERNEL_CS].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;

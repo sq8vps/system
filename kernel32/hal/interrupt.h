@@ -17,6 +17,7 @@
 #include "defines.h"
 #include <stdbool.h>
 #include "it/it.h"
+#include "hal/arch.h"
 
 /**
  * @addtogroup halIt
@@ -27,21 +28,13 @@ EXPORT_API
 
 #define HAL_INTERRUPT_INPUT_ANY UINT32_MAX
 
-enum HalInterruptMethod
-{
-    IT_METHOD_NONE,
-    IT_METHOD_PIC,
-    IT_METHOD_APIC,
-};
-
-
 /**
  * @brief IRQ polarity
 */
 enum HalInterruptPolarity
 {
-    IT_POLARITY_ACTIVE_LOW,
-    IT_POLARITY_ACTIVE_HIGH,
+    HAL_IT_POLARITY_ACTIVE_LOW,
+    HAL_IT_POLARITY_ACTIVE_HIGH,
 };
 
 
@@ -50,8 +43,8 @@ enum HalInterruptPolarity
 */
 enum HalInterruptTrigger
 {
-    IT_TRIGGER_EDGE,
-    IT_TRIGGER_LEVEL,
+    HAL_IT_TRIGGER_EDGE,
+    HAL_IT_TRIGGER_LEVEL,
 };
 
 
@@ -60,34 +53,18 @@ enum HalInterruptTrigger
 */
 enum HalInterruptWakeCapable
 {
-    IT_WAKE_INCAPABLE,
-    IT_WAKE_CAPABLE,
+    HAL_IT_WAKE_INCAPABLE,
+    HAL_IT_WAKE_CAPABLE,
 };
-
 
 /**
  * @brief IRQ sharing capability
 */
 enum HalInterruptSharing
 {
-    IT_NOT_SHAREABLE,
-    IT_SHAREABLE,
+    HAL_IT_NOT_SHAREABLE,
+    HAL_IT_SHAREABLE,
 };
-
-
-/**
- * @brief IRQ mode
-*/
-enum HalInterruptMode
-{
-    IT_MODE_FIXED,
-    IT_MODE_LOWEST_PRIORITY,
-    IT_MODE_SMI,
-    IT_MODE_NMI,
-    IT_MODE_INIT,
-    IT_MODE_EXTINT,
-};
-
 
 struct HalInterruptParams
 {
@@ -97,17 +74,6 @@ struct HalInterruptParams
     enum HalInterruptSharing shared;
     enum HalInterruptWakeCapable wake;
 };
-
-
-/**
- * @brief Resolve legacy ISA IRQ to global interrupt mapping
- * @param irq ISA IRQ from device
- * @return Resolved IRQ after remapping (if applicable)
-*/
-uint32_t I686ResolveIsaIrqMapping(uint32_t irq);
-
-
-
 
 /**
  * @brief Register external IRQ
@@ -181,9 +147,6 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr);
 */
 STATUS HalClearInterruptFlag(uint32_t input);
 
-
-
-
 /**
  * @brief Raise current task priority level
  * @param prio New priority level
@@ -242,12 +205,16 @@ INTERNAL void HalSetTaskPriority(PRIO prio);
 INTERNAL bool HalIsInterruptSpurious(void);
 
 /**
- * @brief Add ISA remap entry when I/O APIC is used
- * @param isaIrq Original ISA IRQ
- * @param gsi Global System Interrupt (Global IRQ number)
- * @return Status code
-*/
-INTERNAL STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi);
+ * @brief Obtain vector corresponding to given IRQ (if applicable)
+ * @return Vector corresponding to given IRQ
+ */
+INTERNAL uint32_t HalIrqVectorFromIrq(uint32_t irq);
+
+/**
+ * @brief Check if vector number is related to IRQ due to hardware limitations
+ * @return True if related, false otherwise
+ */
+INTERNAL bool HalIrqIsVectorRelatedToIrq(void);
 
 /**
  * @}

@@ -3,7 +3,7 @@
 #include "io/fs/fs.h"
 #include "mm/mm.h"
 #include "ke/sched/sched.h"
-#include "common.h"
+#include "rtl/string.h"
 
 STATUS ExLoadProcessImage(const char *path, void (**entry)())
 {
@@ -77,8 +77,8 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 				status = OUT_OF_RESOURCES;
 				goto ExProcessLoadWorkerFailed;
 			}
-			uintptr_t base = ALIGN_DOWN(phdr[i].p_vaddr, MM_PAGE_SIZE);
-			uintptr_t top = ALIGN_UP(base + phdr[i].p_memsz, MM_PAGE_SIZE);
+			uintptr_t base = ALIGN_DOWN(phdr[i].p_vaddr, PAGE_SIZE);
+			uintptr_t top = ALIGN_UP(base + phdr[i].p_memsz, PAGE_SIZE);
 			uint16_t flags = MM_FLAG_USER_MODE;
 			if(phdr[i].p_flags & PF_W)
 				flags |= MM_FLAG_WRITABLE;
@@ -90,7 +90,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 			if(OK != status)
 				goto ExProcessLoadWorkerFailed;
 			
-			CmMemset((void*)base, 0, top - base);
+			RtlMemset((void*)base, 0, top - base);
 
 			status = IoReadKernelFileSync(f, (void*)phdr[i].p_vaddr, phdr[i].p_filesz, phdr[i].p_offset, &actualSize);
 			if(OK != status)

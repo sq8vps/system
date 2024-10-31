@@ -1,7 +1,7 @@
 #include "hal.h"
 #include "interrupt.h"
 #include "time.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "math.h"
 #include "mm/heap.h"
 
@@ -16,7 +16,7 @@ void HalSetRootDeviceId(const char *id)
 {
     if(NULL != HalRootDeviceId)
         return;
-    HalRootDeviceId = MmAllocateKernelHeap(CmStrlen(id) + 1);
+    HalRootDeviceId = MmAllocateKernelHeap(RtlStrlen(id) + 1);
     if(NULL != HalRootDeviceId)
-        CmStrcpy(HalRootDeviceId, id);
+        RtlStrcpy(HalRootDeviceId, id);
 }

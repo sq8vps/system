@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include "config.h"
-#include "archdefs.h"
+#include "arch.h"
 
 EXPORT_API
 
@@ -82,6 +82,12 @@ struct HalCpu* HalGetCpuEntry(uint32_t id);
  */
 uint32_t HalGetCpuCount(void);
 
+/**
+ * @brief Get current CPU number
+ * @return Current CPU number
+ */
+uint16_t HalGetCurrentCpu(void);
+
 END_EXPORT_API
 
 /**
@@ -91,5 +97,11 @@ END_EXPORT_API
  * @return Status code
  */
 INTERNAL STATUS HalRegisterCpu(struct HalCpuExtensions *extensions, bool usable);
+
+/**
+ * @brief Halt all CPUs
+ * @attention This routine is used only on failure in a SMP system
+ */
+INTERNAL void HalHaltAllCpus(void);
 
 #endif

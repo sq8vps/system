@@ -1,5 +1,7 @@
-#include "common.h"
+
 #include <stdint.h>
+#include <stddef.h>
+#include "rtl/string.h"
 
 static const char *const AcpiPnpNames[] = {
     [0x0000] = "AT Interrupt Controller",
@@ -38,7 +40,7 @@ static const char *const AcpiPnpNames[] = {
 static uint32_t AcpiExtractHex(const char *const hex)
 {
     uint32_t value = 0;
-    for(uint16_t i = 0; i < CmStrlen(hex); i++)
+    for(uint16_t i = 0; i < RtlStrlen(hex); i++)
     {
         uint8_t v;
         if((hex[i] >= '0') && (hex[i] <= '9'))
@@ -55,7 +57,7 @@ static uint32_t AcpiExtractHex(const char *const hex)
 
 char *AcpiGetPnpName(const char *const id)
 {
-    if(!CmStrncmp(id, "PNP", 3))
+    if(!RtlStrncmp(id, "PNP", 3))
     {
         uint16_t index = AcpiExtractHex(&(id[3]));
         if(index >= (sizeof(AcpiPnpNames) / sizeof(*AcpiPnpNames)))

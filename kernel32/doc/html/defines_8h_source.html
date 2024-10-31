@@ -209,8 +209,8 @@ $(document).ready(function(){initNavTree('defines_8h_source.html',''); initResiz
 <div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span> </div>
 <div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span><span class="preprocessor">#ifdef DEBUG</span></div>
 <div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span><span class="preprocessor">    #include &quot;<a class="code" href="common_8h.html">common.h</a>&quot;</span></div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span><span class="preprocessor">    #define PRINT(...) {CmPrintf(__VA_ARGS__);}</span></div>
-<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span><span class="preprocessor">    #define ERROR(...) {CmPrintf(__FILE__ &quot;:&quot;</span> STRINGIFY(__LINE__) &quot;: &quot; __VA_ARGS__);}</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span><span class="preprocessor">    #define PRINT(...) {RtlPrintf(__VA_ARGS__);}</span></div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span><span class="preprocessor">    #define ERROR(...) {RtlPrintf(__FILE__ &quot;:&quot;</span> STRINGIFY(__LINE__) &quot;: &quot; __VA_ARGS__);}</div>
 <div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span><span class="preprocessor">    #define BP() {asm volatile(&quot;xchg bx,bx&quot;</span>);}</div>
 <div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span><span class="preprocessor">    #define RETURN(val) {ERROR(&quot;returned 0x%X\n&quot;</span>, (unsigned int)val); return val;}</div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span><span class="preprocessor">#else</span></div>

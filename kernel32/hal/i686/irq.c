@@ -4,6 +4,7 @@
 #include "ioapic.h"
 #include "lapic.h"
 #include "ke/core/panic.h"
+#include "irq.h"
 
 #define ISA_INTERRUPT_COUNT 16
 #define PIC_REMAP_VECTOR IT_IRQ_VECTOR_BASE
@@ -74,7 +75,7 @@ bool I686IsIoApicUsed(void)
     return UseIoApic;
 }
 
-STATUS HalMasterEnableIrq(uint32_t input)
+STATUS HalArchEnableIrq(uint32_t input)
 {
     if(UseIoApic)
         return ApicIoEnableIrq(input);
@@ -82,7 +83,7 @@ STATUS HalMasterEnableIrq(uint32_t input)
         return PicEnableIrq(input);
 }
 
-STATUS HalMasterDisableIrq(uint32_t input)
+STATUS HalArchDisableIrq(uint32_t input)
 {
     if(UseIoApic)
         return ApicIoDisableIrq(input);
@@ -122,7 +123,7 @@ bool HalIsInterruptSpurious(void)
         return PicIsIrqSpurious();
 }
 
-STATUS IrqRegister(uint32_t input, uint8_t vector, struct HalInterruptParams params)
+STATUS HalArchRegiserIrq(uint32_t input, uint8_t vector, struct HalInterruptParams params)
 {
     if(UseIoApic)
     {
@@ -139,7 +140,7 @@ STATUS IrqRegister(uint32_t input, uint8_t vector, struct HalInterruptParams par
     }    
 }
 
-STATUS IrqUnregister(uint32_t input)
+STATUS HalArchUnregisterIrq(uint32_t input)
 {
     if(UseIoApic)
         return ApicIoUnregisterIrq(input);
@@ -147,7 +148,7 @@ STATUS IrqUnregister(uint32_t input)
         return OK;
 }
 
-uint32_t IrqVectorFromIrq(uint32_t irq)
+uint32_t HalIrqVectorFromIrq(uint32_t irq)
 {
     if(UseIoApic)
         return irq;

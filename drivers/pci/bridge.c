@@ -63,7 +63,7 @@ STATUS PciRegisterHostBridge(union IoBusId address, struct PciBridge **out)
     if(NULL == b)
         return OUT_OF_RESOURCES;
 
-    CmMemset(b, 0, sizeof(*b));
+    RtlMemset(b, 0, sizeof(*b));
 
     PRIO prio = KeAcquireSpinlock(&PciBridgeListMutex);
     //allow only one host bridge

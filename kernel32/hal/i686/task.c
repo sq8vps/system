@@ -1,5 +1,6 @@
 #if defined(__i686__)
 
+#include "rtl/string.h"
 #include "i686.h"
 #include "mm/mm.h"
 #include "hal/arch.h"
@@ -8,20 +9,20 @@
 #include "ke/core/panic.h"
 #include "ke/sched/sched.h"
 #include "memory.h"
-#include "common.h"
 #include "mm/dynmap.h"
 #include "assert.h"
 #include "config.h"
 #include "time.h"
-#include "rtl/random.h"
+#include "rtl/stdlib.h"
 #include "ex/load.h"
 #include "hal/math.h"
+#include "hal/arch.h"
 
 #define I686_KERNEL_STACK_SIZE 0x2000 //8 KiB
 
-#define I686_USER_SPACE_TOP (MM_KERNEL_SPACE_START_ADDRESS - MM_PAGE_SIZE)
+#define I686_USER_SPACE_TOP (HAL_KERNEL_SPACE_BASE - PAGE_SIZE)
 #define I686_USER_STACK_DEFAULT_BASE I686_USER_SPACE_TOP
-#define I686_USER_STACK_MAX_SIZE (0x1000000 - MM_PAGE_SIZE) //16 MiB - 4 KiB (guard page)
+#define I686_USER_STACK_MAX_SIZE (0x1000000 - PAGE_SIZE) //16 MiB - 4 KiB (guard page)
 #define I686_USER_STACK_DEFAULT_SIZE 0x8000 //32 KiB
 
 #define I686_EFLAGS_IF (1 << 9) //interrupt flag
@@ -39,7 +40,7 @@ STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *name, uint
     uint32_t *stack = NULL;
     *tcb = NULL;
 
-    *tcb = KePrepareTCB((NULL != name) ? name : CmGetFileName(pcb->path), flags);
+    *tcb = KePrepareTCB((NULL != name) ? name : RtlGetFileName(pcb->path), flags);
     if(NULL == *tcb)
     {
         status = OUT_OF_RESOURCES;
@@ -64,7 +65,7 @@ STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *name, uint
         goto HalCreateThreadExit;
     }
 
-    CmMemset(stack, 0, I686_KERNEL_STACK_SIZE);
+    RtlMemset(stack, 0, I686_KERNEL_STACK_SIZE);
     stack = (uint32_t*)((uintptr_t)stack + I686_KERNEL_STACK_SIZE);
 
     (*tcb)->stack.kernel.top = (void*)stack;
@@ -128,7 +129,7 @@ STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, u
     struct KeProcessControlBlock *pcb = NULL;
 
     if((NULL == name) && (NULL != path))
-        name = CmGetFileName(path);
+        name = RtlGetFileName(path);
 
     pcb = KePreparePCB(pl, path, 0);
     if(NULL == pcb)
@@ -186,8 +187,8 @@ static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context)
             int32_t location = RtlRandom(0, 1 << 20);
             //calculate stack base with 16 byte granularity, so that the stack the stack is somewhere within the 16 MiB region
             tcb->stack.user.top = (void*)(I686_USER_STACK_DEFAULT_BASE - (location * 16));
-            uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->stack.user.top - I686_USER_STACK_DEFAULT_SIZE, MM_PAGE_SIZE);
-            uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->stack.user.top, MM_PAGE_SIZE) - alignedBase;
+            uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->stack.user.top - I686_USER_STACK_DEFAULT_SIZE, PAGE_SIZE);
+            uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->stack.user.top, PAGE_SIZE) - alignedBase;
             tcb->stack.user.size = (uintptr_t)tcb->stack.user.top - alignedBase;
 
             status = MmAllocateMemory(alignedBase, alignedSize, MM_FLAG_USER_MODE | MM_FLAG_WRITABLE);

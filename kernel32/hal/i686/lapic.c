@@ -208,7 +208,7 @@ STATUS ApicInit(uintptr_t address)
     if(0 == address)
         return APIC_LAPIC_NOT_AVAILABLE;
 
-    lapic = MmMapMmIo(address, MM_PAGE_SIZE);
+    lapic = MmMapMmIo(address, PAGE_SIZE);
     if(NULL == lapic)
         return OUT_OF_RESOURCES;
     return OK;

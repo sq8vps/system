@@ -3,9 +3,9 @@
 #include "io/dev/rp.h"
 #include "io/dev/op.h"
 #include "structs.h"
-#include "common/order.h"
+#include "rtl/order.h"
 #include "mm/heap.h"
-#include "common.h"
+
 #include "logging.h"
 
 #define FAT12_CLUSTER_COUNT_LIMIT 4084
@@ -24,9 +24,9 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     if(OK != status)
         return status;
 
-    bpb->bytesPerSector = CmLeU16(bpb->bytesPerSector);
+    bpb->bytesPerSector = RtlLeU16(bpb->bytesPerSector);
     
-    if((CmLeU16(bpb->signature) != FAT_BPB_SIGNATURE_VALUE)
+    if((RtlLeU16(bpb->signature) != FAT_BPB_SIGNATURE_VALUE)
         || (0 == bpb->bytesPerSector)
         || (0 == bpb->sectorsPerCluster))
     {
@@ -59,13 +59,13 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
 
     struct FatVolume *info = dev->privateData;
 
-    bpb->rootEntryCount = CmLeU16(bpb->rootEntryCount);
-    bpb->reservedSectors = CmLeU16(bpb->reservedSectors);
+    bpb->rootEntryCount = RtlLeU16(bpb->rootEntryCount);
+    bpb->reservedSectors = RtlLeU16(bpb->reservedSectors);
 
     //determine FAT type as specified by Microsoft
     uint64_t rootDirSectors = ((bpb->rootEntryCount * 32) + (bpb->bytesPerSector - 1) / bpb->bytesPerSector);
-    uint32_t fatSize = bpb->fatSize16 ? CmLeU16(bpb->fatSize16) : CmLeU32(bpb->ext32.fatSize32);
-    uint32_t sectors = bpb->sectors16 ? CmLeU16(bpb->sectors16) : CmLeU32(bpb->sectors32);
+    uint32_t fatSize = bpb->fatSize16 ? RtlLeU16(bpb->fatSize16) : RtlLeU32(bpb->ext32.fatSize32);
+    uint32_t sectors = bpb->sectors16 ? RtlLeU16(bpb->sectors16) : RtlLeU32(bpb->sectors32);
     uint32_t dataSectors = sectors - (bpb->reservedSectors + (bpb->fatCount * fatSize) + rootDirSectors);
     uint32_t clusterCount = dataSectors / bpb->sectorsPerCluster;
 
@@ -97,19 +97,19 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
 
         if(FAT_EXTENDED_BOOT_SIGNATURE_FLAG == bpb->ext16.bootSignature)
         {
-            info->serial = CmLeU32(bpb->ext16.serial);
-            CmMemcpy(info->label, bpb->ext16.label, 11);
+            info->serial = RtlLeU32(bpb->ext16.serial);
+            RtlMemcpy(info->label, bpb->ext16.label, 11);
         }
     }
     else
     {
-        info->rootCluster = CmLeU32(bpb->ext32.rootCluster);
-        info->fsInfoSector = CmLeU16(bpb->ext32.fsInfo);
+        info->rootCluster = RtlLeU32(bpb->ext32.rootCluster);
+        info->fsInfoSector = RtlLeU16(bpb->ext32.fsInfo);
 
         if(FAT_EXTENDED_BOOT_SIGNATURE_FLAG == bpb->ext32.bootSignature)
         {
-            info->serial = CmLeU32(bpb->ext32.serial);
-            CmMemcpy(info->label, bpb->ext32.label, 11);
+            info->serial = RtlLeU32(bpb->ext32.serial);
+            RtlMemcpy(info->label, bpb->ext32.label, 11);
         }
     }
 
@@ -121,11 +121,11 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         status = IoReadDeviceSync(disk, info->fsInfoSector * disk->blockSize, disk->blockSize, (void**)&fsInfo);
         if(OK == status)
         {
-            if((FAT_FS_INFO_LEAD_SIGNATURE == CmLeU32(fsInfo->leadSignature))
-                && (FAT_FS_INFO_STRUC_SIGNATURE == CmLeU32(fsInfo->strucSignature))
-                && (FAT_FS_INFO_LEAD_SIGNATURE == CmLeU32(fsInfo->leadSignature)))
+            if((FAT_FS_INFO_LEAD_SIGNATURE == RtlLeU32(fsInfo->leadSignature))
+                && (FAT_FS_INFO_STRUC_SIGNATURE == RtlLeU32(fsInfo->strucSignature))
+                && (FAT_FS_INFO_LEAD_SIGNATURE == RtlLeU32(fsInfo->leadSignature)))
             {
-                CmMemcpy(&(info->fsInfo), fsInfo, sizeof(*fsInfo));
+                RtlMemcpy(&(info->fsInfo), fsInfo, sizeof(*fsInfo));
 
                 //TODO: verify FSINFO
             }
@@ -163,9 +163,9 @@ STATUS FatVerify(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     if(OK != status)
         return status;
 
-    bpb->bytesPerSector = CmLeU16(bpb->bytesPerSector);
+    bpb->bytesPerSector = RtlLeU16(bpb->bytesPerSector);
     
-    if((CmLeU16(bpb->signature) != FAT_BPB_SIGNATURE_VALUE)
+    if((RtlLeU16(bpb->signature) != FAT_BPB_SIGNATURE_VALUE)
         || (0 == bpb->bytesPerSector)
         || (0 == bpb->sectorsPerCluster))
     {

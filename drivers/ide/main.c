@@ -74,7 +74,7 @@ static STATUS IdeAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
         return OUT_OF_RESOURCES;
     }
     
-    CmMemset(device->privateData, 0, sizeof(struct IdeDeviceData));
+    RtlMemset(device->privateData, 0, sizeof(struct IdeDeviceData));
     
     IoAttachDevice(device, baseDeviceObject);
     baseDeviceObject->driverObject->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
@@ -82,7 +82,7 @@ static STATUS IdeAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
     ((struct IdeDeviceData*)device->privateData)->isController = 1;
     
     struct IdeControllerData *info = &(((struct IdeDeviceData*)device->privateData)->controller);
-    CmMemset(info, 0, sizeof(*info));
+    RtlMemset(info, 0, sizeof(*info));
     info->enumerator = baseDeviceObject;
         
     return IdeConfigureController(baseDeviceObject, device, info);

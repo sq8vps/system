@@ -1,11 +1,40 @@
 #include "interrupt.h"
 #include "it/it.h"
 #include "ke/core/panic.h"
-#include "common.h"
-#include "io/disp/print.h"
 #include "ke/core/mutex.h"
 #include "mm/heap.h"
 #include "arch.h"
+#include "rtl/string.h"
+
+/**
+ * @brief Register architecture-specific IRQ
+ * @param input IRQ number
+ * @param vector Corresponding vector
+ * @param params IRQ params
+ * @return Status code
+ */
+STATUS HalArchRegiserIrq(uint32_t input, uint8_t vector, struct HalInterruptParams params);
+
+/**
+ * @brief Unregister architecture-specific IRQ
+ * @param input IRQ number
+ * @return Status code
+ */
+STATUS HalArchUnregisterIrq(uint32_t input);
+
+/**
+ * @brief Enable architecture-specific IRQ
+ * @param input IRQ number
+ * @return Status code
+ */
+STATUS HalArchEnableIrq(uint32_t input);
+
+/**
+ * @brief Disable architecture-specific IRQ
+ * @param input IRQ number
+ * @return Status code
+ */
+STATUS HalArchDisableIrq(uint32_t input);
 
 struct HalInterruptEntry
 {
@@ -48,8 +77,8 @@ STATUS HalRegisterIrq(
             (matching->params.mode == params.mode)
             && (matching->params.polarity == params.polarity)
             && (matching->params.trigger == params.trigger)
-            && (IT_SHAREABLE == matching->params.shared)
-            && (IT_SHAREABLE == params.shared)
+            && (HAL_IT_SHAREABLE == matching->params.shared)
+            && (HAL_IT_SHAREABLE == params.shared)
             ))
         {
             KeReleaseSpinlock(&HalInterruptListLock, prio);
@@ -68,16 +97,16 @@ STATUS HalRegisterIrq(
             KeReleaseSpinlock(&HalInterruptListLock, prio);
             return OUT_OF_RESOURCES;
         }
-        CmMemset(matching, 0, sizeof(*matching));
+        RtlMemset(matching, 0, sizeof(*matching));
 
-        vector = ItReserveVector(HalIrqIsVectorRelatedToIrq() ? IrqVectorFromIrq(input) : IT_VECTOR_ANY);
+        vector = ItReserveVector(HalIrqIsVectorRelatedToIrq() ? HalIrqVectorFromIrq(input) : IT_VECTOR_ANY);
         if(0 == vector)
         {
             MmFreeKernelHeap(matching);
             KeReleaseSpinlock(&HalInterruptListLock, prio);
             return OUT_OF_RESOURCES;
         }
-        status = IrqRegister(input, vector, params);
+        status = HalArchRegiserIrq(input, vector, params);
         if(OK != status)
         {
             ItFreeVector(vector);
@@ -88,7 +117,7 @@ STATUS HalRegisterIrq(
         status = ItInstallInterruptHandler(vector, isr, context);
         if(OK != status)
         {
-            IrqUnregister(input);
+            HalArchUnregisterIrq(input);
             ItFreeVector(vector);
             MmFreeKernelHeap(matching);
             KeReleaseSpinlock(&HalInterruptListLock, prio);
@@ -143,7 +172,7 @@ STATUS HalUnregisterIrq(uint32_t input, ItHandler isr)
         matching->consumers--;
         if(0 == matching->consumers)
         {
-            status = IrqUnregister(matching->input);
+            status = HalArchUnregisterIrq(matching->input);
             if(OK != status)
                 goto HalUnregisterIrqExit;
 
@@ -198,7 +227,7 @@ STATUS HalEnableIrq(uint32_t input, ItHandler isr)
 
     if(NULL != t)
     {
-        status = HalMasterEnableIrq(input);
+        status = HalArchEnableIrq(input);
 
         if(OK == status)
         {
@@ -228,7 +257,7 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr)
 
     if(NULL != t)
     {
-        status = HalMasterDisableIrq(input);
+        status = HalArchDisableIrq(input);
 
         if(OK == status)
         {

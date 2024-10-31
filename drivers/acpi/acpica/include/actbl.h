@@ -347,7 +347,7 @@ typedef struct acpi_table_facs
 /* Masks for Flags field above  */
 
 #define ACPI_FACS_S4_BIOS_PRESENT   (1)             /* 00: S4BIOS support is present */
-#define ACPI_FACS_64BIT_WAKE        (1<<1)          /* 01: 64-bit wake vector supported (ACPI 4.0) */
+#define ACPI_FACS_64BHAL_IT_WAKE        (1<<1)          /* 01: 64-bit wake vector supported (ACPI 4.0) */
 
 /* Masks for OspmFlags field above */
 

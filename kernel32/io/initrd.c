@@ -1,9 +1,12 @@
 #include "initrd.h"
 #include "multiboot.h"
-#include "common.h"
 #include "mm/dynmap.h"
 #include "io/fs/vfs.h"
 #include "assert.h"
+#include "rtl/stdio.h"
+#include "rtl/order.h"
+#include "rtl/stdlib.h"
+#include "rtl/string.h"
 
 #define MB2_INITRD_STRING "initrd"
 
@@ -83,7 +86,7 @@ static bool IoInitrdVerifyChecksum(const struct TarHeader *h)
     //sum up spaces which should replace the checksum
     sum += (sizeof(h->chksum) * ' ');
     //verify checksum
-    if(CmOctalToU32((const char*)h->chksum) == sum)
+    if(RtlOctalToU32((const char*)h->chksum) == sum)
         return true;
     else
         return false;
@@ -94,19 +97,19 @@ static struct TarHeader* IoInitrdFindFile(const char *path)
     struct TarHeader *h = IoInitrdHandle;
     while(1)
     {
-        if((0 == CmMemcmp(h->magic, TAR_GNU_MAGIC_VERSION, sizeof(TAR_GNU_MAGIC_VERSION - 1)))
-            || (0 == CmMemcmp(h->magic, TAR_POSIX_MAGIC_VERSION, sizeof(TAR_POSIX_MAGIC_VERSION - 1))))
+        if((0 == RtlMemcmp(h->magic, TAR_GNU_MAGIC_VERSION, sizeof(TAR_GNU_MAGIC_VERSION - 1)))
+            || (0 == RtlMemcmp(h->magic, TAR_POSIX_MAGIC_VERSION, sizeof(TAR_POSIX_MAGIC_VERSION - 1))))
         {
             if(IoInitrdVerifyChecksum(h))
             {
-                uint32_t pathLength = CmStrlen(path);
-                if((0 == CmStrncmp(path, (char*)h->name, sizeof(h->name) - 1))
-                    || ((TAR_DIRECTORY == h->typeflag) && (0 == CmStrncmp(path, (char*)h->name, pathLength)) 
+                uint32_t pathLength = RtlStrlen(path);
+                if((0 == RtlStrncmp(path, (char*)h->name, sizeof(h->name) - 1))
+                    || ((TAR_DIRECTORY == h->typeflag) && (0 == RtlStrncmp(path, (char*)h->name, pathLength)) 
                             && (h->name[pathLength] == '/')))
                 {
                     return h;
                 }
-                uint32_t blocks = ALIGN_UP(CmOctalToU32((const char*)h->size) + sizeof(*h), 512) / 512;
+                uint32_t blocks = ALIGN_UP(RtlOctalToU32((const char*)h->size) + sizeof(*h), 512) / 512;
                 h += blocks;
             }
             else
@@ -126,7 +129,7 @@ STATUS IoInitrdInit(const struct Multiboot2InfoHeader *mb2h)
     while(NULL != tag)
     {
         const struct Multiboot2ModuleTag *mod = (const struct Multiboot2ModuleTag*)tag;
-        if(0 == CmStrcmp(mod->str, MB2_INITRD_STRING))
+        if(0 == RtlStrcmp(mod->str, MB2_INITRD_STRING))
         {
             IoInitrdHandle = MmMapDynamicMemory(mod->mod_start, mod->mod_end - mod->mod_start, MM_FLAG_READ_ONLY);
             if(NULL == IoInitrdHandle)
@@ -145,14 +148,14 @@ STATUS IoInitrdMount(char *mountPoint)
     ASSERT(mountPoint);
 
     //sanity check
-    if(!CmCheckPath(mountPoint))
+    if(!RtlCheckPath(mountPoint))
         return IO_ILLEGAL_NAME;
 
     if(IoVfsCheckIfNodeExists(mountPoint))
         return IO_FILE_ALREADY_EXISTS;
     
     struct IoVfsNode *node = NULL;
-    node = IoVfsCreateNode(CmGetFileName(mountPoint));
+    node = IoVfsCreateNode(RtlGetFileName(mountPoint));
     if(NULL == node)
     {
         return OUT_OF_RESOURCES;
@@ -171,23 +174,23 @@ STATUS IoInitrdGetNode(struct IoVfsNode *parent, const char *name, struct IoVfsN
     const struct IoVfsNode *p = parent;
     while(IO_VFS_MOUNT_POINT != p->type)
     {
-        pathSize += CmStrlen(p->name) + 1;
+        pathSize += RtlStrlen(p->name) + 1;
         p = p->parent;
     }
-    pathSize += CmStrlen(name);
+    pathSize += RtlStrlen(name);
     char *const path = MmAllocateKernelHeap(pathSize);
     if(NULL == path)
         return OUT_OF_RESOURCES;
     
-    CmStrcpy(&path[pathSize - CmStrlen(name) - 1], name);
-    pathSize -= CmStrlen(name);
+    RtlStrcpy(&path[pathSize - RtlStrlen(name) - 1], name);
+    pathSize -= RtlStrlen(name);
 
     p = parent;
     while(IO_VFS_MOUNT_POINT != p->type)
     {
-        CmStrcpy(&path[pathSize - CmStrlen(p->name) - 2], p->name);
+        RtlStrcpy(&path[pathSize - RtlStrlen(p->name) - 2], p->name);
         path[pathSize - 2] = '/';
-        pathSize -= (CmStrlen(p->name) + 1);
+        pathSize -= (RtlStrlen(p->name) + 1);
         p = p->parent;
     }
 
@@ -219,7 +222,7 @@ STATUS IoInitrdGetNode(struct IoVfsNode *parent, const char *name, struct IoVfsN
     (*node)->ref[0].p = h;
     (*node)->flags = IO_VFS_FLAG_NO_CACHE | IO_VFS_FLAG_READ_ONLY;
     (*node)->fsType = IO_VFS_FS_INITRD;
-    (*node)->size = CmOctalToU32((char*)h->size);
+    (*node)->size = RtlOctalToU32((char*)h->size);
     return OK;
 }
 
@@ -230,13 +233,13 @@ uintptr_t IoInitrdRead(const struct IoVfsNode *node, void *buffer, uintptr_t siz
     {
         if(TAR_DIRECTORY == h->typeflag)
             return 0;
-        uint32_t fsize = CmOctalToU32((char*)h->size);
+        uint32_t fsize = RtlOctalToU32((char*)h->size);
         if(offset > fsize)
             return 0;
         if((offset + size) > fsize)
             size = fsize - offset;
         
-        CmMemcpy(buffer, (void*)((uintptr_t)(h + 1) + offset), size);
+        RtlMemcpy(buffer, (void*)((uintptr_t)(h + 1) + offset), size);
         return size;
     }
     return 0;

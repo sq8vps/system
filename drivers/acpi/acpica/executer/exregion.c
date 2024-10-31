@@ -593,7 +593,7 @@ AcpiExPciConfigSpaceHandler (
 
 /*******************************************************************************
  *
- * FUNCTION:    AcpiExCmosSpaceHandler
+ * FUNCTION:    AcpiExRtlosSpaceHandler
  *
  * PARAMETERS:  Function            - Read or Write operation
  *              Address             - Where in the space to read or write
@@ -610,7 +610,7 @@ AcpiExPciConfigSpaceHandler (
  ******************************************************************************/
 
 ACPI_STATUS
-AcpiExCmosSpaceHandler (
+AcpiExRtlosSpaceHandler (
     UINT32                  Function,
     ACPI_PHYSICAL_ADDRESS   Address,
     UINT32                  BitWidth,
@@ -621,7 +621,7 @@ AcpiExCmosSpaceHandler (
     ACPI_STATUS             Status = AE_OK;
 
 
-    ACPI_FUNCTION_TRACE (ExCmosSpaceHandler);
+    ACPI_FUNCTION_TRACE (ExRtlosSpaceHandler);
 
 
     return_ACPI_STATUS (Status);

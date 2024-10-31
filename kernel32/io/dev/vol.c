@@ -5,7 +5,8 @@
 #include "io/fs/fs.h"
 #include "ke/core/mutex.h"
 #include "dev.h"
-#include "common.h"
+#include "rtl/string.h"
+#include "rtl/stdlib.h"
 #include "ex/kdrv/fsdrv.h"
 #include "ex/worker.h"
 #include "ke/sched/sched.h"
@@ -46,14 +47,14 @@ STATUS IoInitializeVolumeManager(void)
         return IO_FILE_NOT_FOUND;
     }
 
-    IoVolumeState.mountPointDbPath = MmAllocateKernelHeap(CmStrlen(t) + 1);
+    IoVolumeState.mountPointDbPath = MmAllocateKernelHeap(RtlStrlen(t) + 1);
     if(NULL == IoVolumeState.mountPointDbPath)
     {
         ExDbClose(h);
         return OUT_OF_RESOURCES;
     }
 
-    CmStrcpy(IoVolumeState.mountPointDbPath, t);
+    RtlStrcpy(IoVolumeState.mountPointDbPath, t);
 
     ExDbClose(h);
 
@@ -65,7 +66,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     ASSERT(mountPoint && dev);
 
     //sanity check
-    if(!CmCheckPath(mountPoint))
+    if(!RtlCheckPath(mountPoint))
         return IO_ILLEGAL_NAME;
 
     STATUS status = OK;
@@ -97,7 +98,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
         return IO_FILE_ALREADY_EXISTS;
     
     struct IoVfsNode *node = NULL;
-    node = IoVfsCreateNode(CmGetFileName(mountPoint));
+    node = IoVfsCreateNode(RtlGetFileName(mountPoint));
     if(NULL == node)
     {
         return OUT_OF_RESOURCES;
@@ -200,7 +201,7 @@ STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
 
 STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label)
 {
-    if(CmStrlen(label) > IO_VOLUME_MAX_LABEL_LENGTH)
+    if(RtlStrlen(label) > IO_VOLUME_MAX_LABEL_LENGTH)
         return IO_ILLEGAL_NAME;
     
     
@@ -214,7 +215,7 @@ STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label)
     
 
     
-    CmStrncpy(vol->label, label, IO_VOLUME_MAX_LABEL_LENGTH);
+    RtlStrncpy(vol->label, label, IO_VOLUME_MAX_LABEL_LENGTH);
     
     return OK;
 }

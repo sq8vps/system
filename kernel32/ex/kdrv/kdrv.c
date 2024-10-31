@@ -2,7 +2,7 @@
 #include "ex/exec.h"
 #include "ex/elf.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "io/log/syslog.h"
 #include "io/fs/fs.h"
 #include "io/dev/dev.h"
 #include "io/dev/rp.h"
@@ -14,6 +14,9 @@
 #include "config.h"
 #include "ke/core/panic.h"
 #include "io/dev/vol.h"
+#include "hal/mm.h"
+#include "rtl/stdlib.h"
+#include "rtl/string.h"
 
 uint32_t ExAssignDriverId(void);
 void ExFreeDriverId(uint32_t id);
@@ -86,10 +89,10 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
 
     KeAcquireMutex(&ExKernelDriverState.mutex);
     struct ExDriverObject *drv = ExKernelDriverState.list;
-    const char *imageName = CmGetFileName(path);
+    const char *imageName = RtlGetFileName(path);
     while(NULL != drv)
     {
-        if(!CmStrcmp(drv->imageName, imageName))
+        if(!RtlStrcmp(drv->imageName, imageName))
             break;
         drv = drv->next;
     }
@@ -112,7 +115,7 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
     if(OK != status)
 		return status;
 
-    requiredSize = ALIGN_UP(imageSize + bssSize, MM_PAGE_SIZE);
+    requiredSize = ALIGN_UP(imageSize + bssSize, PAGE_SIZE);
 
     KeAcquireMutex(&(ExKernelDriverState.mutex));
 
@@ -145,7 +148,7 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
             freeSize = bestFit->size;
             
             uintptr_t remaining = freeSize - requiredSize;
-            if(remaining >= MM_PAGE_SIZE)
+            if(remaining >= PAGE_SIZE)
             {
                 struct ExDriverObject *nextBlock = NULL;
                 nextBlock = MmAllocateKernelHeapZeroed(sizeof(*nextBlock));
@@ -182,15 +185,15 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
         object->next = NULL;
         if(NULL == t)
         {
-            object->address = MM_DRIVERS_START_ADDRESS;
-            freeSize = MM_DRIVERS_MAX_SIZE;
+            object->address = HalGetDriverSpaceBase();
+            freeSize = HalGetDriverSpaceSize();
             object->previous = NULL;
             ExKernelDriverState.list = object;
         }
         else
         {
             object->address = t->address + t->size;
-            freeSize = (MM_DRIVERS_START_ADDRESS + MM_DRIVERS_MAX_SIZE) - object->address;
+            freeSize = (HalGetDriverSpaceBase() + HalGetDriverSpaceSize()) - object->address;
             object->previous = t;
             t->next = object;
         }
@@ -203,8 +206,6 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
         status = OUT_OF_RESOURCES;
         goto LoadKernelDriverFailure;
     }
-
-    LOG("Driver %s with ID %lu loaded at 0x%lX\n", path, object->id, object->address);
 
     if(requiredSize > freeSize)
     {
@@ -275,15 +276,15 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
 		goto LoadKernelDriverFailure;
     }
 
-    const char *c = CmGetFileName(path);
-    object->imageName = MmAllocateKernelHeap(CmStrlen(c) + 1);
+    const char *c = RtlGetFileName(path);
+    object->imageName = MmAllocateKernelHeap(RtlStrlen(c) + 1);
     if(NULL == object->imageName)
     {
         status = OUT_OF_RESOURCES;
         goto LoadKernelDriverFailure;
     }
 
-    CmStrcpy(object->imageName, c);
+    RtlStrcpy(object->imageName, c);
 
     status = ((DRIVER_ENTRY_T*)entry)(object);
     if(OK != status)
@@ -295,10 +296,19 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
     
     KeReleaseMutex(&(ExKernelDriverState.mutex));
 
+#ifdef DEBUG
+    LOG(SYSLOG_INFO, "Driver %s with ID %lu loaded at 0x%lX", path, object->id, object->address);
+#else
+    LOG(SYSLOG_INFO, "Driver %s loaded", path);
+#endif
+
     return OK;
 
 LoadKernelDriverFailure:
     
+
+    LOG(SYSLOG_INFO, "Driver %s loading failed", path);
+
     KeReleaseMutex(&(ExKernelDriverState.mutex));
     
     ExRemoveKernelDriverObject(object);
@@ -344,15 +354,15 @@ static STATUS ExLoadKernelDrivers(bool fs, const char *deviceId, char * const * 
     if(OK != status)
         goto ExLoadKernelDriversForDeviceFailed;
 
-    CmStrncpy(dbPath, dbSearchPath, maxNameLength);
-    char *dbFileNamePart = dbPath + CmStrlen(dbPath);
+    RtlStrncpy(dbPath, dbSearchPath, maxNameLength);
+    char *dbFileNamePart = dbPath + RtlStrlen(dbPath);
 
     status = ExDbGetNextString(dbConfig, "ImagePath", &imageSearchPath);
     if(OK != status)
         goto ExLoadKernelDriversForDeviceFailed;
 
-    CmStrncpy(imagePath, imageSearchPath, maxNameLength);
-    char *imageFileNamePart = imagePath + CmStrlen(imagePath);
+    RtlStrncpy(imagePath, imageSearchPath, maxNameLength);
+    char *imageFileNamePart = imagePath + RtlStrlen(imagePath);
 
     while(1) //driver database loop
     {
@@ -362,7 +372,7 @@ ExLoadKernelDriversLoop:
         if(OK != status)
             goto ExLoadKernelDriversForDeviceFailed;
         
-        CmStrncpy(dbFileNamePart, t, maxNameLength - (dbFileNamePart - dbPath));
+        RtlStrncpy(dbFileNamePart, t, maxNameLength - (dbFileNamePart - dbPath));
 
         status = ExDbOpen(dbPath, &driverConfig);
         if(OK != status)
@@ -378,7 +388,7 @@ ExLoadKernelDriversLoop:
             continue;
         }
         
-        CmStrncpy(imageFileNamePart, t, maxNameLength - (imageFileNamePart - imagePath));
+        RtlStrncpy(imageFileNamePart, t, maxNameLength - (imageFileNamePart - imagePath));
 
         if(!fs)
         {
@@ -400,7 +410,7 @@ ExLoadKernelDriversLoop:
                     goto ExLoadKernelDriversLoop;
                 }
 
-                if(!CmStrcmp(t, deviceId))
+                if(!RtlStrcmp(t, deviceId))
                     //TODO: include best-match search
                     break;
 
@@ -409,7 +419,7 @@ ExLoadKernelDriversLoop:
                     uint32_t i = 0;
                     while(NULL != compatibleIds[i])
                     {
-                        if(!CmStrcmp(compatibleIds[i], t))
+                        if(!RtlStrcmp(compatibleIds[i], t))
                             goto ExLoadKernelDriversFound;
                         ++i;
                     }
@@ -552,11 +562,11 @@ STATUS ExInitializeDriverManager(void)
     if(OK != status)
         FAIL_BOOT("Unable to locate initial driver database\n");
     
-    ExKernelDriverState.databasePath = MmAllocateKernelHeap(CmStrlen(t) + 1);
+    ExKernelDriverState.databasePath = MmAllocateKernelHeap(RtlStrlen(t) + 1);
     if(NULL == ExKernelDriverState.databasePath)
         FAIL_BOOT("memory allocation failed");
     
-    CmStrcpy(ExKernelDriverState.databasePath, t);
+    RtlStrcpy(ExKernelDriverState.databasePath, t);
 
     ExDbClose(h);
 

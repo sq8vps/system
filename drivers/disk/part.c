@@ -3,7 +3,6 @@
 #include "mm/mm.h"
 #include "ke/core/mutex.h"
 #include <stdatomic.h>
-#include "io/disp/print.h"
 #include "io/fs/devfs.h"
 #include "io/dev/vol.h"
 #include "io/dev/op.h"

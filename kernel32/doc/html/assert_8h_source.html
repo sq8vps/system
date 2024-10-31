@@ -97,7 +97,7 @@ $(document).ready(function(){initNavTree('assert_8h_source.html',''); initResiza
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span> </div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#ifdef DEBUG</span></div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">    #include &quot;<a class="code" href="common_8h.html">common.h</a>&quot;</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="preprocessor">    #define ASSERT(expression) {if(!(expression)){CmPrintf(&quot;Assertion failed at &quot;</span> __FILE__ &quot;:&quot; STRINGIFY(__LINE__) &quot;\n&quot;); while(1);}}</div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="preprocessor">    #define ASSERT(expression) {if(!(expression)){RtlPrintf(&quot;Assertion failed at &quot;</span> __FILE__ &quot;:&quot; STRINGIFY(__LINE__) &quot;\n&quot;); while(1);}}</div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">#else</span></div>
 <div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="preprocessor">    #define ASSERT(expression)</span></div>
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="preprocessor">#endif</span></div>

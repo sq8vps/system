@@ -12,6 +12,10 @@ struct KeSpinlock;
 
 #if defined(__i686__) || defined(__amd64__)
 
+/**
+ * @brief Page size
+ */
+#define PAGE_SIZE 4096
 
 #if defined(__i686__) && defined(PAE)
     /**
@@ -59,6 +63,18 @@ enum HalPriorityLevel
 */
 typedef uint8_t PRIO;
 
+/**
+ * @brief IRQ mode
+*/
+enum HalInterruptMode
+{
+    HAL_IT_MODE_FIXED,
+    HAL_IT_MODE_LOWEST_PRIORITY,
+    HAL_IT_MODE_SMI,
+    HAL_IT_MODE_NMI,
+    HAL_IT_MODE_INIT,
+    HAL_IT_MODE_EXTINT,
+};
 
 /**
  * @brief Lowest vector available for non-kernel IRQs
@@ -122,6 +138,22 @@ struct HalCpuExtensions
     bool bootstrap;
 };
 
+#define I686_LOWER_MEMORY_SIZE 0x100000
+#define HAL_VIRTUAL_SPACE_SIZE (((uint64_t)1 << 32))
+
+#define HAL_KERNEL_IMAGE_ADDRESS 0xD6000000
+#define HAL_KERNEL_SPACE_BASE 0xD0000000
+#define HAL_KERNEL_SPACE_SIZE (HAL_VIRTUAL_SPACE_SIZE - HAL_KERNEL_SPACE_BASE)
+
+
 END_EXPORT_API
+
+#if defined(__i686__)
+    #if defined(PAE)
+        #define HAL_ARCHITRECTURE_STRING "i686-pae"
+    #else
+        #define HAL_ARCHITRECTURE_STRING "i686"
+    #endif
+#endif
 
 #endif

@@ -4,5 +4,5 @@ struct IoSyslogHandle *FatLogHandle = NULL;
 
 void FatLoggingInit(void)
 {
-    FatLogHandle = IoOpenSyslog(DRIVER_NAME);
+    FatLogHandle = IoOpenSyslog(DRIVER_NAME, SYSLOG_OUTPUT_DEFAULT);
 }

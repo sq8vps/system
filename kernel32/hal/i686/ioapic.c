@@ -3,7 +3,7 @@
 #include "ioapic.h"
 #include "mm/mmio.h"
 #include "it/it.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "ke/core/mutex.h"
 
 #define MAX_IOAPIC_COUNT 4
@@ -120,7 +120,7 @@ STATUS ApicIoInit(void)
         IoApicDevice[IoApicDeviceCount].inputs = (read(&IoApicDevice[IoApicDeviceCount], IOAPIC_REG_IOAPICVER) >> 16) & 0x7F;
         IoApicDevice[IoApicDeviceCount].id = IoApicEntryTable[i].id;
         IoApicDevice[IoApicDeviceCount].irqBase = IoApicEntryTable[i].irqBase;
-        CmMemset(IoApicDevice[IoApicDeviceCount].usage, 0, sizeof(IoApicDevice[IoApicDeviceCount].usage));
+        RtlMemset(IoApicDevice[IoApicDeviceCount].usage, 0, sizeof(IoApicDevice[IoApicDeviceCount].usage));
         KeReleaseSpinlock(&IoApicDevice[IoApicDeviceCount].Lock, prio);
         IoApicDeviceCount++;
     }
@@ -151,39 +151,39 @@ STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode m
     uint64_t params = 0;
     switch(mode)
     {
-        case IT_MODE_LOWEST_PRIORITY:
+        case HAL_IT_MODE_LOWEST_PRIORITY:
             params |= (0b001 << 8);
             break;
-        case IT_MODE_SMI:
+        case HAL_IT_MODE_SMI:
             params |= (0b010 << 8);
             break;
-        case IT_MODE_NMI:
+        case HAL_IT_MODE_NMI:
             params |= (0b100 << 8);
             break;
-        case IT_MODE_INIT:
+        case HAL_IT_MODE_INIT:
             params |= (0b101 << 8);
             break;
-        case IT_MODE_EXTINT:
+        case HAL_IT_MODE_EXTINT:
             params |= (0b111 << 8);
-        case IT_MODE_FIXED:
+        case HAL_IT_MODE_FIXED:
         default:
             break;
     }
     switch(polarity)
     {
-        case IT_POLARITY_ACTIVE_LOW:
+        case HAL_IT_POLARITY_ACTIVE_LOW:
             params |= (1 << 13);
             break;
-        case IT_POLARITY_ACTIVE_HIGH:
+        case HAL_IT_POLARITY_ACTIVE_HIGH:
         default:
             break;
     }
     switch(trigger)
     {
-        case IT_TRIGGER_LEVEL:
+        case HAL_IT_TRIGGER_LEVEL:
             params |= (1 << 15);
             break;
-        case IT_TRIGGER_EDGE:
+        case HAL_IT_TRIGGER_EDGE:
         default:
             break;
     }

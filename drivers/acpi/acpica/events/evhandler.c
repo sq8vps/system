@@ -550,8 +550,8 @@ AcpiEvInstallSpaceHandler (
 
         case ACPI_ADR_SPACE_CMOS:
 
-            Handler = AcpiExCmosSpaceHandler;
-            Setup   = AcpiEvCmosRegionSetup;
+            Handler = AcpiExRtlosSpaceHandler;
+            Setup   = AcpiEvRtlosRegionSetup;
             break;
 
         case ACPI_ADR_SPACE_PCI_BAR_TARGET:

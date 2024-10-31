@@ -1,7 +1,7 @@
 #include "cpu.h"
 #include "lapic.h"
 #include "lapic.h"
-#include "common.h"
+#include "hal/mm.h"
 #include "ke/sched/sleep.h"
 #include "ke/core/panic.h"
 #include "config.h"
@@ -16,6 +16,7 @@
 #include "ke/sched/idle.h"
 #include "ipi.h"
 #include "mm/palloc.h"
+#include "rtl/string.h"
 
 #ifdef SMP
 
@@ -74,16 +75,16 @@ STATUS I686StartProcessors(void)
     if(CpuCount <= 1)
         return OK;
 
-    void *stack = (void*)MM_KERNEL_SPACE_START;
+    void *stack = (void*)HAL_KERNEL_SPACE_BASE;
 
     status = HalMapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS, I686_AP_BOOTSTRAP_ADDRESS, 
-        ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, MM_PAGE_SIZE), 
+        ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, PAGE_SIZE), 
         MM_FLAG_WRITABLE | MM_FLAG_CACHE_DISABLE | MM_FLAG_WRITE_THROUGH);
     if(OK != status)
         FAIL_BOOT("cannot map memory for CPU bootstrap");
 
-    status = MmAllocateMemory((uintptr_t)stack - (CpuCount - 1) * MM_PAGE_SIZE,
-        (CpuCount - 1) * MM_PAGE_SIZE, MM_FLAG_WRITABLE);
+    status = MmAllocateMemory((uintptr_t)stack - (CpuCount - 1) * PAGE_SIZE,
+        (CpuCount - 1) * PAGE_SIZE, MM_FLAG_WRITABLE);
     if(OK != status)
         FAIL_BOOT("cannot allocate temporary stacks from CPU boostrap")
 
@@ -97,15 +98,15 @@ STATUS I686StartProcessors(void)
             continue;
         I686StartApData[k].cpuId = cpu->number;
         I686StartApData[k].cr3 = I686GetPageDirectoryAddress();
-        I686StartApData[k].esp = (uintptr_t)stack - (k * MM_PAGE_SIZE);
+        I686StartApData[k].esp = (uintptr_t)stack - (k * PAGE_SIZE);
         I686StartApData[k].lapicId = cpu->extensions.lapicId;
         I686StartApData[k].eip = (uintptr_t)I686CpuBootstrap;
         k++;
     }
     I686StartApData[k].esp = 0;
 
-    CmMemcpy((void*)I686_AP_BOOTSTRAP_ADDRESS, I686StartAp, (uintptr_t)I686StartApEnd - (uintptr_t)I686StartAp);
-    CmMemcpy((void*)I686_AP_BOOTSTRAP_DATA_ADDRESS, I686StartApData, sizeof(I686StartApData));
+    RtlMemcpy((void*)I686_AP_BOOTSTRAP_ADDRESS, I686StartAp, (uintptr_t)I686StartApEnd - (uintptr_t)I686StartAp);
+    RtlMemcpy((void*)I686_AP_BOOTSTRAP_DATA_ADDRESS, I686StartApData, sizeof(I686StartApData));
 
     for(uint16_t i = 0; i < CpuCount; i++)
     {
@@ -161,7 +162,7 @@ STATUS I686StartProcessors(void)
     __atomic_store_n(&I686ApCanContinue, 1, __ATOMIC_SEQ_CST);
 
     status = HalUnmapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS,
-        ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, MM_PAGE_SIZE));
+        ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, PAGE_SIZE));
     if(OK != status)
         FAIL_BOOT("cannot unmap memory after CPU bootstrap")
 

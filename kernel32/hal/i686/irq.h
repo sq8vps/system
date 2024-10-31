@@ -13,6 +13,13 @@ EXPORT_API
  */
 bool I686IsIoApicUsed(void);
 
+/**
+ * @brief Resolve legacy ISA IRQ to global interrupt mapping
+ * @param irq ISA IRQ from device
+ * @return Resolved IRQ after remapping (if applicable)
+*/
+uint32_t I686ResolveIsaIrqMapping(uint32_t irq);
+
 END_EXPORT_API
 
 /**
@@ -31,5 +38,13 @@ INTERNAL void I686SetDualPicPresence(bool state);
  * @return Status code
  */
 INTERNAL STATUS I686InitInterruptController(void);
+
+/**
+ * @brief Add ISA remap entry when I/O APIC is used
+ * @param isaIrq Original ISA IRQ
+ * @param gsi Global System Interrupt (Global IRQ number)
+ * @return Status code
+*/
+INTERNAL STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi);
 
 #endif

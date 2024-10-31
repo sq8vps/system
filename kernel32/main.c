@@ -3,9 +3,7 @@
 #include "mm/palloc.h"
 #include "mm/heap.h"
 #include "mm/mm.h"
-#include "../cdefines.h"
 #include "ex/exec.h"
-#include "common.h"
 #include "ex/kdrv/kdrv.h"
 #include "mm/dynmap.h"
 #include "hal/hal.h"
@@ -25,12 +23,12 @@
 #include "ke/sched/sleep.h"
 #include "io/dev/dev.h"
 #include "ke/core/dpc.h"
-#include "common/order.h"
+#include "rtl/order.h"
 #include "io/dev/vol.h"
 #include "ddk/fs.h"
 #include "hal/arch.h"
 #include "multiboot.h"
-#include "rtl/random.h"
+#include "rtl/stdlib.h"
 
 KeMutex s = KeMutexInitializer;
 KeSemaphore sem = KeSemaphoreInitializer;
@@ -58,7 +56,7 @@ void task2(void *c)
 		//else
 			//PRINT("0");
 		// KeAcquireMutex(&s);
-		// CmPrintf("2");
+		// RtlPrintf("2");
 		// KeReleaseMutex(&s);
 		//KeTaskYield();
 	}
@@ -71,29 +69,19 @@ static void KeInitProcess(void *context)
 	STATUS ret = OK;
 
 	if(OK != ExLoadKernelSymbols(context))
-	{
-		PRINT("Kernel symbol loading failed. Unable to boot.\n");
-		while(1)
-			;
-	}
+		FAIL_BOOT("unable to load kernel symbols\n");
 
 	if(OK != (ret = IoInitrdInit(context)))
-	{
-		PRINT("Initial ramdisk initialization error %d. Unable to boot.\n", (int)ret);
-		while(1)
-			;
-	}
+		FAIL_BOOT("unable to find initial ramdisk\n");
 
 	if(OK != (ret = IoInitrdMount(INITRD_MOUNT_POINT)))
-		FAIL_BOOT("initial ramdisk mount failed");
+		FAIL_BOOT("unable to mount initial ramdisk\n");
 
 	if(OK != (ret = ExInitializeDriverManager()))
-		FAIL_BOOT("driver manager initialization failed");
+		FAIL_BOOT("unable to initialize driver manager\n");
 
 	if(OK != IoInitDeviceManager("ACPI"))
-	{
-		PRINT("FAILURE");
-	}
+		FAIL_BOOT("unable to initialize ACPI subsystem\n");
 
 	// KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
 	// KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
@@ -125,7 +113,7 @@ static void KeInitProcess(void *context)
  */
 NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 {	
-	CmDetectEndianness();
+	RtlDetectEndianness();
 
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
@@ -139,6 +127,8 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 	MmInitDynamicMemory();
 
 	HalInitPhase2();
+
+	LOG(SYSLOG_INFO, KERNEL_FULL_NAME_STRING);
 
 	ItInit(); //initialize interrupts and exceptions
 

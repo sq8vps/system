@@ -10,7 +10,7 @@
 
 #define ACPI_PNP_ID_MAX_LENGTH 8
 
-#define ACPI_IS_PCI_HOST_BRIDGE(pnpId) !CmStrcmp((pnpId), "PNP0A03") || !CmStrcmp((pnpId), "PNP0A08") 
+#define ACPI_IS_PCI_HOST_BRIDGE(pnpId) !RtlStrcmp((pnpId), "PNP0A03") || !RtlStrcmp((pnpId), "PNP0A08") 
 
 struct AcpiDeviceInfo
 {

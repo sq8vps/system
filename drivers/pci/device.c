@@ -15,11 +15,11 @@ struct AcpiDeviceInfo
 // #define ACPI_DEVICE_ID_PREFIX "ACPI"
 // static char* makeDeviceId(char *hid)
 // {
-//     char *t = MmAllocateKernelHeap(CmStrlen(ACPI_DEVICE_ID_PREFIX) + 1 + CmStrlen(hid) + 1);
+//     char *t = MmAllocateKernelHeap(RtlStrlen(ACPI_DEVICE_ID_PREFIX) + 1 + RtlStrlen(hid) + 1);
 //     if(NULL == t)
 //         return NULL;
-//     CmStrcpy(t, ACPI_DEVICE_ID_PREFIX "/");
-//     CmStrcat(t, hid);
+//     RtlStrcpy(t, ACPI_DEVICE_ID_PREFIX "/");
+//     RtlStrcat(t, hid);
 //     return t;
 // }
 
@@ -355,7 +355,7 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
             return OUT_OF_RESOURCES;
         }
 
-        compatibleIds = CmAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
+        compatibleIds = RtlAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
         if(NULL == compatibleIds)
         {
             MmFreeKernelHeap(deviceId);

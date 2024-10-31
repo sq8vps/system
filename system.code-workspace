@@ -85,7 +85,14 @@
 			"dynmap.h": "c",
 			"uuid.h": "c",
 			"random.h": "c",
-			"math.h": "c"
+			"math.h": "c",
+			"stddef.h": "c",
+			"string.h": "c",
+			"worker.h": "c",
+			"initrd.h": "c",
+			"exceptions.h": "c",
+			"system_error": "c",
+			"ctype.h": "c"
 		}
 	}
 }

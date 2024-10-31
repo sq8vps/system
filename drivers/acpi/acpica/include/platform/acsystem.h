@@ -4,21 +4,21 @@
 #define DISABLE_KERNEL_STDLIB
 
 #include "kernel.h"
-// #define memcpy CmMemcpy
-// #define memset CmMemset
-// #define strlen CmStrlen
-// #define strcmp CmStrcmp
-// #define strncmp CmStrncmp
-// #define memcmp CmMemcmp
-// #define strcpy CmStrcpy
-// #define strncpy CmStrncpy
-// #define strcat CmStrcat
-// #define isprint CmIsprint
-// #define isxdigit CmIsxdigit
-// #define isdigit CmIsdigit
-// #define tolower CmTolower
-// #define toupper CmToupper
-// #define isspace CmIsspace
+// #define memcpy RtlMemcpy
+// #define memset RtlMemset
+// #define strlen RtlStrlen
+// #define strcmp RtlStrcmp
+// #define strncmp RtlStrncmp
+// #define memcmp RtlMemcmp
+// #define strcpy RtlStrcpy
+// #define strncpy RtlStrncpy
+// #define strcat RtlStrcat
+// #define isprint RtlIsprint
+// #define isxdigit RtlIsxdigit
+// #define isdigit RtlIsdigit
+// #define tolower RtlTolower
+// #define toupper RtlToupper
+// #define isspace RtlIsspace
 
 #define ACPI_SPINLOCK KeSpinlock*
 #define ACPI_SEMAPHORE KeSemaphore*

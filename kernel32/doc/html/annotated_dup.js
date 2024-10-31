@@ -1,8 +1,8 @@
 var annotated_dup =
 [
     [ "ApicIoEntry", "struct_apic_io_entry.html", null ],
-    [ "Cm_RGBA_t", "struct_cm___r_g_b_a__t.html", null ],
-    [ "CmRGB", "struct_cm_r_g_b.html", null ],
+    [ "Rtl_RGBA_t", "struct_cm___r_g_b_a__t.html", null ],
+    [ "RtlRGB", "struct_cm_r_g_b.html", null ],
     [ "Elf32_Ehdr", "struct_elf32___ehdr.html", null ],
     [ "Elf32_Phdr", "struct_elf32___phdr.html", null ],
     [ "Elf32_Rel", "struct_elf32___rel.html", null ],

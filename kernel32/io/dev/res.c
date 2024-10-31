@@ -1,6 +1,6 @@
 #include "res.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "rtl/string.h"
 
 struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map)
 {
@@ -20,7 +20,7 @@ struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map)
         r->irq = MmAllocateKernelHeap(sizeof(*(r->irq)) * map->irqCount);
         if(NULL == r->irq)
             return NULL;
-        CmMemcpy(r->irq, map->irq, sizeof(*(r->irq)) * map->irqCount);
+        RtlMemcpy(r->irq, map->irq, sizeof(*(r->irq)) * map->irqCount);
         r->irqCount = map->irqCount;
     }
     

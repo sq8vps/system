@@ -2,7 +2,7 @@
 
 #include "mp.h"
 #include "mm/dynmap.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "lapic.h"
 #include "ioapic.h"
 #include "hal/cpu.h"
@@ -126,9 +126,9 @@ static bool verifyChecksum(const void *data, uint32_t size)
 */
 static void *findFloatingPointerStructure(void *in)
 {
-    for(uint16_t i = 0; i < MM_PAGE_SIZE; i += 16) 
+    for(uint16_t i = 0; i < PAGE_SIZE; i += 16) 
     {
-        if(0 == CmStrncmp(MP_FLOATING_POINTER_STRUCTURE_SIGNATURE, 
+        if(0 == RtlStrncmp(MP_FLOATING_POINTER_STRUCTURE_SIGNATURE, 
                         ((const char*)in) + i, 
                         sizeof(MP_FLOATING_POINTER_STRUCTURE_SIGNATURE) - 1))
         {
@@ -144,7 +144,7 @@ static void *findFloatingPointerStructure(void *in)
 */
 static uintptr_t getConfigurationTableAddress(void)
 {
-    void *t = MmMapDynamicMemory(0, MM_LOWER_MEMORY_SIZE, 0); //map whole lower memory
+    void *t = MmMapDynamicMemory(0, I686_LOWER_MEMORY_SIZE, 0); //map whole lower memory
     if(NULL == t)
         return 0;
 
@@ -161,9 +161,9 @@ static uintptr_t getConfigurationTableAddress(void)
         if(NULL == fpsr) //still no success?
         {
             //find in BIOS memory (64 kiB)
-            for(uint16_t i = 0; i < (MP_BIOS_AREA_SPACE_SIZE / MM_PAGE_SIZE); i++)
+            for(uint16_t i = 0; i < (MP_BIOS_AREA_SPACE_SIZE / PAGE_SIZE); i++)
             {
-                if(NULL != (fpsr = findFloatingPointerStructure((void*)((uintptr_t)t + MP_BIOS_AREA_SPACE_LOCATION + (i * MM_PAGE_SIZE)))))
+                if(NULL != (fpsr = findFloatingPointerStructure((void*)((uintptr_t)t + MP_BIOS_AREA_SPACE_LOCATION + (i * PAGE_SIZE)))))
                     break;
             }
             if(NULL == fpsr)
@@ -196,12 +196,12 @@ static STATUS readConfigurationTableHeader()
     if(0 == cth)
         return MP_CONFIGURATION_TABLE_NOT_FOUND;
     
-    struct MpConfigurationTableHeader *confHeader = MmMapDynamicMemory(cth, MM_PAGE_SIZE, 0);
+    struct MpConfigurationTableHeader *confHeader = MmMapDynamicMemory(cth, PAGE_SIZE, 0);
     if(NULL == confHeader)
         return OUT_OF_RESOURCES;
 
     //validate signature
-    if(0 != CmStrncmp(confHeader->signature, 
+    if(0 != RtlStrncmp(confHeader->signature, 
                     MP_CONFIGURATION_TABLE_HEADER_SIGNATURE, 
                     sizeof(MP_CONFIGURATION_TABLE_HEADER_SIGNATURE) - 1))
     {
@@ -326,7 +326,7 @@ STATUS MpInit(uint32_t *lapicAddress)
 // void MpDeInit(void)
 // {
 //     if(NULL != header)
-//         MmUnmapDynamicMemory((void*)ALIGN_DOWN((uintptr_t)header, MM_PAGE_SIZE), confTableSize);
+//         MmUnmapDynamicMemory((void*)ALIGN_DOWN((uintptr_t)header, PAGE_SIZE), confTableSize);
 // }
 
 #endif

@@ -2,7 +2,7 @@
 #include "ke/core/mutex.h"
 #include "hal/hal.h"
 #include "hal/interrupt.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "wrappers.h"
 #include "ke/core/dpc.h"
 #include "hal/arch.h"
@@ -152,7 +152,7 @@ STATUS ItInit(void)
 	for(uint16_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
 	{
 		ItHandlerDescriptorTable[i].count = 0;
-		CmMemset(ItHandlerDescriptorTable[i].consumer, 0, sizeof(ItHandlerDescriptorTable[i].consumer[0]));
+		RtlMemset(ItHandlerDescriptorTable[i].consumer, 0, sizeof(ItHandlerDescriptorTable[i].consumer[0]));
 	}
 	return OK;
 }

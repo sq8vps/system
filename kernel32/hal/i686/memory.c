@@ -2,7 +2,7 @@
 #include "mm/palloc.h"
 #include "hal/arch.h"
 #include <stddef.h>
-#include "common.h"
+#include "rtl/string.h"
 #include "mm/dynmap.h"
 #include "ke/core/panic.h"
 #include "ke/core/mutex.h"
@@ -36,8 +36,15 @@ volatile MmPageTableEntry *const pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TA
 #define MM_PAGE_DIRECTORY_ENTRY_COUNT 1024 //number of entries in page directory
 #define MM_PAGE_TABLE_ENTRY_COUNT 1024 //number of entries in page table
 
-#define IS_KERNEL_MEMORY(address) ((((address) >= MM_KERNEL_SPACE_START) && ((address) < MM_FIRST_PAGE_TABLE_ADDRESS)) \
-		|| ((address) >= (uintptr_t)&pageTable[MM_KERNEL_SPACE_START >> 12]))
+#define I686_DRIVERS_BASE 0xE8000000
+#define I686_DRIVERS_SIZE 0x10000000
+#define I686_DYNAMIC_BASE 0xF8000000
+#define I686_DYNAMIC_SIZE 0x7800000
+#define I686_HEAP_BASE 0xD8000000
+#define I686_HEAP_SIZE 0x10000000
+
+#define IS_KERNEL_MEMORY(address) ((((address) >= HAL_KERNEL_SPACE_BASE) && ((address) < MM_FIRST_PAGE_TABLE_ADDRESS)) \
+		|| ((address) >= (uintptr_t)&pageTable[HAL_KERNEL_SPACE_BASE >> 12]))
 
 static KeSpinlock I686KernelMemoryLock = KeSpinlockInitializer;
 
@@ -225,16 +232,16 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 STATUS HalMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmMemoryFlags flags)
 {
 	STATUS ret = OK;
-	size = ALIGN_UP(size, MM_PAGE_SIZE);
+	size = ALIGN_UP(size, PAGE_SIZE);
 	while(size)
 	{
 		if(OK != (ret = HalMapMemory(vAddress, pAddress, flags)))
 			return ret;
 		
-		vAddress += MM_PAGE_SIZE;
-		pAddress += MM_PAGE_SIZE;
+		vAddress += PAGE_SIZE;
+		pAddress += PAGE_SIZE;
 
-		size -= MM_PAGE_SIZE;
+		size -= PAGE_SIZE;
 	}
 	
 	return OK;
@@ -280,15 +287,15 @@ STATUS HalUnmapMemory(uintptr_t vAddress)
 
 STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 {
-	size = ALIGN_UP(size, MM_PAGE_SIZE);
+	size = ALIGN_UP(size, PAGE_SIZE);
 	uintptr_t start = vAddress;
 	uintptr_t originalSize = size;
 	PRIO prio = I686AcquireMemoryLock(vAddress);
 	while(size)
 	{
 		HalUnmapMemoryNoLock(vAddress);
-		vAddress += MM_PAGE_SIZE;
-		size -= MM_PAGE_SIZE;
+		vAddress += PAGE_SIZE;
+		size -= PAGE_SIZE;
 	}
 #ifdef SMP
 	vAddress = start;
@@ -304,9 +311,9 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 		{
 			do
 			{
-				sameTypeSize += MM_PAGE_SIZE;
-				vAddress += MM_PAGE_SIZE;
-				size -= MM_PAGE_SIZE;
+				sameTypeSize += PAGE_SIZE;
+				vAddress += PAGE_SIZE;
+				size -= PAGE_SIZE;
 			} 
 			while(IS_KERNEL_MEMORY(vAddress) && (0 != size));
 		}
@@ -314,17 +321,17 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 		{
 			do
 			{
-				sameTypeSize += MM_PAGE_SIZE;
-				vAddress += MM_PAGE_SIZE;
-				size -= MM_PAGE_SIZE;
+				sameTypeSize += PAGE_SIZE;
+				vAddress += PAGE_SIZE;
+				size -= PAGE_SIZE;
 			} 
 			while(!IS_KERNEL_MEMORY(vAddress) && (0 != size));			
 		}
 
 		if(IS_KERNEL_MEMORY(base))
-			I686SendInvalidateKernelTlb(base, sameTypeSize / MM_PAGE_SIZE);
+			I686SendInvalidateKernelTlb(base, sameTypeSize / PAGE_SIZE);
 		else if(NULL != task)
-			I686SendInvalidateTlb(&(task->affinity), task->data.cr3, base, sameTypeSize / MM_PAGE_SIZE);
+			I686SendInvalidateTlb(&(task->affinity), task->data.cr3, base, sameTypeSize / PAGE_SIZE);
 	}
 #endif
 	I686ReleaseMemoryLock(start, prio);
@@ -344,9 +351,9 @@ void I686InitVirtualAllocator(void)
 	However, we want to create all kernel page tables, so that we don't have to propagate a page table creation
 	from one CPU to the others.
 	*/
-	for(uintptr_t i = MM_KERNEL_SPACE_START; 
+	for(uintptr_t i = HAL_KERNEL_SPACE_BASE; 
 		i < MM_FIRST_PAGE_TABLE_ADDRESS; 
-		i += (MM_PAGE_SIZE * MM_PAGE_DIRECTORY_ENTRY_COUNT))
+		i += (PAGE_SIZE * MM_PAGE_DIRECTORY_ENTRY_COUNT))
 	{
 		if(pageDir[i >> 22] & PAGE_FLAG_PRESENT)
 			continue;
@@ -357,7 +364,7 @@ void I686InitVirtualAllocator(void)
 		pageDir[i >> 22] = pta | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
 		I686_INVALIDATE_TLB((uintptr_t)(&PAGETABLE(i >> 22, 0)));
 		//now the table can be accessed
-		CmMemsetV(&PAGETABLE(i >> 22, 0), 0, MM_PAGE_TABLE_SIZE);
+		RtlMemsetV(&PAGETABLE(i >> 22, 0), 0, MM_PAGE_TABLE_SIZE);
 	}
 }
 
@@ -370,8 +377,8 @@ uintptr_t I686GetPageDirectoryAddress(void)
 
 static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectoryEntry *pd, uintptr_t base, uintptr_t size)
 {
-	base = ALIGN_DOWN(base, MM_PAGE_SIZE);
-	size = ALIGN_UP(size, MM_PAGE_SIZE);
+	base = ALIGN_DOWN(base, PAGE_SIZE);
+	size = ALIGN_UP(size, PAGE_SIZE);
 
 	while(size > 0)
 	{
@@ -388,8 +395,8 @@ static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectory
 		{
 			pt[(base >> 12) & 0x3FF] = 0;
 			I686_INVALIDATE_TLB(base);
-			size -= MM_PAGE_SIZE;
-			size += MM_PAGE_SIZE;
+			size -= PAGE_SIZE;
+			size += PAGE_SIZE;
 			++pages;
 			if(0 == size)
 				break;
@@ -398,44 +405,6 @@ static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectory
 		KeReleaseSpinlock(tcb->parent->data.userMemoryLock, prio);
 		MmUnmapDynamicMemory(pt);
 	}
-
-	return OK;
-}
-
-STATUS HalFreeTaskStructures(struct KeTaskControlBlock *tcb)
-{
-	// MmPageDirectoryEntry *pd = NULL;
-
-	// pd = MmMapDynamicMemory(tcb->data.cr3, MM_PAGE_DIRECTORY_SIZE, MM_FLAG_WRITABLE);
-	// if(NULL == pd)
-	// 	return OUT_OF_RESOURCES;
-
-	// //we can always remove kernel and user stack
-	// //closing open handles is the responsibility of higher kernel layers
-	// if(NULL != tcb->userStackTop)
-	// {
-	// 	uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->userStackTop - tcb->userStackSize, MM_PAGE_SIZE);
-	// 	uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->userStackTop, MM_PAGE_SIZE) - alignedBase;
-	// 	I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
-	// }
-	// if(NULL != tcb->kernelStackTop)
-	// {
-	// 	uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)tcb->kernelStackTop - tcb->kernelStackSize, MM_PAGE_SIZE);
-	// 	uintptr_t alignedSize = ALIGN_UP((uintptr_t)tcb->kernelStackTop, MM_PAGE_SIZE) - alignedBase;
-	// 	I686FreeTaskMemory(tcb, pd, alignedBase, alignedSize);
-	// }
-
-	// MmUnmapDynamicMemory(pd);
-
-	// if(KE_TASK_TYPE_PROCESS == tcb->type)
-	// {
-	// 	PRIO prio = ObLockObject(tcb);
-	// 	if(1 == tcb->taskCount)
-	// 	{
-	// 		KeDestroySpinlock(tcb->cpu.userMemoryLock);
-	// 	}
-	// 	ObUnlockObject(tcb, prio);
-	// }
 
 	return OK;
 }
@@ -453,12 +422,12 @@ PADDRESS I686CreateNewMemorySpace(void)
 	if(NULL == pd)
 		goto I686CreateNewMemorySpaceFailure;
 
-	CmMemset(pd, 0, MM_PAGE_DIRECTORY_SIZE);
+	RtlMemset(pd, 0, MM_PAGE_DIRECTORY_SIZE);
 
 	//copy entries for kernel space
-	CmMemcpyV(&pd[MM_KERNEL_SPACE_START >> 22], 
-		&pageDir[MM_KERNEL_SPACE_START >> 22], 
-		((MM_KERNEL_SPACE_SIZE >> 22) - 1) * sizeof(MmPageDirectoryEntry));
+	RtlMemcpyV(&pd[HAL_KERNEL_SPACE_BASE >> 22], 
+		&pageDir[HAL_KERNEL_SPACE_BASE >> 22], 
+		((HAL_KERNEL_SPACE_SIZE >> 22) - 1) * sizeof(MmPageDirectoryEntry));
 	
 	//apply self-referencing page directory trick
 	pd[MM_PAGE_DIRECTORY_ENTRY_COUNT - 1] = pdAddress | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
@@ -479,6 +448,36 @@ void I686DestroyMemorySpace(PADDRESS pdAddress)
 		MmFreePhysicalMemory(pdAddress, MM_PAGE_DIRECTORY_SIZE);
 }
 
+uintptr_t HalGetDriverSpaceBase(void)
+{
+	return I686_DRIVERS_BASE;
+}
+
+uintptr_t HalGetDynamicSpaceBase(void)
+{
+	return I686_DYNAMIC_BASE;
+}
+
+uintptr_t HalGetHeapSpaceBase(void)
+{
+	return I686_HEAP_BASE;
+}
+
+uintptr_t HalGetDriverSpaceSize(void)
+{
+	return I686_DRIVERS_SIZE;
+}
+
+uintptr_t HalGetDynamicSpaceSize(void)
+{
+	return I686_DYNAMIC_SIZE;
+}
+
+uintptr_t HalGetHeapSpaceSize(void)
+{
+	return I686_HEAP_SIZE;
+}
+
 //TODO: when mapping kernel space memory, TLBs must be invalidated across all processors
 // STATUS HalMapForeignMemory(struct KeTaskControlBlock *target, uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 // {
@@ -489,7 +488,7 @@ void I686DestroyMemorySpace(PADDRESS pdAddress)
 // 	bool allocatePageTable = false;
 
 // 	if((target == KeGetCurrentTask())
-// 		|| (vAddress >= MM_KERNEL_SPACE_START))
+// 		|| (vAddress >= HAL_KERNEL_SPACE_BASE))
 // 		return HalMapMemory(vAddress, pAddress, flags);
 
 // 	pd = MmMapDynamicMemory(target->cpu.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
@@ -523,7 +522,7 @@ void I686DestroyMemorySpace(PADDRESS pdAddress)
 
 // 	if(allocatePageTable)
 // 	{
-// 		CmMemset(pt, 0, MM_PAGE_TABLE_SIZE);
+// 		RtlMemset(pt, 0, MM_PAGE_TABLE_SIZE);
 // 		pd[vAddress >> 22] = ptAddr | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT; //store page directory entry
 // #ifdef SMP
 // 		//TODO: send invalidate tlb ipi to other processor

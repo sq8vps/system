@@ -2,7 +2,7 @@
 
 #include "acpi.h"
 #include "mm/dynmap.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "hal/cpu.h"
 #include "ioapic.h"
 #include "irq.h"
@@ -116,9 +116,9 @@ static bool AcpiVerifyChecksum(const void *data, uint32_t size)
 
 static void *AcpiFindRsdp(void *in)
 {
-    for(uint16_t i = 0; i < MM_PAGE_SIZE; i += 16) 
+    for(uint16_t i = 0; i < PAGE_SIZE; i += 16) 
     {
-        if(0 == CmStrncmp(((const char*)in) + i, "RSD PTR ", 8))
+        if(0 == RtlStrncmp(((const char*)in) + i, "RSD PTR ", 8))
         {
             return (void*)((uintptr_t)(in) + i);
         }
@@ -128,7 +128,7 @@ static void *AcpiFindRsdp(void *in)
 
 static uintptr_t AcpiGetRxsdtAddress(void)
 {
-    void *t = MmMapDynamicMemory(0, MM_LOWER_MEMORY_SIZE, 0); //map whole lower memory
+    void *t = MmMapDynamicMemory(0, I686_LOWER_MEMORY_SIZE, 0); //map whole lower memory
     if(NULL == t)
         return 0;
 
@@ -140,9 +140,9 @@ static uintptr_t AcpiGetRxsdtAddress(void)
     if((0 == ebdaOffset) || (NULL == (rsdp = AcpiFindRsdp((void*)((uintptr_t)t + ebdaOffset)))))
     {
         //find in BIOS memory (64 kiB)
-        for(uint16_t i = 0; i < (ACPI_BIOS_AREA_SPACE_SIZE / MM_PAGE_SIZE); i++)
+        for(uint16_t i = 0; i < (ACPI_BIOS_AREA_SPACE_SIZE / PAGE_SIZE); i++)
         {
-            if(NULL != (rsdp = AcpiFindRsdp((void*)((uintptr_t)t + ACPI_BIOS_AREA_SPACE_LOCATION + (i * MM_PAGE_SIZE)))))
+            if(NULL != (rsdp = AcpiFindRsdp((void*)((uintptr_t)t + ACPI_BIOS_AREA_SPACE_LOCATION + (i * PAGE_SIZE)))))
                 break;
         }
         if(NULL == rsdp)
@@ -199,7 +199,6 @@ static void AcpiReadEntries(struct AcpiMadt *hdr)
                 }
                 //ACPI apparently does not inform whether the CPU is bootstrap or not
                 bool isBootstrap = (CpuidGetApicId() == cpu->lapicId);
-                PRINT("%sCPU with APIC ID = 0x%X\n", isBootstrap ? "Bootstrap " : "", cpu->lapicId);
                 struct HalCpuExtensions ext = {.bootstrap = isBootstrap, .lapicId = cpu->lapicId};
                 HalRegisterCpu(&ext,
                     ((cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ENABLED) || (cpu->flags & ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE)));
@@ -207,7 +206,6 @@ static void AcpiReadEntries(struct AcpiMadt *hdr)
                 break;
             case ACPI_MADT_ENTRY_IOAPIC:
                 struct AcpiIoApicEntry *ioapic = (struct AcpiIoApicEntry*)entry;
-                PRINT("I/O APIC with ID = 0x%X\n", ioapic->ioApicId);
                 ApicIoAddEntry(ioapic->ioApicId, ioapic->ioApicAddress, ioapic->irqBase);
                 entry = (uint8_t*)entry + ioapic->length;
                 break;
@@ -233,7 +231,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     if(NULL == rxsdt)
         return OUT_OF_RESOURCES;
     
-    uint8_t entrySize = (0 == CmStrncmp(rxsdt->signature, "XSDT", 4)) ? 8 : 4;
+    uint8_t entrySize = (0 == RtlStrncmp(rxsdt->signature, "XSDT", 4)) ? 8 : 4;
     uint32_t entryCount = (rxsdt->length - sizeof(struct AcpiRXsdt)) / entrySize;
     uint32_t rxsdtLength = rxsdt->length;
 
@@ -258,7 +256,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
             MmUnmapDynamicMemory(rxsdt);
             return OUT_OF_RESOURCES;
         }
-        if(0 != CmStrncmp(madt->signature, "APIC", 4))
+        if(0 != RtlStrncmp(madt->signature, "APIC", 4))
         {
             MmUnmapDynamicMemory(madt);
             continue;

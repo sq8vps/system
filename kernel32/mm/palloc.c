@@ -1,13 +1,14 @@
 #include "palloc.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "hal/arch.h"
+#include "hal/mm.h"
 #include "ke/core/mutex.h"
 #include "multiboot.h"
 #include "ex/elf.h"
 
-#define MM_BUDDY_SMALLEST MM_PAGE_SIZE //smallest MmBuddy block size
+#define MM_BUDDY_SMALLEST PAGE_SIZE //smallest MmBuddy block size
 #define MM_BUDDY_COUNT 8 //numer of buddies, MM_BUDDY_SMALLEST<<(N-1) will be the biggest block size
-#define MM_BUDDY_ENTRIES (MM_MEMORY_SIZE / MM_BUDDY_SMALLEST / 32) //number of entries in order 0 MmBuddy
+#define MM_BUDDY_ENTRIES (HAL_VIRTUAL_SPACE_SIZE / MM_BUDDY_SMALLEST / 32) //number of entries in order 0 MmBuddy
 
 
 /**
@@ -245,7 +246,7 @@ PSIZE MmAllocateContiguousPhysicalMemoryFromPool(PSIZE n, PADDRESS *address, PSI
         return 0;
 
     PSIZE blocks = n / MM_BUDDY_SMALLEST + ((n % MM_BUDDY_SMALLEST) ? 1 : 0); //calculate number of blocks
-    align /= MM_PAGE_SIZE; //recalculate alignment value from bytes to page count
+    align /= PAGE_SIZE; //recalculate alignment value from bytes to page count
 
 	PADDRESS firstBlock = 0;
     PADDRESS freeBlocks = 0;
@@ -329,7 +330,7 @@ static void MmFreeBlock(PADDRESS index)
 
 void MmFreePhysicalMemory(PADDRESS address, PSIZE n)
 {
-    PADDRESS index = address / MM_PAGE_SIZE; //calculate page number from address
+    PADDRESS index = address / PAGE_SIZE; //calculate page number from address
     PSIZE blocks = n / MM_BUDDY_SMALLEST + ((n %  MM_BUDDY_SMALLEST) ? 1 : 0); //calculate number of blocks
     PRIO prio = KeAcquireSpinlock(&MmPhysicalAllocatorLock);
     barrier();
@@ -347,11 +348,11 @@ extern char _kstart, _kend;
 void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
 {
     //clear buddies
-    CmMemset(MmBuddy, 0, sizeof(MmBuddy));
+    RtlMemset(MmBuddy, 0, sizeof(MmBuddy));
     //iterate through the kernel image mappings and mark used pages
-    for(PADDRESS i = ALIGN_DOWN((PADDRESS)(&_kstart), MM_PAGE_SIZE); 
-        i < ALIGN_UP((PADDRESS)(&_kend), MM_PAGE_SIZE); 
-        i += MM_PAGE_SIZE)
+    for(PADDRESS i = ALIGN_DOWN((PADDRESS)(&_kstart), PAGE_SIZE); 
+        i < ALIGN_UP((PADDRESS)(&_kend), PAGE_SIZE); 
+        i += PAGE_SIZE)
     {
         PADDRESS physical;
         //obtain physical address
@@ -378,7 +379,7 @@ void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
                     if(MmUsableRegionCount < MM_MAX_USABLE_REGION_COUNT)
                     {
                         //align base up to page size
-                        MmUsableRegion[MmUsableRegionCount].base = ALIGN_UP(e->base, MM_PAGE_SIZE);
+                        MmUsableRegion[MmUsableRegionCount].base = ALIGN_UP(e->base, PAGE_SIZE);
                         MmUsableRegion[MmUsableRegionCount].size = e->length;
                         //check if base changed after alignment
                         if(MmUsableRegion[MmUsableRegionCount].base != e->base)
@@ -388,9 +389,9 @@ void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
                             MmUsableRegion[MmUsableRegionCount].size -= diff;
                         }
                         //align size down to page size
-                        MmUsableRegion[MmUsableRegionCount].size = ALIGN_DOWN(MmUsableRegion[MmUsableRegionCount].size, MM_PAGE_SIZE);
+                        MmUsableRegion[MmUsableRegionCount].size = ALIGN_DOWN(MmUsableRegion[MmUsableRegionCount].size, PAGE_SIZE);
                         //check if the region is at least one page size
-                        if(MmUsableRegion[MmUsableRegionCount].size >= MM_PAGE_SIZE)
+                        if(MmUsableRegion[MmUsableRegionCount].size >= PAGE_SIZE)
                             ++MmUsableRegionCount;
                     }                
                 }

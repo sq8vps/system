@@ -2,7 +2,7 @@
 #include "defines.h"
 #include "config.h"
 #include <stdint.h>
-#include "common.h"
+#include "rtl/string.h"
 #include "exceptions.h"
 
 #if defined(__i686__)
@@ -75,7 +75,7 @@ STATUS I686InstallExceptionHandler(uint16_t cpu, uint8_t vector, void *isr)
 
 STATUS I686InitIdt(void)
 {
-	CmMemset(idt, 0, sizeof(idt));
+	RtlMemset(idt, 0, sizeof(idt));
 
 	//install exception handlers and wrappers for all non-exception interrupts
     for(uint16_t cpu = 0; cpu < MAX_CPU_COUNT; cpu++)

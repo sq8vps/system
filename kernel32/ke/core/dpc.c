@@ -1,6 +1,6 @@
 #include "dpc.h"
 #include <stdbool.h>
-#include "common.h"
+#include "hal/hal.h"
 #include "hal/time.h"
 #include "hal/interrupt.h"
 #include "mutex.h"
@@ -9,6 +9,8 @@
 #include "mm/slab.h"
 #include "hal/arch.h"
 #include "assert.h"
+#include "rtl/string.h"
+#include "hal/task.h"
 
 #define KE_DPC_CHUNK_PER_SLAB 64
 
@@ -138,7 +140,7 @@ void KeProcessDpcQueue(void)
 
 STATUS KeDpcInitialize(void)
 {
-    CmMemset(KeDpcState, 0, sizeof(KeDpcState));
+    RtlMemset(KeDpcState, 0, sizeof(KeDpcState));
 #ifndef SMP
     KeDpcState[0].slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
     if(NULL == KeDpcState[0].slabHandle)

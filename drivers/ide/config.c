@@ -47,7 +47,7 @@ STATUS IdeClearPrdTable(struct IdePrdTable *t)
     if((NULL == t) || (NULL == t->table))
         return NULL_POINTER_GIVEN;
     
-    CmMemset(t->table, 0, IDE_MAX_PRD_ENTRIES * sizeof(*(t->table)));
+    RtlMemset(t->table, 0, IDE_MAX_PRD_ENTRIES * sizeof(*(t->table)));
     t->entries = 0;
     return OK;
 }
@@ -279,11 +279,11 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
     else if(0xFF != hdr->standard.interruptLine)
     {
         struct HalInterruptParams params;
-        params.trigger = IT_TRIGGER_EDGE;
-        params.mode = IT_MODE_FIXED;
-        params.polarity = IT_POLARITY_ACTIVE_HIGH;
-        params.shared = IT_SHAREABLE;
-        params.wake = IT_WAKE_INCAPABLE;
+        params.trigger = HAL_IT_TRIGGER_EDGE;
+        params.mode = HAL_IT_MODE_FIXED;
+        params.polarity = HAL_IT_POLARITY_ACTIVE_HIGH;
+        params.shared = HAL_IT_SHAREABLE;
+        params.wake = HAL_IT_WAKE_INCAPABLE;
         if(0 != hdr->standard.interruptLine)
         {
             irqInput = I686ResolveIsaIrqMapping(hdr->standard.interruptLine);

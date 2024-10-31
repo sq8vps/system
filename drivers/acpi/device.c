@@ -1,7 +1,7 @@
 #include "device.h"
 #include "kernel.h"
 #include "logging.h"
-#include "common.h"
+
 #include "acclib.h"
 
 static bool alreadyEnumerated = false;
@@ -46,7 +46,7 @@ STATUS AcpiGetDeviceResources(struct IoRp *rp)
             rp->payload.resource.res = MmAllocateKernelHeap(size);
             if(NULL == rp->payload.resource.res)
                 return OUT_OF_RESOURCES;
-            CmMemcpy(rp->payload.resource.res, devInfo->resource, size);
+            RtlMemcpy(rp->payload.resource.res, devInfo->resource, size);
             rp->payload.resource.count = devInfo->resourceCount;
             return OK;
         }
@@ -80,9 +80,9 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         return AE_OK;
     }
     //exclude objects not being actual devices
-    if(!CmStrcmp(info->HardwareId.String, "PNP0A05") //container
-    || !CmStrcmp(info->HardwareId.String, "PNP0A06") //container
-    || !CmStrcmp(info->HardwareId.String, "PNP0C0F") //PCI interrupt link device
+    if(!RtlStrcmp(info->HardwareId.String, "PNP0A05") //container
+    || !RtlStrcmp(info->HardwareId.String, "PNP0A06") //container
+    || !RtlStrcmp(info->HardwareId.String, "PNP0C0F") //PCI interrupt link device
     )
     {
         ACPI_FREE(info);
@@ -116,8 +116,8 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         return AE_OK;
     }
 
-    CmStrncpy(private->pnpId, info->HardwareId.String, ACPI_PNP_ID_MAX_LENGTH);
-    CmStrcpy(private->path, name.Pointer);
+    RtlStrncpy(private->pnpId, info->HardwareId.String, ACPI_PNP_ID_MAX_LENGTH);
+    RtlStrcpy(private->path, name.Pointer);
 
     AcpiOsFree(name.Pointer);
 
@@ -209,7 +209,7 @@ STATUS AcpiGetDeviceId(struct IoRp *rp)
             return OUT_OF_RESOURCES;
         }
 
-        compatibleIds = CmAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
+        compatibleIds = RtlAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
         if(NULL == compatibleIds)
         {
             MmFreeKernelHeap(deviceId);
@@ -217,11 +217,11 @@ STATUS AcpiGetDeviceId(struct IoRp *rp)
             return OUT_OF_RESOURCES;
         }
 
-        IoSprintN(deviceId, 128, ACPI_DEVICE_ID_PREFIX "/%s", info->pnpId);
+        snprintf(deviceId, 128, ACPI_DEVICE_ID_PREFIX "/%s", info->pnpId);
         
         if(IO_BUS_TYPE_PCI == info->type)
         {
-            IoSprintN(compatibleIds[0], 128, "BUS/PCI");
+            snprintf(compatibleIds[0], 128, "BUS/PCI");
         }
 
         rp->payload.deviceId.mainId = deviceId;

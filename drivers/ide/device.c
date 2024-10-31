@@ -1,12 +1,10 @@
 #include "device.h"
 #include "io/dev/dev.h"
 #include "mm/heap.h"
-#include "common.h"
 #include "logging.h"
 #include "ke/core/dpc.h"
 #include "ata.h"
 #include "config.h"
-#include "io/disp/print.h"
 
 #define IDE_DEVICE_ID_PREFIX "DISK"
 #define IDE_DEVICE_ID_GENERIC "GENERIC"
@@ -281,7 +279,7 @@ STATUS IdeIsr(void *context)
                         //RP finalization
                         info->channel[i].rp->status = OK;
                         KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
-                        CmMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
+                        RtlMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
                         info->channel[i].operation.busy = 0;
                         KeReleaseSpinlock(&(info->channel[i].lock), prio);
                     }
@@ -294,7 +292,7 @@ STATUS IdeIsr(void *context)
                     info->channel[i].rp->status = UNKNOWN_ERROR;
                     info->channel[i].rp->size = 0;
                     KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
-                    CmMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
+                    RtlMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
                     info->channel[i].operation.busy = 0;
                     KeReleaseSpinlock(&(info->channel[i].lock), prio);
                 }
@@ -327,7 +325,7 @@ STATUS IdeGetDeviceId(struct IoRp *rp)
         goto _IdeGetDeviceIdLeave;
     }
 
-    compatibleIds = CmAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, 1, 128);
+    compatibleIds = RtlAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, 1, 128);
     if(NULL == compatibleIds)
     {
         MmFreeKernelHeap(deviceId);

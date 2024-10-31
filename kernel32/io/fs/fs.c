@@ -3,7 +3,7 @@
 #include "ke/task/task.h"
 #include "ke/sched/sched.h"
 #include "assert.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "mm/slab.h"
 
 #define IO_FS_DEFAULT_FILE_HANDLE_LIMIT 1024
@@ -164,7 +164,7 @@ STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags
             }
             else
             {
-                CmMemset(*handle, 0, sizeof(**handle));
+                RtlMemset(*handle, 0, sizeof(**handle));
                 ObInitializeObjectHeader(*handle);
 
                 (*handle)->type.fileHandle.node = fileNode;

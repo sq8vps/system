@@ -10,6 +10,9 @@ extern "C"
 #include <stdint.h>
 #include "defines.h"
 #include <stdarg.h>
+#include "ob/ob.h"
+
+struct IoSyslogHandle;
 
 /**
  * @brief Syslog message types
@@ -21,31 +24,29 @@ enum IoSyslogMessageType
     SYSLOG_ERROR,
 };
 
-
 /**
- * @brief Syslog object handle
-*/
-struct IoSyslogHandle
+ * @brief Syslog message output stream
+ */
+enum IoSyslogOutput
 {
-    uint32_t objectType;
-    struct IoFileHandle *file;
-    char *name;
+    SYSLOG_OUTPUT_MAIN = 0, /**< Main/kernel system log */
+    SYSLOG_OUTPUT_OWN, /**< Own system log in separate file */
+    SYSLOG_OUTPUT_DEFAULT = SYSLOG_OUTPUT_MAIN, /**< Default system log */
 };
-
 
 /**
  * @brief Open syslog
  * @param *name Module name to be used in syslog
+ * @param output Syslog output stream
  * @return Syslog object handle or NULL on failure
 */
-struct IoSyslogHandle* IoOpenSyslog(const char *name);
-
+struct IoSyslogHandle* IoOpenSyslog(const char *name, enum IoSyslogOutput output);
 
 /**
  * @brief Close syslog
- * @param *handle Syslog handle
+ * @param *h Syslog handle
 */
-void IoCloseSyslog(struct IoSyslogHandle *handle);
+void IoCloseSyslog(struct IoSyslogHandle *h);
 
 
 /**

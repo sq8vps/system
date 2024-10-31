@@ -1,10 +1,10 @@
 #include "ksym.h"
 #include "elf.h"
-#include "common.h"
 #include "multiboot.h"
 #include "mm/dynmap.h"
 #include "mm/heap.h"
 #include "ke/core/panic.h"
+#include "rtl/string.h"
 
 struct
 {
@@ -94,7 +94,7 @@ uintptr_t ExGetKernelSymbol(const char *name)
     
     for(uint32_t i = 0; i < ExKernelSymbolCount; i++)
     {
-        if(0 == CmStrcmp(name, ExKernelSymbolTable[i].name))
+        if(0 == RtlStrcmp(name, ExKernelSymbolTable[i].name))
             return ExKernelSymbolTable[i].value;
     }
     return 0;

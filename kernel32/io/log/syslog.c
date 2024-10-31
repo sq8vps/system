@@ -1,15 +1,32 @@
 #include "syslog.h"
 #include "mm/heap.h"
-#include "io/disp/print.h"
+#include "rtl/stdio.h"
+#include "rtl/string.h"
 #include "io/fs/fs.h"
+#include "mm/heap.h"
 
-struct IoSyslogHandle* IoOpenSyslog(const char *name)
+/**
+ * @brief Syslog object handle
+*/
+struct IoSyslogHandle
 {
-    struct IoSyslogHandle *h = MmAllocateKernelHeap(sizeof(struct IoSyslogHandle));
+    OBJECT;
+    enum IoSyslogOutput output;
+    struct IoFileHandle *file;
+    char name[];
+};
+
+struct IoSyslogHandle IoKernelLog = {.output = SYSLOG_OUTPUT_MAIN, .name = "Kernel"};
+
+struct IoSyslogHandle* IoOpenSyslog(const char *name, enum IoSyslogOutput output)
+{
+    struct IoSyslogHandle *h = MmAllocateKernelHeap(sizeof(*h) + RtlStrlen(name) + 1);
     if(NULL == h)
         return NULL;
+
+    ObInitializeObjectHeader(h);
     
-    h->name = (char*)name;
+    RtlStrcpy(h->name, name);
     return h;
 }
 
@@ -23,24 +40,24 @@ STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, c
     if(NULL == h)
         return NULL_POINTER_GIVEN;
 
-    IoPrint("[%s] ", h->name);
+    RtlPrint("[%s] ", h->name);
 
     switch(type)
     {
         case SYSLOG_INFO:
-            IoPrint("INFO: ");
+            RtlPrint("INFO: ");
             break;
         case SYSLOG_WARNING:
-            IoPrint("WARNING: ");
+            RtlPrint("WARNING: ");
             break;
         case SYSLOG_ERROR:
-            IoPrint("ERROR: ");
+            RtlPrint("ERROR: ");
             break;
         default:
             break;
     }
-    IoVprint(format, args);
-    IoPrint("\n");
+    RtlVprint(format, args);
+    RtlPrint("\n");
     return OK;
 }
 

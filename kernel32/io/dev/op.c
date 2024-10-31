@@ -3,7 +3,7 @@
 #include "io/dev/rp.h"
 #include "mm/mm.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "rtl/string.h"
 
 struct IoReadWriteCallbackContext
 {
@@ -147,7 +147,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
                 void *buffer = HalMapMemoryDescriptorList(ctx->list);
                 if(NULL != buffer)
                 {
-                    CmMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
+                    RtlMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
                     HalUnmapMemoryDescriptorList(buffer);
                 }
                 else
@@ -168,7 +168,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
             void *buffer = HalMapMemoryDescriptorList(ctx->list);
             if(NULL != buffer)
             {
-                CmMemcpy(&(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), buffer, ctx->size);
+                RtlMemcpy(&(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), buffer, ctx->size);
                 HalUnmapMemoryDescriptorList(buffer);
             }
             else
@@ -297,7 +297,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
             }
             else
             {
-                CmMemcpy(alignedBuffer, buffer, size);
+                RtlMemcpy(alignedBuffer, buffer, size);
             }
         }
     }
@@ -389,7 +389,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t si
                 status = OUT_OF_RESOURCES;
             }
 
-            CmMemcpy(*buffer, &(alignedBuffer[offset - alignedOffset]), size);
+            RtlMemcpy(*buffer, &(alignedBuffer[offset - alignedOffset]), size);
             MmFreeKernelHeap(alignedBuffer);
         }
     }

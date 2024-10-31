@@ -325,7 +325,7 @@ AcpiUtInitGlobals (
     /* Miscellaneous variables */
 
     AcpiGbl_DSDT                        = NULL;
-    AcpiGbl_CmSingleStep                = FALSE;
+    AcpiGbl_RtlSingleStep                = FALSE;
     AcpiGbl_Shutdown                    = FALSE;
     AcpiGbl_NsLookupCount               = 0;
     AcpiGbl_PsFindCount                 = 0;

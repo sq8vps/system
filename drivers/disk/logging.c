@@ -4,5 +4,5 @@ struct IoSyslogHandle *DiskLogHandle = NULL;
 
 void DiskLoggingInit(void)
 {
-    DiskLogHandle = IoOpenSyslog(DRIVER_NAME);
+    DiskLogHandle = IoOpenSyslog(DRIVER_NAME, SYSLOG_OUTPUT_DEFAULT);
 }

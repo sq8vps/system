@@ -318,7 +318,7 @@ typedef struct acpi_dmtable_data
     char                    *Signature;
     ACPI_DMTABLE_INFO       *TableInfo;
     ACPI_DMTABLE_HANDLER    TableHandler;
-    ACPI_CMTABLE_HANDLER    CmTableHandler;
+    ACPI_CMTABLE_HANDLER    RtlTableHandler;
     const unsigned char     *Template;
 
 } ACPI_DMTABLE_DATA;
@@ -632,7 +632,7 @@ extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhct[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctNodeHdr[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctIsa1[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctIsaPad[];
-extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctCmo1[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctRtlo1[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctMmu1[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctHartInfo1[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoRhctHartInfo2[];

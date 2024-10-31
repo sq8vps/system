@@ -11,17 +11,17 @@ static ACPI_STATUS AcpiExtractIrqResource(ACPI_RESOURCE *res, struct IoIrqEntry 
     {
         if(res->Length == 2)
         {
-            irq->params.polarity = IT_POLARITY_ACTIVE_HIGH;
-            irq->params.trigger = IT_TRIGGER_EDGE;
-            irq->params.wake = IT_WAKE_INCAPABLE;
-            irq->params.shared = IT_NOT_SHAREABLE;
+            irq->params.polarity = HAL_IT_POLARITY_ACTIVE_HIGH;
+            irq->params.trigger = HAL_IT_TRIGGER_EDGE;
+            irq->params.wake = HAL_IT_WAKE_INCAPABLE;
+            irq->params.shared = HAL_IT_NOT_SHAREABLE;
         }
         else
         {
-            irq->params.polarity = res->Data.Irq.Polarity ? IT_POLARITY_ACTIVE_LOW : IT_POLARITY_ACTIVE_HIGH;
-            irq->params.trigger = res->Data.Irq.Triggering ? IT_TRIGGER_EDGE : IT_TRIGGER_LEVEL;
-            irq->params.wake = res->Data.Irq.WakeCapable ? IT_WAKE_CAPABLE : IT_WAKE_INCAPABLE;
-            irq->params.shared = res->Data.Irq.Shareable ? IT_SHAREABLE : IT_NOT_SHAREABLE;
+            irq->params.polarity = res->Data.Irq.Polarity ? HAL_IT_POLARITY_ACTIVE_LOW : HAL_IT_POLARITY_ACTIVE_HIGH;
+            irq->params.trigger = res->Data.Irq.Triggering ? HAL_IT_TRIGGER_EDGE : HAL_IT_TRIGGER_LEVEL;
+            irq->params.wake = res->Data.Irq.WakeCapable ? HAL_IT_WAKE_CAPABLE : HAL_IT_WAKE_INCAPABLE;
+            irq->params.shared = res->Data.Irq.Shareable ? HAL_IT_SHAREABLE : HAL_IT_NOT_SHAREABLE;
         }
         //ACPICA spec says absolutely nothing about how to handle these structures
         //ACPI says it should be a 16-bit PIC IRQ bit map, but this structure has no 16-bit field
@@ -30,10 +30,10 @@ static ACPI_STATUS AcpiExtractIrqResource(ACPI_RESOURCE *res, struct IoIrqEntry 
     }
     else if(ACPI_RESOURCE_TYPE_EXTENDED_IRQ == res->Type)
     {
-        irq->params.polarity = res->Data.ExtendedIrq.Polarity ? IT_POLARITY_ACTIVE_LOW : IT_POLARITY_ACTIVE_HIGH;
-        irq->params.trigger = res->Data.ExtendedIrq.Triggering ? IT_TRIGGER_EDGE : IT_TRIGGER_LEVEL;
-        irq->params.wake = res->Data.ExtendedIrq.WakeCapable ? IT_WAKE_CAPABLE : IT_WAKE_INCAPABLE;
-        irq->params.shared = res->Data.ExtendedIrq.Shareable ? IT_SHAREABLE : IT_NOT_SHAREABLE;
+        irq->params.polarity = res->Data.ExtendedIrq.Polarity ? HAL_IT_POLARITY_ACTIVE_LOW : HAL_IT_POLARITY_ACTIVE_HIGH;
+        irq->params.trigger = res->Data.ExtendedIrq.Triggering ? HAL_IT_TRIGGER_EDGE : HAL_IT_TRIGGER_LEVEL;
+        irq->params.wake = res->Data.ExtendedIrq.WakeCapable ? HAL_IT_WAKE_CAPABLE : HAL_IT_WAKE_INCAPABLE;
+        irq->params.shared = res->Data.ExtendedIrq.Shareable ? HAL_IT_SHAREABLE : HAL_IT_NOT_SHAREABLE;
         irq->gsi = res->Data.ExtendedIrq.Interrupts[index];
     }
     else
@@ -121,10 +121,10 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap *map)
         {
             map->irq[i].gsi = prt->SourceIndex;
             map->irq[i].pin = prt->Pin + 1;
-            map->irq[i].params.polarity = IT_POLARITY_ACTIVE_LOW;
-            map->irq[i].params.trigger = IT_TRIGGER_LEVEL;
-            map->irq[i].params.wake = IT_WAKE_INCAPABLE;
-            map->irq[i].params.shared = IT_SHAREABLE;
+            map->irq[i].params.polarity = HAL_IT_POLARITY_ACTIVE_LOW;
+            map->irq[i].params.trigger = HAL_IT_TRIGGER_LEVEL;
+            map->irq[i].params.wake = HAL_IT_WAKE_INCAPABLE;
+            map->irq[i].params.shared = HAL_IT_SHAREABLE;
             map->irq[i].id.pci.bus = 0;
             map->irq[i].id.pci.device = PCI_ADR_EXTRACT_DEVICE(prt->Address);
             map->irq[i].id.pci.function = PCI_ADR_EXTRACT_FUNCTION(prt->Address);

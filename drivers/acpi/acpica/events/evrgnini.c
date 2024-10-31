@@ -568,7 +568,7 @@ AcpiEvPciBarRegionSetup (
 
 /*******************************************************************************
  *
- * FUNCTION:    AcpiEvCmosRegionSetup
+ * FUNCTION:    AcpiEvRtlosRegionSetup
  *
  * PARAMETERS:  Handle              - Region we are interested in
  *              Function            - Start or stop
@@ -584,13 +584,13 @@ AcpiEvPciBarRegionSetup (
  ******************************************************************************/
 
 ACPI_STATUS
-AcpiEvCmosRegionSetup (
+AcpiEvRtlosRegionSetup (
     ACPI_HANDLE             Handle,
     UINT32                  Function,
     void                    *HandlerContext,
     void                    **RegionContext)
 {
-    ACPI_FUNCTION_TRACE (EvCmosRegionSetup);
+    ACPI_FUNCTION_TRACE (EvRtlosRegionSetup);
 
 
     return_ACPI_STATUS (AE_OK);

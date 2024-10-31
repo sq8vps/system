@@ -4,6 +4,7 @@
 #include "hal/time.h"
 #include "it/it.h"
 #include "hal/arch.h"
+#include "mm/heap.h"
 
 //list of tasks waiting for mutex or semaphore
 //this list is sorted by earliest deadline first

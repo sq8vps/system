@@ -7,8 +7,8 @@ extern "C"
 {
 #endif
 
-#include "../cdefines.h"
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @brief Mark symbol (function/variable) as internal/hidden
@@ -287,7 +287,7 @@ union UID
     uint8_t raw[16];
 } PACKED;
 
-#include "hal/archdefs.h"
+#include "hal/arch.h"
 
 #ifdef __cplusplus
 }

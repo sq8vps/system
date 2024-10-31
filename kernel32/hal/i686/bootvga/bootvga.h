@@ -24,7 +24,7 @@
 
 #include <stdint.h>
 #include "defines.h"
-#include "color.h"
+#include "rtl/color.h"
 
 /**
  * @addtogroup bootVga
@@ -46,19 +46,19 @@ INTERNAL void BootVgaDeinit(void);
  * @brief Set background color
  * @param color RGB color
 */
-INTERNAL void BootVgaSetBackgroundColor(CmRGB color);
+INTERNAL void BootVgaSetBackgroundColor(RtlRGB color);
 
 /**
  * @brief Set foreground (text) color
  * @param color RGB color
 */
-INTERNAL void BootVgaSetForegroundColor(CmRGB color);
+INTERNAL void BootVgaSetForegroundColor(RtlRGB color);
 
 /**
  * @brief Fill screen with given color
  * @param color RGB color
 */
-INTERNAL void BootVgaFillScreen(CmRGB color);
+INTERNAL void BootVgaFillScreen(RtlRGB color);
 
 /**
  * @brief Clear screen (fill with current background color)
@@ -102,7 +102,7 @@ INTERNAL void BootVgaPrintString(char *s);
  * @param fg Foreground (text) RGB color
  * @param bg Background color
 */
-INTERNAL void BootVgaSetColor(CmRGB fg, CmRGB bg);
+INTERNAL void BootVgaSetColor(RtlRGB fg, RtlRGB bg);
 
 /**
  * @brief Set current cursor position
@@ -130,7 +130,7 @@ INTERNAL void BootVgaGetCurrentResolution(uint16_t *x, uint16_t *y);
  * @param y Y position in pixels
  * @param color Pixel RGB color
 */
-INTERNAL void BootVgaSetPixel(uint16_t x, uint16_t y, CmRGB color);
+INTERNAL void BootVgaSetPixel(uint16_t x, uint16_t y, RtlRGB color);
 
 /**
  * @brief Display a bitmap
@@ -140,7 +140,7 @@ INTERNAL void BootVgaSetPixel(uint16_t x, uint16_t y, CmRGB color);
  * @param width Bitmap width in pixels
  * @param height Bitmap height in pixels
 */
-INTERNAL void BootVgaDisplayBitmap(uint16_t x, uint16_t y, CmRGB *bitmap, uint16_t width, uint16_t height);
+INTERNAL void BootVgaDisplayBitmap(uint16_t x, uint16_t y, RtlRGB *bitmap, uint16_t width, uint16_t height);
 
 /**
  * @}

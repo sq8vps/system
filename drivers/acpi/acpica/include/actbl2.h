@@ -2381,11 +2381,11 @@ typedef struct acpi_pcct_ext_pcc_master
     UINT64                  AckPreserveMask;
     UINT64                  AckSetMask;
     UINT64                  Reserved2;
-    ACPI_GENERIC_ADDRESS    CmdCompleteRegister;
-    UINT64                  CmdCompleteMask;
-    ACPI_GENERIC_ADDRESS    CmdUpdateRegister;
-    UINT64                  CmdUpdatePreserveMask;
-    UINT64                  CmdUpdateSetMask;
+    ACPI_GENERIC_ADDRESS    RtldCompleteRegister;
+    UINT64                  RtldCompleteMask;
+    ACPI_GENERIC_ADDRESS    RtldUpdateRegister;
+    UINT64                  RtldUpdatePreserveMask;
+    UINT64                  RtldUpdateSetMask;
     ACPI_GENERIC_ADDRESS    ErrorStatusRegister;
     UINT64                  ErrorStatusMask;
 
@@ -2412,11 +2412,11 @@ typedef struct acpi_pcct_ext_pcc_slave
     UINT64                  AckPreserveMask;
     UINT64                  AckSetMask;
     UINT64                  Reserved2;
-    ACPI_GENERIC_ADDRESS    CmdCompleteRegister;
-    UINT64                  CmdCompleteMask;
-    ACPI_GENERIC_ADDRESS    CmdUpdateRegister;
-    UINT64                  CmdUpdatePreserveMask;
-    UINT64                  CmdUpdateSetMask;
+    ACPI_GENERIC_ADDRESS    RtldCompleteRegister;
+    UINT64                  RtldCompleteMask;
+    ACPI_GENERIC_ADDRESS    RtldUpdateRegister;
+    UINT64                  RtldUpdatePreserveMask;
+    UINT64                  RtldUpdateSetMask;
     ACPI_GENERIC_ADDRESS    ErrorStatusRegister;
     UINT64                  ErrorStatusMask;
 
@@ -2433,8 +2433,8 @@ typedef struct acpi_pcct_hw_reg
     ACPI_GENERIC_ADDRESS    DoorbellRegister;
     UINT64                  DoorbellPreserve;
     UINT64                  DoorbellWrite;
-    ACPI_GENERIC_ADDRESS    CmdCompleteRegister;
-    UINT64                  CmdCompleteMask;
+    ACPI_GENERIC_ADDRESS    RtldCompleteRegister;
+    UINT64                  RtldCompleteMask;
     ACPI_GENERIC_ADDRESS    ErrorStatusRegister;
     UINT64                  ErrorStatusMask;
     UINT32                  NominalLatency;

@@ -32,6 +32,25 @@ INTERNAL char *HalGetRootDeviceId(void);
  */
 INTERNAL void HalSetRootDeviceId(const char *id);
 
+/**
+ * @brief Architecture-specific initialization phase 1
+ */
+INTERNAL void HalInitPhase1(void);
+
+/**
+ * @brief Architecture-specific initialization phase 2
+ */
+INTERNAL void HalInitPhase2(void);
+
+/**
+ * @brief Architecture-specific initialization phase 3
+ */
+INTERNAL void HalInitPhase3(void);
+
+/**
+ * @brief Call global constructor for C++ support
+ */
+INTERNAL void HalCallConstructors(void);
 
 
 /**

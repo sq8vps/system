@@ -844,7 +844,7 @@ AcpiExPciConfigSpaceHandler (
     void                    *RegionContext);
 
 ACPI_STATUS
-AcpiExCmosSpaceHandler (
+AcpiExRtlosSpaceHandler (
     UINT32                  Function,
     ACPI_PHYSICAL_ADDRESS   Address,
     UINT32                  BitWidth,

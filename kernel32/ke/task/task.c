@@ -1,19 +1,20 @@
 #include "task.h"
 #include "mm/heap.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "hal/hal.h"
 #include "hal/math.h"
 #include "ke/sched/sched.h"
 #include "ex/load.h"
 #include "io/fs/fs.h"
 #include "hal/arch.h"
+#include "hal/task.h"
 
 KE_TASK_ID KeAssignTid(void);
 void KeFreeTid(KE_TASK_ID tid);
 
 struct KeProcessControlBlock* KePreparePCB(PrivilegeLevel pl, const char *path, uint32_t flags)
 {
-    struct KeProcessControlBlock *pcb = MmAllocateKernelHeapZeroed(sizeof(*pcb) + ((NULL != path) ? (CmStrlen(path) + 1) : 0));
+    struct KeProcessControlBlock *pcb = MmAllocateKernelHeapZeroed(sizeof(*pcb) + ((NULL != path) ? (RtlStrlen(path) + 1) : 0));
     if(NULL == pcb)
         return NULL;
 
@@ -23,7 +24,7 @@ struct KeProcessControlBlock* KePreparePCB(PrivilegeLevel pl, const char *path, 
     pcb->flags = flags;
 
     if(NULL != path)
-        CmStrcpy(pcb->path, path);
+        RtlStrcpy(pcb->path, path);
     
     return pcb;
 }
@@ -33,7 +34,7 @@ struct KeTaskControlBlock* KePrepareTCB(const char *name, uint32_t flags)
     if(NULL == name)
         return NULL;
     
-    struct KeTaskControlBlock *tcb = MmAllocateKernelHeapZeroed(sizeof(*tcb) + CmStrlen(name) + 1);
+    struct KeTaskControlBlock *tcb = MmAllocateKernelHeapZeroed(sizeof(*tcb) + RtlStrlen(name) + 1);
     if(NULL == tcb)
         return NULL;
 
@@ -52,7 +53,7 @@ struct KeTaskControlBlock* KePrepareTCB(const char *name, uint32_t flags)
         return NULL;
     }
 
-    CmStrcpy(tcb->name, name);
+    RtlStrcpy(tcb->name, name);
 
     return tcb;
 }

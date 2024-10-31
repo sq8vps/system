@@ -1,5 +1,5 @@
 #include "vfs.h"
-#include "common.h"
+#include "rtl/string.h"
 #include "io/dev/dev.h"
 #include "io/initrd.h"
 #include "assert.h"
@@ -8,6 +8,7 @@
 #include "io/dev/rp.h"
 #include "ddk/fs.h"
 #include "mm/heap.h"
+#include "rtl/stdlib.h"
 
 #define IO_VFS_MAX_SYMLINK_DEPTH 10
 #define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 127
@@ -25,21 +26,21 @@ IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFA
 
 struct IoVfsNode* IoVfsCreateNode(const char *name)
 {
-    if(CmStrlen(name) > IoVfsState.maxFileNameLength)
+    if(RtlStrlen(name) > IoVfsState.maxFileNameLength)
         return NULL;
     
-    if(!CmCheckFileName(name))
+    if(!RtlCheckFileName(name))
         return NULL;
 
     struct IoVfsNode *node = MmSlabAllocate(IoVfsState.slabHandle);
     if(NULL == node)
         return NULL;
     
-    CmMemset(node, 0, sizeof(*node));
+    RtlMemset(node, 0, sizeof(*node));
     
     ObInitializeObjectHeader(node);
     
-    CmStrncpy(node->name, name, IoVfsState.maxFileNameLength);
+    RtlStrncpy(node->name, name, IoVfsState.maxFileNameLength);
 
     node->lock = (KeRwLock)KeRwLockInitializer;
 
@@ -241,11 +242,11 @@ static inline struct IoVfsNode *IoVfsGetNodeFromCache(const struct IoVfsNode *pa
     ASSERT(parent && name);
 
     //"." file, which points to the same directory
-    if(0 == CmStrcmp(name, "."))
+    if(0 == RtlStrcmp(name, "."))
         return (struct IoVfsNode*)parent;
     
     //".." file, which points to parent directory
-    if(0 == CmStrcmp(name, ".."))
+    if(0 == RtlStrcmp(name, ".."))
         return parent->parent;
 
     struct IoVfsNode *node = parent->child;
@@ -253,7 +254,7 @@ static inline struct IoVfsNode *IoVfsGetNodeFromCache(const struct IoVfsNode *pa
     //look for given child
     while(node)
     {
-        if(0 == CmStrcmp(node->name, name))
+        if(0 == RtlStrcmp(node->name, name))
             return node;
         
         node = node->next;
@@ -312,13 +313,13 @@ struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement)
     //skip '/'
     ++path;
 
-    char *buffer = MmAllocateKernelHeap(CmStrlen(path) + 1);
+    char *buffer = MmAllocateKernelHeap(RtlStrlen(path) + 1);
     if(NULL == buffer)
         return NULL;
     
     char *p = buffer;
     
-    CmStrcpy(p, path);
+    RtlStrcpy(p, path);
 
     while('\0' != *p)
     {
@@ -396,13 +397,12 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, const char *path, bool isFi
     ASSERT(node && path);
     if(isFilePath)
     {
-        if(0 != CmStrcmp(node->name, CmGetFileName(path))) //check for node name and path file name match
+        if(0 != RtlStrcmp(node->name, RtlGetFileName(path))) //check for node name and path file name match
             return IO_FILE_NOT_FOUND;
     }
     struct IoVfsNode *target = IoVfsGetNodeEx(path, isFilePath);
     if(NULL == target)
     {
-        ERROR("Node %s not found\n", path);
         return IO_FILE_NOT_FOUND;
     }
     
@@ -572,7 +572,6 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
     if(NULL == parent)
     {
         IoVfsUnlockTree();
-        ERROR("Link path %s not found\n", path);
         return IO_FILE_NOT_FOUND;
     }
 
@@ -586,11 +585,10 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
     if(NULL == destination)
     {   
         IoVfsUnlockTree();
-        ERROR("Link destination %s not found\n", linkDestination);
         return IO_FILE_NOT_FOUND;
     }
     
-    struct IoVfsNode *link = IoVfsCreateNode(CmGetFileName(path));
+    struct IoVfsNode *link = IoVfsCreateNode(RtlGetFileName(path));
     if(NULL == link)
     {
         IoVfsUnlockTree();
