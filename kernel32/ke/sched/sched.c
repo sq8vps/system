@@ -293,16 +293,16 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
     STATUS ret = OK;
     //create idle task
     if(OK != (ret = KeCreateIdleTask()))
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
+        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
     
     if(OK != (ret = KeCreateIdleTask()))
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
+        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
     
     if(NULL != continuationTask)
     {
         struct KeTaskControlBlock *tcb;
         if(OK != (ret = KeCreateKernelProcess("KernelInit", 0, continuationTask, continuationContext, &tcb)))
-            KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 1, 0);
+            KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 1, 0);
         
         KeChangeTaskMajorPriority(tcb, PRIORITY_NORMAL);
         KeChangeTaskMinorPriority(tcb, TCB_DEFAULT_MINOR_PRIORITY);
@@ -311,12 +311,12 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
 
     ret = ExCreateKernelWorker("Task cleanup", KeTaskCleanupWorker, NULL, &KeCleanupTask);
     if(OK != ret)
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 2, 0);
+        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 2, 0);
 
     if(OK != (ret = ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, NULL)))
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 3, 0);
+        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 3, 0);
     if(OK != (ret = ItSetInterruptHandlerEnable(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, true)))
-        KePanicEx(BOOT_FAILURE, KE_SCHEDULER_INITIALIZATION_FAILURE, ret, 4, 0);
+        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 4, 0);
         
     HalInitializeScheduler();
 

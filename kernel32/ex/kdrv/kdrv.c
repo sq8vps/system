@@ -105,7 +105,7 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
     }
 
     if(!IoCheckIfFileExists(path))
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
 
     status = IoGetFileSize(path, &imageSize);
     if(OK != status)
@@ -237,7 +237,7 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
 		IoCloseKernelFile(f);
 		MmFreeMemory(object->address, object->size);
 		if(OK == status)
-			status = IO_READ_INCOMPLETE;
+			status = READ_INCOMPLETE;
 		goto LoadKernelDriverFailure;
 	}
 
@@ -252,7 +252,7 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
 
 	if(ET_REL != elfHeader->e_type)
     {
-        status = EXEC_ELF_BAD_FORMAT;
+        status = ELF_BAD_FORMAT;
         goto LoadKernelDriverFailure;
     }
 

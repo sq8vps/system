@@ -30,7 +30,7 @@ void IdeProcessRequest(struct IoRp *rp)
             status = IdeReadWrite(info, true, rp->payload.write.offset, rp->size, rp->payload.write.memory);
             break;
         default:
-            status = IO_RP_CODE_UNKNOWN;
+            status = RP_CODE_UNKNOWN;
             break;
     }
     
@@ -356,7 +356,7 @@ STATUS IdeStorageControl(struct IoRp *rp)
         case STOR_GET_GEOMETRY:
             if(t->isController)
             {
-                rp->status = IO_RP_PROCESSING_FAILED;
+                rp->status = RP_PROCESSING_FAILED;
                 break;
             }
             struct IdeDriveData *info = &(t->drive);
@@ -374,7 +374,7 @@ STATUS IdeStorageControl(struct IoRp *rp)
             break;
         
         default:
-            rp->status = IO_RP_CODE_UNKNOWN;
+            rp->status = RP_CODE_UNKNOWN;
             break;
     }
  

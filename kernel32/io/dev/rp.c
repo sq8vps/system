@@ -143,13 +143,13 @@ STATUS IoFinalizeRp(struct IoRp *rp)
 STATUS IoCancelRp(struct IoRp *rp)
 {
     if(NULL == rp->queue)
-        return IO_RP_NOT_CANCELLABLE;
+        return RP_NOT_CANCELLABLE;
 
     PRIO prio = KeAcquireSpinlock(&(rp->queue->queueLock));
     if(rp->queue->head == rp)
     {
         KeReleaseSpinlock(&(rp->queue->queueLock), prio); 
-        return IO_RP_NOT_CANCELLABLE;
+        return RP_NOT_CANCELLABLE;
     }
     struct IoRp *t = rp->queue->head;
     while(NULL != t)
@@ -168,7 +168,7 @@ STATUS IoCancelRp(struct IoRp *rp)
         t = t->next;
     }
     KeReleaseSpinlock(&(rp->queue->queueLock), prio); 
-    return IO_RP_NOT_CANCELLABLE;
+    return RP_NOT_CANCELLABLE;
 }
 
 struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp)

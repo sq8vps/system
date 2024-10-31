@@ -34,8 +34,8 @@ typedef uint16_t MmMemoryFlags;
 #define MM_FLAG_WRITE_THROUGH 8 /**< Memory is write trough */
 #define MM_FLAG_CACHE_DISABLE 16 /**< Memory caching is disabled */
 #define MM_FLAG_READ_ONLY 32 /**< Memory is read-only (which is default). This flag supersedes \a MM_FLAG_WRITABLE if specified */
-#define MM_FLAG_EXECUTABLE 64 /**< Memory is executable. This might or might not be implemented */
-
+#define MM_FLAG_EXECUTABLE 64 /**< Memory is explicitly executable. This might or might not be implemented */
+#define MM_FLAG_NON_EXECUTABLE 128 /**< Memory is explictly non-executable. This might or might not be implemented */
 
 /**
  * @brief A descriptor for physical memory region

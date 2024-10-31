@@ -208,7 +208,7 @@ STATUS BootVgaInit(void)
 	{
 		vmem = MmMapMmIo(BOOTVGA_FRAME_BUFFER_ADDRESS, BOOTVGA_WIDTH * BOOTVGA_HEIGHT);
 		if(NULL == vmem)
-			return BOOTVGA_INIT_FAILURE;
+			return OUT_OF_RESOURCES;
 	}
 
 #ifdef BOOT_VGA_USE_640_480

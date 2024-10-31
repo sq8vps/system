@@ -75,7 +75,7 @@ void ItFreeVector(uint8_t vector)
 STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
+		return BAD_INTERRUPT_VECTOR;
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 
@@ -84,7 +84,7 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 	if(ItHandlerDescriptorTable[vector].count == IT_MAX_SHARED_IRQ_CONSUMERS)
 	{
 		KeReleaseSpinlock(&ItHandlerTableMutex, prio);
-		return IT_VECTOR_NOT_FREE;
+		return INTERRUPT_VECTOR_NOT_FREE;
 	}
 
 	ItHandlerDescriptorTable[vector].consumer[ItHandlerDescriptorTable[vector].count].callback = isr;
@@ -99,7 +99,7 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
+		return BAD_INTERRUPT_VECTOR;
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
@@ -123,13 +123,13 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 		}
 	}
 	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
-	return IT_NOT_REGISTERED;
+	return INTERRUPT_NOT_REGISTERED;
 }
 
 STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return IT_BAD_VECTOR;
+		return BAD_INTERRUPT_VECTOR;
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
@@ -144,7 +144,7 @@ STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
 		}
 	}
 	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
-	return IT_NOT_REGISTERED;	
+	return INTERRUPT_NOT_REGISTERED;	
 }
 
 STATUS ItInit(void)

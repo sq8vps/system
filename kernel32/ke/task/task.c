@@ -76,7 +76,7 @@ STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlo
     else
     {
         ObUnlockObject(pcb, prio);
-        return KE_KERNEL_THREAD_LIMIT_REACHED;
+        return KERNEL_THREAD_LIMIT_REACHED;
     }
 
     tcb->parent = pcb;
@@ -134,7 +134,7 @@ STATUS KeCreateKernelProcess(const char *name, uint32_t flags, void (*entry)(voi
 STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, struct KeTaskControlBlock **tcb)
 {
     if((NULL == path) || ('\0' == path[0]))
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     return HalCreateProcess(name, path, PL_USER, flags, NULL, NULL, tcb);
 }
 

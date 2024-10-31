@@ -17,6 +17,7 @@
 #include "ipi.h"
 #include "mm/palloc.h"
 #include "rtl/string.h"
+#include "syscall.h"
 
 #ifdef SMP
 
@@ -58,6 +59,7 @@ STATUS I686ConfigureBootstrapCpu(void)
             if(OK != GdtAddCpu(cpu->number))
                 FAIL_BOOT("failed to add TSS for CPU");
             GdtLoadTss(cpu->number);
+            I686InitializeSyscall();
             return OK;
         }
     }   
@@ -178,6 +180,7 @@ void I686CpuBootstrap(uint32_t cpuId)
     I686InstallIdt(cpuId);
     I686InitMath();
     ApicInitAp();
+    I686InitializeSyscall();
 
     __atomic_fetch_add(&I686ReadyCpuCount, 1, __ATOMIC_SEQ_CST);
 

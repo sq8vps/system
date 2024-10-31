@@ -248,12 +248,12 @@ static void FatGetEntryCallback(STATUS status, uint64_t actualSize, void *contex
                     if((0 != ctx->lastFileName[0]) || (0 != ctx->lastFileName[1])) //long file name
                     {
                         if(0 != FatUcs2ToUtf8(name, ctx->lastFileName, IoVfsGetMaxFileNameLength()))
-                            status = IO_ILLEGAL_NAME;
+                            status = ILLEGAL_NAME;
                     }
                     else //8.3 file name
                     {
                         if(0 != FatDosNameToFileName(name, ctx->list[i].name))
-                            status = IO_ILLEGAL_NAME;
+                            status = ILLEGAL_NAME;
                     }
 
                     if(OK == status)
@@ -332,7 +332,7 @@ FatGetEntryCallbackContinue:
     }
 
     if(FS_GET_NODE == ctx->rp->payload.deviceControl.code)
-        ctx->rp->status = IO_FILE_NOT_FOUND;
+        ctx->rp->status = FILE_NOT_FOUND;
     else
         ctx->rp->status = OK;
 

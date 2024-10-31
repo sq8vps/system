@@ -1,6 +1,7 @@
 #include "gdt.h"
 #include "rtl/string.h"
 #include "config.h"
+#include "msr.h"
 
 #define GDT_MAX_ENTRIES (4 + MAX_CPU_COUNT)
 #define GDT_PRESENT_FLAG (1 << 7)
@@ -129,7 +130,7 @@ void GdtApply(void)
 STATUS GdtAddCpu(uint16_t cpu)
 {
     if(cpu >= MAX_CPU_COUNT)
-        return MM_GDT_ENTRY_LIMIT_EXCEEDED;
+        return OUT_OF_RESOURCES;
 
     I686Tss[cpu].ss0 = GDT_OFFSET(GDT_KERNEL_DS);
     I686Tss[cpu].esp0 = 0;
@@ -159,4 +160,5 @@ void GdtUpdateTss(uintptr_t esp0)
     ASM("str %0" : "=r" (t) :);
     //convert GDT descriptor offset to CPU number and update kernel stack pointer
     I686Tss[GDT_CPU(GDT_ENTRY(t))].esp0 = esp0;
+    MsrSet(MSR_IA32_SYSENTER_ESP, esp0);
 }

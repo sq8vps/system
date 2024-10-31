@@ -25,7 +25,7 @@ STATUS AcpiGetDeviceLocation(struct IoRp *rp)
         }
         return OK;
     }
-    return IO_RP_PROCESSING_FAILED;
+    return RP_PROCESSING_FAILED;
 }
 
 STATUS AcpiGetDeviceResources(struct IoRp *rp)
@@ -51,7 +51,7 @@ STATUS AcpiGetDeviceResources(struct IoRp *rp)
             return OK;
         }
     }
-    return IO_RP_PROCESSING_FAILED;
+    return RP_PROCESSING_FAILED;
 }
 
 struct AcpiEnumerationContext
@@ -228,5 +228,5 @@ STATUS AcpiGetDeviceId(struct IoRp *rp)
         rp->payload.deviceId.compatibleId = compatibleIds;
         return OK;
     }
-    return IO_RP_PROCESSING_FAILED;
+    return RP_PROCESSING_FAILED;
 }

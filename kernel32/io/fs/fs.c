@@ -52,7 +52,7 @@ STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, cons
     // {
     //     ObUnlockObject(pcb, prio);
     //     *handleNumber = -1;
-    //     return IO_FILE_COUNT_LIMIT_REACHED;
+    //     return FILE_COUNT_LIMIT_REACHED;
     // }
 
     // struct IoFileHandle *handle = NULL;
@@ -143,11 +143,11 @@ STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags
     IoVfsLockTreeForWriting();
     struct IoVfsNode *fileNode = IoVfsGetNode(file);
     if(NULL == fileNode)
-        status = IO_FILE_NOT_FOUND;
+        status = FILE_NOT_FOUND;
     else if((IO_VFS_FILE != fileNode->type) && (IO_VFS_DEVICE != fileNode->type))
-        status = IO_BAD_FILE_TYPE;
+        status = BAD_FILE_TYPE;
     else if((mode & (IO_FILE_WRITE | IO_FILE_WRITE_ATTRIBUTES | IO_FILE_APPEND)) && (fileNode->flags & IO_VFS_FLAG_READ_ONLY))
-        status = IO_FILE_READ_ONLY;
+        status = FILE_READ_ONLY;
     else
     {
         status = IoVfsOpen(fileNode, (mode & (IO_FILE_WRITE | IO_FILE_APPEND | IO_FILE_WRITE_ATTRIBUTES)) ? true : false,
@@ -190,10 +190,10 @@ STATUS IoCloseFile(struct KeTaskControlBlock *tcb, int handleNumber)
     // STATUS status = OK;
 
     // if(NULL == pcb->files.list)
-    //     return IO_FILE_NOT_FOUND;
+    //     return FILE_NOT_FOUND;
     
     // if(handleNumber < 1)
-    //     return IO_FILE_NOT_FOUND;
+    //     return FILE_NOT_FOUND;
     
     // struct IoFileHandle *handle = pcb->files.list;
     // while(handle)
@@ -206,7 +206,7 @@ STATUS IoCloseFile(struct KeTaskControlBlock *tcb, int handleNumber)
     // }
     // if(NULL == handle)
     // {
-    //     return IO_FILE_NOT_FOUND;
+    //     return FILE_NOT_FOUND;
     // }
 
     // status = IoVfsClose(handle->type.fileHandle.node);
@@ -260,9 +260,9 @@ STATUS IoCloseFile(struct KeTaskControlBlock *tcb, int handleNumber)
 STATUS IoCloseKernelFile(struct IoFileHandle *handle)
 {
     if(NULL == handle)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     else if(handle->free)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     
     IoVfsClose(handle->type.fileHandle.node);
 
@@ -292,9 +292,9 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size
 {
     ASSERT(buffer);
     if(NULL == handle)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     if(handle->free)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     
     handle->operation.write = 0;
     handle->operation.offset = offset;
@@ -324,11 +324,11 @@ STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t siz
 {
     ASSERT(buffer);
     if(NULL == handle)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     if(handle->free)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     if(0 == (handle->type.fileHandle.mode & (IO_FILE_WRITE | IO_FILE_APPEND)))
-        return IO_FILE_BAD_MODE;
+        return FILE_BAD_MODE;
     if(handle->type.fileHandle.mode & IO_FILE_APPEND)
         offset = handle->type.fileHandle.node->size;
 
@@ -385,7 +385,7 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buf
     }
 
     if(NULL == h)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
 
     PRIO prio = ObLockObject(h);
     h->task = tcb;
@@ -445,7 +445,7 @@ STATUS IoFsInit(void)
     if(NULL != IoFsState.slabHandle)
         return OK;
     else
-        return IO_VFS_INITIALIZATION_FAILED;
+        return VFS_INITIALIZATION_FAILED;
 }
 
 bool IoCheckIfFileExists(const char *file)

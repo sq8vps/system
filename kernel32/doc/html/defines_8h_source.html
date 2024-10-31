@@ -116,32 +116,32 @@ $(document).ready(function(){initNavTree('defines_8h_source.html',''); initResiz
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>    OUT_OF_RESOURCES,</div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span> </div>
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>    <span class="comment">//interrupt module errors</span></div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>    IT_BAD_VECTOR = 0x00001000, <span class="comment">//bad interrupt vector number</span></div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>    BAD_INTERRUPT_VECTOR = 0x00001000, <span class="comment">//bad interrupt vector number</span></div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>    IT_NO_CONTROLLER_CONFIGURED,</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>    IT_ALREADY_REGISTERED,</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>    IT_NOT_REGISTERED,</div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>    IT_NO_FREE_VECTORS,</div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>    INTERRUPT_ALREADY_REGISTERED,</div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>    INTERRUPT_NOT_REGISTERED,</div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>    NO_FREE_INTERRUPT_VECTORS,</div>
 <div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span> </div>
 <div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>    <span class="comment">//memory management module errors</span></div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>    MM_NO_MEMORY = 0x00002000, <span class="comment">//out of physical memory</span></div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>    MM_PAGE_NOT_PRESENT, <span class="comment">//page not present in physical memory</span></div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>    MM_ALREADY_MAPPED, <span class="comment">//page is already mapped to other virtual address</span></div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>    OUT_OF_RESOURCES = 0x00002000, <span class="comment">//out of physical memory</span></div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>    PAGE_NOT_PRESENT, <span class="comment">//page not present in physical memory</span></div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>    MEMORY_ALREADY_MAPPED, <span class="comment">//page is already mapped to other virtual address</span></div>
 <div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>    MM_TOO_MANY_ENTRIES, <span class="comment">//too many entries to be inserted into some table</span></div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>    MM_UNALIGNED_MEMORY, <span class="comment">//memory is not aligned correctly to perform the operation</span></div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>    BAD_ALIGNMENT, <span class="comment">//memory is not aligned correctly to perform the operation</span></div>
 <div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>    MM_DYNAMIC_MEMORY_INIT_FAILURE, <span class="comment">//dynamically mapped memory module initialization failure</span></div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    MM_GDT_ENTRY_LIMIT_EXCEEDED, </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>    MM_ALREADY_UNMAPPED, <span class="comment">//memory is already unmapped</span></div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    OUT_OF_RESOURCES, </div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>    MEMORY_ALREADY_UNMAPPED, <span class="comment">//memory is already unmapped</span></div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>    MM_HEAP_ALLOCATION_FAILURE,</div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>    MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE,</div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>    EXEC_ELF_BAD_ARCHITECTURE = 0x00003000,</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>    EXEC_ELF_BAD_INSTRUCTION_SET,</div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>    EXEC_ELF_BAD_FORMAT,</div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    EXEC_ELF_BAD_ENDIANESS,</div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>    EXEC_ELF_BROKEN,</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    EXEC_ELF_UNSUPPORTED_TYPE,</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>    EXEC_ELF_UNDEFINED_SYMBOL,</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    EXEC_ELF_UNDEFINED_EXTERNAL_SYMBOL,</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>    ELF_BAD_ARCHITECTURE = 0x00003000,</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>    ELF_BAD_INSTRUCTION_SET,</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>    ELF_BAD_FORMAT,</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    ELF_BAD_ENDIANESS,</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>    ELF_BROKEN,</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    ELF_UNSUPPORTED_TYPE,</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>    ELF_UNDEFINED_SYMBOL,</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    ELF_UNDEFINED_EXTERNAL_SYMBOL,</div>
 <div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    EXEC_MALLOC_FAILED,</div>
 <div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>    EXEC_UNSUPPORTED_KERNEL_MODE_DRIVER_TYPE,</div>
 <div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>    EXEC_BAD_DRIVER_INDEX,</div>
@@ -149,21 +149,21 @@ $(document).ready(function(){initNavTree('defines_8h_source.html',''); initResiz
 <div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    EXEC_PROCESS_PAGE_DIRECTORY_CREATION_FAILURE,</div>
 <div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span> </div>
 <div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>    KE_TSS_ENTRY_LIMIT_EXCEEDED = 0x00004000,</div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>    KE_SCHEDULER_INITIALIZATION_FAILURE,</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>    SCHEDULER_INITIALIZATION_FAILURE,</div>
 <div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>    KE_TCB_PREPARATION_FAILURE,</div>
 <div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>    IO_ROOT_DEVICE_INIT_FAILURE = 0x00005000,</div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>    IO_ILLEGAL_NAME,</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>    IO_FILE_NOT_FOUND,</div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>    IO_FILE_ALREADY_EXISTS,</div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>    IO_NOT_DISK_DEVICE_FILE,</div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    IO_NOT_A_DIRECTORY,</div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>    IO_FILE_COUNT_LIMIT_REACHED,</div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>    IO_BAD_FILE_TYPE,</div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    IO_FILE_LOCKED,</div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    IO_FILE_IRREMOVABLE,</div>
-<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>    IO_DIRECTORY_NOT_EMPTY,</div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>    IO_FILE_IN_USE,</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>    ROOT_DEVICE_INIT_FAILURE = 0x00005000,</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>    ILLEGAL_NAME,</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>    FILE_NOT_FOUND,</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>    FILE_ALREADY_EXISTS,</div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>    DEVICE_INCOMPATIBLE,</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    NOT_A_DIRECTORY,</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>    FILE_COUNT_LIMIT_REACHED,</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>    BAD_FILE_TYPE,</div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>    FILE_LOCKED,</div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>    FILE_IRREMOVABLE,</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>    DIRECTORY_NOT_EMPTY,</div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>    FILE_IN_USE,</div>
 <div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span> </div>
 <div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>    MP_FLOATING_POINTER_TABLE_NOT_FOUND = 0x01000000,</div>
 <div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>    MP_CONFIGURATION_TABLE_NOT_FOUND,</div>

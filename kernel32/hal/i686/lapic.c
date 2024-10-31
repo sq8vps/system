@@ -217,7 +217,7 @@ STATUS ApicInit(uintptr_t address)
 STATUS ApicConfigureSystemTimer(uint8_t vector)
 {
     if(vector < IT_FIRST_INTERRUPT_VECTOR)  
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
     
     if(lapic)
     {

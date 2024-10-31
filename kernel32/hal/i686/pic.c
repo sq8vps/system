@@ -31,7 +31,7 @@ struct PicEntry
 STATUS PicSendEoi(uint32_t input)
 {
     if(!CHECK_INPUT(input))
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
     
     if(IS_SLAVE_INPUT(input))
     {
@@ -70,7 +70,7 @@ void PicRemap(uint8_t masterIrqOffset, uint8_t slaveIrqOffset)
 STATUS PicDisableIrq(uint32_t input)
 {
     if(!CHECK_INPUT(input))
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
 
     if(IS_MASTER_INPUT(input))
     {
@@ -91,7 +91,7 @@ STATUS PicDisableIrq(uint32_t input)
 STATUS PicEnableIrq(uint32_t input)
 {
     if(!CHECK_INPUT(input))
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
 
     if(IS_MASTER_INPUT(input))
     {

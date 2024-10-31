@@ -31,7 +31,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         || (0 == bpb->sectorsPerCluster))
     {
         MmFreeKernelHeap(bpb);
-        return IO_UNKNOWN_FILE_SYSTEM;
+        return UNKNOWN_FILE_SYSTEM;
     }
 
     status = IoCreateDevice(drv, IO_DEVICE_TYPE_FS, 0, &dev);
@@ -170,7 +170,7 @@ STATUS FatVerify(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         || (0 == bpb->sectorsPerCluster))
     {
         MmFreeKernelHeap(bpb);
-        return IO_UNKNOWN_FILE_SYSTEM;
+        return UNKNOWN_FILE_SYSTEM;
     }
     else
     {

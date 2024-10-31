@@ -44,7 +44,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
             if(size > info->partition.sizeBytes)
             {
                 //won't fit
-                rp->status = IO_VOLUME_TOO_SMALL;
+                rp->status = VOLUME_TOO_SMALL;
                 IoFinalizeRp(rp);
                 return OK;
             }
@@ -72,7 +72,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
             if(size > info->partition.sizeBytes)
             {
                 //won't fit
-                rp->status = IO_VOLUME_TOO_SMALL;
+                rp->status = VOLUME_TOO_SMALL;
                 IoFinalizeRp(rp);
                 return OK;
             }
@@ -80,7 +80,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
         }
         else
         {
-            rp->status = IO_RP_PROCESSING_FAILED;
+            rp->status = RP_PROCESSING_FAILED;
             IoFinalizeRp(rp);
             return OK;
         }
@@ -91,7 +91,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
     else
     {
         //bad disk configuration, should not happen
-        rp->status = IO_RP_PROCESSING_FAILED;
+        rp->status = RP_PROCESSING_FAILED;
         IoFinalizeRp(rp);
         return OK;
     }
@@ -130,7 +130,7 @@ STATUS DiskGetSig(struct DiskData *info, char **signature)
         {
             //fail on non-partitioned disks, since there is no obtainable UUID
             MmFreeKernelHeap(t);
-            return IO_RP_PROCESSING_FAILED;
+            return RP_PROCESSING_FAILED;
         }
     }
 

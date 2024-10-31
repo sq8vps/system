@@ -19,6 +19,18 @@
  * @{
 */
 
+EXPORT_API
+
+/**
+ * @brief Check if buffer is accessible in user mode
+ * @param *buffer Buffer to be validated
+ * @param size Buffer size
+ * @return True if valid, false if invalid
+ */
+bool HalValidateUserBuffer(const void *buffer, uintptr_t size);
+
+END_EXPORT_API
+
 /**
  * @brief Get root device ID
  * @return Root device ID pointer

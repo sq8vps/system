@@ -84,7 +84,7 @@ STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h)
 
     FAIL_BOOT("kernel symbol table missing");
 
-    return EXEC_ELF_BROKEN;
+    return ELF_BROKEN;
 }
 
 uintptr_t ExGetKernelSymbol(const char *name)

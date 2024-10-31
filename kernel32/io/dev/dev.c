@@ -186,7 +186,7 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     if(1 != driverCount)
     {
         MmFreeKernelHeap(drivers);
-        return IO_ROOT_DEVICE_INIT_FAILURE;
+        return ROOT_DEVICE_INIT_FAILURE;
     }
     struct IoDeviceObject *rootBaseDevice = NULL;
     if(OK != (ret = IoCreateDevice(drivers->this, IO_DEVICE_TYPE_ROOT, 0, &rootBaseDevice)))

@@ -13,7 +13,7 @@ static void AcpiProcessRp(struct IoRp *rp)
     {
         case IO_RP_ENUMERATE:
             if(ACPI_FAILURE(DriverEnumerate(rp->device->driverObject, rp->device)))
-                rp->status  = IO_RP_PROCESSING_FAILED;
+                rp->status  = RP_PROCESSING_FAILED;
             else
                 rp->status = OK;
             break;
@@ -27,7 +27,7 @@ static void AcpiProcessRp(struct IoRp *rp)
             rp->status = AcpiGetDeviceId(rp);
             break;
         default:
-            rp->status = IO_RP_CODE_UNKNOWN;
+            rp->status = RP_CODE_UNKNOWN;
             break;
     }
     IoFinalizeRp(rp);
@@ -45,7 +45,7 @@ static STATUS AcpiInit(struct ExDriverObject *driverObject)
         return ret;
 
     if(AE_OK != AcInitialize())
-        return EXEC_DRIVER_INIT_FAILED;
+        return DRIVER_INITIALIZATION_FAILED;
     
     return OK;
 } 

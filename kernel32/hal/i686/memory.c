@@ -119,7 +119,7 @@ STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags)
 	if(0 == (pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
 	{
 		I686ReleaseMemoryLock(vAddress, prio);
-		return MM_PAGE_NOT_PRESENT;
+		return PAGE_NOT_PRESENT;
 	}
 
 	uint16_t f = PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & 0xFFF;
@@ -143,13 +143,13 @@ STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress)
 	if(0 == (pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
 	{
 		I686ReleaseMemoryLock(vAddress, prio);
-		return MM_PAGE_NOT_PRESENT;
+		return PAGE_NOT_PRESENT;
 	}
 
 	if(0 == (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT)) //check if page is present
 	{
 		I686ReleaseMemoryLock(vAddress, prio);
-		return MM_PAGE_NOT_PRESENT;
+		return PAGE_NOT_PRESENT;
 	}
 
 	*pAddress = (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & 0xFFFFF000) + (vAddress & 0xFFF);
@@ -189,7 +189,7 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 		{
 			MmFreePhysicalMemory(pageTableAddr, MM_PAGE_TABLE_SIZE);
 			I686ReleaseMemoryLock(vAddress, prio);
-			return MM_NO_MEMORY;
+			return OUT_OF_RESOURCES;
 		}
 
 		pageDir[vAddress >> 22] = pageTableAddr | PAGE_FLAG_WRITABLE 
@@ -209,7 +209,7 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 	if(PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT) //check if page is already present
 	{
 		I686ReleaseMemoryLock(vAddress, prio);
-		return MM_ALREADY_MAPPED;
+		return MEMORY_ALREADY_MAPPED;
 	}
 
 	uint16_t f = 0;
@@ -252,13 +252,13 @@ static STATUS HalUnmapMemoryNoLock(uintptr_t vAddress)
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //page table not present?
 	{
 		//this is not mapped
-		KePanicEx(MEMORY_ACCESS_VIOLATION, MM_ALREADY_UNMAPPED, vAddress, 0, 0);
+		KePanicEx(MEMORY_ACCESS_VIOLATION, MEMORY_ALREADY_UNMAPPED, vAddress, 0, 0);
 	}
 
 	if(0 == (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT))
 	{
 		//this memory is already unmapped
-		KePanicEx(MEMORY_ACCESS_VIOLATION, MM_ALREADY_UNMAPPED, vAddress, 0, 0);
+		KePanicEx(MEMORY_ACCESS_VIOLATION, MEMORY_ALREADY_UNMAPPED, vAddress, 0, 0);
 	}
 
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (MmPageTableEntry)0; //clear entry
@@ -478,6 +478,18 @@ uintptr_t HalGetHeapSpaceSize(void)
 	return I686_HEAP_SIZE;
 }
 
+bool HalValidateUserBuffer(const void *buffer, uintptr_t size)
+{
+	if(0 == size)
+		return true;
+		
+	uintptr_t end = (uintptr_t)buffer + size;
+	if(((uintptr_t)buffer > 0) && (end > (uintptr_t)buffer) && (end <= HAL_KERNEL_SPACE_BASE))
+		return true;
+	else
+		return false;
+}
+
 //TODO: when mapping kernel space memory, TLBs must be invalidated across all processors
 // STATUS HalMapForeignMemory(struct KeTaskControlBlock *target, uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 // {
@@ -531,7 +543,7 @@ uintptr_t HalGetHeapSpaceSize(void)
 
 // 	if(pt[(vAddress >> 12) & 0x3FF] & PAGE_FLAG_PRESENT) //check if page is already present
 // 	{
-// 		status = MM_ALREADY_MAPPED;
+// 		status = MEMORY_ALREADY_MAPPED;
 // 		goto HalMapForeignMemoryExit;
 // 	}
 

@@ -42,7 +42,7 @@ static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT] ALIGN(8);
 static STATUS InsertIdtEntry(uint16_t cpu, uint8_t vector, void *isr)
 {
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_NO_FREE_VECTORS;
+        return NO_FREE_INTERRUPT_VECTORS;
 
     if(cpu >= MAX_CPU_COUNT)
         return OUT_OF_RESOURCES;
@@ -57,7 +57,7 @@ static STATUS InsertIdtEntry(uint16_t cpu, uint8_t vector, void *isr)
 STATUS I686InstallExceptionHandler(uint16_t cpu, uint8_t vector, void *isr)
 {
     if(vector >= IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
 
     if(cpu >= MAX_CPU_COUNT)
         return OUT_OF_RESOURCES;

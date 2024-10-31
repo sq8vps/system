@@ -147,7 +147,7 @@ STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode m
         return APIC_IOAPIC_NOT_AVAILABLE;
 
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
     uint64_t params = 0;
     switch(mode)
     {
@@ -213,7 +213,7 @@ STATUS ApicIoEnableIrq(uint32_t input)
 {
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
-        return IT_NOT_REGISTERED;
+        return INTERRUPT_NOT_REGISTERED;
     
     PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase),
@@ -227,7 +227,7 @@ STATUS ApicIoDisableIrq(uint32_t input)
 {
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
-        return IT_NOT_REGISTERED;
+        return INTERRUPT_NOT_REGISTERED;
     
     PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase),

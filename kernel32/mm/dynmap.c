@@ -148,7 +148,7 @@ void MmInitDynamicMemory(void)
 {
     if(NULL == BstInsertPair(&MM_DYNAMIC_ADDRESS_FREE_TREE, &MM_DYNAMIC_SIZE_FREE_TREE, 
         HalGetDynamicSpaceBase(), HalGetDynamicSpaceSize()))
-        KePanicEx(BOOT_FAILURE, MM_DYNAMIC_MEMORY_INIT_FAILURE, OUT_OF_RESOURCES, 0, 0);
+        KePanicEx(BOOT_FAILURE, 0, OUT_OF_RESOURCES, 0, 0);
 }
 
 

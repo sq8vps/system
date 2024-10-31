@@ -43,7 +43,7 @@ static STATUS IdeDispatch(struct IoRp *rp)
             IdeStorageControl(rp);
             break;
         default:
-            rp->status = IO_RP_PROCESSING_FAILED;
+            rp->status = RP_PROCESSING_FAILED;
             IoFinalizeRp(rp);
             break;
     }

@@ -37,7 +37,7 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
     status = IoReadKernelFileSync(f, db, size, 0, &actual);
     if(actual != size)
     {
-        status = IO_READ_INCOMPLETE;
+        status = READ_INCOMPLETE;
         goto ExDbOpenFailed;
     }
     else if(OK != status)
@@ -47,7 +47,7 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
     
     if(!NablaDbVerify(db))
     {
-        status = EX_DATABASE_BROKEN;
+        status = DATABASE_BROKEN;
         goto ExDbOpenFailed;
     }
 
@@ -144,7 +144,7 @@ STATUS ExDbGetNextString(struct ExDbHandle *h, const char *name, char **str)
     if(NULL == e)
     {
         *str = NULL;
-        return EX_DATABASE_ENTRY_NOT_FOUND;
+        return DATABASE_ENTRY_NOT_FOUND;
     }
 
     if(NABLADB_IS_ARRAY_ELEMENT(e->type))
@@ -164,7 +164,7 @@ STATUS ExDbGetNextBool(struct ExDbHandle *h, const char *name, bool *b)
     struct NablaDbEntry *e = ExDbGetNext(h, name, NDB_BOOL);
     if(NULL == e)
     {
-        return EX_DATABASE_ENTRY_NOT_FOUND;
+        return DATABASE_ENTRY_NOT_FOUND;
     }
 
     if(NABLADB_IS_ARRAY_ELEMENT(e->type))

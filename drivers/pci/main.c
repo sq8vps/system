@@ -16,7 +16,7 @@ static STATUS PciDispatch(struct IoRp *rp)
             if(NULL != ((struct PciDeviceData*)dev->privateData)->thisBridge)
                 status = PciEnumerate(dev->driverObject, dev, ((struct PciDeviceData*)dev->privateData)->thisBridge);
             else
-                status = IO_RP_PROCESSING_FAILED;
+                status = RP_PROCESSING_FAILED;
             break;
         case IO_RP_GET_CONFIG_SPACE:
             if(NULL != dev->privateData)
@@ -25,7 +25,7 @@ static STATUS PciDispatch(struct IoRp *rp)
                 status = PciReadConfigurationSpace(info->address, rp);
                 break;
             }
-            status = IO_RP_PROCESSING_FAILED;
+            status = RP_PROCESSING_FAILED;
             break;
         case IO_RP_SET_CONFIG_SPACE:
             if(NULL != dev->privateData)
@@ -34,7 +34,7 @@ static STATUS PciDispatch(struct IoRp *rp)
                 status = PciWriteConfigurationSpace(info->address, rp);
                 break;
             }
-            status = IO_RP_PROCESSING_FAILED;
+            status = RP_PROCESSING_FAILED;
             break;
         case IO_RP_GET_DEVICE_LOCATION:
             if(NULL != dev->privateData)
@@ -45,7 +45,7 @@ static STATUS PciDispatch(struct IoRp *rp)
                 status = OK;
                 break;
             }
-            status = IO_RP_PROCESSING_FAILED;
+            status = RP_PROCESSING_FAILED;
             break;
         case IO_RP_GET_DEVICE_RESOURCES:
             status = PciGetResources(rp);
@@ -54,7 +54,7 @@ static STATUS PciDispatch(struct IoRp *rp)
             status = PciGetSystemDeviceId(rp);
             break;
         default:
-            status = IO_RP_PROCESSING_FAILED;
+            status = RP_PROCESSING_FAILED;
             break;
     }
 

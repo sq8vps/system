@@ -416,7 +416,7 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
         rp->payload.deviceId.compatibleId = compatibleIds;
         return OK;
     }
-    return IO_RP_PROCESSING_FAILED;
+    return RP_PROCESSING_FAILED;
 }
 
 STATUS PciGetResources(struct IoRp *rp)
@@ -456,5 +456,5 @@ STATUS PciGetResources(struct IoRp *rp)
 
         return OK;
     }
-    return IO_RP_PROCESSING_FAILED;    
+    return RP_PROCESSING_FAILED;    
 }

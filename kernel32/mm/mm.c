@@ -210,13 +210,13 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
     while(size)
     {
         if(address & (PAGE_SIZE - 1)) //check if memory is aligned
-            return MM_UNALIGNED_MEMORY;
+            return BAD_ALIGNMENT;
         
         uintptr_t pAddress = 0;
         uintptr_t allocated = MmAllocatePhysicalMemory(size, &pAddress);
         if(0 == allocated) //no memory was allocated - this is an error condition
         {
-            ret = MM_NO_MEMORY;
+            ret = OUT_OF_RESOURCES;
             goto mmAllocateKernelMemoryFailed;
         }
 

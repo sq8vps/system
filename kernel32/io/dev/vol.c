@@ -44,7 +44,7 @@ STATUS IoInitializeVolumeManager(void)
     if(OK != ExDbGetNextString(h, "MountPointDatabasePath", &t))
     {
         ExDbClose(h);
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     }
 
     IoVolumeState.mountPointDbPath = MmAllocateKernelHeap(RtlStrlen(t) + 1);
@@ -67,15 +67,15 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
 
     //sanity check
     if(!RtlCheckPath(mountPoint))
-        return IO_ILLEGAL_NAME;
+        return ILLEGAL_NAME;
 
     STATUS status = OK;
 
     if(IO_DEVICE_TYPE_DISK != dev->type)
-        status = IO_NOT_DISK_DEVICE_FILE;
+        status = DEVICE_INCOMPATIBLE;
     
     if(NULL == dev->associatedVolume)
-        status = IO_VOLUME_NOT_REGISTERED;
+        status = VOLUME_NOT_REGISTERED;
     
     if(OK != status)
         return status;
@@ -86,7 +86,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     if(OK == status)
     {
         if(NULL == dev->associatedVolume->fsdo)
-            status = IO_VOLUME_NOT_REGISTERED;
+            status = VOLUME_NOT_REGISTERED;
     }
     
     if(OK != status)
@@ -95,7 +95,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     }
 
     if(IoVfsCheckIfNodeExists(mountPoint))
-        return IO_FILE_ALREADY_EXISTS;
+        return FILE_ALREADY_EXISTS;
     
     struct IoVfsNode *node = NULL;
     node = IoVfsCreateNode(RtlGetFileName(mountPoint));
@@ -123,13 +123,13 @@ STATUS IoMountVolume(const char *devPath, const char *mountPoint)
     //get VFS node associated with disk device
     struct IoVfsNode *devNode = IoVfsGetNode(devPath);
     if(NULL == devNode)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
 
     if(IO_VFS_DEVICE != devNode->type)
-        status = IO_BAD_FILE_TYPE;
+        status = BAD_FILE_TYPE;
     
     if(NULL == devNode->device)
-        status = IO_FILE_NOT_FOUND;
+        status = FILE_NOT_FOUND;
     
     if(OK != status)
     {
@@ -151,7 +151,7 @@ STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
     
     if(NULL != dev->associatedVolume)
     {
-        return IO_VOLUME_ALREADY_EXISTS;
+        return VOLUME_ALREADY_EXISTS;
     }
 
     struct IoVolumeNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
@@ -189,7 +189,7 @@ STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
     
     if(NULL == dev->associatedVolume)
     {
-        return IO_VOLUME_NOT_REGISTERED;
+        return VOLUME_NOT_REGISTERED;
     }
 
     struct IoVolumeNode *vol = dev->associatedVolume;
@@ -202,13 +202,13 @@ STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
 STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label)
 {
     if(RtlStrlen(label) > IO_VOLUME_MAX_LABEL_LENGTH)
-        return IO_ILLEGAL_NAME;
+        return ILLEGAL_NAME;
     
     
     if(NULL == dev->associatedVolume)
     {
         
-        return IO_VOLUME_NOT_REGISTERED;
+        return VOLUME_NOT_REGISTERED;
     }
 
     struct IoVolumeNode *vol = dev->associatedVolume;
@@ -226,24 +226,24 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
     
     if(IO_DEVICE_TYPE_DISK != disk->type)
     {
-        return IO_DEVICE_INCOMPATIBLE;
+        return DEVICE_INCOMPATIBLE;
     }
 
     if(NULL == disk->associatedVolume)
     {
-        return IO_VOLUME_NOT_REGISTERED;
+        return VOLUME_NOT_REGISTERED;
     }
 
     
     if(IO_DEVICE_TYPE_FS != fs->type)
     {
-        return IO_DEVICE_INCOMPATIBLE;
+        return DEVICE_INCOMPATIBLE;
     }
 
     
     if(NULL != disk->associatedVolume->fsdo)
     {
-        return IO_VOLUME_ALREADY_MOUNTED;
+        return VOLUME_ALREADY_MOUNTED;
     }
 
     disk->associatedVolume->fsdo = fs;

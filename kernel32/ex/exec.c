@@ -34,7 +34,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
         if(OK != ret)
             return ret;
         else
-            return IO_READ_INCOMPLETE;
+            return READ_INCOMPLETE;
     }
     struct Elf32_Ehdr *h = (struct Elf32_Ehdr*)buf;
     if(OK != (ret = ExVerifyElf32Header(h)))
@@ -63,7 +63,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
         if(OK != ret)
             return ret;
         else
-            return IO_READ_INCOMPLETE;
+            return READ_INCOMPLETE;
     }
     IoCloseKernelFile(f);
 

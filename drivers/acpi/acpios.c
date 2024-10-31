@@ -279,7 +279,7 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
     if(OK == ret)
         HalEnableIrq(InterruptLevel, Handler);
 
-    if(IT_ALREADY_REGISTERED == ret)
+    if(INTERRUPT_ALREADY_REGISTERED == ret)
         return AE_ALREADY_EXISTS;
     else if(OK != ret)
         return AE_BAD_PARAMETER;
@@ -292,7 +292,7 @@ ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLE
     HalDisableIrq(InterruptNumber, Handler);
     STATUS ret = HalUnregisterIrq(InterruptNumber, Handler);
 
-    if(IT_NOT_REGISTERED == ret)
+    if(INTERRUPT_NOT_REGISTERED == ret)
         return AE_NOT_EXIST;
     else if(OK != ret)
         return AE_BAD_PARAMETER;

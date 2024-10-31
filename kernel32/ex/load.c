@@ -15,7 +15,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 
     if(!IoCheckIfFileExists(path))
 	{
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
 	}
 	
 	struct KeTaskControlBlock *tcb = KeGetCurrentTask();
@@ -36,7 +36,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 		goto ExProcessLoadWorkerFailed;
 	else if(actualSize < sizeof(struct Elf32_Ehdr))
 	{
-		status = IO_READ_INCOMPLETE;
+		status = READ_INCOMPLETE;
 		goto ExProcessLoadWorkerFailed;
 	}
 
@@ -46,7 +46,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 
 	if(ET_EXEC != ehdr->e_type)
 	{
-		status = EXEC_ELF_UNSUPPORTED_TYPE;
+		status = ELF_UNSUPPORTED_TYPE;
 		goto ExProcessLoadWorkerFailed;
 	}
 	//TODO: implement PIE handling
@@ -64,7 +64,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 		goto ExProcessLoadWorkerFailed;
 	else if(actualSize < phdrSize)
 	{
-		status = IO_READ_INCOMPLETE;
+		status = READ_INCOMPLETE;
 		goto ExProcessLoadWorkerFailed;
 	}
 
@@ -99,7 +99,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 			}
 			else if(phdr[i].p_filesz != actualSize)
 			{
-				status = IO_READ_INCOMPLETE;
+				status = READ_INCOMPLETE;
 				goto ExProcessLoadWorkerFailed;
 			}
 		}

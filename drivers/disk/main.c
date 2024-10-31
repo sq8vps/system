@@ -41,18 +41,18 @@ static STATUS DiskDispatch(struct IoRp *rp)
                         return rp->status;
                         break;
                     default:
-                        return IO_RP_CODE_UNKNOWN;
+                        return RP_CODE_UNKNOWN;
                         break;
                 }
                 break;
             default:
-                rp->status = IO_RP_CODE_UNKNOWN;
+                rp->status = RP_CODE_UNKNOWN;
                 IoFinalizeRp(rp);
-                return IO_RP_CODE_UNKNOWN;
+                return RP_CODE_UNKNOWN;
                 break;
         }
     }
-    return IO_RP_PROCESSING_FAILED;
+    return RP_PROCESSING_FAILED;
 }
 
 static STATUS DiskInit(struct ExDriverObject *driverObject)

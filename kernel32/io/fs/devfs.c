@@ -35,7 +35,7 @@ STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char
             status = OUT_OF_RESOURCES;
     }
     else
-        status = IO_FILE_ALREADY_EXISTS;
+        status = FILE_ALREADY_EXISTS;
         
     IoVfsUnlockTree();
     return status;

@@ -25,7 +25,7 @@ static STATUS FatReadWriteCallback(struct IoRp *rp, void *context)
     struct FatReadCallbackContext *ctx = context;
     STATUS status = rp->status;
     if(rp->size != ctx->toTransfer)
-        status = ctx->write ? IO_WRITE_INCOMPLETE : IO_READ_INCOMPLETE;
+        status = ctx->write ? WRITE_INCOMPLETE : READ_INCOMPLETE;
     
     if(OK != status)
         goto FatReadCallbackExit;
@@ -46,7 +46,7 @@ static STATUS FatReadWriteCallback(struct IoRp *rp, void *context)
 
     if(!FAT_CLUSTER_VALID(ctx->vol, ctx->cluster))
     {
-        status = IO_FILE_BROKEN;
+        status = FILE_BROKEN;
         goto FatReadCallbackExit;
     }
 
@@ -132,20 +132,20 @@ STATUS FatReadWrite(struct IoRp *rp)
     bool incrementCluster = false;
 
     if((IO_RP_READ != rp->code) && (IO_RP_WRITE != rp->code))
-        return IO_RP_PROCESSING_FAILED;
+        return RP_PROCESSING_FAILED;
     
     if(NULL == rp->vfsNode)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     
     if(!((IO_VFS_FILE == rp->vfsNode->type) || (IO_VFS_LINK == rp->vfsNode->type)))
-        return IO_BAD_FILE_TYPE;
+        return BAD_FILE_TYPE;
     
     if(rp->vfsNode->device != rp->device)
-        return IO_RP_PROCESSING_FAILED;
+        return RP_PROCESSING_FAILED;
     
     struct FatVolume *vol = rp->device->privateData;
     if(NULL == vol)
-        return IO_RP_PROCESSING_FAILED;
+        return RP_PROCESSING_FAILED;
     
     if(!write)
     {
@@ -162,7 +162,7 @@ STATUS FatReadWrite(struct IoRp *rp)
     {
         if(rp->payload.write.offset > rp->vfsNode->size)
         {
-            return IO_FILE_TOO_SMALL;
+            return FILE_TOO_SMALL;
         }
     }
 

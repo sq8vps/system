@@ -140,7 +140,7 @@ STATUS IoInitrdInit(const struct Multiboot2InfoHeader *mb2h)
         tag = Multiboot2FindTag(mb2h, tag, MB2_MODULE);
     } 
     
-    return IO_FILE_NOT_FOUND;
+    return FILE_NOT_FOUND;
 }
 
 STATUS IoInitrdMount(char *mountPoint)
@@ -149,10 +149,10 @@ STATUS IoInitrdMount(char *mountPoint)
 
     //sanity check
     if(!RtlCheckPath(mountPoint))
-        return IO_ILLEGAL_NAME;
+        return ILLEGAL_NAME;
 
     if(IoVfsCheckIfNodeExists(mountPoint))
-        return IO_FILE_ALREADY_EXISTS;
+        return FILE_ALREADY_EXISTS;
     
     struct IoVfsNode *node = NULL;
     node = IoVfsCreateNode(RtlGetFileName(mountPoint));
@@ -197,7 +197,7 @@ STATUS IoInitrdGetNode(struct IoVfsNode *parent, const char *name, struct IoVfsN
     struct TarHeader *h = IoInitrdFindFile(path);
     MmFreeKernelHeap(path);
     if(NULL == h)
-        return IO_FILE_NOT_FOUND;
+        return FILE_NOT_FOUND;
     
     *node = IoVfsCreateNode(name);
     if(NULL == *node)

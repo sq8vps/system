@@ -53,7 +53,7 @@ void I686SetDefaultIsaRemap(void)
 STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi)
 {
     if(isaIrq >= ISA_INTERRUPT_COUNT)
-        return IT_BAD_VECTOR;
+        return BAD_INTERRUPT_VECTOR;
     
     IsaRemapTable[isaIrq] = gsi;
     return OK;
@@ -133,7 +133,7 @@ STATUS HalArchRegiserIrq(uint32_t input, uint8_t vector, struct HalInterruptPara
     {
         if(((input - PIC_REMAP_VECTOR) >= PIC_INPUT_COUNT) || (input < PIC_REMAP_VECTOR))
         {
-            return IT_VECTOR_NOT_FREE;
+            return INTERRUPT_VECTOR_NOT_FREE;
         }
         else
             return OK;
