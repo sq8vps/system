@@ -96,7 +96,7 @@ static uint64_t read64(struct IOAPIC *ioapic, uint8_t reg)
 STATUS ApicIoInit(void)
 {
     if(0 == IoApicEntryCount)
-        return APIC_IOAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
 
     uintptr_t lowestAddress = 0xFFFFFFFF;
     uintptr_t highestAddress = 0;
@@ -144,7 +144,7 @@ STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode m
 {
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
-        return APIC_IOAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
 
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
         return BAD_INTERRUPT_VECTOR;
@@ -200,7 +200,7 @@ STATUS ApicIoUnregisterIrq(uint32_t input)
 {
     struct IOAPIC *ioApic = findIoApic(input);
     if(NULL == ioApic)
-        return APIC_IOAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
     
     PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), IT_FIRST_INTERRUPT_VECTOR | IOAPIC_IOREDTBL_MASK);

@@ -1,6 +1,5 @@
 #if defined(__i686__) || defined(__amd64__)
 
-#include "mp.h"
 #include "lapic.h"
 #include "acpi.h"
 #include "dcpuid.h"
@@ -11,7 +10,6 @@
 
 STATUS I686InitRoot(void)
 {
-    STATUS status = OK;
     uintptr_t address; //lapic address
 
     I686SetDefaultIsaRemap();
@@ -20,12 +18,8 @@ STATUS I686InitRoot(void)
     {
         HalSetRootDeviceId("ACPI");
     }
-    else if(OK == (status = MpInit(&address))) //fallback to MP if ACPI not available
-    {
-        HalSetRootDeviceId("MP");
-    }
     else
-        FAIL_BOOT("system is not ACPI nor MPS compliant");
+        FAIL_BOOT("system is not ACPI compliant");
     
     if(!CpuidCheckIfApicAvailable())
         FAIL_BOOT("local APIC is not available")

@@ -109,7 +109,7 @@ static STATUS spuriousInterruptHandler(void *context)
 STATUS ApicSendEoi(void)
 {
     if(NULL == lapic)
-        return APIC_LAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
 
     LAPIC(LAPIC_EOI_OFFSET) = 0;
     
@@ -119,7 +119,7 @@ STATUS ApicSendEoi(void)
 // STATUS ApicSetNMI(uint8_t lint, uint16_t mpflags)
 // {
 //     if(NULL == lapic)
-//         return APIC_LAPIC_NOT_AVAILABLE;
+//         return DEVICE_NOT_AVAILABLE;
     
 //     if(0 == lint)
 //         LAPIC(LAPIC_LINT0_OFFSET) = LAPIC_MODE_NMI | (((mpflags & 3) == 0) ? LAPIC_POLARITY_ACTIVE_HIGH : LAPIC_POLARITY_ACTIVE_LOW);
@@ -155,7 +155,7 @@ STATUS ApicWaitForIpiDelivery(uint64_t timeLimit)
 STATUS ApicInitAp(void)
 {
     if(NULL == lapic)
-        return APIC_LAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
 
     MsrSet(MSR_IA32_APIC_BASE, MsrGet(MSR_IA32_APIC_BASE) | MSR_IA32_APIC_BASE_ENABLE_MASK);
 
@@ -206,7 +206,7 @@ STATUS ApicInitBsp(void)
 STATUS ApicInit(uintptr_t address)
 {
     if(0 == address)
-        return APIC_LAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
 
     lapic = MmMapMmIo(address, PAGE_SIZE);
     if(NULL == lapic)
@@ -231,7 +231,7 @@ STATUS ApicConfigureSystemTimer(uint8_t vector)
         return OK;
     }
 
-    return APIC_LAPIC_NOT_AVAILABLE;   
+    return DEVICE_NOT_AVAILABLE;   
 }
 
 void ApicStartSystemTimer(uint64_t time)
@@ -310,7 +310,7 @@ void ApicSetRealTime(uint64_t realTime)
 STATUS ApicSetTaskPriority(uint8_t priority)
 {
     if(unlikely(NULL == lapic))
-        return APIC_LAPIC_NOT_AVAILABLE;
+        return DEVICE_NOT_AVAILABLE;
     LAPIC(LAPIC_TPR_OFFSET) = (priority & 0xF) << 4;
     while(((LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF) < priority)
         TIGHT_LOOP_HINT();

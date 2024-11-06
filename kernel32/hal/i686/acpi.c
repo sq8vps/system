@@ -225,7 +225,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 {
     uintptr_t rsdtPhysical = AcpiGetRxsdtAddress();
     if(0 == rsdtPhysical)
-        return ACPI_RSDT_NOT_FOUND;
+        return FILE_NOT_FOUND;
     
     struct AcpiRXsdt *rxsdt = MmMapDynamicMemory(rsdtPhysical, sizeof(struct AcpiRXsdt), 0);
     if(NULL == rxsdt)
@@ -244,7 +244,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     if(!AcpiVerifyChecksum(rxsdt, rxsdtLength))
     {
         MmUnmapDynamicMemory(rxsdt);
-        return ACPI_CHECKSUM_VALIDATION_FAILED;
+        return FILE_NOT_FOUND;
     }
 
     for(uint32_t i = 0; i < entryCount; i++)
@@ -274,7 +274,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         {
             MmUnmapDynamicMemory(rxsdt);
             MmUnmapDynamicMemory(madt);
-            return ACPI_CHECKSUM_VALIDATION_FAILED;
+            return FILE_NOT_FOUND;
         }
 
         *lapicAddress = madt->lapicAddress;
@@ -287,7 +287,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     }
     
     MmUnmapDynamicMemory(rxsdt);
-    return ACPI_MADT_NOT_FOUND;
+    return FILE_NOT_FOUND;
 
 }
 

@@ -44,91 +44,95 @@ static void IoFileReadWriteCallback(STATUS status, uint64_t actualSize, void *co
 
 STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, const struct KeTaskControlBlock *tcb, int *handleNumber)
 {
-    // ASSERT(file && handleNumber && tcb);
-    // struct KeProcessControlBlock *pcb = tcb->parent;
-    // PRIO prio = ObLockObject(pcb);
+    ASSERT(file && handleNumber && tcb);
+    struct KeProcessControlBlock *pcb = tcb->parent;
+    *handleNumber = -1;
 
-    // if(pcb->files.count > IoFsState.fileHandleLimit)
-    // {
-    //     ObUnlockObject(pcb, prio);
-    //     *handleNumber = -1;
-    //     return FILE_COUNT_LIMIT_REACHED;
-    // }
+    PRIO prio = ObLockObject(pcb);
 
-    // struct IoFileHandle *handle = NULL;
-    // STATUS ret = OK;
-    // if(OK != (ret = IoOpenKernelFile(file, mode, flags, &handle)))
-    //     return ret;
+    if(pcb->files.count > IoFsState.fileHandleLimit)
+    {
+        ObUnlockObject(pcb, prio);
+        *handleNumber = -1;
+        return FILE_COUNT_LIMIT_REACHED;
+    }
 
-    // //handle for free handle range entry
-    // struct IoFileHandle *freeHandle;
-    // if(NULL == pcb->files.list)
-    // {
-    //     freeHandle = MmSlabAllocate(IoFsState.slabHandle);
-    //     if(NULL == freeHandle)
-    //     {
-    //         *handleNumber = -1;
-    //         MmSlabFree(IoFsState.slabHandle, handle);
-    //         return OUT_OF_RESOURCES;
-    //     }
-    //     ObInitializeObjectHeader(freeHandle);
-    //     freeHandle->free = true;
-    //     freeHandle->previous = NULL;
-    //     freeHandle->type.freeHandleRange.first = 1;
-    //     freeHandle->type.freeHandleRange.last = IoFsState.fileHandleLimit + 1;
-    //     freeHandle->next = NULL;
-    //     pcb->files.list = freeHandle;
-    // }
-    // else
-    // {
-    //     freeHandle = pcb->files.list;
-    //     while(freeHandle->next)
-    //     {
-    //         if(freeHandle->free)
-    //         {
-    //             *handleNumber = freeHandle->type.freeHandleRange.first;
-    //             break;
-    //         }
-    //         freeHandle = freeHandle->next;
-    //     }
-    // }
+    struct IoFileHandle *freeHandle = NULL;
+    if(NULL == pcb->files.list)
+    {
+        freeHandle = MmSlabAllocate(IoFsState.slabHandle);
+        if(NULL == freeHandle)
+        {
+            ObUnlockObject(pcb, prio);
+            return OUT_OF_RESOURCES;
+        }
+        ObInitializeObjectHeader(freeHandle);
+        freeHandle->free = true;
+        freeHandle->previous = NULL;
+        freeHandle->type.freeHandleRange.first = 2;
+        freeHandle->type.freeHandleRange.last = IoFsState.fileHandleLimit + 1;
+        freeHandle->next = NULL;
+        pcb->files.list = freeHandle;
+        *handleNumber = 1;
+    }
+    else
+    {
+        freeHandle = pcb->files.list;
+        while(freeHandle->next)
+        {
+            if(freeHandle->free)
+            {
+                *handleNumber = freeHandle->type.freeHandleRange.first++;
+                break;
+            }
+            freeHandle = freeHandle->next;
+        }
+    }
     
-    // if(0 == *handleNumber)
-    // {
-    //     *handleNumber = -1;
-    //     MmSlabFree(IoFsState.slabHandle, handle);
-    //     return OUT_OF_RESOURCES;
-    // }
+    if(-1 == *handleNumber)
+    {
+        ObUnlockObject(pcb, prio);
+        return OUT_OF_RESOURCES;
+    }
 
-    // handle->free = false;
-    // handle->type.fileHandle.id = *handleNumber;
-    // handle->type.fileHandle.flags = flags;
+    ObUnlockObject(pcb, prio);
 
-    // freeHandle->type.freeHandleRange.first++;
-    // //free handle range exhausted
-    // if(freeHandle->type.freeHandleRange.first > freeHandle->type.freeHandleRange.last)
-    // {
-    //     if(freeHandle->previous)
-    //         freeHandle->previous->next = handle;
-    //     else
-    //         pcb->files.list = handle;
-    //     if(freeHandle->next)
-    //         freeHandle->next->previous = handle;
-    //     handle->previous = freeHandle->previous;
-    //     handle->next = freeHandle->next;
-    //     MmSlabFree(IoFsState.slabHandle, freeHandle);
-    // }
-    // else
-    // {
-    //     handle->next = freeHandle->next;
-    //     handle->previous = freeHandle;
-    //     if(handle->next)
-    //         handle->next->previous = handle;
-    //     freeHandle->next = handle;
-    // }
+    struct IoFileHandle *handle = NULL;
+    STATUS ret = OK;
+    if(OK != (ret = IoOpenKernelFile(file, mode, flags, &handle)))
+        return ret;
+
+    handle->free = false;
+    handle->type.fileHandle.id = *handleNumber;
+    handle->type.fileHandle.flags = flags;
+
+    prio = ObLockObject(pcb);
+    //free handle range exhausted
+    if(freeHandle->type.freeHandleRange.first > freeHandle->type.freeHandleRange.last)
+    {
+        if(freeHandle->previous)
+            freeHandle->previous->next = handle;
+        else
+            pcb->files.list = handle;
+        if(freeHandle->next)
+            freeHandle->next->previous = handle;
+        handle->previous = freeHandle->previous;
+        handle->next = freeHandle->next;
+        MmSlabFree(IoFsState.slabHandle, freeHandle);
+    }
+    else
+    {
+        handle->next = freeHandle->next;
+        handle->previous = freeHandle;
+        if(handle->next)
+            handle->next->previous = handle;
+        freeHandle->next = handle;
+    }
     
-    // pcb->files.count++;
-    // //TODO: update last use and flags
+    pcb->files.count++;
+    //TODO: update last use and flags
+
+    ObUnlockObject(pcb, prio);
 
     return NOT_IMPLEMENTED;
 }

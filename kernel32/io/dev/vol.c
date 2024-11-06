@@ -72,7 +72,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     STATUS status = OK;
 
     if(IO_DEVICE_TYPE_DISK != dev->type)
-        status = DEVICE_INCOMPATIBLE;
+        status = SYSTEM_INCOMPATIBLE;
     
     if(NULL == dev->associatedVolume)
         status = VOLUME_NOT_REGISTERED;
@@ -226,7 +226,7 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
     
     if(IO_DEVICE_TYPE_DISK != disk->type)
     {
-        return DEVICE_INCOMPATIBLE;
+        return SYSTEM_INCOMPATIBLE;
     }
 
     if(NULL == disk->associatedVolume)
@@ -237,7 +237,7 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
     
     if(IO_DEVICE_TYPE_FS != fs->type)
     {
-        return DEVICE_INCOMPATIBLE;
+        return SYSTEM_INCOMPATIBLE;
     }
 
     
