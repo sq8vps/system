@@ -59,31 +59,21 @@ typedef enum
 typedef struct IoFileHandle
 {
     struct ObObjectHeader objectHeader;
-    bool free; /**< Does this entry represent free handle range? */
-    struct KeTaskControlBlock *task; /**< Task that this file belongs to */
     struct
     {
+        KeMutex lock; /**< Mutex to ensure thread safety */
+        struct KeTaskControlBlock *task; /**< Task that requested the operation */
         uint64_t actualSize; /**< Actual read/written count of bytes */
         STATUS status; /**< Operation status */
         uint32_t completed : 1; /**< Operation completed */
         uint32_t write : 1; /**< Write/append operation */
         uint64_t offset; /**< Operation offset */
     } operation;
-    union
-    {
-        struct
-        {
-            int id; /**< File descriptor */
-            struct IoVfsNode *node; /**< VFS node that this file references to */
-            IoFileOpenMode mode; /**< Mode in which the file is open */
-            IoFileFlags flags; /**< Additional file flags */
-        } fileHandle;
-        struct
-        {
-            int first; /**< First free handle */
-            int last; /**< Last free handle */
-        } freeHandleRange;
-    } type;
+
+    int id; /**< File descriptor */
+    struct IoVfsNode *node; /**< VFS node that this file references to */
+    IoFileOpenMode mode; /**< Mode in which the file is open */
+    IoFileFlags flags; /**< Additional file flags */
     
     struct IoFileHandle *next; /**< Next file handle with consecutive ID */
     struct IoFileHandle *previous; /**< Previous file handle */
