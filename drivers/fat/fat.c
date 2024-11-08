@@ -157,7 +157,7 @@ static void FatFillVfsNode(struct IoVfsNode *n, struct FatDirectory *e, struct F
     //TODO: implement dates handling
 }
 
-static void FatGetEntryCallback(STATUS status, uint64_t actualSize, void *context)
+static void FatGetEntryCallback(STATUS status, size_t actualSize, void *context)
 {
     struct FatGetEntryContext *ctx = context;
     if(OK == status)
@@ -406,7 +406,7 @@ STATUS FatGetNode(struct IoRp *rp, struct FatVolume *vol)
     return IoReadWrite(false, vol->disk, NULL, offset, size, list, FatGetEntryCallback, ctx, false);
 }
 
-static void FatUpdateOnDiskCallback(STATUS status, uint64_t actualSize, void *context)
+static void FatUpdateOnDiskCallback(STATUS status, size_t actualSize, void *context)
 {
     if(OK != status)
     {

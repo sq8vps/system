@@ -466,7 +466,7 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node)
     return status;
 }
 
-STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
+STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(node && buffer && callback);
 
@@ -506,7 +506,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_
     return BAD_FILE_TYPE;
 }
 
-STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
+STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(node && buffer && callback);
     STATUS status = 0;
@@ -528,7 +528,7 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64
     if((offset > node->size) && (IO_VFS_DEVICE != node->type))
         return FILE_TOO_SMALL;
 
-    uint64_t originalSize = node->size;
+    size_t originalSize = node->size;
     //TODO: update timestamps
     if((offset + size) > node->size)
     {

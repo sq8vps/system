@@ -33,7 +33,7 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
         goto ExDbOpenFailed;
     }
 
-    uint64_t actual = 0;
+    size_t actual = 0;
     status = IoReadKernelFileSync(f, db, size, 0, &actual);
     if(actual != size)
     {

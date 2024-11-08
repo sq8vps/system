@@ -181,7 +181,12 @@ struct KeProcessControlBlock
      */
     struct
     {
-        struct IoFileHandle *list; /**< File list head */
+        struct
+        {
+            struct IoFileHandle *handle; /**< File handle */
+            KeMutex mutex; /**< File handle access mutex */
+        } *table; /**< File table */
+        uint32_t tableSize; /**< Size of the file table (number of overall entries) */
         uint32_t count; /**< Open files count */
     } files;
     

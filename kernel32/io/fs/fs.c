@@ -5,9 +5,12 @@
 #include "assert.h"
 #include "rtl/string.h"
 #include "mm/slab.h"
+#include "mm/heap.h"
 
 #define IO_FS_DEFAULT_FILE_HANDLE_LIMIT 1024
 #define IO_FS_CHUNKS_PER_SLAB 16
+
+#define IO_FS_HANDLE_BLOCK_SIZE 64 //number of file handles per one "file handle table block" allocation
 
 struct
 {
@@ -15,7 +18,7 @@ struct
     uint32_t fileHandleLimit; /**< Per-process file handle count limit */
 } static IoFsState = {.slabHandle = NULL, .fileHandleLimit = IO_FS_DEFAULT_FILE_HANDLE_LIMIT};
 
-static void IoFileReadWriteCallback(STATUS status, uint64_t actualSize, void *context)
+static void IoFileReadWriteCallback(STATUS status, size_t actualSize, void *context)
 {
     struct IoFileHandle *h = context;
     if(NULL != h)
@@ -50,79 +53,68 @@ STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, cons
     struct IoFileHandle *handle = NULL;
     struct KeProcessControlBlock *pcb = tcb->parent;
     *handleNumber = -1;
-
-    PRIO prio = ObLockObject(pcb);
-
-    if(pcb->files.count >= IoFsState.fileHandleLimit)
-    {
-        ObUnlockObject(pcb, prio);
-        return OUT_OF_RESOURCES;
-    }
     
     handle = MmSlabAllocate(IoFsState.slabHandle);
     if(NULL == handle)
     {
-        ObUnlockObject(pcb, prio);
         return OUT_OF_RESOURCES;
     }
 
     RtlMemset(handle, 0, sizeof(*handle));
     ObInitializeObjectHeader(handle);
 
-    struct IoFileHandle *h = pcb->files.list;
-    if(NULL == h)
-    {
-        pcb->files.list = handle;
-        handle->id = 0;
-    }
-    else
-    {
-        while(1)
-        {
-            if((NULL == h->next)
-            || ((NULL != h->next) && ((h->next->id - h->id) > 1)))
-            {
-                handle->id = h->id + 1;
-                if(NULL == h->next)
-                {
-                    handle->next = NULL;
-                }
-                else
-                {
-                    h->next->previous = handle;
-                    handle->next = h->next;
-                }
-                handle->previous = h;
-                h->next = handle;
-                break;
-            }
-            h = h->next;
-        }
-    }
-
-    pcb->files.count++;
-    barrier();
-    ObUnlockObject(pcb, prio);
-
     status = IoOpenKernelFile(file, mode, flags, &handle);
     if(OK != status)
     {
-        prio = ObLockObject(pcb);
-        if(NULL != handle->previous)
-            handle->previous->next = handle->next;
-        else
-            pcb->files.list = handle->next;
-
-        if(NULL != handle->next)
-            handle->next->previous = handle->previous;
-        
-        pcb->files.count--;
-        barrier();
-        ObUnlockObject(pcb, prio);
-
         MmSlabFree(IoFsState.slabHandle, handle);
         return status;
     }
+
+    handle->id = -1;
+
+    PRIO prio = ObLockObject(pcb);
+
+    if(pcb->files.count >= IoFsState.fileHandleLimit)
+    {
+        ObUnlockObject(pcb, prio);
+        IoCloseKernelFile(handle);
+        return OUT_OF_RESOURCES;
+    }
+
+    if(pcb->files.count < pcb->files.tableSize)
+    {
+        for(uint32_t i = 0; i < pcb->files.tableSize; i++)
+        {
+            if(NULL == pcb->files.table[i].handle)
+            {
+                handle->id = i;
+                break;
+            }
+        }
+    }
+
+    if(-1 == handle->id)
+    {
+        void *p = MmReallocateKernelHeap(pcb->files.table, sizeof(*pcb->files.table) * (pcb->files.tableSize + IO_FS_HANDLE_BLOCK_SIZE));
+        if(NULL != p)
+        {
+            pcb->files.table = p;
+            RtlMemset(&pcb->files.table[pcb->files.tableSize], 0, sizeof(*pcb->files.table) * IO_FS_HANDLE_BLOCK_SIZE);
+            handle->id = pcb->files.tableSize;
+            pcb->files.tableSize += IO_FS_HANDLE_BLOCK_SIZE;
+        }
+        else
+        {
+            ObUnlockObject(pcb, prio);
+            IoCloseKernelFile(handle);
+            return OUT_OF_RESOURCES;
+        }
+    }
+
+    pcb->files.table[handle->id].handle = handle;
+    pcb->files.count++;
+    barrier();
+    ObUnlockObject(pcb, prio);
 
     *handleNumber = handle->id;
 
@@ -156,19 +148,19 @@ STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags
             if(NULL == *handle)
             {
                 *handle = MmSlabAllocate(IoFsState.slabHandle);
-                if(NULL != *handle)
+                if(NULL == *handle)
+                {
+                    mustClose = true;
+                    status = OUT_OF_RESOURCES;
+                }
+                else
                 {
                     RtlMemset(*handle, 0, sizeof(**handle));
                     ObInitializeObjectHeader(*handle);
                 }
             }
-
-            if(NULL == *handle)
-            {
-                mustClose = true;
-                status = OUT_OF_RESOURCES;
-            }
-            else
+                
+            if(NULL != *handle)
             {
                 (*handle)->node = fileNode;
                 (*handle)->mode = mode;
@@ -193,34 +185,30 @@ STATUS IoCloseFile(struct KeTaskControlBlock *tcb, int handleNumber)
     struct IoFileHandle *handle = NULL;
 
     prio = ObLockObject(pcb);
-    
-    struct IoFileHandle *handle = pcb->files.list;
-    while(NULL != handle)
-    {
-        if(handle->id == handleNumber)
-        {
-            break;
-        }
-        handle = handle->next;
-    }
-
-    if(NULL == handle)
+    if(handleNumber > pcb->files.tableSize)
     {
         ObUnlockObject(pcb, prio);
         return FILE_NOT_FOUND;
     }
+    ObUnlockObject(pcb, prio);
 
-    if(NULL != handle->previous)
-        handle->previous->next = handle->next;
-    else
-        pcb->files.list = handle->next;
+    KeAcquireMutex(&pcb->files.table[handleNumber].mutex);
 
-    if(NULL != handle->next)
-        handle->next->previous = handle->previous;
+    handle = pcb->files.table[handleNumber].handle;
+
+    if(NULL == handle)
+    {
+        KeReleaseMutex(&pcb->files.table[handleNumber].mutex);
+        return FILE_NOT_FOUND; 
+    }
     
+    prio = ObLockObject(pcb);
+    pcb->files.table[handleNumber].handle = NULL;
     pcb->files.count--;
     barrier();
     ObUnlockObject(pcb, prio);
+
+    KeReleaseMutex(&pcb->files.table[handleNumber].mutex);
 
     status = IoVfsClose(handle->node);
 
@@ -244,27 +232,41 @@ STATUS IoCloseKernelFile(struct IoFileHandle *handle)
     return status;
 }
 
-STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(tcb && buffer);
+    STATUS status = OK;
     
-    struct IoFileHandle *h = tcb->parent->files.list;
-    while(h)
+    struct KeProcessControlBlock *pcb = tcb->parent;
+    PRIO prio = ObLockObject(pcb);
+    if(handle > pcb->files.tableSize)
     {
-        if(h->id == handle)
-            break;
-        h = h->next;
+        ObUnlockObject(pcb, prio);
+        return FILE_NOT_FOUND;
+    }
+    ObUnlockObject(pcb, prio);
+
+    KeAcquireMutex(&pcb->files.table[handle].mutex);
+
+    if(NULL == pcb->files.table[handle].handle)
+    {
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
+        return FILE_NOT_FOUND;
     }
     
-    return IoReadKernelFile(h, buffer, size, offset, callback, context);
+    status = IoReadKernelFile(pcb->files.table[handle].handle, buffer, size, offset, callback, context);
+    if(OK != status)
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
+    
+    return status;
 }
 
-STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(buffer);
-    if(NULL == handle)
+    if(unlikely(NULL == handle))
         return FILE_NOT_FOUND;
     
     handle->operation.write = 0;
@@ -273,28 +275,41 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size
     return IoVfsRead(handle->node, handle->flags, buffer, size, offset, callback, context);
 }
 
-STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(tcb && buffer);
+    STATUS status = OK;
     
-    
-    struct IoFileHandle *h = tcb->parent->files.list;
-    while(h)
+    struct KeProcessControlBlock *pcb = tcb->parent;
+    PRIO prio = ObLockObject(pcb);
+    if(handle > pcb->files.tableSize)
     {
-        if(h->id == handle)
-            break;
-        h = h->next;
+        ObUnlockObject(pcb, prio);
+        return FILE_NOT_FOUND;
+    }
+    ObUnlockObject(pcb, prio);
+
+    KeAcquireMutex(&pcb->files.table[handle].mutex);
+
+    if(NULL == pcb->files.table[handle].handle)
+    {
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
+        return FILE_NOT_FOUND;
     }
     
-    return IoWriteKernelFile(h, buffer, size, offset, callback, context);
+    status = IoWriteKernelFile(pcb->files.table[handle].handle, buffer, size, offset, callback, context);
+    if(OK != status)
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
+    
+    return status;
 }
 
-STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(buffer);
-    if(NULL == handle)
+    if(unlikely(NULL == handle))
         return FILE_NOT_FOUND;
 
     if(0 == (handle->mode & (IO_FILE_WRITE | IO_FILE_APPEND)))
@@ -308,7 +323,7 @@ STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t siz
     return IoVfsWrite(handle->node, handle->flags, buffer, size, offset, callback, context);
 }
 
-STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize, bool write)
+STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize, bool write)
 {
     struct KeTaskControlBlock *task = KeGetCurrentTask();
     
@@ -342,30 +357,30 @@ STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint
     return handle->operation.status;
 }
 
-STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize, bool write)
+STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize, bool write)
 {
     ASSERT(tcb && buffer);
     
     struct KeProcessControlBlock *pcb = tcb->parent;
-    PRIO prio;
-
-    prio = ObLockObject(pcb);
-
-    struct IoFileHandle *h = tcb->parent->files.list;
-    while(NULL != h)
-    {
-        if(h->id == handle)
-            break;
-        h = h->next;
-    }
-
-    if(NULL == h)
+    PRIO prio = ObLockObject(pcb);
+    if(handle > pcb->files.tableSize)
     {
         ObUnlockObject(pcb, prio);
         return FILE_NOT_FOUND;
     }
+    ObUnlockObject(pcb, prio);
 
-    PRIO prio = ObLockObject(h);
+    KeAcquireMutex(&pcb->files.table[handle].mutex);
+
+    if(NULL == pcb->files.table[handle].handle)
+    {
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
+        return FILE_NOT_FOUND;
+    }
+
+    struct IoFileHandle *h = pcb->files.table[handle].handle;
+
+    prio = ObLockObject(h);
     h->operation.task = tcb;
     h->operation.completed = 0;
     ObUnlockObject(h, prio);
@@ -377,7 +392,10 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buf
         IoWriteKernelFile(h, buffer, size, offset, IoFileReadWriteCallback, h);
 
     if(OK != status)
+    {
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
         return status;
+    }
     
     prio = ObLockObject(h);
     if(!h->operation.completed)
@@ -391,27 +409,31 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buf
     else
         ObUnlockObject(h, prio);
         
-
     *actualSize = h->operation.actualSize;
-    return h->operation.status;
+    status = h->operation.status;
+
+    barrier();
+    KeReleaseMutex(&pcb->files.table[handle].mutex);
+
+    return status;
 }
 
-STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
 {
     return IoReadWriteKernelFileSync(handle, buffer, size, offset, actualSize, false);
 }
 
-STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
 {
     return IoReadWriteKernelFileSync(handle, buffer, size, offset, actualSize, true);
 }
 
-STATUS IoReadFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+STATUS IoReadFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
 {
     return IoReadWriteFileSync(task, handle, buffer, size, offset, actualSize, false);
 }
 
-STATUS IoWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize)
+STATUS IoWriteFileSync(struct KeTaskControlBlock *task, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
 {
     return IoReadWriteFileSync(task, handle, buffer, size, offset, actualSize, true);
 }

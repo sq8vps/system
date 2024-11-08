@@ -28,7 +28,7 @@ struct FatUpdateFileAttributesCallbackContext
     bool write;
 };
 
-static void FatUpdateFileAttributesCallback(STATUS status, uint64_t actualSize, void *context)
+static void FatUpdateFileAttributesCallback(STATUS status, size_t actualSize, void *context)
 {
     struct FatUpdateFileAttributesCallbackContext *ctx = context;
     if(OK == status)

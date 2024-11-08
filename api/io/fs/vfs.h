@@ -253,7 +253,7 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node);
  * @param *context Callback context
  * @return Status code
 */
-STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
+STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
 
 /**
  * @brief Write file
@@ -266,7 +266,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_
  * @param *context Callback context
  * @return Status code
 */
-STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, uint64_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
+STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
 
 
 /**

@@ -230,7 +230,7 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
         goto LoadKernelDriverFailure;
     }
 
-	uint64_t actualSize = 0;
+	size_t actualSize = 0;
 	status = IoReadKernelFileSync(f, (void*)object->address, imageSize, 0, &actualSize);
     if((OK != status) || (actualSize != imageSize))
 	{

@@ -11,7 +11,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 	IoFileHandle *f = NULL;
 	struct Elf32_Ehdr *ehdr = NULL;
 	struct Elf32_Phdr *phdr = NULL;
-	uint64_t actualSize = 0;
+	size_t actualSize = 0;
 
     if(!IoCheckIfFileExists(path))
 	{

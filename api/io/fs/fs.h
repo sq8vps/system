@@ -63,34 +63,21 @@ typedef enum
 typedef struct IoFileHandle
 {
     struct ObObjectHeader objectHeader;
-    bool free; /**< Does this entry represent free handle range? */
-    struct KeTaskControlBlock *task; /**< Task that this file belongs to */
     struct
     {
-        uint64_t actualSize; /**< Actual read/written count of bytes */
+        KeMutex lock; /**< Mutex to ensure thread safety */
+        struct KeTaskControlBlock *task; /**< Task that requested the operation */
+        size_t actualSize; /**< Actual read/written count of bytes */
         STATUS status; /**< Operation status */
         uint32_t completed : 1; /**< Operation completed */
         uint32_t write : 1; /**< Write/append operation */
         uint64_t offset; /**< Operation offset */
     } operation;
-    union
-    {
-        struct
-        {
-            int id; /**< File descriptor */
-            struct IoVfsNode *node; /**< VFS node that this file references to */
-            IoFileOpenMode mode; /**< Mode in which the file is open */
-            IoFileFlags flags; /**< Additional file flags */
-        } fileHandle;
-        struct
-        {
-            int first; /**< First free handle */
-            int last; /**< Last free handle */
-        } freeHandleRange;
-    } type;
-    
-    struct IoFileHandle *next; /**< Next file handle with consecutive ID */
-    struct IoFileHandle *previous; /**< Previous file handle */
+
+    int id; /**< File descriptor */
+    struct IoVfsNode *node; /**< VFS node that this file references to */
+    IoFileOpenMode mode; /**< Mode in which the file is open */
+    IoFileFlags flags; /**< Additional file flags */
 } IoFileHandle;
 
 /**
@@ -143,7 +130,7 @@ STATUS IoCloseKernelFile(struct IoFileHandle *handle);
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context);
 
 
@@ -157,7 +144,7 @@ STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context);
 
 
@@ -172,7 +159,7 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset,
+STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context);
 
 
@@ -186,7 +173,7 @@ STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, uin
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
+STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context);
 
 
@@ -200,8 +187,8 @@ STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, uint64_t siz
  * @param write True for writing, false for reading
  * @return Status code
 */
-STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, 
-    uint64_t *actualSize, bool write);
+STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, 
+    size_t *actualSize, bool write);
 
 
 /**
@@ -215,8 +202,8 @@ STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint
  * @param write True for writing, false for reading
  * @return Status code
 */
-STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, 
-    uint64_t *actualSize, bool write);
+STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, 
+    size_t *actualSize, bool write);
 
 
 /**
@@ -228,7 +215,7 @@ STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buf
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
-STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**
@@ -240,7 +227,7 @@ STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t 
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
-STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**
@@ -253,7 +240,7 @@ STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, uint64_t
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
-STATUS IoReadFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoReadFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**
@@ -266,7 +253,7 @@ STATUS IoReadFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, 
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
-STATUS IoWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, uint64_t size, uint64_t offset, uint64_t *actualSize);
+STATUS IoWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**

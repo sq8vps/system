@@ -13,8 +13,8 @@ struct IoReadWriteCallbackContext
     struct MmMemoryDescriptor *alignedList;
     uint64_t alignedOffset; //aligned buffer offset
     uint8_t *alignedBuffer; //aligned buffer
-    uint64_t alignedSize;
-    uint64_t size;
+    size_t alignedSize;
+    size_t size;
     uint64_t offset;
     bool fullDirect;
     bool useDirectIo;
@@ -29,7 +29,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context);
 
 static STATUS IoPerformReadWrite(bool write,
                     struct IoDeviceObject *dev, struct IoVfsNode *node,
-                    uint64_t offset, uint64_t size, uint64_t alignedOffset, uint64_t alignedSize,
+                    uint64_t offset, size_t size, uint64_t alignedOffset, size_t alignedSize,
                     void *alignedBuffer,
                     struct MmMemoryDescriptor *list, struct MmMemoryDescriptor *alignedList,
                     bool useDirectIo, bool fullDirect, bool firstWriteStep,
@@ -208,7 +208,7 @@ IoReadWriteCallbackExit:
 }
 
 
-STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
+STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, size_t size, void *buffer,
                 IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo)
 {
     STATUS status = OK; //operation status
@@ -217,7 +217,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
     bool useDirectIo = !!(dev->flags & IO_DEVICE_FLAG_DIRECT_IO); //use direct IO flag, depends on device capabilities
     uintptr_t alignment = (dev->alignment > dev->blockSize) 
                 ? dev->alignment : dev->blockSize; //required alignment: device-provided alignment requirement or block size, whichever is bigger
-    uint64_t alignedSize = 0; //aligned buffer size
+    size_t alignedSize = 0; //aligned buffer size
     uint64_t alignedOffset = 0; //aligned buffer offset
     uint8_t *alignedBuffer = NULL; //aligned buffer
     bool fullDirect = false; //full direct flag, that is, do not use intermediate buffering
@@ -307,14 +307,14 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
     return status;
 }
 
-STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer)
+STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size, void **buffer)
 {
     STATUS status = OK;
     struct MmMemoryDescriptor *list = NULL;
     struct IoRp *rp = NULL;
     bool useDirectIo = !!(dev->flags & IO_DEVICE_FLAG_DIRECT_IO);
     uintptr_t alignment = (dev->alignment > dev->blockSize) ? dev->alignment : dev->blockSize;
-    uint64_t alignedSize = 0;
+    size_t alignedSize = 0;
     uint64_t alignedOffset = 0;
     
     if(0 == (dev->flags & (IO_DEVICE_FLAG_DIRECT_IO | IO_DEVICE_FLAG_BUFFERED_IO)))

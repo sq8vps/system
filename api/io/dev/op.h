@@ -14,7 +14,7 @@ struct IoDeviceObject;
 struct IoVfsNode;
 
 
-typedef void (*IoReadWriteCompletionCallback)(STATUS status, uint64_t actualSize, void *context);
+typedef void (*IoReadWriteCompletionCallback)(STATUS status, size_t actualSize, void *context);
 
 
 /**
@@ -30,7 +30,7 @@ typedef void (*IoReadWriteCompletionCallback)(STATUS status, uint64_t actualSize
  * @param forceDirectIo True to force direct I/O
  * @return Status code
  */
-STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, uint64_t size, void *buffer,
+STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *node, uint64_t offset, size_t size, void *buffer,
                 IoReadWriteCompletionCallback callback, void *context, bool forceDirectIo);
 
 
@@ -47,7 +47,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
  * @param **buffer Output buffer pointer, allocated by this function
  * @return Status code
 */
-STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, uint64_t size, void **buffer);
+STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size, void **buffer);
 
 
 #ifdef __cplusplus

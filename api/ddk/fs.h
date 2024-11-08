@@ -33,7 +33,7 @@ enum FsOperations
  * When the operation code is \a FS_GET_NODE, then the kernel provides a pointer \a *parent to the parent VFS node
  * and a name of the node to be found. The driver then allocates a VFS node for the file/directory and returns
  * it through \a *node (it does NOT attach this node to the tree!). If such node does not exist, then NULL is returned
- * and the Request Packet should have the \a IO_FILE_NOT_FOUND status.
+ * and the Request Packet should have the \a FILE_NOT_FOUND status.
  * When the operation code is \a FS_GET_NODE_CHILDREN, then the kernel provides a pointer \a *node to the directory VFS node
  * and expects the driver to list all children nodes (files) in given directory, that is, create a linked list of
  * VFS nodes for all files and provide a pointer to the first child using \a *children. If there are no children,

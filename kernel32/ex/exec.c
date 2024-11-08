@@ -10,7 +10,7 @@
 STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
 {
     struct IoFileHandle *f;
-    uint64_t actualSize;
+    size_t actualSize;
     STATUS ret = OK;
 
     *size = 0;
