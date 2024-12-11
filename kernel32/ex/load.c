@@ -1,14 +1,15 @@
 #include "load.h"
 #include "elf.h"
 #include "io/fs/fs.h"
-#include "mm/mm.h"
+#include "mm/tmem.h"
+#include "mm/heap.h"
 #include "ke/sched/sched.h"
 #include "rtl/string.h"
 
 STATUS ExLoadProcessImage(const char *path, void (**entry)())
 {
 	STATUS status = OK;
-	IoFileHandle *f = NULL;
+	int f = -1;
 	struct Elf32_Ehdr *ehdr = NULL;
 	struct Elf32_Phdr *phdr = NULL;
 	size_t actualSize = 0;
@@ -18,23 +19,21 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
         return FILE_NOT_FOUND;
 	}
 	
-	struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-    
-    status = IoOpenKernelFile(path, IO_FILE_READ, 0, &f);
+    status = IoOpenFile(path, IO_FILE_READ, 0, &f);
 	if(OK != status)
 		return status;
     
-    ehdr = MmAllocateKernelHeap(sizeof(struct Elf32_Ehdr));
+    ehdr = MmAllocateKernelHeap(sizeof(*ehdr));
 	if(NULL == ehdr)
 	{
 		status = OUT_OF_RESOURCES;
 		goto ExProcessLoadWorkerFailed;
 	}
 
-	status = IoReadKernelFileSync(f, ehdr, sizeof(struct Elf32_Ehdr), 0, &actualSize);
+	status = IoReadFileSync(f, ehdr, sizeof(*ehdr), 0, &actualSize);
 	if(OK != status)
 		goto ExProcessLoadWorkerFailed;
-	else if(actualSize < sizeof(struct Elf32_Ehdr))
+	else if(actualSize < sizeof(*ehdr))
 	{
 		status = READ_INCOMPLETE;
 		goto ExProcessLoadWorkerFailed;
@@ -59,7 +58,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 		goto ExProcessLoadWorkerFailed;
 	}
 
-	status = IoReadKernelFileSync(f, phdr, phdrSize, ehdr->e_phoff, &actualSize);
+	status = IoReadFileSync(f, phdr, phdrSize, ehdr->e_phoff, &actualSize);
 	if(OK != status)
 		goto ExProcessLoadWorkerFailed;
 	else if(actualSize < phdrSize)
@@ -72,34 +71,25 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 	{
 		if(PT_LOAD == phdr[i].p_type)
 		{
-			if(phdr[i].p_vaddr + phdr[i].p_memsz > ((uintptr_t)tcb->stack.user.top - tcb->stack.user.size))
+			if((phdr[i].p_offset & (PAGE_SIZE - 1)) != (phdr[i].p_vaddr & (PAGE_SIZE - 1)))
 			{
-				status = OUT_OF_RESOURCES;
+				status = BAD_ALIGNMENT;
 				goto ExProcessLoadWorkerFailed;
 			}
-			uintptr_t base = ALIGN_DOWN(phdr[i].p_vaddr, PAGE_SIZE);
-			uintptr_t top = ALIGN_UP(base + phdr[i].p_memsz, PAGE_SIZE);
-			uint16_t flags = MM_FLAG_USER_MODE;
-			if(phdr[i].p_flags & PF_W)
-				flags |= MM_FLAG_WRITABLE;
-			else
-				flags |= MM_FLAG_READ_ONLY;
-			if(phdr[i].p_flags & PF_X)
-				flags |= MM_FLAG_EXECUTABLE;
-			status = MmAllocateMemory(base, top - base, flags);
-			if(OK != status)
-				goto ExProcessLoadWorkerFailed;
-			
-			RtlMemset((void*)base, 0, top - base);
 
-			status = IoReadKernelFileSync(f, (void*)phdr[i].p_vaddr, phdr[i].p_filesz, phdr[i].p_offset, &actualSize);
+			uintptr_t base = ALIGN_DOWN(phdr[i].p_vaddr, PAGE_SIZE);
+			uintptr_t top = ALIGN_UP(phdr[i].p_vaddr + phdr[i].p_memsz, PAGE_SIZE);
+			enum MmTaskMemoryFlags flags = MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_LOCKED;
+			if(phdr[i].p_flags & PF_R)
+				flags |= MM_TASK_MEMORY_READABLE;
+			if(phdr[i].p_flags & PF_W)
+				flags |= MM_TASK_MEMORY_WRITABLE;
+			if(phdr[i].p_flags & PF_X)
+				flags |= MM_TASK_MEMORY_EXECUTABLE;
+			
+			status = MmMapTaskMemory((void*)base, top - base, flags, f, ALIGN_DOWN(phdr[i].p_offset, PAGE_SIZE), 0, NULL);
 			if(OK != status)
 			{
-				goto ExProcessLoadWorkerFailed;
-			}
-			else if(phdr[i].p_filesz != actualSize)
-			{
-				status = READ_INCOMPLETE;
 				goto ExProcessLoadWorkerFailed;
 			}
 		}
@@ -108,8 +98,8 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 	*entry = (void(*)())(ehdr->e_entry);
 
 ExProcessLoadWorkerFailed:
-	if(NULL != f)
-		IoCloseKernelFile(f);
+	if(f >= 0)
+		IoCloseFile(f);
 	MmFreeKernelHeap(ehdr);
 	MmFreeKernelHeap(phdr);
 

@@ -150,7 +150,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
 
     LOG(SYSLOG_INFO, "FAT volume found");
 
-    return IoRegisterFilesystem(disk, dev, 0);
+    return IoRegisterFilesystem(disk, dev);
 }
 
 STATUS FatVerify(struct ExDriverObject *drv, struct IoDeviceObject *disk)

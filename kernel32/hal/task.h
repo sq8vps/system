@@ -14,7 +14,7 @@ struct KeProcessControlBlock;
  * @param pl Process privilege level
  * @param flags Main task flags
  * @param *entry Program entry point
- * @param *entryContext Entry point parameter
+ * @param *entryContext Entry point parameter (for kernel mode process) or \a KeTaskArguments structure pointer (for user mode process)
  * @param **tcb Output Task Control Block
  * @return Status code
  * @warning This function is for internal use only. User \a KeCreateKernelProcess() or \a KeCreateUserProcess()

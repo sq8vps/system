@@ -131,11 +131,14 @@ STATUS KeCreateKernelProcess(const char *name, uint32_t flags, void (*entry)(voi
     return HalCreateProcess(name, NULL, PL_KERNEL, flags, entry, entryContext, tcb);
 }
 
-STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, struct KeTaskControlBlock **tcb)
+STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskControlBlock **tcb)
 {
     if((NULL == path) || ('\0' == path[0]))
         return FILE_NOT_FOUND;
-    return HalCreateProcess(name, path, PL_USER, flags, NULL, NULL, tcb);
+    struct KeTaskArguments *args = KeBuildTaskArguments(argv, envp);
+    if(NULL == args)
+        return OUT_OF_RESOURCES;
+    return HalCreateProcess(name, path, PL_USER, flags, NULL, args, tcb);
 }
 
 STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
@@ -148,4 +151,51 @@ STATUS KeCreateUserThread(const char *name, uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb)
 {
     return HalCreateThread(KeGetCurrentTaskParent(), name, flags, entry, entryContext, userStack, tcb);
+}
+
+struct KeTaskArguments* KeBuildTaskArguments(const char *argv[], const char *envp[])
+{
+    int argc = 0, envc = 0;
+    size_t length = 0;
+    if(NULL != argv)
+    {
+        while(NULL != argv[argc])
+        {
+            length += RtlStrlen(argv[argc]) + 1;
+            ++argc;
+        }
+    }
+    if(NULL != envp)
+    {
+        while(NULL != envp[envc])
+        {
+            length += RtlStrlen(envp[envc]) + 1;
+            ++envc;
+        }
+    }
+
+    struct KeTaskArguments *s = MmAllocateKernelHeap(sizeof(*s) + length);
+    if(NULL == s)
+        return NULL;
+
+    s->argc = argc;
+    s->envc = envc;
+    s->size = length;
+
+    size_t index = 0;
+    for(int i = 0; i < argc; i++)
+    {
+        size_t k = 0;
+        do
+            s->data[index++] = argv[i][k];
+        while('\0' != argv[i][k++]);
+    }
+    for(int i = 0; i < envc; i++)
+    {
+        size_t k = 0;
+        do
+            s->data[index++] = envp[i][k];
+        while('\0' != envp[i][k++]);
+    }
+    return s;
 }

@@ -2,6 +2,7 @@
 #include "defines.h"
 #include <stdarg.h>
 #include "mm/heap.h"
+#include "ctype.h"
 
 uint32_t RtlStrlen(const char *str)
 {
@@ -48,6 +49,31 @@ int RtlStrcmp(const char *s1, const char *s2)
 int RtlStrncmp(const char *s1, const char *s2, int n)
 {
     while(n && *s1 && (*s1 == *s2))
+    {
+        s1++;
+        s2++;
+        n--;
+    }
+    if(0 == n)
+        return 0;
+    
+
+    return *(unsigned char*)s1 - *(unsigned char*)s2;
+}
+
+int RtlStrcasecmp(const char *s1, const char *s2)
+{
+    while(*s1 && (RtlToupper(*s1) == RtlToupper(*s2)))
+    {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+}
+
+int RtlStrcasencmp(const char *s1, const char *s2, int n)
+{
+    while(n && *s1 && (RtlToupper(*s1) == RtlToupper(*s2)))
     {
         s1++;
         s2++;

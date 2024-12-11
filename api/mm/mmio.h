@@ -23,7 +23,7 @@ void *MmMapMmIo(uintptr_t pAddress, uintptr_t n);
  * @brief Unmap Memory-Mapped I/O space
  * @param *ptr Mapped memory pointer (returned from MmMapMmIo())
 */
-void MmUnmapMmIo(void *ptr);
+void MmUnmapMmIo(const void *ptr);
 
 
 #ifdef __cplusplus

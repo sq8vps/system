@@ -31,7 +31,7 @@ struct KeTaskControlBlock;
  * @brief File open modes
  * 
  * File content is available for reading in \a IO_FILE_READ, \a IO_FILE_WRITE and \a IO_FILE_APPEND modes.
- * \a IO_FILE_WRITE allows to write to any offset without destroying current file content.
+ * \a IO_FILE_WRITE allows to write to any offset without destroying current file content (except the content being explicitly overwritten).
  * \a IO_FILE_APPEND allows to append content to the end and ignores provided offset.
  * \a IO_FILE_REPLACE flag can be ORed with open mode to destroy current file content.
  * \a IO_FILE_READ_ATTRIBUTES allows to read file attributes via \a IoFileAttributes structure.
@@ -54,11 +54,11 @@ typedef enum
 
 
 /**
- * @brief File handle
+ * @brief Kernel file handle
 */
 typedef struct IoFileHandle
 {
-    struct ObObjectHeader objectHeader;
+    OBJECT;
     struct
     {
         KeMutex lock; /**< Mutex to ensure thread safety */
@@ -74,6 +74,7 @@ typedef struct IoFileHandle
     struct IoVfsNode *node; /**< VFS node that this file references to */
     IoFileOpenMode mode; /**< Mode in which the file is open */
     IoFileFlags flags; /**< Additional file flags */
+    uint32_t references; /**< Number of references: open + memory mappings */
 } IoFileHandle;
 
 /**
@@ -81,43 +82,20 @@ typedef struct IoFileHandle
  * @param *file File path string
  * @param mode File open mode
  * @param flags File flags
- * @param *tcb Task Control Block
  * @param *handleNumber Output file handle or -1 on failure
  * @return Status code
 */
-STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, const struct KeTaskControlBlock *tcb, int *handleNumber);
+STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, int *handleNumber);
 
 /**
  * @brief Close file for given task
- * @param *tcb Task Control Block
  * @param handleNumber File handle
  * @return Status code
 */
-STATUS IoCloseFile(struct KeTaskControlBlock *tcb, int handleNumber);
-
-
-/**
- * @brief Open file in kernel mode
- * @param *file File path string
- * @param mode File open mode
- * @param flags File flags
- * @param **handle Output file handle
- * @return Status code
-*/
-STATUS IoOpenKernelFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, struct IoFileHandle **handle);
-
-
-/**
- * @brief Close file in kernel mode
- * @param *handle File handle
- * @return Status code
-*/
-STATUS IoCloseKernelFile(struct IoFileHandle *handle);
-
+STATUS IoCloseFile(int handleNumber);
 
 /**
  * @brief Read file asynchronously
- * @param *tcb Task Control Block
  * @param handle File handle
  * @param *buffer Destination buffer
  * @param size Count of bytes to read (max size)
@@ -126,27 +104,11 @@ STATUS IoCloseKernelFile(struct IoFileHandle *handle);
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-STATUS IoReadFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, 
+STATUS IoReadFile(int handle, void *buffer, size_t size, uint64_t offset, 
     IoReadWriteCompletionCallback callback, void *context);
-
-
-/**
- * @brief Read file in kernel mode (globally) asynchronously
- * @param *handle File handle
- * @param *buffer Destination buffer
- * @param size Count of bytes to read (max size)
- * @param offset Offset into the file in bytes
- * @param callback Callback function on read completion
- * @param *context Context to be passed to the callback function
- * @return Status code
-*/
-STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset,
-    IoReadWriteCompletionCallback callback, void *context);
-
 
 /**
  * @brief Write file asynchronously
- * @param *tcb Task Control Block
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
@@ -155,80 +117,12 @@ STATUS IoReadKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, 
  * @param *context Context to be passed to the callback function
  * @return Status code
 */
-STATUS IoWriteFile(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset,
+STATUS IoWriteFile(int handle, void *buffer, size_t size, uint64_t offset,
     IoReadWriteCompletionCallback callback, void *context);
-
-
-/**
- * @brief Write file in kernel mode (globally) asynchronously
- * @param *handle File handle
- * @param *buffer Source buffer
- * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
- * @param callback Callback function on write completion
- * @param *context Context to be passed to the callback function
- * @return Status code
-*/
-STATUS IoWriteKernelFile(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, 
-    IoReadWriteCompletionCallback callback, void *context);
-
-
-/**
- * @brief Read or write file in kernel mode (globally) synchronously
- * @param *handle File handle
- * @param *buffer Source buffer
- * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
- * @param *actualSize Count of bytes actually read or written
- * @param write True for writing, false for reading
- * @return Status code
-*/
-STATUS IoReadWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, 
-    size_t *actualSize, bool write);
-
-
-/**
- * @brief Read or write file synchronously
- * @param *tcb Task Control Block
- * @param handle File handle
- * @param *buffer Source buffer
- * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
- * @param *actualSize Count of bytes actually read or written
- * @param write True for writing, false for reading
- * @return Status code
-*/
-STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, 
-    size_t *actualSize, bool write);
-
-
-/**
- * @brief Read file in kernel mode (globally) synchronously
- * @param *handle File handle
- * @param *buffer Source buffer
- * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
- * @param *actualSize Count of bytes actually read
- * @return Status code
-*/
-STATUS IoReadKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
-
-
-/**
- * @brief Write file in kernel mode (globally) synchronously
- * @param *handle File handle
- * @param *buffer Source buffer
- * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
- * @param *actualSize Count of bytes actually written
- * @return Status code
-*/
-STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**
  * @brief Read file synchronously
- * @param *tcb Task Control Block
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
@@ -236,12 +130,11 @@ STATUS IoWriteKernelFileSync(struct IoFileHandle *handle, void *buffer, size_t s
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
-STATUS IoReadFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
+STATUS IoReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**
  * @brief Write file synchronously
- * @param *tcb Task Control Block
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
@@ -249,7 +142,7 @@ STATUS IoReadFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, 
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
-STATUS IoWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
+STATUS IoWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
 
 /**

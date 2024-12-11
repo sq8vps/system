@@ -14,29 +14,50 @@ extern "C"
 
 #define IO_MAX_COMPATIBLE_DEVICE_IDS 8
 
+/**
+ * @brief Device status
+ */
+enum IoDeviceStatus
+{
+    IO_DEVICE_STATUS_UNINITIALIZED = 0, /**< Device freshly created */
+    IO_DEVICE_STATUS_READY, /**< Device initialized and ready */
+    IO_DEVICE_STATUS_INITIALIZATION_FAILED, /**< Initialization failed - the device cannot be used */
+};
 
-typedef uint32_t IoDeviceFlags;
-#define IO_DEVICE_FLAG_INITIALIZED 0x1
-#define IO_DEVICE_FLAG_READY_TO_RUN 0x2
-#define IO_DEVICE_FLAG_INITIALIZATION_FAILURE 0x4
-#define IO_DEVICE_FLAG_FS_MOUNTED 0x8
-#define IO_DEVICE_FLAG_FS_ASSOCIATED 0x10
-#define IO_DEVICE_FLAG_BUFFERED_IO 0x1000
-#define IO_DEVICE_FLAG_DIRECT_IO 0x2000
-#define IO_DEVICE_FLAG_PERSISTENT 0x80000000
-#define IO_DEVICE_FLAG_REMOVABLE_MEDIA 0x40000000
-#define IO_DEVICE_FLAG_ENUMERATION_CAPABLE 0x20000000
-#define IO_DEVICE_FLAG_NO_AUTOMOUNT 0x10000000
+/**
+ * @brief Device status flags
+ */
+enum IoDeviceStatusFlags
+{
+    IO_DEVICE_STATUS_FLAG_FS_REGISTERED = 0x1, /**< Filesystem is registered, that is, associated with disk device */
+    IO_DEVICE_STATUS_FLAG_FS_MOUNTED = 0x2, /**< Filesystem is mounted to some mount point */
+    IO_DEVICE_STATUS_FLAG_ENUMERATION_FAILED = 0x4, /**< Enumeration failed on the device */
+};
+
+/**
+ * @brief Device flags
+ */
+enum IoDeviceFlags
+{
+    IO_DEVICE_FLAG_BUFFERED_IO = 0x1, /**< Device support buffered I/O */
+    IO_DEVICE_FLAG_DIRECT_IO = 0x2, /**< Device support direct I/O */
+    IO_DEVICE_FLAG_PERSISTENT = 0x4, /**< Device is persistent and cannot be removed */
+    IO_DEVICE_FLAG_REMOVABLE_MEDIA = 0x8, /**< Device is a removable media */
+    IO_DEVICE_FLAG_ENUMERATION_CAPABLE = 0x10, /**< Device is capable of enumerating its children devices */
+    IO_DEVICE_FLAG_NO_AUTOMOUNT = 0x20, /**< Filesystem device must not be automatically mounted */
+    IO_DEVICE_FLAG_STANDALONE = 0x40, /**< Device is standalone and has no parent or enumerator */
+};
 
 enum IoDeviceType
 {
     IO_DEVICE_TYPE_NONE = 0, //dummy driver
     IO_DEVICE_TYPE_OTHER, //other devices
-    IO_DEVICE_TYPE_ROOT, //system root hardware (ACPI, MP)
+    IO_DEVICE_TYPE_ROOT, //system root hardware (ACPI, ...)
     IO_DEVICE_TYPE_BUS, //bus (PCI, PCIe, ISA...)
     IO_DEVICE_TYPE_STORAGE, //storage controller (IDE, AHCI, NVMe...)
     IO_DEVICE_TYPE_DISK, //disk with partition manager (MBR, GPT)
     IO_DEVICE_TYPE_FS, //filesystem (EXT, FAT...)
+    IO_DEVICE_TYPE_TERMINAL, //terminal
 
 
     __IO_DEVICE_TYPE_COUNT, //count of device types, do not use
@@ -64,7 +85,9 @@ struct IoDeviceNode
 {
     struct ObObjectHeader objectHeader;
     char name[IO_DEVICE_MAX_NAME_LENGTH + 1]; /**< User-friendly name of the device */
-    IoDeviceFlags flags; /**< Common device flags */
+    enum IoDeviceStatus status; /**< Device state */
+    enum IoDeviceStatusFlags statusFlags; /**< Additional device status flags */
+    bool standalone; /**< Device is standalone - no parent, no enumerator */
     struct IoDeviceObject *bdo; /**< Base Device Object */
     struct IoDeviceObject *mdo; /**< Main Device Object */
     struct IoDeviceNode *parent; /**< Parent node */
@@ -81,7 +104,7 @@ struct IoDeviceObject
     struct ObObjectHeader objectHeader;
     enum IoDeviceType type; /**< Device type */
     void *privateData; /**< Private device data pointer */
-    IoDeviceFlags flags; /**< Device flags */
+    enum IoDeviceFlags flags; /**< Device flags */
     uint32_t alignment; /**< Required memory aligment for direct I/O */
     uint32_t blockSize; /**< Block size for direct I/O */
 
@@ -122,7 +145,7 @@ struct IoDeviceObject
 STATUS IoCreateDevice(
     struct ExDriverObject *driver, 
     enum IoDeviceType type,
-    IoDeviceFlags flags, 
+    enum IoDeviceFlags flags, 
     struct IoDeviceObject **device);
 
 
@@ -161,6 +184,21 @@ STATUS IoRegisterDevice(
     struct IoDeviceObject *enumerator);
 
 /**
+ * @brief Register new standalone device to be used by the system
+ * @param *dev Device object
+ * @return Status code
+*/
+STATUS IoRegisterStandaloneDevice(struct IoDeviceObject *dev);
+
+/**
+ * @brief Destroy device node
+ * @param *node Device node
+ * @return Status code
+ * @attention It is the caller's responsibility to make sure that destroying the device node is safe
+ */
+STATUS IoDestroyDeviceNode(struct IoDeviceNode *node);
+
+/**
  * @brief Send Request Packet to a given device or forward received RP to other device stack
  * @param *dev Device object
  * @param *rp RP to be sent
@@ -176,6 +214,15 @@ STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp);
 */
 STATUS IoSendRpDown(struct IoRp *rp);
 
+/**
+ * @brief Perform IOCTL on a device
+ * @param *dev Device object
+ * @param ioctl IOCTL code (driver-specific)
+ * @param *dataIn Input data for IOCTL
+ * @param **dataOut Output data buffer for IOCTL. Invalid on status != OK.
+ * @return Status code
+ */
+STATUS IoPerfromIoctl(struct IoDeviceObject *dev, uint32_t ioctl, void *dataIn, void **dataOut);
 
 /**
  * @brief Get main device ID and compatbile device IDs for a device
@@ -234,6 +281,14 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
  * @return Topmost stack device
  */
 struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev);
+
+/**
+ * @brief Get device associated with given device file
+ * @param *node VFS node of type \a IO_VFS_DEVICE
+ * @param **dev Output device object
+ * @return Status code
+ */
+STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev);
 
 
 #ifdef __cplusplus

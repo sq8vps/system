@@ -48,6 +48,23 @@ int RtlStrcmp(const char *s1, const char *s2);
 int RtlStrncmp(const char *s1, const char *s2, int n);
 
 /**
+ * @brief Compare strings - case-insensitive
+ * @param s1 1st string
+ * @param s2 2nd string
+ * @return 0 if identical
+*/
+int RtlStrcasecmp(const char *s1, const char *s2);
+
+/**
+ * @brief Compare strings up to a given length - case-insensitive
+ * @param s1 1st string
+ * @param s2 2nd string
+ * @param n Length limit
+ * @return 0 if identical
+*/
+int RtlStrcasencmp(const char *s1, const char *s2, int n);
+
+/**
  * @brief Copy memory
  * @param to Destination buffer
  * @param from Source buffer
@@ -164,6 +181,23 @@ void RtlFreeStringTable(char **table, uint32_t count);
  * @return 0 if identical
 */
 #define strncmp(s1, s2, n) RtlStrncmp((s1), (s2), (n))
+
+/**
+ * @brief Compare strings - case-insensitive
+ * @param s1 1st string
+ * @param s2 2nd string
+ * @return 0 if identical
+*/
+#define strcasecmp(s1, s2) RtlStrcasecmp((s1), (s2))
+
+/**
+ * @brief Compare strings up to a given length - case-insensitive
+ * @param s1 1st string
+ * @param s2 2nd string
+ * @param n Length limit
+ * @return 0 if identical
+*/
+#define strcasencmp(s1, s2, n) RtlStrcasencmp((s1), (s2), (n))
 
 /**
  * @brief Copy memory

@@ -13,7 +13,7 @@ struct NablaDbEntry;
  */
 struct ExDbHandle
 {
-    struct IoFileHandle *file;
+    int file;
     uint64_t size;
     struct NablaDbHeader *db;
     struct NablaDbEntry *last;

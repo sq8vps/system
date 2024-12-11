@@ -81,6 +81,18 @@ typedef int KE_TASK_ID;
 
 struct KeSchedulerQueue;
 struct KeProcessControlBlock;
+struct MmTaskMemory;
+
+/**
+ * @brief C-style process arguments structure
+ */
+struct KeTaskArguments
+{
+    int argc; /**< Number of execution arguments */
+    int envc; /**< Number of environmental variables */
+    size_t size; /**< Data length */
+    char data[]; /**< Consecutive \a argc NULL-terminated arguments and \a envc NULL-terminated environmental variables */
+};
 
 /**
  * @brief A structure storing all task data
@@ -100,14 +112,15 @@ struct KeTaskControlBlock
      */
     struct
     {
+        struct MmTaskMemory *user; /**< Task memory region describing user mode stack */
         /**
-         * @brief Kernel and user stack parameters
+         * @brief Kernel stack parameters
          */
         struct
         {
             void *top; /**< Stack top */
-            uintptr_t size; /**< Current stack size */
-        } kernel, user;
+            size_t size; /**< Current stack size */
+        } kernel;
     } stack;
 
     struct KeProcessControlBlock *parent; /**< Task parent process */
@@ -168,13 +181,16 @@ struct KeProcessControlBlock
     struct HalProcessData data; /**< Architecture-specific process data */
 
     /**
-     * @brief Image data
+     * @brief Process memory region list and tree
      */
     struct
     {
-        void *base; /**< Image base address */
-        uintptr_t size; /**< Image size */
-    } image;
+        void *tree; /**< Memory region base-ordered tree root */
+        struct MmTaskMemory *head; /**< Memory region base-order list head */
+        struct MmTaskMemory *tail; /**< Memory region base-order list tail */
+        void *base; /**< Lower mapping boundary when address is not specified */
+        KeMutex mutex; /**< Memory mapping list mutex */
+    } memory;
     
     /**
      * @brief File handle container
@@ -201,7 +217,6 @@ struct KeProcessControlBlock
 
     char path[]; /**< Image path */
 };
-
 
 /**
  * @brief Allocate and prepare process control block
@@ -269,12 +284,14 @@ STATUS KeCreateKernelProcess(const char *name, uint32_t flags, void (*entry)(voi
  * @param *name Process name
  * @param *path Program image path
  * @param flags Main task flags
+ * @param *argv[] Program entry arguments poiner table. Must end with a NULL pointer
+ * @param *envp[] Environmental variables pointer table. Must end with a NULL pointer
  * @param **tcb Output Task Control Block
  * @return Status code
  * @attention This function returns immediately
  * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, struct KeTaskControlBlock **tcb);
+STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create thread within the given kernel mode process
@@ -304,6 +321,14 @@ STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name,
 */
 STATUS KeCreateUserThread(const char *name, uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
+
+/**
+ * @brief Build task argument structure from given arguments
+ * @param *argv[] Argument values pointers, with NULL being the last pointer
+ * @param *envp[] Enviromental values pointers, with NULL being the last pointer
+ * @return Allocated and filled task argument structure or NULL on failure
+ */
+struct KeTaskArguments* KeBuildTaskArguments(const char *argv[], const char *envp[]);
 
 END_EXPORT_API
 

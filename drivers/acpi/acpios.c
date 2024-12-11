@@ -138,21 +138,15 @@ void AcpiOsWaitEventsComplete(void)
 
 ACPI_STATUS AcpiOsCreateMutex(ACPI_MUTEX *OutHandle)
 {
-    *OutHandle = MmAllocateKernelHeap(sizeof(KeMutex));
+    *OutHandle = KeCreateMutex();
     if(NULL == *OutHandle)
         return AE_NO_MEMORY;
-    
-    (*OutHandle)->lock = 0;
-    (*OutHandle)->queueBottom = NULL;
-    (*OutHandle)->queueTop = NULL;
-    (*OutHandle)->spinlock.lock = 0;
-
     return AE_OK;
 }
 
 void AcpiOsDeleteMutex(ACPI_MUTEX Handle)
 {
-    MmFreeKernelHeap(Handle);
+    KeDestroyMutex(Handle);
 }
 
 ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout)
@@ -181,22 +175,16 @@ void AcpiOsReleaseMutex(ACPI_MUTEX Handle)
 
 ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle)
 {
-    *OutHandle = MmAllocateKernelHeap(sizeof(KeSemaphore));
+    *OutHandle = KeCreateSemaphore(InitialUnits, MaxUnits);
     if(NULL == *OutHandle)
         return AE_NO_MEMORY;
-    
-    (*OutHandle)->max = MaxUnits;
-    (*OutHandle)->current = InitialUnits;
-    (*OutHandle)->queueBottom = NULL;
-    (*OutHandle)->queueTop = NULL;
-    (*OutHandle)->spinlock.lock = 0;
 
     return AE_OK;
 }
 
 ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle)
 {
-    MmFreeKernelHeap(Handle);
+    KeDestroySempahore(Handle);
     return AE_OK;
 }
 
@@ -247,8 +235,7 @@ ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
 
 ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
 {
-    *OutHandle = MmAllocateKernelHeap(sizeof(KeSpinlock));
-    (*OutHandle)->lock = 0;
+    *OutHandle = KeCreateSpinlock();
     if(NULL == *OutHandle)
         return AE_NO_MEMORY;
 
@@ -257,7 +244,7 @@ ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
 
 void AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
 {
-    MmFreeKernelHeap(Handle);
+    KeDestroySpinlock(Handle);
 }
 
 ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle)

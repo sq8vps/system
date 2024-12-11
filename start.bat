@@ -1,3 +1,4 @@
+call make_initrd.bat
 osfmount -a -t file -o rw -f os-image.img -m F:
 copy output\* F:\SYSTEM\
 osfmount -D -m F:

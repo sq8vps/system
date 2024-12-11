@@ -7,6 +7,7 @@
 #include "io/dev/vol.h"
 #include "ex/kdrv/kdrv.h"
 #include "io/dev/rp.h"
+#include "io/fs/vfs.h"
 
 //root device (ACPI or MP) node
 static struct IoDeviceNode rootNode = {};
@@ -25,7 +26,7 @@ static void IoDeviceEnumeratorWorker(void *unused);
 STATUS IoCreateDevice(
     struct ExDriverObject *driver, 
     enum IoDeviceType type,
-    IoDeviceFlags flags, 
+    enum IoDeviceFlags flags, 
     struct IoDeviceObject **device)
 {
     ASSERT(driver);
@@ -36,7 +37,7 @@ STATUS IoCreateDevice(
     ObInitializeObjectHeader(*device);
     
     (*device)->driverObject = driver;
-    (*device)->flags |= flags;
+    (*device)->flags = flags;
     (*device)->type = type;
     
     //update list of created devices
@@ -79,7 +80,8 @@ STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enume
         return OUT_OF_RESOURCES;
     
     ObInitializeObjectHeader(node);
-        
+    
+    node->standalone = false;
     node->next = node;
     node->previous = node;
 
@@ -104,11 +106,43 @@ STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enume
         enumerator->node.deviceNode->child->previous = node;
     }
 
-    node->flags |= IO_DEVICE_FLAG_INITIALIZED;
+    return IoNotifyDeviceEnumerator(node);
+}
+
+STATUS IoRegisterStandaloneDevice(struct IoDeviceObject *dev)
+{
+    ASSERT(dev);
+
+    if(!(dev->flags & IO_DEVICE_FLAG_STANDALONE))
+        return BAD_PARAMETER;
+
+    //create device node
+    struct IoDeviceNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
+    if(NULL == node)
+        return OUT_OF_RESOURCES;
+    
+    ObInitializeObjectHeader(node);
+    
+    node->standalone = true;
+    node->next = node;
+    node->previous = node;
+
+    //attach device to a node
+    dev->node.deviceNode = node;
+    //store device pointer as both BDO and MDO
+    node->bdo = dev;
+    node->mdo = dev;
+
+    node->parent = NULL;
 
     return IoNotifyDeviceEnumerator(node);
 }
 
+STATUS IoDestroyDeviceNode(struct IoDeviceNode *node)
+{
+    MmFreeKernelHeap(node);
+    return OK;
+}
 
 
 STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
@@ -120,7 +154,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     
     if(OK != (ret = IoGetDeviceId(node->bdo, &deviceId, (char***)&compatibleIds)))
     {
-        node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+        node->status = IO_DEVICE_STATUS_INITIALIZATION_FAILED;
         return ret;
     }
 
@@ -130,7 +164,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     //find and load required drivers
     if(OK != (ret = ExLoadKernelDriversForDevice(deviceId, compatibleIds, &drivers, &driverCount)))
     {
-        node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+        node->status = IO_DEVICE_STATUS_INITIALIZATION_FAILED;
         MmFreeKernelHeap(drivers);
         return ret;
     }
@@ -144,7 +178,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     {
         if(OK != (ret = d->this->addDevice(d->this, node->bdo)))
         {
-            node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+            node->status = IO_DEVICE_STATUS_INITIALIZATION_FAILED;
             MmFreeKernelHeap(drivers);
             return ret;
         }
@@ -155,7 +189,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
             node->mdo = IoGetDeviceStackTop(node->bdo);
         d = d->next;
     }
-    node->flags |= IO_DEVICE_FLAG_READY_TO_RUN;
+    node->status = IO_DEVICE_STATUS_READY;
     MmFreeKernelHeap(drivers);
     return OK;
 }
@@ -195,17 +229,17 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
         return ret;
     }
 
-    rootNode.flags = IO_DEVICE_FLAG_PERSISTENT;
     rootNode.bdo = rootBaseDevice;
     rootNode.mdo = rootBaseDevice;
     rootNode.parent = NULL;
     rootNode.child = NULL;
     rootNode.next = NULL;
     rootNode.previous = NULL;
+    rootNode.standalone = true;
     rootBaseDevice->node.deviceNode = &rootNode;
-    rootBaseDevice->flags |= IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
+    rootBaseDevice->flags |= IO_DEVICE_FLAG_ENUMERATION_CAPABLE | IO_DEVICE_FLAG_PERSISTENT | IO_DEVICE_FLAG_STANDALONE;
 
-    rootNode.flags |= IO_DEVICE_FLAG_INITIALIZED;
+    rootNode.status = IO_DEVICE_STATUS_READY;
 
     IoNotifyDeviceEnumerator(&rootNode);
 
@@ -396,6 +430,47 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
     return status;       
 }
 
+STATUS IoPerfromIoctl(struct IoDeviceObject *dev, uint32_t ioctl, void *dataIn, void **dataOut)
+{
+    ASSERT(dev);
+
+    STATUS status = OK;
+
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
+    
+    rp->device = dev;
+    rp->code = IO_RP_IOCTL;
+    rp->payload.ioctl.code = ioctl;
+    rp->payload.ioctl.data = dataIn;
+    status = IoSendRp(dev, rp);
+    if(OK == status)
+    {
+        IoWaitForRpCompletion(rp);
+        status = rp->status;
+        if((OK == status) && (NULL != dataOut))
+        {
+            *dataOut = rp->payload.ioctl.data;
+        }
+    }
+
+    IoFreeRp(rp);
+    
+    return status;       
+}
+
+STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev)
+{
+    if(IO_VFS_DEVICE != node->type)
+        return DEVICE_NOT_AVAILABLE;
+    
+    if(NULL != dev)
+        *dev = node->device;
+    
+    return OK;
+}
+
 static void IoDeviceEnumeratorWorker(void *unused)
 {
     STATUS status;
@@ -408,8 +483,7 @@ static void IoDeviceEnumeratorWorker(void *unused)
             IoEnumerationQueueHead = t->next;
             KeReleaseSpinlock(&IoEnumerationQueueLock, prio);
             
-            if((NULL != t->node->mdo)
-                || (OK == IoBuildDeviceStack(t->node)))
+            if(t->node->standalone || (OK == IoBuildDeviceStack(t->node)))
             {
                 if((IO_DEVICE_TYPE_BUS == t->node->mdo->type)
                     || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
@@ -427,7 +501,7 @@ static void IoDeviceEnumeratorWorker(void *unused)
 
                         if(OK != status)
                         {
-                            t->node->flags |= IO_DEVICE_FLAG_INITIALIZATION_FAILURE;
+                            t->node->statusFlags |= IO_DEVICE_STATUS_FLAG_ENUMERATION_FAILED;
                         }
                         
                         IoFreeRp(rp);

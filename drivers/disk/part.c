@@ -195,7 +195,7 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
                 if(OK != status)
                     LOG(SYSLOG_ERROR, "Failed to create device file for volume %lu on disk %lu with status 0x%X", partitionInfo->index, info->index, status);
                     
-                status = IoRegisterVolume(partitionDev, 0);
+                status = IoRegisterVolume(partitionDev);
                 if(OK != status)
                     LOG(SYSLOG_ERROR, "Failed to register volume %lu on disk %lu with status 0x%X", partitionInfo->index, info->index, status);
             }

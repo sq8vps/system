@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include "heap.h"
+#include "ob/ob.h"
 
 /**
  * @defgroup genmem General memory manipulation routines
@@ -21,6 +22,8 @@
 */
 
 EXPORT_API
+
+struct IoFileHandle;
 
 /**
  * @brief Memory flags container
@@ -49,14 +52,11 @@ struct MmMemoryDescriptor
     struct MmMemoryDescriptor *next;
 };
 
-
-
 /**
  * @brief Allocate Memory Descriptor from cached pool
  * @return Memory Descriptor pointer or NULL on failure
 */
 struct MmMemoryDescriptor* MmAllocateMemoryDescriptor(void);
-
 
 /**
  * @brief Free previously allocated Memory Descriptor
@@ -124,6 +124,14 @@ struct MmMemoryDescriptor *MmCloneMemoryDescriptorList(struct MmMemoryDescriptor
 */
 STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags);
 
+/**
+ * @brief Allocate, map and zero-initialize memory
+ * @param address Address to map the memory to
+ * @param size Memory size in bytes
+ * @param flags Page flags
+ * @return Error code
+*/
+STATUS MmAllocateMemoryZeroed(uintptr_t address, uintptr_t size, MmMemoryFlags flags);
 
 /**
  * @brief Unmap and free  memory

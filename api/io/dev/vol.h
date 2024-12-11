@@ -24,11 +24,12 @@ struct IoVolumeNode
 {
     struct ObObjectHeader objectHeader;
     char label[IO_VOLUME_MAX_LABEL_LENGTH + 1]; /**< Volume label */
-    IoDeviceFlags flags; /**< Common volume flags */
     struct IoDeviceObject *fsdo; /**< FS Device Object */
     struct IoDeviceObject *pdo; /**< Physical Device Object */
     struct IoVfsNode *mountPoint; /**< Filesystem mount point */
     uint64_t serialNumber; /**< Volume serial number */
+    enum IoDeviceStatus status;
+    enum IoDeviceStatusFlags flags;
 
     struct IoVolumeNode *next, *previous; /**< A list of other volumes */
 };
@@ -57,10 +58,9 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
  * must be a disk device (\a IO_DEVICE_TYPE_DISK) and must not have any volume
  * already associated.
  * @param *dev Associated device
- * @param flags Volume node flags
  * @return Status code
 */
-STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags);
+STATUS IoRegisterVolume(struct IoDeviceObject *dev);
 
 
 /**
@@ -87,10 +87,10 @@ STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
  * @brief Register filesystem for given volume
  * @param *disk Volume device object (type = \a IO_DEVICE_TYPE_DISK)
  * @param *fs Filesystem device object (type = \a IO_DEVICE_TYPE_FS)
- * @param volumeFlags Flags to be ORed with volume node flags
  * @return Status code
 */
-STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags);
+STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs);
+
 
 
 #ifdef __cplusplus

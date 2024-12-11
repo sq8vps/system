@@ -120,7 +120,7 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         if(OK != status)
             LOG(SYSLOG_ERROR, "Failed to create device file for partition 0 on disk %lu with status 0x%X", info->index, status);
         
-        status = IoRegisterVolume(device, 0);
+        status = IoRegisterVolume(device);
         if(OK != status)
             LOG(SYSLOG_ERROR, "Failed to register volume for partition 0 on disk %lu with status 0x%X", info->index, status);
 

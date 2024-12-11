@@ -4,6 +4,7 @@
 #include "dynmap.h"
 #include "hal/mm.h"
 #include "hal/arch.h"
+#include "rtl/string.h"
 
 static void *MmMemoryDescriptorSlabHandle = NULL;
 #define MM_MEMORY_DESCRIPTOR_CACHE_CHUNKS_PER_SLAB 128
@@ -244,6 +245,14 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
         address -= PAGE_SIZE;
     }
     return ret;
+}
+
+STATUS MmAllocateMemoryZeroed(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
+{
+    STATUS status = MmAllocateMemory(address, size, flags);
+    if(OK == status)
+        RtlMemset((void*)address, 0, size);
+    return status;
 }
 
 STATUS MmFreeMemory(uintptr_t address, uintptr_t size)

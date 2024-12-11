@@ -23,26 +23,26 @@ static STATUS KeSyscallNone(void)
 static int KeSyscallOpen(const char *file, IoFileOpenMode mode, IoFileFlags flags)
 {
     int handle = -1;
-    IoOpenFile(file, mode, flags, KeGetCurrentTask(), &handle);
+    IoOpenFile(file, mode, flags, &handle);
     return handle;
 }
 
 static STATUS KeSyscallClose(int handle)
 {
-    return IoCloseFile(KeGetCurrentTask(), handle);
+    return IoCloseFile(handle);
 }
 
 static size_t KeSyscallRead(int handle, void *buffer, size_t size, uint64_t offset)
 {
     size_t actualSize = 0;
-    IoReadFileSync(KeGetCurrentTask(), handle, buffer, size, offset, &actualSize);
+    IoReadFileSync(handle, buffer, size, offset, &actualSize);
     return actualSize;
 }
 
 static size_t KeSyscallWrite(int handle, void *buffer, size_t size, uint64_t offset)
 {
     size_t actualSize = 0;
-    IoWriteFileSync(KeGetCurrentTask(), handle, buffer, size, offset, &actualSize);
+    IoWriteFileSync(handle, buffer, size, offset, &actualSize);
     return actualSize;
 }
 

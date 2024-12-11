@@ -55,6 +55,12 @@ STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
     return OK;
 }
 
+STATUS IoDestroyRpQueue(struct IoRpQueue *queue)
+{
+    MmFreeKernelHeap(queue);
+    return OK;
+}
+
 STATUS IoStartRp(struct IoRpQueue *queue, struct IoRp *rp, IoRpCancelCallback cancelCb)
 {
     ASSERT(NULL != rp);

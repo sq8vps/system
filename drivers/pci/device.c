@@ -262,7 +262,7 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *
         if(PciIsMultifunction(deviceInfo->address))
         {
             //multiple host bridges
-            //multiple host bridge architecture is not supported for now, use only the first host bridge
+            //TODO: multiple host bridge architecture is not supported for now, use only the first host bridge
             PciRegisterHostBridge(deviceInfo->address, &b);
             deviceInfo->thisBridge = b;
         }

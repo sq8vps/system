@@ -2,7 +2,6 @@
 #include "io/dev/rp.h"
 #include "io/dev/dev.h"
 #include "mm/heap.h"
-#include "assert.h"
 #include "io/fs/vfs.h"
 
 STATUS FsGetNode(const struct IoVfsNode *parent, const char *name, struct IoVfsNode **node)

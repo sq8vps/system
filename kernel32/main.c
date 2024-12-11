@@ -83,15 +83,21 @@ static void KeInitProcess(void *context)
 	if(OK != IoInitDeviceManager("ACPI"))
 		FAIL_BOOT("unable to initialize ACPI subsystem\n");
 
-	// KeCreateProcessRaw("pr1", NULL, PL_KERNEL, task1, NULL, &t1);
-	// KeCreateProcessRaw("pr2", NULL, PL_KERNEL, task2, NULL, &t2);
-	// KeEnableTask(t1);
-	// KeEnableTask(t2);
+	LOG(SYSLOG_INFO, "Waiting for the main file system to be mounted...\n");
+	if(!IoWaitForMainFileSystemMount(MS_TO_NS(20000)))
+		FAIL_BOOT("main file system not mounted within the given time limit");
 
-	KeSleep(MS_TO_NS(6000));
+	if(OK != ExUpdateDriverDatabasePath())
+		FAIL_BOOT("unable to update driver database path");
+	
+	if(OK != ExLoadKernelDriversByName("tty.ndb", NULL, NULL))
+		FAIL_BOOT("dupa");
 
 	struct KeTaskControlBlock *tcb;
-	KeCreateUserProcess("test", "/main/system/test", 0, &tcb);
+	const char *argv[] = {"test.elf", "-a", "12345", NULL};
+	const char *envp[] = {"PATH=/", "NABLA", NULL};
+
+	KeCreateUserProcess("test", "/main/system/test", 0, argv, envp, &tcb);
 	KeEnableTask(tcb);
 
 	while(1)
@@ -129,6 +135,7 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 	HalInitPhase2();
 
 	LOG(SYSLOG_INFO, KERNEL_FULL_NAME_STRING);
+	LOG(SYSLOG_INFO, "Booting...");
 
 	ItInit(); //initialize interrupts and exceptions
 

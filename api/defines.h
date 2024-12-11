@@ -66,6 +66,7 @@ typedef enum
     TIMEOUT,
     ILLEGAL_OPERATION,
     SYSCALL_CODE_UNKNOWN,
+    INVALID_ARGUMENT,
 
     //interrupt module errors
     BAD_INTERRUPT_VECTOR, //bad interrupt vector number
@@ -121,6 +122,7 @@ typedef enum
     FILE_BROKEN,
     FILE_BAD_MODE,
     FILE_TOO_SMALL,
+    IOCTL_UNKNOWN,
 
     UNKOWN_OBJECT_TYPE,
 

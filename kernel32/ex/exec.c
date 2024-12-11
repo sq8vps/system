@@ -9,13 +9,13 @@
 
 STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
 {
-    struct IoFileHandle *f;
+    int f = -1;
     size_t actualSize;
     STATUS ret = OK;
 
     *size = 0;
 
-    if(OK != (ret = IoOpenKernelFile((char*)name, IO_FILE_READ, 0, &f)))
+    if(OK != (ret = IoOpenFile((char*)name, IO_FILE_READ, 0, &f)))
     {
         return ret;
     }
@@ -23,14 +23,14 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
     uint8_t *buf = MmAllocateKernelHeap(sizeof(struct Elf32_Ehdr));
     if(NULL == buf)
     {
-        IoCloseKernelFile(f);
+        IoCloseFile(f);
         return OUT_OF_RESOURCES;
     }
 
-    if((OK != (ret = IoReadKernelFileSync(f, buf, sizeof(struct Elf32_Ehdr), 0, &actualSize)) || (actualSize != (uint64_t)sizeof(struct Elf32_Ehdr))))
+    if((OK != (ret = IoReadFileSync(f, buf, sizeof(struct Elf32_Ehdr), 0, &actualSize)) || (actualSize != (uint64_t)sizeof(struct Elf32_Ehdr))))
     {
         MmFreeKernelHeap(buf);
-        IoCloseKernelFile(f);
+        IoCloseFile(f);
         if(OK != ret)
             return ret;
         else
@@ -40,7 +40,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
     if(OK != (ret = ExVerifyElf32Header(h)))
     {
         MmFreeKernelHeap(buf);
-        IoCloseKernelFile(f);
+        IoCloseFile(f);
         return ret;
     }
 
@@ -52,20 +52,20 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
     buf = MmAllocateKernelHeap(sectionHeaderSize);
     if(NULL == buf)
     {
-        IoCloseKernelFile(f);
+        IoCloseFile(f);
         return OUT_OF_RESOURCES;
     }
 
-    if((OK != (ret = IoReadKernelFileSync(f, buf, sectionHeaderSize, sectionHeaderOffset, &actualSize)) || (actualSize != sectionHeaderSize)))
+    if((OK != (ret = IoReadFileSync(f, buf, sectionHeaderSize, sectionHeaderOffset, &actualSize)) || (actualSize != sectionHeaderSize)))
     {
         MmFreeKernelHeap(buf);
-        IoCloseKernelFile(f);
+        IoCloseFile(f);
         if(OK != ret)
             return ret;
         else
             return READ_INCOMPLETE;
     }
-    IoCloseKernelFile(f);
+    IoCloseFile(f);
 
     struct Elf32_Shdr *s = (struct Elf32_Shdr*)buf;
 	for(uint16_t i = 0; i < sectionHeaderEntryCount; i++)

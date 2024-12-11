@@ -131,6 +131,16 @@ struct IoRp
             uint32_t code;
             void *data;
         } deviceControl;
+
+        /**
+         * @brief \a IO_RP_IOCTL
+         */
+        struct
+        {
+            uint32_t code;
+            void *data;
+        } ioctl;
+        
         
 
     } payload;
@@ -172,6 +182,14 @@ void IoFreeRp(struct IoRp *rp);
  * @return Status code
 */
 STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue);
+
+/**
+ * @brief Destroy Request Packet queue
+ * @param *queue RP queue to be destroyed
+ * @return Status code
+ * @attention It is the caller's responsibility to make sure that the queue is empty and unused
+ */
+STATUS IoDestroyRpQueue(struct IoRpQueue *queue);
 
 
 /**

@@ -12,14 +12,16 @@
 #include "ke/sched/sched.h"
 #include "ex/db/db.h"
 #include "ddk/disk.h"
+#include "io/log/syslog.h"
 
 static struct
 {
     struct IoVolumeNode *list;
     KeSpinlock lock;
     char *mountPointDbPath;
+    KeSemaphore mainFsMountSem;
 } 
-IoVolumeState = {.list = NULL, .lock = KeSpinlockInitializer, .mountPointDbPath = NULL};
+IoVolumeState = {.list = NULL, .lock = KeSpinlockInitializer, .mountPointDbPath = NULL, .mainFsMountSem = KeSemaphoreInitializer};
 
 struct IoAutoMountQueue
 {
@@ -36,6 +38,9 @@ STATUS IoInitializeVolumeManager(void)
 {
     STATUS status = OK;
     struct ExDbHandle *h = NULL;
+    
+    KeAcquireSemaphore(&(IoVolumeState.mainFsMountSem));
+    
     status = ExDbOpen(INITIAL_CONFIG_DATABASE, &h);
     if(OK != status)
         return status;
@@ -111,7 +116,17 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     dev->associatedVolume->mountPoint = node;
     dev->referenceCount++;
     
-    return IoVfsInsertNodeByFilePath(node, mountPoint);
+    status = IoVfsInsertNodeByFilePath(node, mountPoint);
+    if(OK == status)
+        node->flags |= IO_DEVICE_STATUS_FLAG_FS_MOUNTED;
+    else
+    {
+        dev->associatedVolume->mountPoint = NULL;
+        dev->referenceCount--;
+        IoVfsDestroyNode(node);
+    }
+    
+    return status;
 }
 
 STATUS IoMountVolume(const char *devPath, const char *mountPoint)
@@ -142,7 +157,7 @@ STATUS IoMountVolume(const char *devPath, const char *mountPoint)
     return IoMountVolumeByDevice(dev, mountPoint);
 }
 
-STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
+STATUS IoRegisterVolume(struct IoDeviceObject *dev)
 {
     if(dev->type != IO_DEVICE_TYPE_DISK)
     {
@@ -161,7 +176,6 @@ STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
     ObInitializeObjectHeader(node);
     
     node->pdo = dev;
-    node->flags = flags;
     dev->associatedVolume = node;
 
     PRIO prio = KeAcquireSpinlock(&(IoVolumeState.lock));
@@ -186,7 +200,6 @@ STATUS IoRegisterVolume(struct IoDeviceObject *dev, IoDeviceFlags flags)
 
 STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
 {
-    
     if(NULL == dev->associatedVolume)
     {
         return VOLUME_NOT_REGISTERED;
@@ -220,7 +233,7 @@ STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label)
     return OK;
 }
 
-STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs, IoDeviceFlags volumeFlags)
+STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs)
 {
     ASSERT(disk && fs);
     
@@ -247,9 +260,8 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
     }
 
     disk->associatedVolume->fsdo = fs;
-    disk->associatedVolume->flags |= volumeFlags;
     fs->node.volumeNode = disk->associatedVolume;
-    fs->node.volumeNode->flags |= IO_DEVICE_FLAG_FS_ASSOCIATED;
+    fs->node.volumeNode->flags |= IO_DEVICE_STATUS_FLAG_FS_REGISTERED;
     
     return OK;
 }
@@ -257,6 +269,7 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
 
 static void IoAutoMountWorker(void *unused)
 {
+    STATUS status = OK;
     while(1)
     {
         struct ExDbHandle *h = NULL;
@@ -276,7 +289,42 @@ static void IoAutoMountWorker(void *unused)
                     char *mountPoint = NULL;
                     if(OK == ExDbGetNextString(h, signature, &mountPoint))
                     {
-                        IoMountVolumeByDevice(t->node->pdo, mountPoint);
+                        status = IoMountVolumeByDevice(t->node->pdo, mountPoint);
+                        if(OK == status)
+                        {
+                            if(0 == RtlStrcmp(mountPoint, MAIN_MOUNT_POINT))
+                            {
+                                LOG(SYSLOG_INFO, "Mounted main file system to %s\n", MAIN_MOUNT_POINT);
+                                KeReleaseSemaphore(&(IoVolumeState.mainFsMountSem));
+                                
+                                status = ExDbOpen(CONFIG_DATABASE, &h);
+                                if(OK == status)
+                                {
+                                    char *t = NULL;
+                                    if(OK != ExDbGetNextString(h, "MountPointDatabasePath", &t))
+                                    {
+                                        LOG(SYSLOG_ERROR, 
+                                            "Unable to get mount point database path\n");
+                                    }
+                                    else
+                                    {
+                                        IoVolumeState.mountPointDbPath = MmAllocateKernelHeap(RtlStrlen(t) + 1);
+                                        if(NULL == IoVolumeState.mountPointDbPath)
+                                        {
+                                            LOG(SYSLOG_ERROR, 
+                                                "Unable to allocate memory for mount point database path\n");
+                                        }
+                                        else
+                                        {
+                                            RtlStrcpy(IoVolumeState.mountPointDbPath, t);
+                                        }
+                                    }
+                                }
+                                else
+                                    LOG(SYSLOG_ERROR, 
+                                        "Unable to open main system configuration database: %s\n", CONFIG_DATABASE);
+                            }
+                        }
                     }
                 }
 
@@ -315,4 +363,9 @@ static STATUS IoNotifyAutoMount(struct IoVolumeNode *node)
     KeReleaseSpinlock(&IoAutoMountQueueLock, prio);
     KeWakeUpTask(IoAutoMountThread);
     return OK;
+}
+
+bool IoWaitForMainFileSystemMount(uint64_t timeout)
+{
+    return KeAcquireSemaphoreWithTimeout(&(IoVolumeState.mainFsMountSem), timeout);
 }

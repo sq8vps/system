@@ -80,7 +80,7 @@ static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
     KeReleaseMutex(&(ExKernelDriverState.mutex));
 }
 
-static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject **driverObject)
+static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **driverObject)
 {
     STATUS status = OK;
     struct ExDriverObject *object = NULL;
@@ -214,8 +214,8 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
         goto LoadKernelDriverFailure;
     }
 
-    IoFileHandle *f = NULL;
-    status = IoOpenKernelFile(path, IO_FILE_READ, 0, &f);
+    int f = -1;
+    status = IoOpenFile(path, IO_FILE_READ, 0, &f);
     if(OK != status)
     {
         object->free = true;
@@ -226,22 +226,22 @@ static STATUS ExLoadKernelDriverFromFile(const char *path, struct ExDriverObject
     if(OK != status)
     {
         object->free = true;
-        IoCloseKernelFile(f);
+        IoCloseFile(f);
         goto LoadKernelDriverFailure;
     }
 
 	size_t actualSize = 0;
-	status = IoReadKernelFileSync(f, (void*)object->address, imageSize, 0, &actualSize);
+	status = IoReadFileSync(f, (void*)object->address, imageSize, 0, &actualSize);
     if((OK != status) || (actualSize != imageSize))
 	{
-		IoCloseKernelFile(f);
+		IoCloseFile(f);
 		MmFreeMemory(object->address, object->size);
 		if(OK == status)
 			status = READ_INCOMPLETE;
 		goto LoadKernelDriverFailure;
 	}
 
-	IoCloseKernelFile(f);
+	IoCloseFile(f);
 
 	struct Elf32_Ehdr *elfHeader = (struct Elf32_Ehdr*)object->address;
 	status = ExVerifyElf32Header(elfHeader);
@@ -316,7 +316,7 @@ LoadKernelDriverFailure:
     return status;
 }
 
-static STATUS ExLoadKernelDrivers(bool fs, const char *deviceId, char * const * compatibleIds, struct IoDeviceObject *disk,
+static STATUS ExLoadKernelDrivers(const char *name, bool fs, const char *deviceId, char * const * compatibleIds, struct IoDeviceObject *disk,
     struct ExDriverObjectList **drivers, uint16_t *driverCount)
 {
     STATUS status;
@@ -327,7 +327,8 @@ static STATUS ExLoadKernelDrivers(bool fs, const char *deviceId, char * const * 
     
     uint32_t maxNameLength = IoVfsGetMaxFileNameLength();
 
-    *driverCount = 0;
+    if(NULL != driverCount)
+        *driverCount = 0;
 
     dbPath = MmAllocateKernelHeap(maxNameLength);
     if(NULL == dbPath)
@@ -390,54 +391,66 @@ ExLoadKernelDriversLoop:
         
         RtlStrncpy(imageFileNamePart, t, maxNameLength - (imageFileNamePart - imagePath));
 
-        if(!fs)
+        if(NULL == name)
         {
-            bool b = false;
-            if((OK != ExDbGetNextBool(driverConfig, "DeviceDriver", &b)) || (false == b))
+            if(!fs)
             {
-                ExDbClose(driverConfig);
-                driverConfig = NULL;
-                continue;
-            }
+                bool b = false;
+                if((OK != ExDbGetNextBool(driverConfig, "DeviceDriver", &b)) || (false == b))
+                {
+                    ExDbClose(driverConfig);
+                    driverConfig = NULL;
+                    continue;
+                }
 
-            while(1) //device id loop
+                while(1) //device id loop
+                {
+                    status = ExDbGetNextString(driverConfig, "DeviceId", &t);
+                    if(OK != status)
+                    {
+                        ExDbClose(driverConfig);
+                        driverConfig = NULL;
+                        goto ExLoadKernelDriversLoop;
+                    }
+
+                    if(!RtlStrcmp(t, deviceId))
+                        //TODO: include best-match search
+                        break;
+
+                    if(NULL != compatibleIds)
+                    {
+                        uint32_t i = 0;
+                        while(NULL != compatibleIds[i])
+                        {
+                            if(!RtlStrcmp(compatibleIds[i], t))
+                                goto ExLoadKernelDriversFound;
+                            ++i;
+                        }
+                    }
+                }
+            }
+            else //if(fs)
             {
-                status = ExDbGetNextString(driverConfig, "DeviceId", &t);
+                bool b = false;
+                if((OK != ExDbGetNextBool(driverConfig, "FsDriver", &b)) || (false == b))
+                {
+                    ExDbClose(driverConfig);
+                    driverConfig = NULL;
+                    continue;
+                }
+
+                status = ExDbGetNextString(driverConfig, "ImageName", &t);
                 if(OK != status)
                 {
                     ExDbClose(driverConfig);
                     driverConfig = NULL;
-                    goto ExLoadKernelDriversLoop;
-                }
-
-                if(!RtlStrcmp(t, deviceId))
-                    //TODO: include best-match search
-                    break;
-
-                if(NULL != compatibleIds)
-                {
-                    uint32_t i = 0;
-                    while(NULL != compatibleIds[i])
-                    {
-                        if(!RtlStrcmp(compatibleIds[i], t))
-                            goto ExLoadKernelDriversFound;
-                        ++i;
-                    }
+                    continue;
                 }
             }
         }
-        else //if(fs)
+        else //NULL != name
         {
-            bool b = false;
-            if((OK != ExDbGetNextBool(driverConfig, "FsDriver", &b)) || (false == b))
-            {
-                ExDbClose(driverConfig);
-                driverConfig = NULL;
-                continue;
-            }
-
-            status = ExDbGetNextString(driverConfig, "ImageName", &t);
-            if(OK != status)
+            if(0 != RtlStrcmp(dbFileNamePart, name))
             {
                 ExDbClose(driverConfig);
                 driverConfig = NULL;
@@ -446,7 +459,7 @@ ExLoadKernelDriversLoop:
         }
 
 ExLoadKernelDriversFound:
-        status = ExLoadKernelDriverFromFile(imagePath, &drv);
+        status = ExLoadKernelDriverImage(imagePath, &drv);
         if(OK != status)
         {
             ExDbClose(driverConfig);
@@ -470,7 +483,7 @@ ExLoadKernelDriversFound:
             drv->flags |= EX_DRIVER_OBJECT_FLAG_INITIALIZED;
         }
 
-        if(fs)
+        if(fs && (NULL == name))
         {
             if(NULL != drv->verifyFs)
             {
@@ -482,24 +495,30 @@ ExLoadKernelDriversFound:
             driverConfig = NULL;
             continue;
         }
-        else //if(!fs)
+        else //!fs || NULL != name
             break;
     }
 
     //TODO: implement multiple drivers
-    struct ExDriverObjectList *d = MmAllocateKernelHeap(sizeof(*d));
-    if(NULL == d)
+    struct ExDriverObjectList *d = NULL;
+    if(NULL != drivers)
     {
-        status = OUT_OF_RESOURCES;
-        goto ExLoadKernelDriversForDeviceFailed;
+        d = MmAllocateKernelHeap(sizeof(*d));
+        if(NULL == d)
+        {
+            status = OUT_OF_RESOURCES;
+            goto ExLoadKernelDriversForDeviceFailed;
+        }
+
+        d->next = NULL;
+        d->this = drv;
+        d->isMain = true;
+
+        *drivers = d;
     }
 
-    d->next = NULL;
-    d->this = drv;
-    d->isMain = true;
-
-    *drivers = d;
-    *driverCount = 1;
+    if(NULL != driverCount)
+        *driverCount = 1;
     
 ExLoadKernelDriversForDeviceFailed:
     MmFreeKernelHeap(dbPath);
@@ -511,11 +530,14 @@ ExLoadKernelDriversForDeviceFailed:
     if(OK == status)
         return OK;
 
-    while(NULL != *drivers)
+    if(NULL != drivers)
     {
-        d = (*drivers)->next;
-        MmFreeKernelHeap(*drivers);
-        *drivers = d;
+        while(NULL != *drivers)
+        {
+            d = (*drivers)->next;
+            MmFreeKernelHeap(*drivers);
+            *drivers = d;
+        }
     }
 
     return status;
@@ -523,14 +545,18 @@ ExLoadKernelDriversForDeviceFailed:
 
 STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const * compatibleIds, struct ExDriverObjectList **drivers, uint16_t *driverCount)
 {
-    return ExLoadKernelDrivers(false, deviceId, compatibleIds, NULL, drivers, driverCount);
+    return ExLoadKernelDrivers(NULL, false, deviceId, compatibleIds, NULL, drivers, driverCount);
 }
 
 STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, uint16_t *driverCount)
 {
-    return ExLoadKernelDrivers(true, NULL, NULL, volume->pdo, drivers, driverCount);
+    return ExLoadKernelDrivers(NULL, true, NULL, NULL, volume->pdo, drivers, driverCount);
 }
 
+STATUS ExLoadKernelDriversByName(const char *name, struct ExDriverObjectList **drivers, uint16_t *driverCount)
+{
+    return ExLoadKernelDrivers(name, false, NULL, NULL, NULL, drivers, driverCount);
+}
 
 struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address)
 {
@@ -574,4 +600,43 @@ STATUS ExInitializeDriverManager(void)
         FAIL_BOOT("Missing initial driver database\n");
     
     return OK;
+}
+
+STATUS ExUpdateDriverDatabasePath(void)
+{
+    struct ExDbHandle *h = NULL;
+    STATUS status;
+    
+    status = ExDbOpen(CONFIG_DATABASE, &h);
+    if(OK != status)
+    {
+        IoWriteSyslog(&IoKernelLog, SYSLOG_ERROR, 
+            "Unable to open main system configuration database: %s\n", CONFIG_DATABASE);
+        return status;
+    }
+    
+    char *t = NULL;
+    status = ExDbGetNextString(h, "DriverDatabasePath", &t);
+    ExDbClose(h);
+    if(OK != status)
+    {
+        IoWriteSyslog(&IoKernelLog, SYSLOG_ERROR, 
+            "Unable to get driver database\n");
+        return status;
+    }
+    
+    KeAcquireMutex(&(ExKernelDriverState.mutex));
+    ExKernelDriverState.databasePath = MmAllocateKernelHeap(RtlStrlen(t) + 1);
+    if(NULL == ExKernelDriverState.databasePath)
+    {
+        KeReleaseMutex(&(ExKernelDriverState.mutex));
+        IoWriteSyslog(&IoKernelLog, SYSLOG_ERROR, 
+            "Unable to allocate memory\n");
+        return status;
+    }
+    
+    RtlStrcpy(ExKernelDriverState.databasePath, t);
+    KeReleaseMutex(&(ExKernelDriverState.mutex));
+    
+    return OK;    
 }

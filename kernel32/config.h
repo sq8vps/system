@@ -17,9 +17,24 @@ EXPORT_API
 #define INITRD_MOUNT_POINT "/initrd"
 
 /**
- * @brief Initial configuration database path
+ * @brief Name of the master configuration database
  */
-#define INITIAL_CONFIG_DATABASE (INITRD_MOUNT_POINT "/config.ndb")
+#define CONFIG_DATABASE_NAME "config.ndb"
+
+/**
+ * @brief Initial (pre-disk) configuration database path
+ */
+#define INITIAL_CONFIG_DATABASE (INITRD_MOUNT_POINT "/" CONFIG_DATABASE_NAME)
+
+/**
+ * @brief Main filesystem mount point name
+ */
+#define MAIN_MOUNT_POINT "/main"
+
+/**
+ * @brief Main configuration database path
+ */
+#define CONFIG_DATABASE (MAIN_MOUNT_POINT "/system/" CONFIG_DATABASE_NAME)
 
 END_EXPORT_API
 

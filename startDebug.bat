@@ -1,6 +1,4 @@
-cd output
-7z a -ttar initrd.tar drivers
-cd ..
+call make_initrd.bat
 osfmount -a -t file -o rw -f os-image.img -m F:
 xcopy output\* F:\SYSTEM\ /E /Y
 osfmount -D -m F:

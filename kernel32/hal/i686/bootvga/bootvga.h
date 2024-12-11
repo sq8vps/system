@@ -84,12 +84,16 @@ INTERNAL void BootVgaPrintStringXY(uint16_t x, uint16_t y, char *s);
 */
 INTERNAL void BootVgaPrintStringNXY(uint16_t x, uint16_t y, char *s, uint32_t size);
 
+EXPORT_API
+
 /**
  * @brief Print up to \a size characters of a string
  * @param *s String to print
  * @param size Maximum number of characters
 */
-INTERNAL void BootVgaPrintStringN(char *s, uint32_t size);
+void BootVgaPrintStringN(char *s, uint32_t size);
+
+END_EXPORT_API
 
 /**
  * @brief Print string

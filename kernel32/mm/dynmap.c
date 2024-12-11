@@ -1,19 +1,69 @@
 #include "dynmap.h"
-#include "bst.h"
 #include "heap.h"
 #include "ke/core/panic.h"
 #include "ke/core/mutex.h"
 #include "hal/arch.h"
 #include "hal/mm.h"
 
+#if 1
+#define BST_PROVIDE_ABSTRACTION //provide Tree... names for Bst...
+#include "rtl/bst.h"
+#endif
+
 #define MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD (PAGE_SIZE) //dynamic memory region split threshold when requested block is smaller
 
-static struct BstNode *MmDynamicMemoryTree[3] = {NULL, NULL, NULL};
+static struct TreeNode *MmDynamicMemoryTree[3] = {NULL, NULL, NULL};
 #define MM_DYNAMIC_ADDRESS_FREE_TREE MmDynamicMemoryTree[0]
 #define MM_DYNAMIC_SIZE_FREE_TREE MmDynamicMemoryTree[1]
 #define MM_DYNAMIC_ADDRESS_USED_TREE MmDynamicMemoryTree[2]
 
 static KeSpinlock MmDynamicAllocatorLock = KeSpinlockInitializer;
+
+struct MmDynamicMemoryRegion
+{
+    TREENODE; /**< Tree node structure */
+    const void *base; /**< Region base */
+    size_t size; /**< Region size */
+    struct MmDynamicMemoryRegion *buddy; /**< Region base <-> region size buddy node pointer */
+};
+
+/**
+ * @brief Convenience macro to extract \a MmDynamicMemoryRegion from \a treeNode pointer
+ * @param treeNode Tree node pointer
+ * @return \a MmDynamicMemoryRegion pointer
+ */
+#define REGION(treeNode) ((struct MmDynamicMemoryRegion*)((treeNode)->main))
+
+static struct MmDynamicMemoryRegion* MmDynamicInsertFreePair(const void *base, size_t size)
+{
+    struct MmDynamicMemoryRegion *b = NULL, *s = NULL;
+    b = MmAllocateKernelHeap(sizeof(*b));
+    if(NULL == b)
+        return NULL;
+    s = MmAllocateKernelHeap(sizeof(*s));
+    if(NULL == s)
+    {
+        MmFreeKernelHeap(b);
+        return NULL;
+    }
+
+    b->tree.key = (uintptr_t)base;
+    b->base = base;
+    b->size = size;
+    b->buddy = s;
+    b->tree.main = b;
+
+    s->tree.key = size;
+    s->base = base;
+    s->size = size;
+    s->buddy = b;
+    s->tree.main = s;
+
+    MM_DYNAMIC_ADDRESS_FREE_TREE = TreeInsert(MM_DYNAMIC_ADDRESS_FREE_TREE, &b->tree);
+    MM_DYNAMIC_SIZE_FREE_TREE = TreeInsert(MM_DYNAMIC_SIZE_FREE_TREE, &s->tree);
+
+    return b;
+}
 
 void *MmReserveDynamicMemory(uintptr_t n)
 {
@@ -22,34 +72,40 @@ void *MmReserveDynamicMemory(uintptr_t n)
     PRIO prio = KeAcquireSpinlock(&MmDynamicAllocatorLock);
     barrier();
 
-    struct BstNode *region = BstFindGreaterOrEqual(MM_DYNAMIC_SIZE_FREE_TREE, n);
+    struct TreeNode *region = TreeFindGreaterOrEqual(MM_DYNAMIC_SIZE_FREE_TREE, n);
     if(NULL == region) //no fitting region available
     {
         KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
         return NULL;
     }
     //else region is available
-    uintptr_t vAddress = region->buddy->key; //store its address
-    uintptr_t remainingSize = region->key - n; //calculate remaining size
+    uintptr_t vAddress = (uintptr_t)REGION(region)->buddy->base; //store its address
+    size_t remainingSize = REGION(region)->size - n; //calculate remaining size
 
-    struct BstNode *node = BstInsert(&MM_DYNAMIC_ADDRESS_USED_TREE, vAddress);
+    struct MmDynamicMemoryRegion *node = MmAllocateKernelHeap(sizeof(*node));
     if(NULL == node)
     {
         goto MmMapDynamicMemoryFail;  
     }
 
-    node->val = region->key; //store size
+    node->tree.key = vAddress;
+    node->tree.main = node;
+    node->base = (void*)vAddress;
+    node->size = REGION(region)->size;
+    MM_DYNAMIC_ADDRESS_USED_TREE = TreeInsert(MM_DYNAMIC_ADDRESS_USED_TREE, &node->tree);
 
     //delete old nodes
-    BstDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, region->buddy);
-    BstDelete(&MM_DYNAMIC_SIZE_FREE_TREE, region);
+    MM_DYNAMIC_ADDRESS_FREE_TREE = TreeRemove(MM_DYNAMIC_ADDRESS_FREE_TREE, &REGION(region)->buddy->tree);
+    MM_DYNAMIC_SIZE_FREE_TREE = TreeRemove(MM_DYNAMIC_SIZE_FREE_TREE, region);
+
+    MmFreeKernelHeap(REGION(region)->buddy);
+    MmFreeKernelHeap(region);
 
     //check if it should be split
     if(remainingSize >= MM_DYNAMIC_MEMORY_SPLIT_THRESHOLD)
     {
-        region = BstInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, remainingSize, vAddress + n);
-        if(NULL != region)
-            node->val = n;
+        if(NULL != MmDynamicInsertFreePair((void*)(vAddress + n), remainingSize))
+            node->size = n; //free pair insertion successful, reserved region is smaller
     }
 
     barrier();
@@ -68,40 +124,44 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
 
     PRIO prio = KeAcquireSpinlock(&MmDynamicAllocatorLock);
     barrier();
-    struct BstNode *this = BstFindExactMatch(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
-    if(NULL == this)
+    struct TreeNode *region = TreeFindExact(MM_DYNAMIC_ADDRESS_USED_TREE, (uintptr_t)ptr);
+    if(NULL == region)
     {
         KeReleaseSpinlock(&MmDynamicAllocatorLock, prio);
         return 0;
     }
 
-    uintptr_t n = this->val; //get size
-    uintptr_t originalSize = n;
+    size_t n = REGION(region)->size;
+    size_t originalSize = n;
     const void *originalPtr = ptr;
-    BstDelete(&MM_DYNAMIC_ADDRESS_USED_TREE, this);
+    MM_DYNAMIC_ADDRESS_USED_TREE = TreeRemove(MM_DYNAMIC_ADDRESS_USED_TREE, region);
+    MmFreeKernelHeap(REGION(region));
 
     //check if there is an adjacent free region with higher address
-    struct BstNode *node = BstFindExactMatch(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr + n);
+    struct TreeNode *node = TreeFindExact(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr + n);
     if(NULL != node)
     {
-        n += node->buddy->key; //sum size
-        BstDelete(&MM_DYNAMIC_SIZE_FREE_TREE, node->buddy);
-        BstDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, node);
+        n += REGION(node)->buddy->size; //sum size
+        MM_DYNAMIC_SIZE_FREE_TREE = TreeRemove(MM_DYNAMIC_SIZE_FREE_TREE, &REGION(node)->buddy->tree);
+        MM_DYNAMIC_ADDRESS_FREE_TREE = TreeRemove(MM_DYNAMIC_ADDRESS_FREE_TREE, node);
+        MmFreeKernelHeap(REGION(node)->buddy);
+        MmFreeKernelHeap(REGION(node));
     }
     //check if there is an adjacent preceeding free region
-    node = BstFindLess(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr);
+    node = TreeFindLess(MM_DYNAMIC_ADDRESS_FREE_TREE, (uintptr_t)ptr);
     if((NULL != node)
-        && ((node->key + node->buddy->key) == (uintptr_t)ptr))
+        && (((uintptr_t)REGION(node)->base + REGION(node)->buddy->size) == (uintptr_t)ptr))
     {
-        n += node->buddy->key; //sum size
-        ptr = (void*)(node->key); //store new address
-        BstDelete(&MM_DYNAMIC_SIZE_FREE_TREE, node->buddy);
-        BstDelete(&MM_DYNAMIC_ADDRESS_FREE_TREE, node);
+        n += REGION(node)->buddy->size; //sum size
+        ptr = REGION(node)->base; //store new address
+        MM_DYNAMIC_SIZE_FREE_TREE = TreeRemove(MM_DYNAMIC_SIZE_FREE_TREE, &REGION(node)->buddy->tree);
+        MM_DYNAMIC_ADDRESS_FREE_TREE = TreeRemove(MM_DYNAMIC_ADDRESS_FREE_TREE, &REGION(node)->tree);
+        MmFreeKernelHeap(REGION(node)->buddy);
+        MmFreeKernelHeap(REGION(node));
     }
 
-    //TODO: should be handled somehow if NULL returned
-    if(NULL == BstInsertPair(&MM_DYNAMIC_SIZE_FREE_TREE, &MM_DYNAMIC_ADDRESS_FREE_TREE, n, (uintptr_t)ptr))
-        KePanic(UNEXPECTED_FAULT);
+    if(NULL == MmDynamicInsertFreePair(ptr, n))
+        LOG(SYSLOG_ERROR, "Unable to insert dynamic memory free region node. Memory leak!");
 
     if(unmap && (0 != originalSize))
         if(OK != HalUnmapMemoryEx((uintptr_t)originalPtr, originalSize))
@@ -146,8 +206,7 @@ void MmUnmapDynamicMemory(const void *ptr)
 
 void MmInitDynamicMemory(void)
 {
-    if(NULL == BstInsertPair(&MM_DYNAMIC_ADDRESS_FREE_TREE, &MM_DYNAMIC_SIZE_FREE_TREE, 
-        HalGetDynamicSpaceBase(), HalGetDynamicSpaceSize()))
+    if(NULL == MmDynamicInsertFreePair((void*)HalGetDynamicSpaceBase(), HalGetDynamicSpaceSize()))
         KePanicEx(BOOT_FAILURE, 0, OUT_OF_RESOURCES, 0, 0);
 }
 

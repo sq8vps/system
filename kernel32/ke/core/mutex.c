@@ -5,6 +5,7 @@
 #include "it/it.h"
 #include "hal/arch.h"
 #include "mm/heap.h"
+#include "assert.h"
 
 //list of tasks waiting for mutex or semaphore
 //this list is sorted by earliest deadline first
@@ -56,8 +57,11 @@ void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 static void insertToList(struct KeTaskControlBlock *tcb)
 {
     PRIO prio = KeAcquireSpinlock(&listLock);
+    tcb->nextAux = NULL;
     if(NULL == list)
+    {
         list = tcb;
+    }
     else
     {
         struct KeTaskControlBlock *s = list;
@@ -71,6 +75,7 @@ static void insertToList(struct KeTaskControlBlock *tcb)
             }
             s = s->nextAux;
         }
+        ASSERT(s != tcb);
         s->nextAux = tcb;
     }
     KeReleaseSpinlock(&listLock, prio);
@@ -84,13 +89,14 @@ static void removeFromList(struct KeTaskControlBlock *tcb)
     if(tcb->previousAux)
         tcb->previousAux->nextAux = tcb->nextAux;
     if(tcb->nextAux)
-        tcb->nextAux->previous = tcb->previousAux;
+        tcb->nextAux->previousAux = tcb->previousAux;
     KeReleaseSpinlock(&listLock, prio);   
 }
 
 void KeAcquireMutex(KeMutex *mutex)
 {
-    KeAcquireMutexWithTimeout(mutex, KE_MUTEX_NO_TIMEOUT);
+    while(!KeAcquireMutexWithTimeout(mutex, KE_MUTEX_NO_TIMEOUT))
+        ;
 }
 
 bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
@@ -98,7 +104,7 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
     HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *current = KeGetCurrentTask();
     PRIO prio = KeAcquireSpinlock(&(mutex->spinlock));
-    if(mutex->lock)
+    if((current != mutex->owner) && (NULL != mutex->owner))
     {
         if(KE_MUTEX_NO_WAIT == timeout)
         {
@@ -138,7 +144,8 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout)
     }
     else
     {
-        mutex->lock = 1;
+        mutex->owner = current;
+        mutex->current++;
         KeReleaseSpinlock(&(mutex->spinlock), prio);
         return true;
     }
@@ -149,29 +156,36 @@ void KeReleaseMutex(KeMutex *mutex)
     if(NULL == mutex)
         return;
     PRIO prio = KeAcquireSpinlock(&(mutex->spinlock));
-    if(0 == mutex->lock)
+    if(NULL == mutex->owner)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 1, (uintptr_t)mutex, 0, 0);
-    if(NULL == mutex->queueTop)
+    mutex->current--;
+    if(0 == mutex->current)
     {
-        mutex->lock = 0;
-        KeReleaseSpinlock(&(mutex->spinlock), prio);
-        return;
-    }
-    struct KeTaskControlBlock *next = mutex->queueTop;
-    mutex->queueTop = next->next;
-    if(NULL != next->next)
-        next->next->previous = next->previous;
-    next->next = NULL;
-    next->previous = NULL;
+        if(NULL == mutex->queueTop)
+        {
+            mutex->owner = NULL;
+            KeReleaseSpinlock(&(mutex->spinlock), prio);
+            return;
+        }
+        struct KeTaskControlBlock *next = mutex->queueTop;
+        mutex->queueTop = next->next;
+        if(NULL != next->next)
+            next->next->previous = next->previous;
+        next->next = NULL;
+        next->previous = NULL;
+        mutex->owner = next;
+        mutex->current = 1;
 
-    removeFromList(next);
-    KeUnblockTask(next);
+        removeFromList(next);
+        KeUnblockTask(next);
+    }
     KeReleaseSpinlock(&(mutex->spinlock), prio);
 }
 
 void KeAcquireSemaphore(KeSemaphore *sem)
 {
-    KeAcquireSemaphoreWithTimeout(sem, KE_MUTEX_NO_TIMEOUT);
+    while(!KeAcquireSemaphoreWithTimeout(sem, KE_MUTEX_NO_TIMEOUT))
+        ;
 }
 
 bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout)
@@ -259,6 +273,7 @@ void KeTimedExclusionRefresh(void)
     while(NULL != list)
     {
         s = list;
+        PRIO tcbPrio = ObLockObject(s);
         if(currentTimestamp >= s->waitUntil)
         {
             s->waitUntil = 0;
@@ -313,10 +328,14 @@ void KeTimedExclusionRefresh(void)
             s->mutex = NULL;
             s->semaphore = NULL;
             s->rwLock = NULL;
+            ObUnlockObject(s, tcbPrio);
             KeUnblockTask(s);
         }
         else
+        {
+            ObUnlockObject(s, tcbPrio);
             break;
+        }
     }
     KeReleaseSpinlock(&listLock, prio);
 }
@@ -376,7 +395,8 @@ bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
 
 void KeAcquireRwLock(KeRwLock *rwLock, bool write)
 {
-    KeAcquireRwLockWithTimeout(rwLock, write, KE_MUTEX_NO_TIMEOUT);
+    while(!KeAcquireRwLockWithTimeout(rwLock, write, KE_MUTEX_NO_TIMEOUT))
+        ;
 }
 
 void KeReleaseRwLock(KeRwLock *rwLock)
@@ -411,9 +431,9 @@ void KeReleaseRwLock(KeRwLock *rwLock)
                     else
                         rwLock->queueBottom = NULL;
                     
-                    
-                    KeReleaseSpinlock(&(rwLock->lock), prio);
+                    removeFromList(t);
                     KeUnblockTask(t);
+                    KeReleaseSpinlock(&(rwLock->lock), prio);
                     return;
                 }
                 else
@@ -456,11 +476,15 @@ KeSpinlock *KeCreateSpinlock(void)
     return m;
 }
 
-KeSemaphore *KeCreateSemaphore(void)
+KeSemaphore *KeCreateSemaphore(uint32_t initial, uint32_t max)
 {
     KeSemaphore *m = MmAllocateKernelHeap(sizeof(*m));
     if(NULL != m)
+    {
         *m = (KeSemaphore)KeSemaphoreInitializer;
+        m->current = initial;
+        m->max = max;
+    }
     return m;
 }
 

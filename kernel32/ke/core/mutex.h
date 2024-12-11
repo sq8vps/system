@@ -46,15 +46,16 @@ typedef struct KeMutex
 {
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
+    struct KeTaskControlBlock *owner;
     KeSpinlock spinlock;
-    uint16_t lock;
+    uint32_t current;
 } KeMutex;
 
 
 /**
  * @brief Mutex initializer. Use it when creating mutices.
 */
-#define KeMutexInitializer {.lock = 0, .queueTop = NULL, .queueBottom = NULL, .spinlock = KeSpinlockInitializer}
+#define KeMutexInitializer {.current = 0, .queueTop = NULL, .queueBottom = NULL, .owner = NULL, .spinlock = KeSpinlockInitializer}
 
 
 /**
@@ -197,9 +198,11 @@ KeSpinlock *KeCreateSpinlock(void);
 
 /**
  * @brief Allocate and initialize semaphore
+ * @param initial Initial semaphore count
+ * @param max Max semaphore count
  * @return Create semaphore or NULL on failure
  */
-KeSemaphore *KeCreateSemaphore(void);
+KeSemaphore *KeCreateSemaphore(uint32_t initial, uint32_t max);
 
 
 /**

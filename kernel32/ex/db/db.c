@@ -10,11 +10,11 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
     ASSERT(h);
     STATUS status;
 
-    struct IoFileHandle *f = NULL;
+    int f = -1;
     uint64_t size;
     void *db = NULL;
 
-    status = IoOpenKernelFile(path, IO_FILE_READ, 0, &f);
+    status = IoOpenFile(path, IO_FILE_READ, 0, &f);
     if(OK != status)
     {
         goto ExDbOpenFailed;
@@ -34,7 +34,7 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
     }
 
     size_t actual = 0;
-    status = IoReadKernelFileSync(f, db, size, 0, &actual);
+    status = IoReadFileSync(f, db, size, 0, &actual);
     if(actual != size)
     {
         status = READ_INCOMPLETE;
@@ -65,8 +65,8 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
     return OK;
 
 ExDbOpenFailed:
-    if(NULL != f)
-        IoCloseKernelFile(f);
+    if(-1 != f)
+        IoCloseFile(f);
     if(NULL != db)
         MmFreeKernelHeap(db);
 
@@ -77,7 +77,7 @@ void ExDbClose(struct ExDbHandle *h)
 {
     if(NULL != h)
     {
-        IoCloseKernelFile(h->file);
+        IoCloseFile(h->file);
         MmFreeKernelHeap(h->db);
     }
     MmFreeKernelHeap(h); 

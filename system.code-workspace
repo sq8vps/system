@@ -26,6 +26,15 @@
 		},
 		{
 			"path": "drivers/fat"
+		},
+		{
+			"path": "libs"
+		},
+		{
+			"path": "base"
+		},
+		{
+			"path": "drivers/tty"
 		}
 	],
 	"settings": {
@@ -93,7 +102,29 @@
 			"exceptions.h": "c",
 			"system_error": "c",
 			"ctype.h": "c",
-			"syscall.h": "c"
+			"syscall.h": "c",
+			"*.tcc": "cpp",
+			"deque": "cpp",
+			"string": "cpp",
+			"unordered_map": "cpp",
+			"vector": "cpp",
+			"bst.h": "c",
+			"tmem.h": "c",
+			"device.h": "c",
+			"array": "c",
+			"atomic": "c",
+			"bit": "c",
+			"exception": "c",
+			"memory": "c",
+			"memory_resource": "c",
+			"string_view": "c",
+			"utility": "c",
+			"iosfwd": "c",
+			"numeric": "c",
+			"ostream": "c",
+			"streambuf": "c",
+			"tuple": "c",
+			"typeinfo": "c"
 		}
 	}
 }
