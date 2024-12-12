@@ -92,6 +92,10 @@ static void KeInitProcess(void *context)
 	
 	if(OK != ExLoadKernelDriversByName("tty.ndb", NULL, NULL))
 		FAIL_BOOT("dupa");
+	
+	int fd = -1;
+	IoOpenFile("/dev/tty0", IO_FILE_WRITE, 0, &fd);
+	IoWriteFileSync(fd, "Test sterownika TTY\n", 20, 0, NULL);
 
 	struct KeTaskControlBlock *tcb;
 	const char *argv[] = {"test.elf", "-a", "12345", NULL};

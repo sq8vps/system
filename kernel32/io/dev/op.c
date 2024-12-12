@@ -233,6 +233,8 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
 
     if(dev->blockSize >= 1)
         alignedSize = ALIGN_UP(size + (offset - alignedOffset), dev->blockSize);
+    else
+        alignedSize = size;
 
     if(forceDirectIo && !useDirectIo)
         return OPERATION_NOT_ALLOWED;

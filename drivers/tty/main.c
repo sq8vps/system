@@ -5,12 +5,16 @@
 
 static STATUS TtyDispatch(struct IoRp *rp)
 {
-    STATUS status;
+    STATUS status = OK;
 
     struct TtyDeviceData *info = rp->device->privateData;
 
     switch(rp->code)
     {
+        case IO_RP_OPEN:
+        case IO_RP_CLOSE:
+            status = OK;
+            break;
         case IO_RP_WRITE:
             if(!info->activated || (NULL == info->queue.write))
                 status = DEVICE_NOT_AVAILABLE;

@@ -4,27 +4,22 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "defines.h"
-#include "vfs.h"
 #include "ob/ob.h"
+#include "io/dev/op.h"
 
 EXPORT_API
 
 struct KeTaskControlBlock;
+struct IoVfsNode;
 
 /**
- * @brief File operation flags
+ * @brief File flags
 */
-#define IoFileFlags IoVfsFlags
-
-
-/**
- * @brief Perform operation directly, omit internal bufferring
-*/
-#define IO_FILE_FLAG_DIRECT IO_VFS_OPERATION_FLAG_DIRECT
-/**
- * @brief Do not wait if file is not available for operation, but fail immediately
-*/
-#define IO_FILE_FLAG_NO_WAIT IO_VFS_OPERATION_FLAG_NO_WAIT
+typedef enum
+{
+    IO_FILE_FLAG_DIRECT = 0x1, /**< Force performing operation directly (omitting internal bufferring), fail if not possible */
+    IO_FILE_FLAG_NO_WAIT = 0x2, /**< Do not wait if file is not available for operation, but fail immediately */
+} IoFileFlags;
 
 
 /**

@@ -79,7 +79,7 @@ STATUS IoVfsInit(void)
     return IoInitDeviceFs(IoVfsState.root);
 }
 
-STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoVfsFlags flags)
+STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags)
 {
     ASSERT(node);
     STATUS status = OK;
@@ -87,7 +87,7 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoVfsFlags flags)
     if((IO_VFS_DIRECTORY == node->type) || (IO_VFS_MOUNT_POINT == node->type))
         return BAD_FILE_TYPE;
 
-    if(flags & IO_VFS_FLAG_NO_WAIT)
+    if(flags & IO_FILE_FLAG_NO_WAIT)
     {
         if(!KeAcquireRwLockWithTimeout(&(node->lock), write, KE_MUTEX_NO_WAIT))
             return FILE_LOCKED;
@@ -96,7 +96,7 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoVfsFlags flags)
         KeAcquireRwLock(&(node->lock), write);
 
     if(write)
-        node->references.writers = 1;
+        node->references.writers++;
     else
         node->references.readers++;
 
@@ -136,7 +136,7 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoVfsFlags flags)
     {
         //clean up on open failure
         if(write)
-            node->references.writers = 0;
+            node->references.writers--;
         else
             node->references.readers--;
         
@@ -161,7 +161,7 @@ STATUS IoVfsClose(struct IoVfsNode *node)
     if(node->references.readers)
         node->references.readers--;
     else if(node->references.writers)
-        node->references.writers = 0;
+        node->references.writers--;
 
     if(node->flags & IO_VFS_FLAG_PERSISTENT)
     {
@@ -466,7 +466,7 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node)
     return status;
 }
 
-STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
+STATUS IoVfsRead(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(node && buffer && callback);
 
@@ -496,7 +496,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t 
         case IO_VFS_FS_PHYSICAL:
         case IO_VFS_FS_VIRTUAL:
             return IoReadWrite(false, node->device, node, offset, size, buffer, callback, context, 
-                (flags & IO_VFS_FLAG_DIRECT) ? true : false);
+                (flags & IO_FILE_FLAG_DIRECT) ? true : false);
             break;
         default:
             return BAD_FILE_TYPE;
@@ -506,7 +506,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t 
     return BAD_FILE_TYPE;
 }
 
-STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
+STATUS IoVfsWrite(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context)
 {
     ASSERT(node && buffer && callback);
     STATUS status = 0;
@@ -548,7 +548,7 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t
         case IO_VFS_FS_PHYSICAL:
         case IO_VFS_FS_VIRTUAL:
             status = IoReadWrite(true, node->device, node, offset, size, buffer, callback, context, 
-                (flags & IO_VFS_FLAG_DIRECT) ? true : false);
+                (flags & IO_FILE_FLAG_DIRECT) ? true : false);
             break;
         default:
             status = BAD_FILE_TYPE;

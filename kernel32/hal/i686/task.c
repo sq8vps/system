@@ -238,6 +238,8 @@ static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context, v
                         stack[-2] = (uintptr_t)argsBuffer; //store argv pointer
                         stack[-3] = args->argc;
                         stack -= 3;
+
+                        MmFreeKernelHeap(args);
                     }
                 }
             }

@@ -13,6 +13,7 @@ extern "C"
 #include "ob/ob.h"
 #include "io/dev/op.h"
 #include "ke/core/mutex.h"
+#include "fs.h"
 
 typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_READ_ONLY 0x1 //file/directory is read only
@@ -21,16 +22,6 @@ typedef uint32_t IoVfsNodeFlags;
 #define IO_VFS_FLAG_ATTRIBUTES_DIRTY 0x20
 #define IO_VFS_FLAG_HIDDEN 0x40 /**< Node should be hidden from normal user */
 #define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
-
-
-typedef uint32_t IoVfsFlags;
-
-
-#define IO_VFS_FLAG_SYNCHRONOUS 1 //synchronous read/write, that is do no return until completed
-#define IO_VFS_FLAG_DIRECT 2 //force unbuffered read/write
-#define IO_VFS_FLAG_NO_WAIT 4 //do not wait if file is locked
-#define IO_VFS_FLAG_CREATE 8 //create file if doesn't exist
-
 
 /**
  * @brief VFS node types
@@ -100,7 +91,7 @@ struct IoVfsNode
     struct
     {
         uint32_t readers; /**< Number of readers */
-        uint32_t writers; /**< Number of writers (0 or 1) */
+        uint32_t writers; /**< Number of writers */
         uint32_t links; /**< Number of symbolic links to this node */
     } references;
 
@@ -207,7 +198,7 @@ void IoVfsInsertNode(struct IoVfsNode *node, struct IoVfsNode *parent);
  * @param flags Additional flags
  * @return Status code
  */
-STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoVfsFlags flags);
+STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags);
 
 /**
  * @brief Close file described by the VFS node
@@ -253,7 +244,7 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node);
  * @param *context Callback context
  * @return Status code
 */
-STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
+STATUS IoVfsRead(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
 
 /**
  * @brief Write file
@@ -266,7 +257,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t 
  * @param *context Callback context
  * @return Status code
 */
-STATUS IoVfsWrite(struct IoVfsNode *node, IoVfsFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
+STATUS IoVfsWrite(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_t size, uint64_t offset, IoReadWriteCompletionCallback callback, void *context);
 
 
 /**

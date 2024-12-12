@@ -202,10 +202,14 @@ static bool MmHeapExtendLastBlock(uintptr_t n)
 
 void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
 {
+    if(0 == n)
+        return NULL;
+
 #ifdef DEBUG
     if(n <= sizeof(uintptr_t))
         LOG(SYSLOG_WARNING, "Suspicious heap allocation of %lu bytes", n);
 #endif
+
     struct MmHeapBlock *ret;
 
     n = ALIGN_UP(n, MM_KERNEL_HEAP_ALIGNMENT);

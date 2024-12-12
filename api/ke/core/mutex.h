@@ -13,12 +13,10 @@ extern "C"
 
 struct KeTaskControlBlock;
 
-
 /**
  * @brief Acquire mutex immediately if possible. Do not wait otherwise.
 */
 #define KE_MUTEX_NO_WAIT 0
-
 
 /**
  * @brief Acquire mutex when possible. Wait otherwise (indefinitely).
@@ -88,8 +86,11 @@ typedef struct KeSemaphore
  */
 typedef struct KeRwLock
 {
-    uint32_t readers;
-    uint32_t writers;
+    uint32_t readers; /**< Current number of readers */
+    uint32_t writers; /**< Current number of writers */
+    uint32_t maxReaders; /**< Max number of simultaneous readers */
+    uint32_t maxWriters; /**< Max number of simultaneous writers */
+    bool inclusive; /**< Lock is inclusive - simultaneous readers and writers */
     struct KeTaskControlBlock *queueTop;
     struct KeTaskControlBlock *queueBottom;
     KeSpinlock lock;
@@ -99,7 +100,8 @@ typedef struct KeRwLock
 /**
  * @brief Read-write lock initializer. Use it when creating RW locks.
 */
-#define KeRwLockInitializer {.readers = 0, .writers = 0, .queueTop = NULL, .queueBottom = NULL, .lock = KeSpinlockInitializer}
+#define KeRwLockInitializer {.readers = 0, .writers = 0, .maxReaders = UINT32_MAX, .maxWriters = 1, .inclusive = false, \
+     .queueTop = NULL, .queueBottom = NULL, .lock = KeSpinlockInitializer}
 
 
 /**
@@ -211,10 +213,18 @@ KeSemaphore *KeCreateSemaphore(uint32_t initial, uint32_t max);
 
 /**
  * @brief Allocate and initialize RW lock
+ * @param maxReaders Max number of readers
+ * @param maxWriter Max number of writers
+ * @param inclusive True to allow readers and writers simultaneously
  * @return Create RW lock or NULL on failure
  */
-KeRwLock *KeCreateRwLock(void);
+KeRwLock *KeCreateFancyRwLock(uint32_t maxReaders, uint32_t maxWriters, bool inclusive);
 
+/**
+ * @brief Allocate and initialize standard RW lock
+ * @return Create RW lock or NULL on failure
+ */
+#define KeCreateRwLock() KeCreateFancyRwLock(UINT32_MAX, 1, false)
 
 /**
  * @brief Destroy mutex

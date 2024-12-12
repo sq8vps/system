@@ -12,12 +12,13 @@ EXPORT_API
  */
 enum ObObjectType
 {
-    OB_SPINLOCK = 0x1,
-    OB_MUTEX = 0x2,
-    OB_SEMAPHORE = 0x3,
-    OB_RW_LOCK = 0x4,
-    OB_PCB = 0x5,
-    OB_TCB = 0x6,
+    OB_SPINLOCK = 0x1, /**< Spinlock */
+    OB_MUTEX = 0x2, /**< Mutex */
+    OB_SEMAPHORE = 0x3, /**< Semaphore */
+    OB_RW_LOCK = 0x4, /**< Read/write lock */
+    OB_PCB = 0x5, /**< Process control block */
+    OB_TCB = 0x6, /**< Task/thread control block */
+    OB_FILE = 0x7, /**< File descriptor */
 };
 
 /**

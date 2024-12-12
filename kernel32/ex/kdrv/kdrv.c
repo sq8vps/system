@@ -17,6 +17,7 @@
 #include "hal/mm.h"
 #include "rtl/stdlib.h"
 #include "rtl/string.h"
+#include "io/fs/vfs.h"
 
 uint32_t ExAssignDriverId(void);
 void ExFreeDriverId(uint32_t id);

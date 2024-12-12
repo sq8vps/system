@@ -345,7 +345,25 @@ bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
     HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *current = KeGetCurrentTask();
     PRIO prio = KeAcquireSpinlock(&(rwLock->lock));
-    if(rwLock->writers || (write && rwLock->readers))
+    bool available = false;
+    if(write && (rwLock->writers < rwLock->maxWriters))
+    {
+        if(rwLock->inclusive || (0 == rwLock->readers))
+            available = true;
+        else
+            available = false;
+    }
+    else if(!write && (rwLock->readers < rwLock->maxReaders))
+    {
+        if(rwLock->inclusive || (0 == rwLock->writers))
+            available = true;
+        else
+            available = false;
+    }
+    else
+        available = false;
+
+    if(!available)
     {
         if(KE_MUTEX_NO_WAIT == timeout)
         {
@@ -384,7 +402,7 @@ bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout)
     else
     {
         if(write)
-            rwLock->writers = 1;
+            rwLock->writers++;
         else
             rwLock->readers++;
 
@@ -488,11 +506,16 @@ KeSemaphore *KeCreateSemaphore(uint32_t initial, uint32_t max)
     return m;
 }
 
-KeRwLock *KeCreateRwLock(void)
+KeRwLock *KeCreateFancyRwLock(uint32_t maxReaders, uint32_t maxWriters, bool inclusive)
 {
     KeRwLock *m = MmAllocateKernelHeap(sizeof(*m));
     if(NULL != m)
+    {
         *m = (KeRwLock)KeRwLockInitializer;
+        m->inclusive = inclusive;
+        m->maxReaders = maxReaders;
+        m->maxWriters = maxWriters;
+    }
     return m;
 }
 
