@@ -2,6 +2,7 @@
 #include "rtl/string.h"
 #include "logging.h"
 #include "device.h"
+#include "ps2.h"
 
 static STATUS I8042Dispatch(struct IoRp *rp)
 {
@@ -59,10 +60,17 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
     }
     
     struct I8042Peripheral *info = dev->privateData;
+    info->type = PS2_UNKNOWN;
 
     if(I8042ControllerInfo.usable.first && !I8042ControllerInfo.present.first)
     {
         info->port = false;
+        I8042ControllerInfo.present.first = Ps2ProbePort(info);
+    }
+    else if(I8042ControllerInfo.usable.second && !I8042ControllerInfo.present.second)
+    {
+        info->port = true;
+        I8042ControllerInfo.present.second = Ps2ProbePort(info);
     }
 
     KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);

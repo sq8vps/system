@@ -21,7 +21,7 @@ struct I8042Controller I8042ControllerInfo = {.lock = KeSpinlockInitializer};
 #define I8042_COMMAND_TEST_SECOND_PORT 0xA9
 #define I8042_COMMAND_TEST_CONTROLLER 0xAA
 #define I8042_COMMAND_TEST_FIRST_PORT 0xAB
-#define I8042_COMMAND_SELECT_SECOND_PORT 0xD2
+#define I8042_COMMAND_SELECT_SECOND_PORT 0xD4
 
 #define I8042_PORT_TEST_SUCCESS 0x00
 #define I8042_CONTROLLER_TEST_SUCCESS 0x55
@@ -132,7 +132,6 @@ STATUS I8042InitializeController(void)
 bool I8042WriteToPeripheral(bool device, uint8_t data)
 {
     bool status = false;
-    PRIO prio = KeAcquireSpinlock(&(I8042ControllerInfo.lock));
 
     if(device)
     {
@@ -160,67 +159,26 @@ bool I8042WriteToPeripheral(bool device, uint8_t data)
             }
         }
     }
-    KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
     return status;
 }
 
-bool I8042ReadFromPeripheral(bool device, uint8_t *data, uint16_t count)
+bool I8042ReadFromPeripheral(uint8_t *data, uint16_t count)
 {
     bool status = false;
-    PRIO prio = KeAcquireSpinlock(&(I8042ControllerInfo.lock));
 
-    if(device)
+    for(uint16_t i = 0; i < count; i++)
     {
-        if(likely(I8042ControllerInfo.usable.second))
+        if(I8042_WAIT_FOR_READ_READY(I8042_TIMEOUT))
         {
-            if(I8042_WAIT_FOR_WRITE_READY(I8042_TIMEOUT))
-            {
-                IoPortWriteByte(I8042_COMMAND_PORT, I8042_COMMAND_SELECT_SECOND_PORT);
-                for(uint16_t i = 0; i < count; i++)
-                {
-                    if(I8042_WAIT_FOR_READ_READY(I8042_TIMEOUT))
-                    {
-                        data[i] = IoPortReadByte(I8042_DATA_PORT);
-                        status = true;
-                    }
-                    else
-                    {
-                        status = false;
-                        break;
-                    }
-                }
-            }
+            data[i] = IoPortReadByte(I8042_DATA_PORT);
+            status = true;
+        }
+        else
+        {
+            status = false;
+            break;
         }
     }
-    else
-    {
-        if(likely(I8042ControllerInfo.usable.first))
-        {
-            if(I8042_WAIT_FOR_READ_READY(I8042_TIMEOUT))
-            {
-                for(uint16_t i = 0; i < count; i++)
-                {
-                    if(I8042_WAIT_FOR_READ_READY(I8042_TIMEOUT))
-                    {
-                        data[i] = IoPortReadByte(I8042_DATA_PORT);
-                        status = true;
-                    }
-                    else
-                    {
-                        status = false;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
     return status;
 }
 
-void I8042ProbePort(struct I8042Peripheral *info)
-{
-    uint8_t buffer[3];
-    PRIO prio = KeAcquireSpinlock(&(I8042ControllerInfo.lock));
-    if(I8042ReadFromPeripheral(info->port, buffer, 3))
-}

@@ -28,6 +28,7 @@ struct I8042Controller
 enum Ps2DeviceType
 {
     PS2_UNKNOWN = 0,
+    PS2_KEYBOARD,
     PS2_MOUSE,
 };
 
@@ -52,5 +53,13 @@ STATUS I8042InitializeController(void);
  * @return True on success, false on timeout or if the device is not available
  */
 bool I8042WriteToPeripheral(bool device, uint8_t data);
+
+/**
+ * @brief Read from PS/2 peripheral
+ * @param *data Data buffer
+ * @param count Number of bytes to read
+ * @return True on success, false on timeout
+ */
+bool I8042ReadFromPeripheral(uint8_t *data, uint16_t count);
 
 #endif
