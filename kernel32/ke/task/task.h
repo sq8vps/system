@@ -24,7 +24,7 @@ enum KeTaskState
     TASK_UNINITIALIZED, //task is not initialized and won't be scheduled
     TASK_READY_TO_RUN, //task is ready to run and waiting in a queue
     TASK_RUNNING, //task is currently running
-    TASK_WAITING, //task is waiting for some event
+    TASK_BLOCKED, //task is waiting for some event
     TASK_FINISHED, //task finished and should be removed
 };
 
@@ -43,15 +43,15 @@ enum KeTaskMajorPriority
 
 
 /**
- * @brief Reason for task block (task state = TASK_WAITING)
+ * @brief Reason for task block (task state = TASK_BLOCKED)
 */
 enum KeTaskBlockReason
 {
-    TASK_BLOCK_NOT_BLOCKED = 0,
-    TASK_BLOCK_IO,
-    TASK_BLOCK_EVENT_SLEEP,
-    TASK_BLOCK_MUTEX,
-    TASK_BLOCK_SLEEP,
+    TASK_BLOCK_NOT_BLOCKED = 0, /**< Task is not blocked */
+    TASK_BLOCK_IO, /**< Task is waiting for an I/O operation to complete */
+    TASK_BLOCK_SLEEP, /**< Task is sleeping indefinetely until woken up externally */
+    TASK_BLOCK_MUTEX, /**< Task is waiting for a semaphore-like structure to be available */
+    TASK_BLOCK_TIMED_SLEEP, /**< Task requested sleep for given time and is sleeping */
 };
 
 /**
@@ -85,6 +85,9 @@ struct MmTaskMemory;
 
 /**
  * @brief C-style process arguments structure
+ * 
+ * This structure is internally used by the kernel. When \a KeCreateUserProcess() is called with non-NULL \a *argv or \a *envp provided,
+ * then this structure is allocated, filled with arguments and environmental variables and passed to the newly created process.
  */
 struct KeTaskArguments
 {
@@ -93,6 +96,23 @@ struct KeTaskArguments
     size_t size; /**< Data length */
     char data[]; /**< Consecutive \a argc NULL-terminated arguments and \a envc NULL-terminated environmental variables */
 };
+
+/**
+ * @brief File mapping structure for creating new process
+ * 
+ * An array of these structures must be provided when creating user or kernel mode process to copy and map the calling process' file descriptors
+ * to the new process. The last entry must be set to \a KE_TASK_FILE_MAPPING_END.
+ */
+struct KeTaskFileMapping
+{
+    int mapTo; /**< New process file handle number */
+    int mapFrom; /**< Current process file handle number */
+};
+
+/**
+ * @brief Last entry marker in \a KeTaskFileMapping structure
+ */
+#define KE_TASK_FILE_MAPPING_END {.mapTo = -1, .mapFrom = -1}
 
 /**
  * @brief A structure storing all task data
@@ -126,16 +146,54 @@ struct KeTaskControlBlock
     struct KeProcessControlBlock *parent; /**< Task parent process */
     struct KeTaskControlBlock *sibling; /**< Next thread */
 
-    enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
-    uint8_t minorPriority; //task minor priority
+    /**
+     * @brief Scheduling-related data 
+     */
+    struct
+    {
+        enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
+        uint8_t minorPriority; //task minor priority
+        enum KeTaskState state; //current task state
+        enum KeTaskState requestedState; //next requested state
+        
+        bool notified; //task was notified to wake up
+        
+        struct KeTaskControlBlock *next; //next task in queue
+        struct KeTaskControlBlock *previous; //previous task in queue
+        struct KeSchedulerQueue *queue; //queue this task belongs to
 
-    enum KeTaskState state; //current task state
-    enum KeTaskState requestedState; //next requested state
-    enum KeTaskBlockReason blockReason;
+        /**
+         * @brief Task block parameters
+         */
+        struct 
+        {
+            enum KeTaskBlockReason reason; /**< Reason for task block */
+            struct KeTaskControlBlock *next; /**< Next task in semaphore-like structure queue */
+            struct KeTaskControlBlock *previous; /**< Previous task in semaphore-like structure queue */
+            struct KeMutex *mutex; /**< Mutex this task is waiting for */
+            struct KeSemaphore *semaphore; /**< Semaphore this task is waiting for */
+            struct KeRwLock *rwLock; /**< RW lock this task is waiting for */
+            /**
+             * @brief Data for timed wait
+             */
+            struct
+            {
+                uint64_t until; /**< Terminal timestamp */
+                struct KeTaskControlBlock *next; /**< Next task in timed queue */
+                struct KeTaskControlBlock *previous; /**< Previous task in timed queue */
+            } timeout;
+            bool acquired; /**< Set to true if semaphore-like structure acquistion was successful without timeout */
+            bool write; /**< Requested state for RW lock */
+            uint32_t count; /**< Requested count for semaphore */
+        } block;
+    
+
+        KeSpinlock lock;
+    } scheduling;
+
+
+
     STATUS finishReason; //the reason why the task is finished
-    bool notified; //task was notified to wake up
-
-    uint64_t waitUntil; //terminal time of sleep or timeout when acquiring mutex
 
     // struct
     // {
@@ -144,31 +202,7 @@ struct KeTaskControlBlock
     //     KeMutex *mutex; /**< Mutex to be acquired in order to attach to this task */
     // } attach; /**< Task memory space attachment state */
     
-    struct KeMutex *mutex;
-    struct KeSemaphore *semaphore;
-    struct KeRwLock *rwLock;
-    struct KeTaskControlBlock *nextAux;
-    struct KeTaskControlBlock *previousAux;
-    
-    union
-    {
-        struct
-        {
-            bool write;
-        } file;
 
-        struct
-        {
-            bool write;
-        } rwLock;
-        
-    } blockParameters;
-    
-    struct KeTaskControlBlock *next; //next task in queue
-    struct KeTaskControlBlock *previous; //previous task in queue
-    struct KeSchedulerQueue *queue; //queue this task belongs to
-
-    char name[]; /**< Task name */
 };
 
 struct KeProcessControlBlock
@@ -213,6 +247,7 @@ struct KeProcessControlBlock
     {
         struct KeTaskControlBlock *list; /**< Task (thread) list */
         uint32_t count; /**< Task count */
+        KeSpinlock lock; /**< Task list lock */
     } tasks;
 
     char path[]; /**< Image path */
@@ -230,12 +265,11 @@ struct KeProcessControlBlock* KePreparePCB(PrivilegeLevel pl, const char *path, 
 
 /**
  * @brief Allocate and prepare task control block
- * @param *name Task name - must be provided
  * @param flags Task flags
  * @return Task control block pointer or NULL on memory allocation failure
  * @warning This function is used to allocate and initialize structures and is for internal use only
 */
-struct KeTaskControlBlock* KePrepareTCB(const char *name, uint32_t flags);
+struct KeTaskControlBlock* KePrepareTCB(uint32_t flags);
 
 /**
  * @brief Associate Task Control Block with given Process Control Block, i.e., register task (thread)
@@ -268,35 +302,34 @@ void KeDestroyPCB(struct KeProcessControlBlock *pcb);
 
 /**
  * @brief Create kernel mode process
- * @param *name Process name
  * @param flags Main task flags
  * @param *entry Process entry point, must be within the kernel space
  * @param *entryContext Entry point parameter
+ * @param *fileMap File mapping array or NULL
  * @param **tcb Output Task Control Block
  * @return Status code
  * @attention This function returns immediately
  * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateKernelProcess(const char *name, uint32_t flags, void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
+STATUS KeCreateKernelProcess(uint32_t flags, void (*entry)(void*), void *entryContext, struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create user mode process
- * @param *name Process name
  * @param *path Program image path
  * @param flags Main task flags
  * @param *argv[] Program entry arguments poiner table. Must end with a NULL pointer
  * @param *envp[] Environmental variables pointer table. Must end with a NULL pointer
+ * @param *fileMap File mapping array or NULL
  * @param **tcb Output Task Control Block
  * @return Status code
  * @attention This function returns immediately
  * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskControlBlock **tcb);
+STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create thread within the given kernel mode process
  * @param *pcb Parent PCB
- * @param *name Thread name
  * @param flags Task flags
  * @param *entry Thread entry point
  * @param *entryContext Entry point parameter
@@ -305,12 +338,11 @@ STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, c
  * @attention This function returns immediately. The created thread will be started by the scheduler later.
  * @note This function can be called by any task on behalf of any kernel mode process
 */
-STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
+STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, uint32_t flags,
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create thread within the current user mode process
- * @param *name Thread name
  * @param flags Task flags
  * @param *entry Thread entry point
  * @param *entryContext Entry point parameter
@@ -319,7 +351,7 @@ STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name,
  * @return Status code
  * @attention This function returns immediately. The created thread will be started by the scheduler later.
 */
-STATUS KeCreateUserThread(const char *name, uint32_t flags,
+STATUS KeCreateUserThread(uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
 
 /**

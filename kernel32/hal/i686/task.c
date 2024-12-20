@@ -34,14 +34,14 @@ NORETURN void I686StartUserTask(uint16_t ss, uintptr_t esp, uint16_t cs, void (*
 
 static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack);
 
-STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
+STATUS HalCreateThread(struct KeProcessControlBlock *pcb, uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb)
 {
     STATUS status = OK;
     uint32_t *stack = NULL;
     *tcb = NULL;
 
-    *tcb = KePrepareTCB((NULL != name) ? name : RtlGetFileName(pcb->path), flags);
+    *tcb = KePrepareTCB(flags);
     if(NULL == *tcb)
     {
         status = OUT_OF_RESOURCES;
@@ -120,16 +120,13 @@ HalCreateThreadExit:
     return status;
 }
 
-STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, uint32_t flags,
+STATUS HalCreateProcess(const char *path, PrivilegeLevel pl, uint32_t flags,
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
 {
     STATUS status = OK;
     PADDRESS cr3 = 0;
     *tcb = NULL;
     struct KeProcessControlBlock *pcb = NULL;
-
-    if((NULL == name) && (NULL != path))
-        name = RtlGetFileName(path);
 
     pcb = KePreparePCB(pl, path, 0);
     if(NULL == pcb)
@@ -148,7 +145,7 @@ STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, u
 
     pcb->data.cr3 = cr3;
 
-    status = HalCreateThread(pcb, name, flags, entry, entryContext, NULL, tcb);
+    status = HalCreateThread(pcb, flags, entry, entryContext, NULL, tcb);
     if(OK == status)
     {
         (*tcb)->main = true;

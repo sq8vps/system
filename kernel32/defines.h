@@ -31,6 +31,11 @@
 EXPORT_API
 
 /**
+ * @brief Mark function parameter as unused
+ */
+#define UNUSED(x) (void)(x)
+
+/**
  * @brief Mark symbol (function/variable) as internal/hidden
 */
 #define INTERNAL __attribute__ ((visibility("hidden")))
@@ -143,8 +148,9 @@ typedef enum
     FILE_BAD_MODE,
     FILE_TOO_SMALL,
     IOCTL_UNKNOWN,
+    FILE_SHARING_VIOLATION,
 
-    UNKOWN_OBJECT_TYPE,
+    UNKNOWN_OBJECT_TYPE,
 
     UNKNOWN_ERROR = 0xFFFFFFFF,
 

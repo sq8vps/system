@@ -6,6 +6,7 @@
 #include "defines.h"
 #include "ob/ob.h"
 #include "io/dev/op.h"
+#include "taskfs.h"
 
 EXPORT_API
 
@@ -19,6 +20,9 @@ typedef enum
 {
     IO_FILE_FLAG_DIRECT = 0x1, /**< Force performing operation directly (omitting internal bufferring), fail if not possible */
     IO_FILE_FLAG_NO_WAIT = 0x2, /**< Do not wait if file is not available for operation, but fail immediately */
+    IO_FILE_FLAG_SHARED = 0x4, /**< Allow other processes to use the file regardless of mode and locking policy */
+    IO_FILE_FLAG_FORCE_HANDLE_NUMBER = 0x8, /**< Force the provided handle number to be used, fail if not possible */
+    IO_FILE_NO_LINK_RESOLUTION = 0x10, /**< If the target file is a link, do not resolve it, but rather work on the link itself */
 } IoFileFlags;
 
 
@@ -56,7 +60,7 @@ typedef struct IoFileHandle
     OBJECT;
     struct
     {
-        KeMutex lock; /**< Mutex to ensure thread safety */
+        KeSpinlock lock; /**< \a operation structure lock */
         struct KeTaskControlBlock *task; /**< Task that requested the operation */
         size_t actualSize; /**< Actual read/written count of bytes */
         STATUS status; /**< Operation status */
@@ -67,13 +71,14 @@ typedef struct IoFileHandle
 
     int id; /**< File descriptor */
     struct IoVfsNode *node; /**< VFS node that this file references to */
+    struct IoTaskFsContext taskfs; /**< Task file system context if this file references /taskfs */
     IoFileOpenMode mode; /**< Mode in which the file is open */
     IoFileFlags flags; /**< Additional file flags */
     uint32_t references; /**< Number of references: open + memory mappings */
 } IoFileHandle;
 
 /**
- * @brief Open file for given task
+ * @brief Open file
  * @param *file File path string
  * @param mode File open mode
  * @param flags File flags
@@ -83,7 +88,7 @@ typedef struct IoFileHandle
 STATUS IoOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, int *handleNumber);
 
 /**
- * @brief Close file for given task
+ * @brief Close file
  * @param handleNumber File handle
  * @return Status code
 */
@@ -157,6 +162,44 @@ bool IoCheckIfFileExists(const char *file);
 STATUS IoGetFileSize(const char *file, uint64_t *size);
 
 END_EXPORT_API
+
+/**
+ * @brief Open file for given process
+ * @param *pcb Process Control Block
+ * @param *file File path string, used if \a fileNode is NULL
+ * @param *fileNode VFS node, used instead of \a file if not NULL
+ * @param *taskfs Task file system context
+ * @param mode File open mode
+ * @param flags File flags
+ * @param *handleNumber Output file handle or -1 on failure
+ * @return Status code
+*/
+INTERNAL STATUS IoOpenFileForProcess(struct KeProcessControlBlock *pcb, const char *file, struct IoVfsNode *fileNode, struct IoTaskFsContext *taskfs, IoFileOpenMode mode, IoFileFlags flags, int *handleNumber);
+
+/**
+ * @brief Close file for given process
+ * @param *pcb Process Control Block
+ * @param handleNumber File handle
+ * @return Status code
+*/
+INTERNAL STATUS IoCloseFileForProcess(struct KeProcessControlBlock *pcb, int handleNumber);
+
+/**
+ * @brief Clone file handles to the new process from the calling process
+ * @param *pcb Target Process Control Block
+ * @param targetHandle Handle number in target process
+ * @param sourceHandle Handle number in calling process
+ * @return Status code
+ */
+INTERNAL STATUS IoCloneFileToNewProcess(struct KeProcessControlBlock *pcb, int targetHandle, int sourceHandle);
+
+/**
+ * @brief Get VFS node associated with given file handle from given process
+ * @param *pcb Owner Process Control Block
+ * @param handle File handle number
+ * @return Associated VFS node or NULL on failure
+ */
+INTERNAL struct IoVfsNode* IoGetVfsNodeForFile(struct KeProcessControlBlock *pcb, int handle);
 
 /**
  * @brief Initialize I/O File Manager subsystem

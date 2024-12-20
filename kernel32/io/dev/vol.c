@@ -27,7 +27,8 @@ struct IoAutoMountQueue
 {
     struct IoVolumeNode *node;
     struct IoAutoMountQueue *next;
-} static *IoAutoMountQueueHead = NULL;
+};
+static struct IoAutoMountQueue *IoAutoMountQueueHead = NULL;
 static KeSpinlock IoAutoMountQueueLock = KeSpinlockInitializer;
 static struct KeTaskControlBlock *IoAutoMountThread = NULL;
 
@@ -39,7 +40,7 @@ STATUS IoInitializeVolumeManager(void)
     STATUS status = OK;
     struct ExDbHandle *h = NULL;
     
-    KeAcquireSemaphore(&(IoVolumeState.mainFsMountSem));
+    KeAcquireSemaphore(&(IoVolumeState.mainFsMountSem), 1);
     
     status = ExDbOpen(INITIAL_CONFIG_DATABASE, &h);
     if(OK != status)
@@ -63,7 +64,7 @@ STATUS IoInitializeVolumeManager(void)
 
     ExDbClose(h);
 
-    return ExCreateKernelWorker("Drive auto mount", IoAutoMountWorker, NULL, &IoAutoMountThread);
+    return ExCreateKernelWorker(IoAutoMountWorker, NULL, &IoAutoMountThread);
 }
 
 STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
@@ -136,7 +137,8 @@ STATUS IoMountVolume(const char *devPath, const char *mountPoint)
     STATUS status = OK;
 
     //get VFS node associated with disk device
-    struct IoVfsNode *devNode = IoVfsGetNode(devPath);
+    struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
+    struct IoVfsNode *devNode = IoVfsGetNode(devPath, &taskfs);
     if(NULL == devNode)
         return FILE_NOT_FOUND;
 
@@ -169,11 +171,9 @@ STATUS IoRegisterVolume(struct IoDeviceObject *dev)
         return VOLUME_ALREADY_EXISTS;
     }
 
-    struct IoVolumeNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
+    struct IoVolumeNode *node = ObCreateKernelObject(OB_VOLUME);
     if(NULL == node)
         return OUT_OF_RESOURCES;
-    
-    ObInitializeObjectHeader(node);
     
     node->pdo = dev;
     dev->associatedVolume = node;
@@ -267,8 +267,9 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
 }
 
 
-static void IoAutoMountWorker(void *unused)
+static void IoAutoMountWorker(void *context)
 {
+    UNUSED(context);
     STATUS status = OK;
     while(1)
     {
@@ -295,7 +296,7 @@ static void IoAutoMountWorker(void *unused)
                             if(0 == RtlStrcmp(mountPoint, MAIN_MOUNT_POINT))
                             {
                                 LOG(SYSLOG_INFO, "Mounted main file system to %s\n", MAIN_MOUNT_POINT);
-                                KeReleaseSemaphore(&(IoVolumeState.mainFsMountSem));
+                                KeReleaseSemaphore(&(IoVolumeState.mainFsMountSem), 1);
                                 
                                 status = ExDbOpen(CONFIG_DATABASE, &h);
                                 if(OK == status)
@@ -336,7 +337,7 @@ static void IoAutoMountWorker(void *unused)
             ExDbClose(h);
         }
 
-        KeEventSleep();
+        KeWaitForWakeUp();
     }
 }
 
@@ -367,5 +368,5 @@ static STATUS IoNotifyAutoMount(struct IoVolumeNode *node)
 
 bool IoWaitForMainFileSystemMount(uint64_t timeout)
 {
-    return KeAcquireSemaphoreWithTimeout(&(IoVolumeState.mainFsMountSem), timeout);
+    return KeAcquireSemaphoreEx(&(IoVolumeState.mainFsMountSem), 1, timeout);
 }

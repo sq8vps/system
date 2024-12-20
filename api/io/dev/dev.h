@@ -46,6 +46,7 @@ enum IoDeviceFlags
     IO_DEVICE_FLAG_ENUMERATION_CAPABLE = 0x10, /**< Device is capable of enumerating its children devices */
     IO_DEVICE_FLAG_NO_AUTOMOUNT = 0x20, /**< Filesystem device must not be automatically mounted */
     IO_DEVICE_FLAG_STANDALONE = 0x40, /**< Device is standalone and has no parent or enumerator */
+    IO_DEVICE_FLAG_HIDDEN = 0x80, /**< Device is hidden */
 };
 
 enum IoDeviceType
@@ -101,7 +102,7 @@ struct IoDeviceNode
 
 struct IoDeviceObject
 {
-    struct ObObjectHeader objectHeader;
+    OBJECT;
     enum IoDeviceType type; /**< Device type */
     void *privateData; /**< Private device data pointer */
     enum IoDeviceFlags flags; /**< Device flags */

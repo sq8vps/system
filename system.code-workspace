@@ -124,7 +124,9 @@
 			"ostream": "c",
 			"streambuf": "c",
 			"tuple": "c",
-			"typeinfo": "c"
+			"typeinfo": "c",
+			"slab.h": "c",
+			"taskfs.h": "c"
 		}
 	}
 }

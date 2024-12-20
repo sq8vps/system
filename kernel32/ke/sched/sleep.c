@@ -10,8 +10,8 @@ static KeSpinlock listLock = KeSpinlockInitializer;
 
 STATUS KePutTaskToSleep(struct KeTaskControlBlock *tcb, uint64_t time)
 {
-    KeBlockTask(tcb, TASK_BLOCK_SLEEP);
-    tcb->waitUntil = HalGetTimestamp() + time;
+    KeBlockTask(tcb, TASK_BLOCK_TIMED_SLEEP);
+    tcb->scheduling.block.timeout.until = HalGetTimestamp() + time;
 
     PRIO prio = KeAcquireSpinlock(&listLock);
     if(NULL == list)
@@ -20,16 +20,16 @@ STATUS KePutTaskToSleep(struct KeTaskControlBlock *tcb, uint64_t time)
     {
         struct KeTaskControlBlock *s = list;
         //keep list sorted: the earliest deadline is first
-        while(NULL != s->next)
+        while(NULL != s->scheduling.next)
         {
-            if((s->waitUntil <= tcb->waitUntil) && (s->next->waitUntil > tcb->waitUntil))
+            if((s->scheduling.block.timeout.until <= tcb->scheduling.block.timeout.until) && (s->scheduling.next->scheduling.block.timeout.until > tcb->scheduling.block.timeout.until))
             {
-                tcb->next = s->next;
+                tcb->scheduling.next = s->scheduling.next;
                 break;
             }
-            s = s->next;
+            s = s->scheduling.next;
         }
-        s->next = tcb;
+        s->scheduling.next = tcb;
     }
     KeReleaseSpinlock(&listLock, prio);
     if(tcb == KeGetCurrentTask())
@@ -57,11 +57,11 @@ STATUS KeRefreshSleepingTasks(void)
     while(NULL != list)
     {
         s = list;
-        if(currentTimestamp >= s->waitUntil)
+        if(currentTimestamp >= s->scheduling.block.timeout.until)
         {
-            s->waitUntil = 0;
-            list = s->next;
-            s->next = NULL;
+            s->scheduling.block.timeout.until = 0;
+            list = s->scheduling.next;
+            s->scheduling.next = NULL;
             KeUnblockTask(s);
         }
         else

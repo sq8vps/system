@@ -10,32 +10,14 @@
 #include "ke/task/task.h"
 #include "dev.h"
 
-#define IO_RP_CACHE_CHUNK_PER_SLAB 64
-static void *IoRpSlabCache = NULL;
-
-STATUS IoInitializeRpCache(void)
-{
-    IoRpSlabCache = MmSlabCreate(sizeof(struct IoRp), IO_RP_CACHE_CHUNK_PER_SLAB);
-    if(NULL == IoRpSlabCache)
-        return OUT_OF_RESOURCES;
-    
-    return OK;
-}
-
 struct IoRp *IoCreateRp(void)
 {
-    struct IoRp *rp = MmSlabAllocate(IoRpSlabCache);
-    if(NULL == rp)
-        return NULL;
-    
-    RtlMemset(rp, 0, sizeof(*rp));
-    ObInitializeObjectHeader(rp);
-    return rp;
+    return ObCreateKernelObject(OB_RP);
 }
 
 void IoFreeRp(struct IoRp *rp)
 {
-    MmSlabFree(IoRpSlabCache, rp);
+    ObDestroyObject(rp);
 }
 
 STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
@@ -213,12 +195,11 @@ struct IoRp *IoCloneRp(struct IoRp *rp)
     if(NULL == rp)
         return rp;
 
-    struct IoRp *n = IoCreateRp();
+    struct IoRp *n = ObCreateKernelObject(OB_RP);
     if(NULL == n)
         return NULL;
     
     RtlMemcpy(n, rp, sizeof(*rp));
-    ObInitializeObjectHeader(n);
     n->queue = NULL;
     n->next = NULL;
     n->previous = NULL;

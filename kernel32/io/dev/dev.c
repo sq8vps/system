@@ -30,11 +30,10 @@ STATUS IoCreateDevice(
     struct IoDeviceObject **device)
 {
     ASSERT(driver);
-    *device = MmAllocateKernelHeapZeroed(sizeof(**device));
+    *device = ObCreateKernelObject(OB_DEVICE);
     if(NULL == *device)
         return OUT_OF_RESOURCES;
     
-    ObInitializeObjectHeader(*device);
     
     (*device)->driverObject = driver;
     (*device)->flags = flags;
@@ -52,7 +51,7 @@ STATUS IoDestroyDevice(struct IoDeviceObject *device)
     if(device->attachedTo || device->attachedDevice || device->node.deviceNode || device->node.volumeNode || (device->flags & IO_DEVICE_FLAG_PERSISTENT))
         return OPERATION_NOT_ALLOWED;
     
-    MmFreeKernelHeap(device);
+    ObDestroyObject(device);
     return OK;
 }
 
@@ -75,11 +74,10 @@ STATUS IoRegisterDevice(struct IoDeviceObject *bdo, struct IoDeviceObject *enume
     ASSERT(bdo && enumerator);
 
     //create device node
-    struct IoDeviceNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
+    struct IoDeviceNode *node = ObCreateKernelObject(OB_DEVICE_NODE);
     if(NULL == node)
         return OUT_OF_RESOURCES;
-    
-    ObInitializeObjectHeader(node);
+
     
     node->standalone = false;
     node->next = node;
@@ -117,11 +115,9 @@ STATUS IoRegisterStandaloneDevice(struct IoDeviceObject *dev)
         return BAD_PARAMETER;
 
     //create device node
-    struct IoDeviceNode *node = MmAllocateKernelHeapZeroed(sizeof(*node));
+    struct IoDeviceNode *node = ObCreateKernelObject(OB_DEVICE_NODE);
     if(NULL == node)
         return OUT_OF_RESOURCES;
-    
-    ObInitializeObjectHeader(node);
     
     node->standalone = true;
     node->next = node;
@@ -140,7 +136,7 @@ STATUS IoRegisterStandaloneDevice(struct IoDeviceObject *dev)
 
 STATUS IoDestroyDeviceNode(struct IoDeviceNode *node)
 {
-    MmFreeKernelHeap(node);
+    ObDestroyObject(node);
     return OK;
 }
 
@@ -199,14 +195,10 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     ASSERT(rootDeviceId);
     STATUS ret = OK;
 
-    ret = IoInitializeRpCache();
-    if(OK != ret)
-        return ret;
-
     struct ExDriverObjectList *drivers = NULL;
     uint16_t driverCount = 0;
     
-    ret = ExCreateKernelWorker("Device enumeration", IoDeviceEnumeratorWorker, NULL, &IoEnumerationThread);
+    ret = ExCreateKernelWorker(IoDeviceEnumeratorWorker, NULL, &IoEnumerationThread);
     if(OK != ret)
         return ret;
 
@@ -471,8 +463,9 @@ STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev)
     return OK;
 }
 
-static void IoDeviceEnumeratorWorker(void *unused)
+static void IoDeviceEnumeratorWorker(void *context)
 {
+    UNUSED(context);
     STATUS status;
     while(1)
     {
@@ -514,7 +507,7 @@ static void IoDeviceEnumeratorWorker(void *unused)
         }
         KeReleaseSpinlock(&IoEnumerationQueueLock, prio); 
         
-        KeEventSleep();
+        KeWaitForWakeUp();
     }
 }
 

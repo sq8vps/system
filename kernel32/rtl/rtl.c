@@ -308,3 +308,35 @@ uint32_t RtlOctalToU32(const char *octal)
     }
     return result;
 }
+
+int RtlAtoi(const char *str)
+{
+    int number = 0;
+    bool sign = true;
+
+    while('\0' != *str)
+    {
+        if(!RtlIsspace(*str))
+            break;
+        ++str;
+    }
+
+    if('\0' == *str)
+        return 0;
+    else if('-' == *str)
+    {
+        sign = false;
+        ++str;
+    }
+
+    while('\0' != *str)
+    {
+        if(!RtlIsdigit(*str))
+            break;
+        number *= 10;
+        number += (*str - '0');
+        ++str;
+    }
+
+    return sign ? number : -number;
+}

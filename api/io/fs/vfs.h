@@ -14,14 +14,17 @@ extern "C"
 #include "io/dev/op.h"
 #include "ke/core/mutex.h"
 #include "fs.h"
+#include "taskfs.h"
 
-typedef uint32_t IoVfsNodeFlags;
-#define IO_VFS_FLAG_READ_ONLY 0x1 //file/directory is read only
-#define IO_VFS_FLAG_NO_CACHE 0x4 //do not cache this entry
-#define IO_VFS_FLAG_DIRTY 0x10 //data for this entry changed in cache, must be send to disk first
-#define IO_VFS_FLAG_ATTRIBUTES_DIRTY 0x20
-#define IO_VFS_FLAG_HIDDEN 0x40 /**< Node should be hidden from normal user */
-#define IO_VFS_FLAG_PERSISTENT 0x80000000 //persisent entry (unremovable)
+enum IoVfsFlags
+{
+    IO_VFS_FLAG_READ_ONLY = 0x1, /**< File is read only */
+    IO_VFS_FLAG_HIDDEN = 0x2, /**< Node is hidden from user */
+    IO_VFS_FLAG_PERSISTENT = 0x4, /**< Node is unremovable */
+    IO_VFS_FLAG_NO_CACHE = 0x8, /**< Do not cache this file */
+    IO_VFS_FLAG_DIRTY = 0x10, /**< File has changed, must be written to disk */
+    IO_VFS_FLAG_ATTRIBUTES_DIRTY = 0x20, /**< File attributes has changed, must be written to disk */
+};
 
 /**
  * @brief VFS node types
@@ -74,10 +77,10 @@ union IoVfsReference
 */
 struct IoVfsNode
 {
-    struct ObObjectHeader objectHeader;
+    OBJECT;
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
-    IoVfsNodeFlags flags; /**< Node flags */
+    enum IoVfsFlags flags; /**< Node flags */
     time_t lastUse; /**< Last node use timestamp */
     time_t creationTime; /**< File creation timestamp */
     time_t lastModification; /**< File modification timestamp */
@@ -87,13 +90,14 @@ struct IoVfsNode
         uint32_t open : 1; /**< File is open */
     } status;
     
-
     struct
     {
         uint32_t readers; /**< Number of readers */
         uint32_t writers; /**< Number of writers */
         uint32_t links; /**< Number of symbolic links to this node */
     } references;
+
+    struct IoTaskFsContext taskfs; /**< Special data for /taskfs filesystem */
 
     enum IoVfsFsType fsType; /**< VFS filesystem type this node belongs to */
     struct IoDeviceObject *device; /**< Associated device */
@@ -125,20 +129,22 @@ STATUS IoVfsInit(void);
  * @brief Get VFS node for given path, optionally excluding the last path element
  * @param *path Path string
  * @param excludeLastElement True to exclude last path element
+ * @param *taskfs Task file system context
  * @return VFS node or NULL if not found
  * @attention This function resolves links along the path.
  * If the final file is a link, it is not resolved.
 */
-struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement);
+struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement, struct IoTaskFsContext *taskfs);
 
 /**
  * @brief Get VFS node for given path
- * @param *path Path string
+ * @param path Path string
+ * @param taskfs Task filesystem context
  * @return VFS node or NULL if not found
  * @attention This function resolves links along the path.
  * If the final file is a link, it is not resolved.
 */
-#define IoVfsGetNode(path) IoVfsGetNodeEx(path, false)
+#define IoVfsGetNode(path, taskfs) IoVfsGetNodeEx(path, false, taskfs)
 
 /**
  * @brief Check if VFS node with given path exists
@@ -208,14 +214,23 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags);
 STATUS IoVfsClose(struct IoVfsNode *node);
 
 /**
+ * @brief Resolve link
+ * @param *node Link node
+ * @param *taskfs Task file system context
+ * @return Resolved link node - the target file that this link points to
+ * @note If \a *node is not a link, then it is returned immediately
+ */
+struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node, struct IoTaskFsContext *taskfs);
+
+/**
  * @brief Create symbolic link
- * @param *path Link path with file name
- * @param *linkDestination Link destionation path
- * @param flags Entry flags
+ * @param *path Link path
+ * @param *destination Link destination path
+ * @param flags File flags
  * @return Status code
  * @warning Link destination must exist
 */
-STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags);
+STATUS IoVfsCreateLink(const char *path, const char *destination, IoFileFlags flags);
 
 /**
  * @brief Remove symbolic link

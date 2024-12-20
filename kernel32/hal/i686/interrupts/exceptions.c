@@ -11,24 +11,26 @@
 
 IT_HANDLER static void ItDebugHandler(struct ItFrame *f)
 {
-    
+    UNUSED(f);
 }
 
 IT_HANDLER static void ItBreakpointHandler(struct ItFrame *f)
 {
-
+    UNUSED(f);
 }
 
 //FPU faults, easily recoverable
 
 IT_HANDLER static void ItSimdFpuHandler(struct ItFrame *f)
 {
+    UNUSED(f);
     //TODO: implement SIMD handling
     while(1);
 }
 
 IT_HANDLER static void ItFpuHandler(struct ItFrame *f)
 {
+    UNUSED(f);
     FpuHandleException();
 }
 
@@ -36,6 +38,7 @@ IT_HANDLER static void ItFpuHandler(struct ItFrame *f)
 
 IT_HANDLER static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
 {
+    UNUSED(f);
     uintptr_t cr2;
     //obtain failing address from CR2 register
     ASM("mov %0,cr2" : "=r" (cr2) : );
@@ -90,6 +93,7 @@ IT_HANDLER static void ItOverflowHandler(struct ItFrame *f)
 
 IT_HANDLER static void ItNmiHandler(struct ItFrame *f)
 {
+    UNUSED(f);
     KePanicEx(KERNEL_MODE_FAULT, NON_MASKABLE_INTERRUPT, 0, 0, 0);
 }
 

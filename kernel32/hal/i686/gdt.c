@@ -155,7 +155,7 @@ void GdtLoadTss(uint16_t cpu)
 __attribute__((fastcall))
 void GdtUpdateTss(uintptr_t esp0)
 {
-    uint16_t register t;
+    register uint16_t t;
     //get GDT descriptor with TSS from task register
     ASM("str %0" : "=r" (t) :);
     //convert GDT descriptor offset to CPU number and update kernel stack pointer

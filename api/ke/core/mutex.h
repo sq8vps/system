@@ -30,7 +30,7 @@ struct KeTaskControlBlock;
 */
 typedef struct KeSpinlock
 {
-    volatile uint32_t lock;
+    volatile uint32_t lock; /**< Lock state */
 } KeSpinlock;
 
 
@@ -39,25 +39,24 @@ typedef struct KeSpinlock
 */
 #define KeSpinlockInitializer {.lock = 0}
 
-
 /**
  * @brief A mutex (yielding) structure
  * @attention Initialize with KeMutexInitializer
 */
 typedef struct KeMutex
 {
-    struct KeTaskControlBlock *queueTop;
-    struct KeTaskControlBlock *queueBottom;
-    struct KeTaskControlBlock *owner;
-    KeSpinlock spinlock;
-    uint32_t current;
+    KeSpinlock lock; /**< Mutex structure lock */
+    struct KeTaskControlBlock *head; /**< Queue head */
+    struct KeTaskControlBlock *tail; /**< Queue tail */
+    struct KeTaskControlBlock *owner; /**< Current mutex owner */
+    uint32_t current; /**< Mutex lock state */
 } KeMutex;
 
 
 /**
  * @brief Mutex initializer. Use it when creating mutices.
 */
-#define KeMutexInitializer {.current = 0, .queueTop = NULL, .queueBottom = NULL, .owner = NULL, .spinlock = KeSpinlockInitializer}
+#define KeMutexInitializer {.current = 0, .head = NULL, .tail = NULL, .owner = NULL, .lock = KeSpinlockInitializer}
 
 
 /**
@@ -66,18 +65,19 @@ typedef struct KeMutex
 */
 typedef struct KeSemaphore
 {
-    struct KeTaskControlBlock *queueTop;
-    struct KeTaskControlBlock *queueBottom;
-    KeSpinlock spinlock;
-    uint32_t current;
-    uint32_t max;
+    KeSpinlock lock; /**< Semaphore structure lock */
+    struct KeTaskControlBlock *head; /**< Queue head */
+    struct KeTaskControlBlock *tail; /**< Queue tail */
+    uint32_t current; /**< Current count */
+    uint32_t max; /**< Max count */
+    uint32_t needed; /**< Units requested by the next task in the queue */
 } KeSemaphore;
 
 
 /**
  * @brief Semaphore initializer. Use it when creating semaphores.
 */
-#define KeSemaphoreInitializer {.current = 0, .max = 1, .queueTop = NULL, .queueBottom = NULL, .spinlock = KeSpinlockInitializer}
+#define KeSemaphoreInitializer {.current = 0, .max = 1, .head = NULL, .tail = NULL, .lock = KeSpinlockInitializer}
 
 
 /**
@@ -86,22 +86,19 @@ typedef struct KeSemaphore
  */
 typedef struct KeRwLock
 {
+    KeSpinlock lock; /**< RW structure lock */
+    struct KeTaskControlBlock *head; /**< Queue head */
+    struct KeTaskControlBlock *tail; /**< Queue tail */
     uint32_t readers; /**< Current number of readers */
     uint32_t writers; /**< Current number of writers */
-    uint32_t maxReaders; /**< Max number of simultaneous readers */
-    uint32_t maxWriters; /**< Max number of simultaneous writers */
-    bool inclusive; /**< Lock is inclusive - simultaneous readers and writers */
-    struct KeTaskControlBlock *queueTop;
-    struct KeTaskControlBlock *queueBottom;
-    KeSpinlock lock;
+    bool write; /**< Mode requested by the next task in the queue */
 } KeRwLock;
 
 
 /**
  * @brief Read-write lock initializer. Use it when creating RW locks.
 */
-#define KeRwLockInitializer {.readers = 0, .writers = 0, .maxReaders = UINT32_MAX, .maxWriters = 1, .inclusive = false, \
-     .queueTop = NULL, .queueBottom = NULL, .lock = KeSpinlockInitializer}
+#define KeRwLockInitializer {.readers = 0, .writers = 0, .head = NULL, .tail = NULL, .lock = KeSpinlockInitializer}
 
 
 /**
@@ -117,21 +114,21 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock);
 */
 void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority);
 
-/**
- * @brief Acquire mutex (yielding)
- * @param *mutex Mutex structure
-*/
-void KeAcquireMutex(KeMutex *mutex);
-
 
 /**
- * @brief Acquire mutex (yielding), but with given timeout
+ * @brief Acquire mutex (yielding) with given timeout
  * @param *mutex Mutex structure
  * @param timeout Timeout in ns or KE_MUTEX_NO_WAIT or KE_MUTEX_NO_TIMEOUT
  * @return True on successful acquistion, false on timeout
 */
-bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout);
+bool KeAcquireMutexEx(KeMutex *mutex, uint64_t timeout);
 
+/**
+ * @brief Acquire mutex (yielding)
+ * @param mutex Mutex structure
+ * @return Always true
+*/
+#define KeAcquireMutex(mutex) KeAcquireMutexEx(mutex, KE_MUTEX_NO_TIMEOUT)
 
 /**
  * @brief Release mutex
@@ -139,54 +136,55 @@ bool KeAcquireMutexWithTimeout(KeMutex *mutex, uint64_t timeout);
 */
 void KeReleaseMutex(KeMutex *mutex);
 
+/**
+ * @brief Acquire semaphore (yielding) with given timeout
+ * @param *sem Semaphore structure
+ * @param units Number of units to acquire
+ * @param timeout Timeout in ns or KE_MUTEX_NO_WAIT or KE_MUTEX_NO_TIMEOUT
+ * @return True on successful acquistion, false on timeout
+ * @note Returns false immediately if number of units exceeds semaphore's maximum
+*/
+bool KeAcquireSemaphoreEx(KeSemaphore *sem, uint32_t units, uint64_t timeout);
+
 
 /**
  * @brief Acquire semaphore (yielding)
- * @param *sem Semaphore structure
- * @note Semaphore max value must be set
+ * @param sem Semaphore structure
+ * @param units Number of units to acquire
+ * @return True if acquistion successful, false if number of units exceeds semaphore's maximum
 */
-void KeAcquireSemaphore(KeSemaphore *sem);
-
-
-/**
- * @brief Acquire semaphore (yielding), but with given timeout
- * @param *sem Semaphore structure
- * @param timeout Timeout in ns or KE_MUTEX_NO_WAIT or KE_MUTEX_NO_TIMEOUT
- * @return True on successful acquistion, false on timeout
-*/
-bool KeAcquireSemaphoreWithTimeout(KeSemaphore *sem, uint64_t timeout);
+#define KeAcquireSemaphore(sem, units) KeAcquireSemaphoreEx(sem, units, KE_MUTEX_NO_TIMEOUT)
 
 
 /**
  * @brief Release semaphore
  * @param *sem Semaphore structure
+ * @param units Number of units to release
 */
-void KeReleaseSemaphore(KeSemaphore *sem);
+void KeReleaseSemaphore(KeSemaphore *sem, uint32_t units);
 
 
 /**
- * @brief Acquire read-write (yielding), but with given timeout
+ * @brief Acquire read-write (yielding) with given timeout
  * @param *rwLock RW lock structure
  * @param timeout Timeout in ns or KE_MUTEX_NO_WAIT or KE_MUTEX_NO_TIMEOUT
  * @return True on successful acquistion, false on timeout
 */
-bool KeAcquireRwLockWithTimeout(KeRwLock *rwLock, bool write, uint64_t timeout);
-
+bool KeAcquireRwLockEx(KeRwLock *rwLock, bool write, uint64_t timeout);
 
 /**
  * @brief Acquire read-write lock (yielding)
- * @param *rwLock RW lock structure
+ * @param rwLock RW lock structure
  * @param write True if writing, false if reading
+ * @return Always true
 */
-void KeAcquireRwLock(KeRwLock *rwLock, bool write);
-
+#define KeAcquireRwLock(rwLock, write) KeAcquireRwLockEx(rwLock, write, KE_MUTEX_NO_TIMEOUT)
 
 /**
  * @brief Release read-write lock
  * @param *rwLock RW lock structure
 */
 void KeReleaseRwLock(KeRwLock *rwLock);
-
 
 /**
  * @brief Allocate and initialize mutex
@@ -213,18 +211,9 @@ KeSemaphore *KeCreateSemaphore(uint32_t initial, uint32_t max);
 
 /**
  * @brief Allocate and initialize RW lock
- * @param maxReaders Max number of readers
- * @param maxWriter Max number of writers
- * @param inclusive True to allow readers and writers simultaneously
- * @return Create RW lock or NULL on failure
+ * @return Created RW lock or NULL on failure
  */
-KeRwLock *KeCreateFancyRwLock(uint32_t maxReaders, uint32_t maxWriters, bool inclusive);
-
-/**
- * @brief Allocate and initialize standard RW lock
- * @return Create RW lock or NULL on failure
- */
-#define KeCreateRwLock() KeCreateFancyRwLock(UINT32_MAX, 1, false)
+KeRwLock *KeCreateRwLock(void);
 
 /**
  * @brief Destroy mutex

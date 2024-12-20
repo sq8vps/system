@@ -44,7 +44,8 @@ struct HalInterruptEntry
     uint8_t consumers;
 
     struct HalInterruptEntry *next;
-} static *HalInterruptList = NULL;
+} ;
+static struct HalInterruptEntry *HalInterruptList = NULL;
 static KeSpinlock HalInterruptListLock = KeSpinlockInitializer;
 
 

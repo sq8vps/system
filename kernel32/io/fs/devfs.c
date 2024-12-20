@@ -11,7 +11,7 @@ static struct
 }
 IoDevfsState = {.root = NULL};
 
-STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name)
+STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, enum IoVfsFlags flags, char *name)
 {
     ASSERT(dev);
     ASSERT(IoDevfsState.root);

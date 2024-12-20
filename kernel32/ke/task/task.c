@@ -14,11 +14,9 @@ void KeFreeTid(KE_TASK_ID tid);
 
 struct KeProcessControlBlock* KePreparePCB(PrivilegeLevel pl, const char *path, uint32_t flags)
 {
-    struct KeProcessControlBlock *pcb = MmAllocateKernelHeapZeroed(sizeof(*pcb) + ((NULL != path) ? (RtlStrlen(path) + 1) : 0));
+    struct KeProcessControlBlock *pcb = ObCreateKernelObjectEx(OB_PCB, ((NULL != path) ? (RtlStrlen(path) + 1) : 0));
     if(NULL == pcb)
         return NULL;
-
-    ObInitializeObjectHeader(pcb);
 
     pcb->pl = pl;
     pcb->flags = flags;
@@ -29,38 +27,31 @@ struct KeProcessControlBlock* KePreparePCB(PrivilegeLevel pl, const char *path, 
     return pcb;
 }
 
-struct KeTaskControlBlock* KePrepareTCB(const char *name, uint32_t flags)
+struct KeTaskControlBlock* KePrepareTCB(uint32_t flags)
 {
-    if(NULL == name)
-        return NULL;
-    
-    struct KeTaskControlBlock *tcb = MmAllocateKernelHeapZeroed(sizeof(*tcb) + RtlStrlen(name) + 1);
+    struct KeTaskControlBlock *tcb = ObCreateObject(OB_TCB);
     if(NULL == tcb)
         return NULL;
 
-    ObInitializeObjectHeader(tcb);
-
     tcb->flags = flags;
     tcb->affinity = HAL_CPU_ALL;
-    tcb->state = TASK_UNINITIALIZED;
-    tcb->majorPriority = TCB_DEFAULT_MAJOR_PRIORITY;
-    tcb->minorPriority = TCB_DEFAULT_MINOR_PRIORITY;
+    tcb->scheduling.state = TASK_UNINITIALIZED;
+    tcb->scheduling.majorPriority = TCB_DEFAULT_MAJOR_PRIORITY;
+    tcb->scheduling.minorPriority = TCB_DEFAULT_MINOR_PRIORITY;
 
     tcb->tid = KeAssignTid();
     if(0 == tcb->tid)
     {
-        MmFreeKernelHeap(tcb);
+        ObDestroyObject(tcb);
         return NULL;
     }
-
-    RtlStrcpy(tcb->name, name);
 
     return tcb;
 }
 
 STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlock *tcb)
 {
-    PRIO prio = ObLockObject(pcb);
+    PRIO prio = KeAcquireSpinlock(&(pcb->tasks.lock));
     if(0 == pcb->tasks.count)
     {
         pcb->tasks.list = tcb;
@@ -75,13 +66,14 @@ STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlo
     }
     else
     {
-        ObUnlockObject(pcb, prio);
+        KeReleaseSpinlock(&(pcb->tasks.lock), prio);
         return KERNEL_THREAD_LIMIT_REACHED;
     }
 
     tcb->parent = pcb;
+    ObChangeObjectOwner(tcb, pcb);
 
-    ObUnlockObject(pcb, prio);
+    KeReleaseSpinlock(&(pcb->tasks.lock), prio);
 
     return OK;
 }
@@ -91,7 +83,7 @@ void KeDissociateTCB(struct KeTaskControlBlock *tcb)
     if(NULL == tcb->parent)
         return;
 
-    PRIO prio = ObLockObject(tcb->parent);
+    PRIO prio = KeAcquireSpinlock(&(tcb->parent->tasks.lock));
     
     struct KeTaskControlBlock *t = tcb->parent->tasks.list;
     if(tcb == t)
@@ -108,7 +100,7 @@ void KeDissociateTCB(struct KeTaskControlBlock *tcb)
 
     tcb->parent->tasks.count--;
 
-    ObUnlockObject(tcb->parent, prio);
+    KeReleaseSpinlock(&(tcb->parent->tasks.lock), prio);
     tcb->parent = NULL;
 }
 
@@ -118,39 +110,89 @@ void KeDestroyTCB(struct KeTaskControlBlock *tcb)
         return;
     KeDissociateTCB(tcb);
     KeFreeTid(tcb->tid);
-    MmFreeKernelHeap(tcb);
+    ObDestroyObject(tcb);
 }
 
 void KeDestroyPCB(struct KeProcessControlBlock *pcb)
 {
-    MmFreeKernelHeap(pcb);
+    ObDestroyObject(pcb);
 }
 
-STATUS KeCreateKernelProcess(const char *name, uint32_t flags, void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
-{  
-    return HalCreateProcess(name, NULL, PL_KERNEL, flags, entry, entryContext, tcb);
-}
-
-STATUS KeCreateUserProcess(const char *name, const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskControlBlock **tcb)
+static STATUS KeCloneFileHandles(struct KeProcessControlBlock *pcb, const struct KeTaskFileMapping *map)
 {
+    STATUS status = OK;
+    if(NULL == map)
+        return OK;
+    
+    const struct KeTaskFileMapping *m = map;
+    while((m->mapFrom >= 0) && (m->mapTo >= 0))
+    {
+        status = IoCloneFileToNewProcess(pcb, m->mapTo, m->mapFrom);
+        if(OK != status)
+        {
+            const struct KeTaskFileMapping *last = m;
+            m = map;
+            while(m < last)
+            {
+                IoCloseFileForProcess(pcb, m->mapTo);
+                ++m;
+            }
+            return status;
+        }
+        ++m;
+    }
+    return OK;
+}
+
+STATUS KeCreateKernelProcess(uint32_t flags, void (*entry)(void*), void *entryContext, struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb)
+{  
+    STATUS status = OK;
+    
+    status = HalCreateProcess(NULL, PL_KERNEL, flags, entry, entryContext, tcb);
+    if(OK != status)
+        return status;
+    
+    status = KeCloneFileHandles((*tcb)->parent, fileMap);
+    if(OK != status)
+    {
+        //TODO: destroy TCB and PCB
+        return status;
+    }
+    return OK;
+}
+
+STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb)
+{
+    STATUS status = OK;
     if((NULL == path) || ('\0' == path[0]))
         return FILE_NOT_FOUND;
     struct KeTaskArguments *args = KeBuildTaskArguments(argv, envp);
     if(NULL == args)
         return OUT_OF_RESOURCES;
-    return HalCreateProcess(name, path, PL_USER, flags, NULL, args, tcb);
+
+    status = HalCreateProcess(path, PL_USER, flags, NULL, args, tcb);
+    if(OK != status)
+        return status;
+    
+    status = KeCloneFileHandles((*tcb)->parent, fileMap);
+    if(OK != status)
+    {
+        //TODO: destroy TCB and PCB
+        return status;
+    }
+    return OK;
 }
 
-STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
+STATUS KeCreateKernelThread(struct KeProcessControlBlock *pcb, uint32_t flags,
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb)
 {
-    return HalCreateThread(pcb, name, flags, entry, entryContext, NULL, tcb);
+    return HalCreateThread(pcb, flags, entry, entryContext, NULL, tcb);
 }
 
-STATUS KeCreateUserThread(const char *name, uint32_t flags,
+STATUS KeCreateUserThread(uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb)
 {
-    return HalCreateThread(KeGetCurrentTaskParent(), name, flags, entry, entryContext, userStack, tcb);
+    return HalCreateThread(KeGetCurrentTaskParent(), flags, entry, entryContext, userStack, tcb);
 }
 
 struct KeTaskArguments* KeBuildTaskArguments(const char *argv[], const char *envp[])

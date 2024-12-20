@@ -49,7 +49,7 @@ void KeTaskYield(void);
  * @note If there is a wake-up request pending, this function 
  * returns immediately and the task is not put to sleep
  */
-void KeEventSleep(void);
+void KeWaitForWakeUp(void);
 
 /**
  * @brief Notify and wake up task

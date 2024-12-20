@@ -35,23 +35,25 @@ KeSemaphore sem = KeSemaphoreInitializer;
 
 void task1(void *c)
 {
+	UNUSED(c);
 	while(1)
 	{
-		KeAcquireSemaphore(&sem);
+		KeAcquireSemaphore(&sem, 1);
 		//PRINT("1");
 		KePutTaskToSleep(KeGetCurrentTask(), MS_TO_NS(3000));
-		KeReleaseSemaphore(&sem);
+		KeReleaseSemaphore(&sem, 1);
 	}
 }
 
 void task2(void *c)
 {
+	UNUSED(c);
 	while(1)
 	{
-		if(true == KeAcquireSemaphoreWithTimeout(&sem, MS_TO_NS(780)))
+		if(true == KeAcquireSemaphoreEx(&sem, 1, MS_TO_NS(780)))
 		{
 			//PRINT("2");
-			KeReleaseSemaphore(&sem);
+			KeReleaseSemaphore(&sem, 1);
 		}
 		//else
 			//PRINT("0");
@@ -90,18 +92,24 @@ static void KeInitProcess(void *context)
 	if(OK != ExUpdateDriverDatabasePath())
 		FAIL_BOOT("unable to update driver database path");
 	
-	if(OK != ExLoadKernelDriversByName("tty.ndb", NULL, NULL))
-		FAIL_BOOT("dupa");
+	if(OK != ExLoadKernelDriversByName("null.ndb", NULL, NULL))
+		FAIL_BOOT("unable to load null device driver");
 	
-	int fd = -1;
-	IoOpenFile("/dev/tty0", IO_FILE_WRITE, 0, &fd);
-	IoWriteFileSync(fd, "Test sterownika TTY\n", 20, 0, NULL);
+	int fd[3] = {0, 1, 2};
+	IoOpenFile("/dev/null", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[0]);
+	IoOpenFile("/dev/null", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[1]);
+	IoOpenFile("/dev/null", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[2]);
+	
+	IoVfsCreateLink("/dev/stdin", "/task/self/fd/0", 0);
+	IoVfsCreateLink("/dev/stdout", "/task/self/fd/1", 0);
+	IoVfsCreateLink("/dev/stderr", "/task/self/fd/2", 0);
 
 	struct KeTaskControlBlock *tcb;
 	const char *argv[] = {"test.elf", "-a", "12345", NULL};
 	const char *envp[] = {"PATH=/", "NABLA", NULL};
+	struct KeTaskFileMapping map[4] = {{.mapFrom = 0, .mapTo = 0}, {.mapFrom = 1, .mapTo = 1}, {.mapFrom = 2, .mapTo = 2}, KE_TASK_FILE_MAPPING_END};
 
-	KeCreateUserProcess("test", "/main/system/test", 0, argv, envp, &tcb);
+	KeCreateUserProcess("/main/system/test", 0, argv, envp, map, &tcb);
 	KeEnableTask(tcb);
 
 	while(1)
@@ -145,6 +153,7 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 
 	HalInitPhase3();
 
+	ObInitialize();
 	RtlInitializeRandom();
 
 	IoVfsInit();

@@ -9,18 +9,18 @@
 static struct KeProcessControlBlock *ExKernelWorkerPCB = NULL;
 static KeSpinlock ExKernelWorkerLock = KeSpinlockInitializer;
 
-STATUS ExCreateKernelWorker(const char *name, void(*entry)(void *), void *entryContext, struct KeTaskControlBlock **tcb)
+STATUS ExCreateKernelWorker(void(*entry)(void *), void *entryContext, struct KeTaskControlBlock **tcb)
 {
     STATUS status;
     PRIO prio = KeAcquireSpinlock(&ExKernelWorkerLock);
     if(NULL == ExKernelWorkerPCB)
     {
-        status = KeCreateKernelProcess(name, 0, entry, entryContext, tcb);
+        status = KeCreateKernelProcess(0, entry, entryContext, NULL, tcb);
         if(NULL != *tcb)
             ExKernelWorkerPCB = (*tcb)->parent;
     }
     else
-        status = KeCreateKernelThread(ExKernelWorkerPCB, name, 0, entry, entryContext, tcb);
+        status = KeCreateKernelThread(ExKernelWorkerPCB, 0, entry, entryContext, tcb);
     barrier();
     KeReleaseSpinlock(&ExKernelWorkerLock, prio);
 

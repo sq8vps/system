@@ -22,12 +22,12 @@
 uint32_t ExAssignDriverId(void);
 void ExFreeDriverId(uint32_t id);
 
-struct
+static struct
 {
     struct ExDriverObject *list;
     KeMutex mutex;
     char *databasePath;
-} static ExKernelDriverState = {.list = NULL, .mutex = KeMutexInitializer};
+} ExKernelDriverState = {.list = NULL, .mutex = KeMutexInitializer};
 
 static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
 {
@@ -49,7 +49,7 @@ static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
             object->previous->next = NULL;
         
         KeReleaseMutex(&(ExKernelDriverState.mutex));
-        MmFreeKernelHeap(object);
+        ObDestroyObject(object);
         return;
     }
     //there exists a preceding object that is free
@@ -60,7 +60,7 @@ static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
         if(NULL != object->next)
             object->next->previous = previousObject;
         previousObject->next = object->next;
-        MmFreeKernelHeap(object);
+        ObDestroyObject(object);
         object = previousObject;
     }
 
@@ -72,7 +72,7 @@ static void ExRemoveKernelDriverObject(struct ExDriverObject *object)
         if(NULL != nextObject->next)
             nextObject->next->previous = object;
         object->next = nextObject->next;
-        MmFreeKernelHeap(nextObject);
+        ObDestroyObject(nextObject);
     }
 
     if(NULL == object->previous)
@@ -152,10 +152,9 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
             if(remaining >= PAGE_SIZE)
             {
                 struct ExDriverObject *nextBlock = NULL;
-                nextBlock = MmAllocateKernelHeapZeroed(sizeof(*nextBlock));
+                nextBlock = ObCreateKernelObject(OB_DRIVER);
                 if(NULL != nextBlock)
                 {
-                    ObInitializeObjectHeader(nextBlock);
                     nextBlock->free = true;
                     nextBlock->size = remaining;
                     bestFit->size = requiredSize;
@@ -173,13 +172,12 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
 
     if(NULL == object)
     {
-        object = MmAllocateKernelHeapZeroed(sizeof(*object));
+        object = ObCreateKernelObject(OB_DRIVER);
         if(NULL == object)
         {
             KeReleaseMutex(&(ExKernelDriverState.mutex));
             return OUT_OF_RESOURCES;
         }
-        ObInitializeObjectHeader(object);
 
         object->free = false;
         object->size = requiredSize;

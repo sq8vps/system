@@ -9,7 +9,6 @@ struct KeProcessControlBlock;
 
 /**
  * @brief Create process
- * @param *name Process name
  * @param *path Process image path
  * @param pl Process privilege level
  * @param flags Main task flags
@@ -17,10 +16,10 @@ struct KeProcessControlBlock;
  * @param *entryContext Entry point parameter (for kernel mode process) or \a KeTaskArguments structure pointer (for user mode process)
  * @param **tcb Output Task Control Block
  * @return Status code
- * @warning This function is for internal use only. User \a KeCreateKernelProcess() or \a KeCreateUserProcess()
- * @attention This function returns immidiately
+ * @warning This function is for internal use only. Use \a KeCreateKernelProcess() or \a KeCreateUserProcess()
+ * @attention This function returns immediately
 */
-INTERNAL STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLevel pl, uint32_t flags, 
+INTERNAL STATUS HalCreateProcess(const char *path, PrivilegeLevel pl, uint32_t flags, 
     void (*entry)(void*), void *entryContext, struct KeTaskControlBlock **tcb);
 
 /**
@@ -33,9 +32,9 @@ INTERNAL STATUS HalCreateProcess(const char *name, const char *path, PrivilegeLe
  * @param *userStack User mode stack top pointer
  * @param **tcb Output Task Control Block
  * @return Status code
- * @attention This function returns immidiately. The created thread will be started by the scheduler later.
+ * @attention This function returns immediately. The created thread will be started by the scheduler later.
 */
-INTERNAL STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *name, uint32_t flags,
+INTERNAL STATUS HalCreateThread(struct KeProcessControlBlock *pcb, uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
 
 /**
@@ -45,7 +44,7 @@ INTERNAL STATUS HalCreateThread(struct KeProcessControlBlock *pcb, const char *n
 INTERNAL void HalInitializeScheduler(void);
 
 /**
- * @brief Perform task switch immediately if new task is available
+ * @brief Perform task switch immediately if a new task is available
  * @attention Do not use this function. The only legal function to force task switch is \a KeTaskYield()
 */
 INTERNAL void HalPerformTaskSwitch(void);

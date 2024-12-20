@@ -6,12 +6,12 @@
 #include "ke/core/panic.h"
 #include "rtl/string.h"
 
-struct
+static struct
 {
     const char *name;
     uintptr_t value;
 }
-static *ExKernelSymbolTable;
+*ExKernelSymbolTable;
 static uint32_t ExKernelSymbolCount = 0;
 
 STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h)

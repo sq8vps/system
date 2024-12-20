@@ -98,10 +98,10 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
         if(offset & (PAGE_SIZE - 1))
             return BAD_ALIGNMENT;
 
-        PRIO prio = ObLockObject(pcb);
-        if(pcb->files.count >= fd)
+        ObLockObject(pcb);
+        if(pcb->files.count >= (uint32_t)fd)
         {
-            ObUnlockObject(pcb, prio);
+            ObUnlockObject(pcb);
             KeAcquireMutex(&(pcb->files.table[fd].mutex));
             file = pcb->files.table[fd].handle;
             if(NULL == file)
@@ -121,7 +121,7 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
         }
         else
         {
-            ObUnlockObject(pcb, prio);
+            ObUnlockObject(pcb);
             return FILE_NOT_FOUND;
         }
     }

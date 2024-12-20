@@ -14,6 +14,7 @@ uint8_t Multiboot2InfoBuffer[MULTIBOOT2_BUFFER_SIZE] ALIGN(8);
 
 #define MULTIBOOT2_REQUEST_COUNT 4
 
+static volatile const ALIGN(16)
 struct
 {
     struct Multiboot2Header header;
@@ -21,8 +22,7 @@ struct
     ALIGN(MB2_TAG_ALIGNMENT) struct Multiboot2Tag request;
     uint32_t requests[MULTIBOOT2_REQUEST_COUNT];
 } 
-ALIGN(16)
-static volatile const Multiboot2Data __attribute__ ((section(".multiboot"))) =
+Multiboot2Data __attribute__ ((section(".multiboot"))) =
 {
     .header = 
     {

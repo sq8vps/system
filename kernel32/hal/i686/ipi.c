@@ -13,18 +13,19 @@
 #define I686_IPI_SLOT_COUNT 16
 #define I686_IPI_INTERRUPT_VECTOR 224
 
-struct
+static struct
 {
     struct I686IpiData data[I686_IPI_SLOT_COUNT];
     volatile uint32_t slotsReserved;
     volatile uint32_t slotsFilled;
     volatile uint16_t remainingAcks;
-} static I686IpiState[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = {.slotsReserved = 0, .slotsFilled = 0}};
+} I686IpiState[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = {.slotsReserved = 0, .slotsFilled = 0}};
 
 static bool I686IpiInitialized = false;
 
 static STATUS I686HandleIpi(void *context)
 {
+    UNUSED(context);
     uint16_t cpu = HalGetCurrentCpu();
 
     uint32_t slots;

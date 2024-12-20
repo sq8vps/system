@@ -45,7 +45,7 @@ void KeTaskYield(void);
  * @note If there is a wake-up request pending, this function 
  * returns immediately and the task is not put to sleep
  */
-void KeEventSleep(void);
+void KeWaitForWakeUp(void);
 
 /**
  * @brief Notify and wake up task
@@ -83,7 +83,7 @@ INTERNAL void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason
 /**
  * @brief Unblock task (insert to ready-to-run queue)
  * @param *tcb Task Control Block
- * @note Task must not be in \a TASK_BLOCK_SLEEP block state
+ * @note Task must not be in \a TASK_BLOCK_TIMED_SLEEP block state
  * @warning This function is in general for kernel use only
 */
 INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);

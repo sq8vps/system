@@ -46,6 +46,13 @@ bool RtlCheckFileName(const char *name);
 */
 bool RtlCheckPath(const char *name);
 
+/**
+ * @brief Convert string to integer
+ * @param *str Input string. All preceeding whitespace characters are discarded
+ * @return Converted integer or 0 on failure
+ */
+int RtlAtoi(const char *str);
+
 #ifndef DISABLE_KERNEL_STDLIB
 
 /**
@@ -60,6 +67,13 @@ bool RtlCheckPath(const char *name);
  * @return Generated random number
  */
 #define rand() RtlRandom(0, RAND_MAX)
+
+/**
+ * @brief Convert string to integer
+ * @param str Input string. All preceeding whitespace characters are discarded
+ * @return Converted integer or 0 on failure
+ */
+#define atoi(str) RtlAtoi(str)
 
 #endif
 

@@ -4,24 +4,22 @@
 #include "io/initrd.h"
 #include "assert.h"
 #include "devfs.h"
-#include "mm/slab.h"
 #include "io/dev/rp.h"
 #include "ddk/fs.h"
 #include "mm/heap.h"
 #include "rtl/stdlib.h"
+#include "taskfs.h"
 
 #define IO_VFS_MAX_SYMLINK_DEPTH 10
 #define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 127
-#define IO_VFS_CHUNKS_PER_SLAB 16
 
 static struct
 {
     struct IoVfsNode *root; /**< Root node */
-    void *slabHandle; /**< VFS node slab allocator handle */
     uint32_t maxFileNameLength; /**< Max file name length */
     KeRwLock lock; /**< Global VFS tree RW lock */
 } 
-IoVfsState = {.root = NULL, .slabHandle = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH, .lock = KeRwLockInitializer};
+IoVfsState = {.root = NULL, .maxFileNameLength = IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH, .lock = KeRwLockInitializer};
 
 
 struct IoVfsNode* IoVfsCreateNode(const char *name)
@@ -32,17 +30,14 @@ struct IoVfsNode* IoVfsCreateNode(const char *name)
     if(!RtlCheckFileName(name))
         return NULL;
 
-    struct IoVfsNode *node = MmSlabAllocate(IoVfsState.slabHandle);
+    struct IoVfsNode *node = ObCreateKernelObjectEx(OB_VFS_NODE, RtlStrlen(name) + 1);
     if(NULL == node)
         return NULL;
-    
-    RtlMemset(node, 0, sizeof(*node));
-    
-    ObInitializeObjectHeader(node);
     
     RtlStrncpy(node->name, name, IoVfsState.maxFileNameLength);
 
     node->lock = (KeRwLock)KeRwLockInitializer;
+    node->taskfs = (struct IoTaskFsContext)IO_TASK_FS_CONTEXT_INITIALIZER;
 
     return node;
 }
@@ -56,15 +51,12 @@ void IoVfsDestroyNode(struct IoVfsNode *node)
 {
     ASSERT(node);
     
-    MmSlabFree(IoVfsState.slabHandle, node);
+    ObDestroyObject(node);
 }
 
 STATUS IoVfsInit(void)
 {
-    IoVfsState.slabHandle = MmSlabCreate(sizeof(struct IoVfsNode) + IoVfsState.maxFileNameLength + 1, IO_VFS_CHUNKS_PER_SLAB);
-    if(NULL == IoVfsState.slabHandle)
-        return OUT_OF_RESOURCES;
-
+    STATUS status = OK;
     IoVfsState.root = IoVfsCreateNode("");
     if(NULL == IoVfsState.root)
         return VFS_INITIALIZATION_FAILED;
@@ -76,7 +68,11 @@ STATUS IoVfsInit(void)
     IoVfsState.root->fsType = IO_VFS_FS_VIRTUAL;
     IoVfsState.root->status.open = 1;
 
-    return IoInitDeviceFs(IoVfsState.root);
+    status = IoInitDeviceFs(IoVfsState.root);
+    if(OK != status)
+        return status;
+    status = IoInitTaskFs(IoVfsState.root);
+    return status;
 }
 
 STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags)
@@ -87,13 +83,55 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags)
     if((IO_VFS_DIRECTORY == node->type) || (IO_VFS_MOUNT_POINT == node->type))
         return BAD_FILE_TYPE;
 
-    if(flags & IO_FILE_FLAG_NO_WAIT)
+    /*
+    There are a few scenarios:
+    1. File is not open and shared open is requested - just open without locking
+    2. File is not open and non-shared open is requested - open and lock
+    3. File is open and current sharing option differs from the requested - fail
+    3. File is open in non-shared mode - open and lock (wait for lock)
+    4. File is open in shared mode - just open without locking
+    */
+
+    ObLockObject(node);
+    
+    if((!node->status.open && (flags & IO_FILE_FLAG_SHARED))
+        || (node->status.open && (node->flags & IO_FILE_FLAG_SHARED) && (flags & IO_FILE_FLAG_SHARED)))
     {
-        if(!KeAcquireRwLockWithTimeout(&(node->lock), write, KE_MUTEX_NO_WAIT))
-            return FILE_LOCKED;
+        //no locking, the file is either not open and we want to open it and share
+        //or the file is already open and shared and we want it to be shared
+    }
+    else if(node->status.open && ((node->flags & IO_FILE_FLAG_SHARED) != (flags & IO_FILE_FLAG_SHARED)))
+    {
+        //file is open and sharing modes differ - fail
+        ObUnlockObject(node);
+        return FILE_SHARING_VIOLATION;
     }
     else
-        KeAcquireRwLock(&(node->lock), write);
+    {
+        //file is open in non-shared mode or is not open and non-shared mode is requested
+        ObUnlockObject(node);
+        if(flags & IO_FILE_FLAG_NO_WAIT)
+        {
+            if(!KeAcquireRwLockEx(&(node->lock), write, KE_MUTEX_NO_WAIT))
+                return FILE_LOCKED;
+        }
+        else
+            KeAcquireRwLock(&(node->lock), write);
+
+        ObLockObject(node);
+        //now we have obtained the RW lock
+        //however, because there is a gap between unlocking the VFS node and acquiring the RW lock,
+        //some other process may have changed the file open sharing parameters
+        if(node->status.open && (node->flags & IO_FILE_FLAG_SHARED))
+        {
+            ObUnlockObject(node);
+            //yes, another process open the file in the non-shared mode before us
+            //RW lock is meaningless and should be released
+            //fail and return, since requesting non-shared mode on a shared file is illegal
+            KeReleaseRwLock(&(node->lock));
+            return FILE_SHARING_VIOLATION;
+        }
+    }
 
     if(write)
         node->references.writers++;
@@ -140,12 +178,19 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags)
         else
             node->references.readers--;
         
-        KeReleaseRwLock(&(node->lock));
+        if(!(flags & IO_FILE_FLAG_SHARED))
+            KeReleaseRwLock(&(node->lock));
     }
     else
     {
         node->status.open = 1;
+        if(flags & IO_FILE_FLAG_SHARED)
+            node->flags |= IO_FILE_FLAG_SHARED;
+        else
+            node->flags &= ~IO_FILE_FLAG_SHARED;
     }
+
+    ObUnlockObject(node);
 
     return status;
 }
@@ -158,6 +203,8 @@ STATUS IoVfsClose(struct IoVfsNode *node)
     if((IO_VFS_DIRECTORY == node->type) || (IO_VFS_MOUNT_POINT == node->type))
         return BAD_FILE_TYPE;
 
+    ObLockObject(node);
+
     if(node->references.readers)
         node->references.readers--;
     else if(node->references.writers)
@@ -165,7 +212,8 @@ STATUS IoVfsClose(struct IoVfsNode *node)
 
     if(node->flags & IO_VFS_FLAG_PERSISTENT)
     {
-        KeReleaseRwLock(&(node->lock));
+        if(!(node->flags & IO_FILE_FLAG_SHARED))
+            KeReleaseRwLock(&(node->lock));
         return OK;
     }
 
@@ -207,13 +255,17 @@ STATUS IoVfsClose(struct IoVfsNode *node)
         }
     }
 
-    KeReleaseRwLock(&(node->lock));
+    if(node->flags & IO_FILE_FLAG_SHARED)
+        KeReleaseRwLock(&(node->lock));
+    
+    ObUnlockObject(node);
     return status;
 }
 
-struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
+struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node, struct IoTaskFsContext *taskfs)
 {
-    ASSERT(node);
+    if(NULL == node)
+        return NULL;
 
     if(IO_VFS_LINK != node->type)
         return node;
@@ -221,6 +273,13 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
     uint32_t i = 0;
     while(i < IO_VFS_MAX_SYMLINK_DEPTH)
     {
+        if(IO_VFS_FS_TASKFS == node->fsType)
+        {
+            node = IoTaskFsResolveLink(node, taskfs);
+            if(IO_VFS_LINK != node->type)
+                return node;
+        }
+
         if(NULL != node->linkDestination)
         {
             //there is a cached link destination
@@ -233,6 +292,7 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node)
             //link destination needs to be obtained
             //TODO: read disk to find link destination
         }
+        i++;
     }
     return NULL;
 }
@@ -262,7 +322,7 @@ static inline struct IoVfsNode *IoVfsGetNodeFromCache(const struct IoVfsNode *pa
     return NULL;
 }
 
-static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, const char *name)
+static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, const char *name, struct IoTaskFsContext *taskfs)
 {
     ASSERT(parent && name);
     STATUS status = OK;
@@ -282,7 +342,8 @@ static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, const ch
             status = IoInitrdGetNode(parent, name, &node);
             break;
         case IO_VFS_FS_TASKFS:
-            return NULL;
+            status = IoTaskFsGetNode(parent, name, taskfs, &node);
+            return node;
             break;
         default:
             return NULL;
@@ -298,7 +359,7 @@ static struct IoVfsNode *IoVfsGetNodeByParent(struct IoVfsNode *parent, const ch
         return NULL;
 }
 
-struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement)
+struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement, struct IoTaskFsContext *taskfs)
 {
     struct IoVfsNode *node = IoVfsState.root;
 
@@ -336,8 +397,8 @@ struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement)
         }
         char rep = *p;
         *p = '\0'; //tokenize
-        node = IoVfsGetNodeByParent(node, element);
-        //check if node was found
+        node = IoVfsGetNodeByParent(node, element, taskfs);
+        //check if node exists
         if(NULL == node)
         {
             break;
@@ -359,7 +420,7 @@ struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement)
         //if so, then resolve
         if(IO_VFS_LINK == node->type)
         {
-            node = IoVfsResolveLink(node);
+            node = IoVfsResolveLink(node, taskfs);
             if(NULL == node)
                 break;
         }
@@ -400,7 +461,7 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, const char *path, bool isFi
         if(0 != RtlStrcmp(node->name, RtlGetFileName(path))) //check for node name and path file name match
             return FILE_NOT_FOUND;
     }
-    struct IoVfsNode *target = IoVfsGetNodeEx(path, isFilePath);
+    struct IoVfsNode *target = IoVfsGetNodeEx(path, isFilePath, NULL);
     if(NULL == target)
     {
         return FILE_NOT_FOUND;
@@ -431,14 +492,16 @@ STATUS IoVfsInsertNodeByPath(struct IoVfsNode *node, const char *path, bool isFi
 bool IoVfsCheckIfNodeExists(const char *path)
 {
     IoVfsLockTreeForWriting();
-    bool status = (NULL != IoVfsGetNode(path));
+    struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
+    bool status = (NULL != IoVfsGetNode(path, &taskfs));
     IoVfsUnlockTree();
     return status;
 }
 
 bool IoVfsCheckIfNodeExistsByParent(struct IoVfsNode *parent, const char *name)
 {
-    return (NULL != IoVfsGetNodeByParent(parent, name));
+    struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
+    return (NULL != IoVfsGetNodeByParent(parent, name, &taskfs));
 }
 
 STATUS IoVfsRemoveNode(struct IoVfsNode *node)
@@ -497,6 +560,8 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_t
         case IO_VFS_FS_VIRTUAL:
             return IoReadWrite(false, node->device, node, offset, size, buffer, callback, context, 
                 (flags & IO_FILE_FLAG_DIRECT) ? true : false);
+            break;
+        case IO_VFS_FS_TASKFS:
             break;
         default:
             return BAD_FILE_TYPE;
@@ -560,29 +625,41 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_
     return status;
 }
 
-STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
+STATUS IoVfsCreateLink(const char *path, const char *destination, IoFileFlags flags)
 {
-    ASSERT(path && linkDestination);
+    ASSERT(path && destination);
+    struct IoTaskFsContext taskfs[2] = {IO_TASK_FS_CONTEXT_INITIALIZER, IO_TASK_FS_CONTEXT_INITIALIZER};
+
     if(IoVfsCheckIfNodeExists(path))
         return FILE_ALREADY_EXISTS;
 
     IoVfsLockTreeForWriting();
 
-    struct IoVfsNode *parent = IoVfsGetNodeEx(path, true);
+    struct IoVfsNode *parent = IoVfsGetNodeEx(path, true, &taskfs[0]);
     if(NULL == parent)
     {
         IoVfsUnlockTree();
         return FILE_NOT_FOUND;
     }
 
-    if(IO_VFS_DIRECTORY != parent->type)
+    if(IO_VFS_LINK == parent->type)
+    {
+        parent = IoVfsResolveLink(parent, &taskfs[0]);
+        if(NULL == parent)
+        {
+            IoVfsUnlockTree();
+            return FILE_NOT_FOUND;
+        }
+    }
+
+    if((IO_VFS_DIRECTORY != parent->type) && (IO_VFS_MOUNT_POINT != parent->type))
     {
         IoVfsUnlockTree();
         return NOT_A_DIRECTORY;
     }
 
-    struct IoVfsNode *destination = IoVfsGetNode(linkDestination);
-    if(NULL == destination)
+    struct IoVfsNode *d = IoVfsGetNode(destination, &taskfs[1]);
+    if(NULL == d)
     {   
         IoVfsUnlockTree();
         return FILE_NOT_FOUND;
@@ -597,9 +674,10 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
     
     link->flags = flags;
     link->type = IO_VFS_LINK;
-    link->linkDestination = destination;
-    destination->references.links++;
-    //link->linkDestination->referenceCount++;
+    link->linkDestination = d;
+    link->taskfs = taskfs[1];
+    if(IO_VFS_FS_TASKFS != d->fsType)
+        d->references.links++;
 
     IoVfsInsertNode(link, parent);
 
@@ -610,6 +688,7 @@ STATUS IoVfsCreateLink(char *path, char *linkDestination, IoVfsNodeFlags flags)
 
 STATUS IoVfsRemoveLink(char *path)
 {
+    UNUSED(path);
     // ASSERT(path);
     // struct IoVfsNode *link = IoVfsGetNode(path);
     // if(NULL == link)
@@ -632,9 +711,10 @@ STATUS IoVfsRemoveLink(char *path)
 STATUS IoVfsGetSize(const char *path, uint64_t *size)
 {
     ASSERT(path && size);
-    
+    struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
+
     IoVfsLockTreeForWriting();
-    struct IoVfsNode *n = IoVfsGetNode(path);
+    struct IoVfsNode *n = IoVfsGetNode(path, &taskfs);
     if(NULL == n)
     {
         IoVfsUnlockTree();

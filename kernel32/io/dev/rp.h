@@ -255,10 +255,4 @@ struct IoRp *IoCloneRp(struct IoRp *rp);
 
 END_EXPORT_API
 
-/**
- * @brief Initialize RP slab cache
- * @return Status code
-*/
-INTERNAL STATUS IoInitializeRpCache(void);
-
 #endif

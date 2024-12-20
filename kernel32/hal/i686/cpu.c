@@ -24,14 +24,14 @@
 extern void I686StartAp(void);
 extern void I686StartApEnd(void);
 
-struct
+static struct
 {
     uintptr_t cpuId;
     uintptr_t lapicId;
     uintptr_t cr3;
     uintptr_t esp;
     uintptr_t eip;
-} PACKED static I686StartApData[MAX_CPU_COUNT];
+} PACKED I686StartApData[MAX_CPU_COUNT];
 static volatile uint32_t I686StartedCpuCount = 1;
 static volatile uint32_t I686ReadyCpuCount = 1;
 static volatile uint8_t I686ApCanContinue = 0;
@@ -197,7 +197,7 @@ void I686CpuBootstrap(uint32_t cpuId)
 
 uint16_t HalGetCurrentCpu(void)
 {
-    uint16_t register t;
+    register uint16_t t;
     //get GDT descriptor with TSS from task register
     ASM("str %0" : "=r" (t) :);
     return GDT_CPU(GDT_ENTRY(t));

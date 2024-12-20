@@ -292,7 +292,7 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
 
 static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_list args)
 {
-    int written = 0;
+    size_t written = 0;
 
     while (*format)
     {
@@ -644,7 +644,7 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
     if (!config.toFile)
         config.buffer[written++] = '\0';
 
-    return written;
+    return (int)written;
 }
 
 

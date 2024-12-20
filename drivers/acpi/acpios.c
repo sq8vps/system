@@ -114,7 +114,7 @@ ACPI_THREAD_ID AcpiOsGetThreadId(void)
 ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context)
 {
     struct KeTaskControlBlock *tcb;
-    if(OK != ExCreateKernelWorker("ACPI worker", Function, Context, &tcb))
+    if(OK != ExCreateKernelWorker(Function, Context, &tcb))
         return AE_ERROR;
     
     KeEnableTask(tcb);
@@ -162,7 +162,7 @@ ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout)
     else
         time = MS_TO_NS(Timeout);
 
-    if(KeAcquireMutexWithTimeout(Handle, time))
+    if(KeAcquireMutexEx(Handle, time))
         return AE_OK;
     else
         return AE_TIME;
@@ -201,24 +201,7 @@ ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Time
     else
         time = MS_TO_NS(Timeout);
 
-    //FIXME: this implementation is incorrect
-    //the timeout should be counted starting from the first unit
-    UINT32 i = 0;
-    bool status = true;
-    for(; i < Units; i++)
-    {
-        if(false == (status = KeAcquireSemaphoreWithTimeout(Handle, time)))
-            break;
-    }
-    if(false == status)
-    {
-        for(; i > 0; i--)
-        {
-            KeReleaseSemaphore(Handle);
-        }
-        return AE_TIME;
-    }
-    return AE_OK;
+    return KeAcquireSemaphoreEx(Handle, Units, time) ? AE_OK : AE_TIME;
 }
 
 ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
@@ -226,10 +209,7 @@ ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
     if(NULL == Handle)
         return AE_BAD_PARAMETER;
 
-    for(; Units > 0; Units--)
-    {
-        KeReleaseSemaphore(Handle);
-    }
+    KeReleaseSemaphore(Handle, Units);
     return AE_OK;
 }
 

@@ -38,7 +38,8 @@ struct IOAPIC
     uint32_t irqBase;
     uint32_t usage[(IOAPIC_MAX_INPUTS / 32) + ((IOAPIC_MAX_INPUTS % 32) ? 1 : 0)];
     KeSpinlock Lock;
-} static IoApicDevice[MAX_IOAPIC_COUNT]; //table of I/O APIC chips
+};
+static struct IOAPIC IoApicDevice[MAX_IOAPIC_COUNT]; //table of I/O APIC chips
 static uint8_t IoApicDeviceCount = 0; //number of I/O APIC chips
 
 void ApicIoAddEntry(uint8_t id, uint32_t address, uint32_t irqBase)

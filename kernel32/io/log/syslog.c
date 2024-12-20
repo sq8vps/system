@@ -5,26 +5,14 @@
 #include "io/fs/fs.h"
 #include "mm/heap.h"
 
-/**
- * @brief Syslog object handle
-*/
-struct IoSyslogHandle
-{
-    OBJECT;
-    enum IoSyslogOutput output;
-    struct IoFileHandle *file;
-    char name[];
-};
-
 struct IoSyslogHandle IoKernelLog = {.output = SYSLOG_OUTPUT_MAIN, .name = "Kernel"};
 
 struct IoSyslogHandle* IoOpenSyslog(const char *name, enum IoSyslogOutput output)
 {
-    struct IoSyslogHandle *h = MmAllocateKernelHeap(sizeof(*h) + RtlStrlen(name) + 1);
+    UNUSED(output);
+    struct IoSyslogHandle *h = ObCreateKernelObjectEx(OB_SYSLOG, RtlStrlen(name) + 1);
     if(NULL == h)
         return NULL;
-
-    ObInitializeObjectHeader(h);
     
     RtlStrcpy(h->name, name);
     return h;
@@ -32,7 +20,7 @@ struct IoSyslogHandle* IoOpenSyslog(const char *name, enum IoSyslogOutput output
 
 void IoCloseSyslog(struct IoSyslogHandle *handle)
 {
-    MmFreeKernelHeap(handle);
+    ObDestroyObject(handle);
 }
 
 STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, va_list args)

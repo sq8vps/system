@@ -16,7 +16,7 @@ struct IoDeviceObject;
  * @param *name File name, must be unique in \a /dev
  * @return Status code
 */
-STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, IoVfsNodeFlags flags, char *name);
+STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, enum IoVfsFlags flags, char *name);
 
 END_EXPORT_API
 

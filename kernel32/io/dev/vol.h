@@ -18,7 +18,7 @@ EXPORT_API
 
 struct IoVolumeNode
 {
-    struct ObObjectHeader objectHeader;
+    OBJECT;
     char label[IO_VOLUME_MAX_LABEL_LENGTH + 1]; /**< Volume label */
     struct IoDeviceObject *fsdo; /**< FS Device Object */
     struct IoDeviceObject *pdo; /**< Physical Device Object */

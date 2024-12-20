@@ -47,7 +47,7 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
  */
 struct ExDriverObject
 {
-    struct ObObjectHeader objectHeader;
+    OBJECT;
     bool free;
     uint32_t id;
     struct IoDeviceObject *deviceObject; //linked list of devices created by the driver

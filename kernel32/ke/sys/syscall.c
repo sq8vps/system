@@ -46,6 +46,8 @@ static size_t KeSyscallWrite(int handle, void *buffer, size_t size, uint64_t off
     return actualSize;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 static KeSyscallHandler KeSyscallTable[] = 
 {
     [SYSCALL_NONE] = (KeSyscallHandler)KeSyscallNone,
@@ -54,6 +56,7 @@ static KeSyscallHandler KeSyscallTable[] =
     [SYSCALL_READ] = (KeSyscallHandler)KeSyscallRead,
     [SYSCALL_WRITE] = (KeSyscallHandler)KeSyscallWrite,
 };
+#pragma GCC diagnostic pop
 
 STATUS KePerformSyscall(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5)
 {

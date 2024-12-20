@@ -18,15 +18,15 @@
 #define PIC_ICW1_FLAG_INIT 0x10	//constant bit set to 1
 #define PIC_ICW4_FLAG_8086 0x01 //8086 mode
 
-#define IS_MASTER_INPUT(x) (((x) >= 0) && ((x) <= 7))
+#define IS_MASTER_INPUT(x) ((x) <= 7)
 #define IS_SLAVE_INPUT(x) (((x) >= 8) && ((x) <= 15))
 #define CHECK_INPUT(x) (IS_MASTER_INPUT(x) || IS_SLAVE_INPUT(x))
 
-struct PicEntry
+static struct
 {
     KeSpinlock mutex;
     uint8_t usage;
-} static Pic[2];
+} Pic[2];
 
 STATUS PicSendEoi(uint32_t input)
 {

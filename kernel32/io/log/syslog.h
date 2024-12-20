@@ -31,6 +31,17 @@ enum IoSyslogOutput
 };
 
 /**
+ * @brief Syslog object handle
+*/
+struct IoSyslogHandle
+{
+    OBJECT;
+    enum IoSyslogOutput output;
+    struct IoFileHandle *file;
+    char name[];
+};
+
+/**
  * @brief Open syslog
  * @param *name Module name to be used in syslog
  * @param output Syslog output stream

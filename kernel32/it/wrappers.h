@@ -25,7 +25,7 @@ void ItHandleIrq(uint8_t vector);
 /**
  * @brief Interrupt wrapper function definition macro
  */
-#define IT_ISR_WRAPPER(n) IT_HANDLER static void IT_ISR_WRAPPER_NAME(n)(void *frame) { ItHandleIrq(n); }
+#define IT_ISR_WRAPPER(n) IT_HANDLER static void IT_ISR_WRAPPER_NAME(n)(void *frame) {UNUSED(frame); ItHandleIrq(n);}
 
 
 

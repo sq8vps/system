@@ -103,6 +103,7 @@ static uint64_t ApicFrequency;
 
 static STATUS spuriousInterruptHandler(void *context)
 {
+    UNUSED(context);
     return OK;
 }
 
@@ -312,8 +313,6 @@ STATUS ApicSetTaskPriority(uint8_t priority)
     if(unlikely(NULL == lapic))
         return DEVICE_NOT_AVAILABLE;
     LAPIC(LAPIC_TPR_OFFSET) = (priority & 0xF) << 4;
-    while(((LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF) < priority)
-        TIGHT_LOOP_HINT();
     return OK;
 }
 

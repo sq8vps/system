@@ -62,8 +62,8 @@ struct AcpiEnumerationContext
 
 static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLevel, void *Context, void **ReturnValue)
 {
-    if(NestingLevel > 2)
-        return AE_OK;
+    // if(NestingLevel > 2)
+    //     return AE_OK;
 
     struct AcpiEnumerationContext *ctx = Context;
 
@@ -167,7 +167,7 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         return AE_OK;
     }
 
-    IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s\n", private->path);
+    IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s (HID: %s)", private->path, private->pnpId);
 
     return AE_OK;
 }
