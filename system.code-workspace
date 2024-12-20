@@ -35,6 +35,9 @@
 		},
 		{
 			"path": "drivers/tty"
+		},
+		{
+			"path": "drivers/i8042"
 		}
 	],
 	"settings": {

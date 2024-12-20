@@ -49,19 +49,23 @@ enum IoDeviceFlags
     IO_DEVICE_FLAG_HIDDEN = 0x80, /**< Device is hidden */
 };
 
+/**
+ * @brief Device types
+ */
 enum IoDeviceType
 {
-    IO_DEVICE_TYPE_NONE = 0, //dummy driver
-    IO_DEVICE_TYPE_OTHER, //other devices
-    IO_DEVICE_TYPE_ROOT, //system root hardware (ACPI, ...)
-    IO_DEVICE_TYPE_BUS, //bus (PCI, PCIe, ISA...)
-    IO_DEVICE_TYPE_STORAGE, //storage controller (IDE, AHCI, NVMe...)
-    IO_DEVICE_TYPE_DISK, //disk with partition manager (MBR, GPT)
-    IO_DEVICE_TYPE_FS, //filesystem (EXT, FAT...)
-    IO_DEVICE_TYPE_TERMINAL, //terminal
+    IO_DEVICE_TYPE_NONE = 0, /**< Dummy driver */
+    IO_DEVICE_TYPE_OTHER, /**< Other device */
+    IO_DEVICE_TYPE_ROOT, /**< Root device (ACPI, ...) */
+    IO_DEVICE_TYPE_BUS, /**< Bus controller (PCI, ISA, ...) */
+    IO_DEVICE_TYPE_STORAGE, /**< Storage controller (IDE, AHCI, NVMe...) */
+    IO_DEVICE_TYPE_DISK, /**< Disk with partition manager (MBR, GPT, ...) or disk partition */
+    IO_DEVICE_TYPE_FS, /**< Filesystem on partition (EXT, FAT...) */
+    IO_DEVICE_TYPE_TERMINAL, /**< Terminal device */
+    IO_DEVICE_TYPE_INPUT, /**< User input device (keyboard, mouse, ...) */
 
 
-    __IO_DEVICE_TYPE_COUNT, //count of device types, do not use
+    __IO_DEVICE_TYPE_COUNT, /**< Count of device types, do not use */
 };
 
 

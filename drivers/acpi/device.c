@@ -123,7 +123,7 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
 
     //create device for new device
     struct IoDeviceObject *dev;
-    if(OK != IoCreateDevice(ctx->driver, IO_DEVICE_TYPE_OTHER, 0, &dev))
+    if(OK != IoCreateDevice(ctx->driver, IO_DEVICE_TYPE_ROOT, 0, &dev))
     {
         ACPI_FREE(info);
         AcpiOsFree(private);
@@ -138,7 +138,6 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         private->id.pci.bus = 0; //PCI bus = 0 for host controller
         private->id.pci.device = PCI_ADR_EXTRACT_DEVICE(info->Address);
         private->id.pci.function = PCI_ADR_EXTRACT_FUNCTION(info->Address);
-        dev->type = IO_DEVICE_TYPE_BUS;
     }
     else
     {

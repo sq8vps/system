@@ -11,6 +11,11 @@ extern "C"
 #include <stdint.h>
 
 /**
+ * @brief Mark function parameter as unused
+ */
+#define UNUSED(x) (void)(x)
+
+/**
  * @brief Mark symbol (function/variable) as internal/hidden
 */
 #define INTERNAL __attribute__ ((visibility("hidden")))

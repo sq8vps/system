@@ -91,6 +91,8 @@ static void KeInitProcess(void *context)
 
 	if(OK != ExUpdateDriverDatabasePath())
 		FAIL_BOOT("unable to update driver database path");
+
+	IoRetryBuildDeviceStackAndEnumerate();
 	
 	if(OK != ExLoadKernelDriversByName("null.ndb", NULL, NULL))
 		FAIL_BOOT("unable to load null device driver");

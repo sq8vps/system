@@ -21,6 +21,9 @@ static struct IoEnumerationQueue *IoEnumerationQueueHead = NULL;
 static KeSpinlock IoEnumerationQueueLock = KeSpinlockInitializer;
 static struct KeTaskControlBlock *IoEnumerationThread = NULL;
 
+static struct IoEnumerationQueue *IoEnumerationRetryQueueHead = NULL;
+static KeSpinlock IoEnumerationRetryQueueLock = KeSpinlockInitializer;
+
 static void IoDeviceEnumeratorWorker(void *unused);
 
 STATUS IoCreateDevice(
@@ -463,10 +466,59 @@ STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev)
     return OK;
 }
 
+static bool IoBuildDeviceStackAndEnumerate(struct IoEnumerationQueue *t)
+{
+    STATUS status = OK;
+    if(t->node->standalone || (OK == IoBuildDeviceStack(t->node)))
+    {
+        if((IO_DEVICE_TYPE_BUS == t->node->mdo->type)
+            || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
+        {
+            struct IoRp *rp = IoCreateRp();
+            if(NULL != rp)
+            {
+                rp->code = IO_RP_ENUMERATE;
+                status = IoSendRp(t->node->mdo, rp);
+                if(OK == status)
+                {
+                    IoWaitForRpCompletion(rp);
+                    status = rp->status;
+                }
+
+                if(OK != status)
+                {
+                    t->node->statusFlags |= IO_DEVICE_STATUS_FLAG_ENUMERATION_FAILED;
+                }
+                
+                IoFreeRp(rp);
+            }
+        }
+        return true;
+    }
+    else
+        return false;
+}
+
+void IoRetryBuildDeviceStackAndEnumerate(void)
+{
+    PRIO prio = KeAcquireSpinlock(&IoEnumerationRetryQueueLock);
+    while(NULL != IoEnumerationRetryQueueHead)
+    {
+        struct IoEnumerationQueue *t = IoEnumerationRetryQueueHead;
+        IoEnumerationRetryQueueHead = t->next;
+        KeReleaseSpinlock(&IoEnumerationRetryQueueLock, prio);
+        
+        IoBuildDeviceStackAndEnumerate(t);
+        MmFreeKernelHeap(t);
+        
+        prio = KeAcquireSpinlock(&IoEnumerationRetryQueueLock);
+    }
+    KeReleaseSpinlock(&IoEnumerationRetryQueueLock, prio); 
+}
+
 static void IoDeviceEnumeratorWorker(void *context)
 {
     UNUSED(context);
-    STATUS status;
     while(1)
     {
         PRIO prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
@@ -476,32 +528,25 @@ static void IoDeviceEnumeratorWorker(void *context)
             IoEnumerationQueueHead = t->next;
             KeReleaseSpinlock(&IoEnumerationQueueLock, prio);
             
-            if(t->node->standalone || (OK == IoBuildDeviceStack(t->node)))
+            if(!IoBuildDeviceStackAndEnumerate(t))
             {
-                if((IO_DEVICE_TYPE_BUS == t->node->mdo->type)
-                    || (t->node->mdo->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE))
+                PRIO prio = KeAcquireSpinlock(&(IoEnumerationRetryQueueLock));
+                if(NULL != IoEnumerationRetryQueueHead)
                 {
-                    struct IoRp *rp = IoCreateRp();
-                    if(NULL != rp)
-                    {
-                        rp->code = IO_RP_ENUMERATE;
-                        status = IoSendRp(t->node->mdo, rp);
-                        if(OK == status)
-                        {
-                            IoWaitForRpCompletion(rp);
-                            status = rp->status;
-                        }
-
-                        if(OK != status)
-                        {
-                            t->node->statusFlags |= IO_DEVICE_STATUS_FLAG_ENUMERATION_FAILED;
-                        }
-                        
-                        IoFreeRp(rp);
-                    }
+                    struct IoEnumerationQueue *s = IoEnumerationRetryQueueHead;
+                    while(NULL != s->next)
+                        s = s->next;
+                    s->next = t;
                 }
+                else
+                {
+                    IoEnumerationRetryQueueHead = t;
+                }
+                t->next = NULL;
+                KeReleaseSpinlock(&(IoEnumerationRetryQueueLock), prio);
             }
-            MmFreeKernelHeap(t);
+            else
+                MmFreeKernelHeap(t);
             
             prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
         }
