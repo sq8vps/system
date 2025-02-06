@@ -3,6 +3,7 @@
 
 #include "defines.h"
 #include <stdbool.h>
+#include "ddk/tty.h"
 
 struct ExDriverObject;
 struct IoRpQueue;
@@ -17,12 +18,13 @@ enum TtyType
 
 struct TtyDeviceData
 {
-    enum TtyType type;
-    bool activated;
-    struct
+    enum TtyType type; /**< TTY type */
+    char name[TTY_DEVICE_NAME_SIZE]; /**< TTY device name */
+    struct queue
     {
-        struct IoRpQueue *write;
+        struct IoRpQueue *write; /**< TTY write RP queue */
     } queue;
+    int inputHandle, outputHandle; /**< VT input event and output display handle */
 };
 
 STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, uint32_t *id);

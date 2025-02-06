@@ -1,7 +1,6 @@
 #include "logging.h"
 #include "device.h"
 #include "io/dev/rp.h"
-#include "ioctl.h"
 
 static STATUS TtyDispatch(struct IoRp *rp)
 {
@@ -23,8 +22,8 @@ static STATUS TtyDispatch(struct IoRp *rp)
                 return IoStartRp(info->queue.write, rp, NULL);
             }
             break;
-        case IO_RP_IOCTL:
-            status = TtyHandleIoctl(rp);
+        case IO_RP_TERMINAL_CONTROL:
+            status = TtyHandleControl(rp);
             break;
         default:
             status = RP_PROCESSING_FAILED;

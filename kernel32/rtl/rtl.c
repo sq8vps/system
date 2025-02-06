@@ -298,7 +298,7 @@ bool RtlCheckPath(const char *path)
 uint32_t RtlOctalToU32(const char *octal)
 {
     uint32_t result = 0;
-    while('\0' != *octal)
+    while(('\0' != *octal) && (' ' != *octal))
     {
         result <<= 3;
         if((*octal - '0') & 0xF8)

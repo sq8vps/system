@@ -10,6 +10,10 @@
         "typeinfo": "c",
         "assert.h": "c",
         "fsdrv.h": "c",
-        "numbers": "c"
+        "numbers": "c",
+        "ioport.h": "c",
+        "input.h": "c",
+        "kbd.h": "c",
+        "mutex.h": "c"
     }
 }

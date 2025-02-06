@@ -129,7 +129,7 @@ FatReadCallbackExit:
 STATUS FatReadWrite(struct IoRp *rp)
 {
     bool write = (IO_RP_READ == rp->code) ? false : true;
-    bool incrementCluster = false;
+    bool eof = false;
 
     if((IO_RP_READ != rp->code) && (IO_RP_WRITE != rp->code))
         return RP_PROCESSING_FAILED;
@@ -181,7 +181,27 @@ STATUS FatReadWrite(struct IoRp *rp)
     //calculate cluster number including offset
     uint32_t clusterShift = (write ? n->payload.write.offset : n->payload.read.offset)
          / (vol->sectorsPerCluster * vol->disk->blockSize);
-    ctx->cluster = n->vfsNode->ref[1].u32 + clusterShift;
+    ctx->cluster = n->vfsNode->ref[1].u32;
+    for(uint32_t i = 0; i < clusterShift; i++)
+    {
+        uint32_t next = FatGetNextCluster(vol, ctx->cluster);
+        if(!FAT_CLUSTER_VALID(vol, next))
+        {
+            if(FatIsClusterEof(vol, next))
+                eof = true;
+            else
+                ctx->cluster = next;
+            break;
+        }
+        ctx->cluster = next;
+    }
+
+    if(!FAT_CLUSTER_VALID(vol, ctx->cluster))
+    {
+        MmFreeKernelHeap(ctx);
+        IoFreeRp(n);
+        return FILE_BROKEN;
+    }
 
     uint64_t consecutive = 0; //number of available consecutive bytes
 
@@ -201,12 +221,10 @@ STATUS FatReadWrite(struct IoRp *rp)
             //handle corner case
             requiredClusters = rp->size / (vol->sectorsPerCluster * vol->disk->blockSize)
                 + ((rp->size % (vol->sectorsPerCluster * vol->disk->blockSize)) ? 1 : 0);
-            
-            ctx->cluster--;
-            incrementCluster = true;
         }
         else
         {
+            eof = false;
             //otherwise there is some space remaining in the existing cluster
             uint64_t remaining = (vol->sectorsPerCluster * vol->disk->blockSize) 
                 - (rp->vfsNode->size % (vol->sectorsPerCluster * vol->disk->blockSize));
@@ -221,17 +239,17 @@ STATUS FatReadWrite(struct IoRp *rp)
             if(0 != FatReserveClusters(vol, ctx->cluster, requiredClusters))
             {
                 FatFreeClusters(vol, ctx->cluster);
+                MmFreeKernelHeap(ctx);
                 KeReleaseSpinlock(&(vol->fatLock), prio);
                 IoFreeRp(n);
                 return OUT_OF_RESOURCES; 
             }
+            if(eof)
+                ctx->cluster = FatGetNextCluster(vol, ctx->cluster);
             KeReleaseSpinlock(&(vol->fatLock), prio);
         }
     }    
-
-    if(incrementCluster)
-        ctx->cluster++;
-
+    
     
     //get number of consecutive bytes
     consecutive = FatGetConsecutiveClusterCount(vol, ctx->cluster) * vol->sectorsPerCluster * vol->disk->blockSize;

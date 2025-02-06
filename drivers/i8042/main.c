@@ -3,12 +3,21 @@
 #include "logging.h"
 #include "device.h"
 #include "ps2.h"
+#include "io/dev/rp.h"
+#include "ex/kdrv/kdrv.h"
+#include "mm/heap.h"
+#include "io/input/input.h"
+
+static struct IoRpQueue *I8042RpQueue = NULL;
+
+static void I8042ProcessRp(struct IoRp *rp)
+{
+
+}
 
 static STATUS I8042Dispatch(struct IoRp *rp)
 {
     STATUS status;
-
-    struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
 
     switch(rp->code)
     {
@@ -28,7 +37,7 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
     STATUS status = OK;
 
     PRIO prio = KeAcquireSpinlock(&(I8042ControllerInfo.lock));
-    if(I8042ControllerInfo.present.first && I8042ControllerInfo.present.second)
+    if(I8042ControllerInfo.port[PORT_FIRST].present && I8042ControllerInfo.port[PORT_SECOND].present)
     {
         KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
         return FILE_ALREADY_EXISTS;
@@ -42,10 +51,16 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
             KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
             return status;
         }
+        status = IoCreateRpQueue(I8042ProcessRp, &I8042RpQueue);
+        if(OK != status)
+        {
+            KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
+            return status;
+        }
         I8042ControllerInfo.initialized = 1;
     }
 
-    status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_INPUT, 0, &dev);
+    status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_OTHER, 0, &dev);
     if(OK != status)
     {
         KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
@@ -61,27 +76,34 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
     
     struct I8042Peripheral *info = dev->privateData;
     info->type = PS2_UNKNOWN;
+    info->device = dev;
 
-    if(I8042ControllerInfo.usable.first && !I8042ControllerInfo.present.first)
+    if(I8042ControllerInfo.port[PORT_FIRST].usable && !I8042ControllerInfo.port[PORT_FIRST].present)
     {
-        info->port = false;
-        I8042ControllerInfo.present.first = Ps2ProbePort(info);
+        I8042ControllerInfo.port[PORT_FIRST].device = info;
+        info->port = PORT_FIRST;
+        I8042ControllerInfo.port[PORT_FIRST].present = Ps2ProbePort(info);
     }
-    else if(I8042ControllerInfo.usable.second && !I8042ControllerInfo.present.second)
+    else if(I8042ControllerInfo.port[PORT_SECOND].usable && !I8042ControllerInfo.port[PORT_SECOND].present)
     {
-        info->port = true;
-        I8042ControllerInfo.present.second = Ps2ProbePort(info);
+        I8042ControllerInfo.port[PORT_SECOND].device = info;
+        info->port = PORT_SECOND;
+        I8042ControllerInfo.port[PORT_SECOND].present = Ps2ProbePort(info);
     }
 
     KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
 
+    status = IoRegisterInputDevice(dev, &(info->handle));
+    if(OK != status)
+    {
+        MmFreeKernelHeap(info);
+        IoDestroyDevice(dev);
+        return status;
+    }
+
     IoAttachDevice(dev, baseDeviceObject);
     
     return OK;
-I8042AddDeviceFailure:
-    MmFreeKernelHeap(dev->privateData);
-    IoDestroyDevice(dev);
-    return status;
 }
 
 static STATUS I8042Init(struct ExDriverObject *driverObject)

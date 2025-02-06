@@ -63,7 +63,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     bpb->reservedSectors = RtlLeU16(bpb->reservedSectors);
 
     //determine FAT type as specified by Microsoft
-    uint64_t rootDirSectors = ((bpb->rootEntryCount * 32) + (bpb->bytesPerSector - 1) / bpb->bytesPerSector);
+    uint64_t rootDirSectors = (((bpb->rootEntryCount * 32) + (bpb->bytesPerSector - 1)) / bpb->bytesPerSector);
     uint32_t fatSize = bpb->fatSize16 ? RtlLeU16(bpb->fatSize16) : RtlLeU32(bpb->ext32.fatSize32);
     uint32_t sectors = bpb->sectors16 ? RtlLeU16(bpb->sectors16) : RtlLeU32(bpb->sectors32);
     uint32_t dataSectors = sectors - (bpb->reservedSectors + (bpb->fatCount * fatSize) + rootDirSectors);
@@ -84,6 +84,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     info->fatSize = fatSize;
     info->sectorsPerCluster = bpb->sectorsPerCluster;
     info->reservedSectors = bpb->reservedSectors;
+    info->rootSize = rootDirSectors * bpb->bytesPerSector;
 
     info->fsInfo.leadSignature = FAT_FS_INFO_LEAD_SIGNATURE;
     info->fsInfo.strucSignature = FAT_FS_INFO_STRUC_SIGNATURE;

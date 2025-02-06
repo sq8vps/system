@@ -99,6 +99,34 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
     return prio;
 }
 
+PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
+{
+    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
+#ifndef SMP
+    if(0 != spinlock->lock)
+        KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
+    spinlock->lock = 1;
+#else
+    while(1)
+    {
+        //obtain previous value and try to set atomically
+        //if previous value was 0, then we've acquired the lock
+        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_SEQ_CST))
+            break;
+
+        //else we haven't acquired the lock
+        //loop until the lock appears to be free
+        //do not use atomic operations to avoid locking CPU memory bus
+        //and optimize such tight loop
+        //after we detect possibly free lock, then do the atomic exchange again
+        while(0 != spinlock->lock)
+            TIGHT_LOOP_HINT();
+    }
+    
+#endif
+    return prio;
+}
+
 void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 {
 #ifndef SMP
@@ -467,7 +495,7 @@ void KeTimedExclusionRefresh(void)
         PRIO prio = KeAcquireSpinlock(&(s->scheduling.lock));
         if(currentTimestamp >= s->scheduling.block.timeout.until)
         {
-            s->scheduling.block.timeout.until = 0;
+            KeRemoveFromLockList(s);
             s->scheduling.block.acquired = false;
             if(NULL != s->scheduling.block.mutex)
             {

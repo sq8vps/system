@@ -98,10 +98,18 @@ typedef struct KeRwLock
 
 
 /**
- * @brief Acquire spinlock
+ * @brief Acquire spinlock with high priority level
  * @param *spinlock Spinlock structure
+ * @return Previous priority
 */
 PRIO KeAcquireSpinlock(KeSpinlock *spinlock);
+
+/**
+ * @brief Acquire spinlock with DPC priority level
+ * @param *spinlock Spinlock structure
+ * @return Previous priority
+ */
+PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock);
 
 /**
  * @brief Release spinlock

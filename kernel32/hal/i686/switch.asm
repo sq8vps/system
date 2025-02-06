@@ -127,9 +127,9 @@ KeSwitchToTask:
     mov ax,[esi + CPUState.gs]
     mov gs,ax 
 
-    cli
+    ;cli
     mov byte [KeTaskSwitchInProgress+edi],0
-    sti
+    ;sti
 
     pop ebp
     pop edi
@@ -168,7 +168,7 @@ HalPerformTaskSwitch:
     jz .returnFromSwitch
 
     mov byte [KeTaskSwitchInProgress+eax],1
-    sti
+    ;sti
 
     sub esp,12 ;make room for EIP, CS and EFLAGS
 

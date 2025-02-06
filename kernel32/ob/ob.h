@@ -29,6 +29,7 @@ enum ObObjectType
     OB_RP, /**< I/O request packet */
     OB_VOLUME, /**< Volume node */
     OB_SYSLOG, /**< System logger handle */
+    OB_EVENT, /**< Event handler */
 
     OB_TYPE_COUNT, /**< Kernel object type count, do not use */
 };

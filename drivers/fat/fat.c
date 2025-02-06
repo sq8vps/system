@@ -33,7 +33,7 @@ uint32_t FatGetNextCluster(struct FatVolume *vol, uint32_t currentCluster)
             c = RtlLeU32(((uint32_t*)vol->fat)[currentCluster]) & 0xFFFFFFF;
             break;
         case FAT12:
-            //TODO: untested for FAT16 and FAT12
+            //TODO: untested for FAT12
             if(currentCluster & 1) //odd cluster number
             {
                 c = ((uint8_t*)vol->fat)[((currentCluster - 1) / 2) * 3] >> 4;
@@ -307,7 +307,18 @@ FatGetEntryCallbackContinue:
             ctx->lastFileName[1] = 0;
             i++;
         }
-        //end of cluster
+        //end of cluster or no more entries
+        if(0 == ctx->cluster)
+        {
+            //special case - cluster number was 0, that is, we were reading root directory in FAT16/12
+            if(FS_GET_NODE == ctx->rp->payload.deviceControl.code)
+                ctx->rp->status = FILE_NOT_FOUND;
+            else
+                ctx->rp->status = OK;
+            IoFinalizeRp(ctx->rp);
+            MmFreeKernelHeap(ctx);
+            return;
+        }
         ctx->cluster = FatGetNextCluster(ctx->vol, ctx->cluster);
         //check if next cluster is within a valid range
         if(FAT_CLUSTER_VALID(ctx->vol, ctx->cluster))
@@ -371,15 +382,18 @@ STATUS FatGetNode(struct IoRp *rp, struct FatVolume *vol)
     if(0 == cluster)
     {
         if(FAT32 == vol->type)
+        {
             cluster = vol->rootCluster;
+            offset = FAT_GET_OFFSET(vol, cluster);
+        }
         else
-            cluster = 2;
-        offset = FAT_GET_OFFSET(vol, cluster);
+            offset = FAT_ROOT_OFFSET(vol);
     }
 
-    if(FAT32 == vol->type)
+    //read whole cluster if FAT32 or if not FAT32, but it is not the root directory
+    if((FAT32 == vol->type) || (0 != cluster))
         size = vol->sectorsPerCluster * vol->disk->blockSize;
-    else
+    else //otherwise this should be the root directory in FAT16/12
         size = vol->rootEntryCount * 32; //entry size = 32, resulting value should be a multiple of sector size
 
     struct FatDirectory *list = MmAllocateKernelHeapAligned(size, IO_DEV_REQUIRED_ALIGNMENT(vol->disk));

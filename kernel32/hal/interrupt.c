@@ -274,11 +274,11 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr)
 
 PRIO HalRaisePriorityLevel(PRIO prio)
 {
-    if(prio > HAL_PRIORITY_LEVEL_HIGHEST)
+    if(unlikely(prio > HAL_PRIORITY_LEVEL_HIGHEST))
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
     PRIO old = HalGetTaskPriority();
     barrier();
-    if(prio < HalGetProcessorPriority())
+    if(unlikely(prio < HalGetProcessorPriority()))
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, HalGetProcessorPriority(), 0, 0);
     HalSetTaskPriority(prio);
     return old;
@@ -286,11 +286,11 @@ PRIO HalRaisePriorityLevel(PRIO prio)
 
 void HalLowerPriorityLevel(PRIO prio)
 {
-    if(prio > HAL_PRIORITY_LEVEL_HIGHEST)
+    if(unlikely(prio > HAL_PRIORITY_LEVEL_HIGHEST))
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL, prio, 0, 0, 0);
     PRIO old = HalGetProcessorPriority();
     barrier();
-    if(prio > old)
+    if(unlikely(prio > old))
         KePanicIPEx(KE_GET_CALLER_ADDRESS(0), ILLEGAL_PRIORITY_LEVEL_CHANGE, prio, old, 0, 0);
     HalSetTaskPriority(prio);
 }
@@ -301,9 +301,9 @@ void HalCheckPriorityLevel(PRIO lower, PRIO upper)
     PRIO current = HalGetProcessorPriority();
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wframe-address"
-    if(current < lower)
+    if(unlikely(current < lower))
         KePanicIPEx(KE_GET_CALLER_ADDRESS(1), PRIORITY_LEVEL_TOO_LOW, current, lower, 0, 0);
-    if(current > upper)
+    if(unlikely(current > upper))
         KePanicIPEx(KE_GET_CALLER_ADDRESS(1), PRIORITY_LEVEL_TOO_HIGH, current, upper, 0, 0);
 #pragma GCC diagnostic pop
 }

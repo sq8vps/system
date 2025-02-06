@@ -32,9 +32,9 @@ def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXPORT_START_KEYWORD, EXPORT_END_K
         outputFile.write(FILE_PROLOGUE)
         #counters for statistics
         exports = 0
-        externs = 0
         #look recursively for header files
         for headerPath in glob.glob(SEARCH_PATH  + "**/*.h", recursive = True):
+            exportsInFile = 0
             newHeaderPath = OUTPUT_PATH + '/' + headerPath.replace(SEARCH_PATH, '')
             os.makedirs(newHeaderPath.rsplit('/', 1)[0], exist_ok = True)
             with open(newHeaderPath, "w") as newHeader:
@@ -54,6 +54,7 @@ def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXPORT_START_KEYWORD, EXPORT_END_K
                         if line.startswith(EXPORT_START_KEYWORD):
                             keywordFound = True
                             exports += 1
+                            exportsInFile += 1
                             line = line.replace(EXPORT_START_KEYWORD, "")
                             if not line.strip(): #is line empty after removing the export keyword?
                                 continue
@@ -69,6 +70,8 @@ def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXPORT_START_KEYWORD, EXPORT_END_K
 
                 newHeader.write(FILE_EPILOGUE)
                 newHeader.write("#endif")
+            if exportsInFile == 0:
+                os.remove(newHeaderPath)
         print("\tExported " + str(exports) + " blocks")
         outputFile.write(FILE_EPILOGUE)
         outputFile.write("#endif")

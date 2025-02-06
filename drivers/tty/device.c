@@ -5,8 +5,10 @@
 #include "mm/heap.h"
 #include <stdatomic.h>
 #include "rtl/stdio.h"
+#include "rtl/string.h"
 #include "io/dev/rp.h"
 #include "write.h"
+#include "io/input/input.h"
 
 const char *TtyTypePrefix[] = 
 {
@@ -17,10 +19,9 @@ const char *TtyTypePrefix[] =
 #define TTY_DEVICE_NAME_PREFIX "tty"
 _Atomic uint32_t TtyDeviceIndex[TTY_TYPE_COUNT] = {[0 ... TTY_TYPE_COUNT - 1] = 0};
 
-STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, uint32_t *id)
+STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, struct TtyDeviceData *info)
 {
     struct IoDeviceObject *dev = NULL;
-    struct TtyDeviceData *info = NULL;
     struct IoRpQueue *writeQueue = NULL;
     STATUS status = OK;
 
@@ -29,14 +30,6 @@ STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, uint32_t *
     {
         dev->alignment = 0;
         dev->blockSize = 0;
-        dev->privateData = MmAllocateKernelHeapZeroed(sizeof(struct TtyDeviceData));
-        if(NULL == dev->privateData)
-        {
-            status = OUT_OF_RESOURCES;
-            goto TtyCreateDeviceFailed;
-        }
-
-        info = dev->privateData;
 
         status = IoCreateRpQueue(TtyWrite, &writeQueue);
         if(OK != status)
@@ -49,18 +42,13 @@ STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, uint32_t *
             goto TtyCreateDeviceFailed;
 
         info->type = type;
-        info->activated = false;
 
         uint32_t ttyId = atomic_fetch_add_explicit(&(TtyDeviceIndex[type]), 1, memory_order_relaxed);
 
-        char name[20];
-        snprintf(name, sizeof(name), TTY_DEVICE_NAME_PREFIX "%s%lu", TtyTypePrefix[type], ttyId);
-        status = IoCreateDeviceFile(dev, 0, name);
+        snprintf(info->name, sizeof(info->name), TTY_DEVICE_NAME_PREFIX "%s%lu", TtyTypePrefix[type], ttyId);
+        status = IoCreateDeviceFile(dev, 0, info->name);
         if(OK != status)
             return status;
-
-        if(NULL != id)
-            *id = ttyId;
     }
 
     return status;
@@ -70,11 +58,47 @@ TtyCreateDeviceFailed:
     {
         if(NULL != writeQueue)
             IoDestroyRpQueue(writeQueue);
-        if(NULL != info)
-            MmFreeKernelHeap(info);
         if(NULL != dev)
             IoDestroyDevice(dev);
     }
         
     return status;
+}
+
+static STATUS TtyCreateVt(struct ExDriverObject *drv, struct TtyParameters *params)
+{
+    STATUS status = OK;
+
+    IoRegisterEventHandler()
+
+    struct TtyDeviceData *info = MmAllocateKernelHeapZeroed(sizeof(*info));
+    if(NULL == info)
+        return OUT_OF_RESOURCES;
+
+    status = TtyCreateDevice(drv, TTY_TYPE_VT, info);
+    if(OK != status)
+    {
+        MmFreeKernelHeap(info);
+        return status;
+    }
+
+    RtlStrcpy(params->request.createVt.name, info->name);
+
+    return status;
+}
+
+STATUS TtyHandleControl(struct IoRp *rp)
+{
+    if(unlikely(IO_RP_TERMINAL_CONTROL != rp->code))
+        return RP_PROCESSING_FAILED;
+    
+    switch(rp->payload.deviceControl.code)
+    {
+        case TTY_CREATE_VT:
+
+            break;
+        default:
+            return RP_CODE_UNKNOWN;
+            break;
+    }
 }

@@ -58,7 +58,8 @@ enum IoDeviceType
     IO_DEVICE_TYPE_DISK, /**< Disk with partition manager (MBR, GPT, ...) or disk partition */
     IO_DEVICE_TYPE_FS, /**< Filesystem on partition (EXT, FAT...) */
     IO_DEVICE_TYPE_TERMINAL, /**< Terminal device */
-    IO_DEVICE_TYPE_INPUT, /**< User input device (keyboard, mouse, ...) */
+    IO_DEVICE_TYPE_KEYBOARD, /**< Keyboard */
+    IO_DEVICE_TYPE_MOUSE, /**< Mouse */
 
 
     __IO_DEVICE_TYPE_COUNT, /**< Count of device types, do not use */

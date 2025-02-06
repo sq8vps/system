@@ -11,6 +11,7 @@
 #include "io/dev/rp.h"
 #include "io/dev/vol.h"
 #include "io/log/syslog.h"
+#include "io/input/event.h"
 
 #define OB_HEADER_MAGIC (((uint32_t)'K') | ((uint32_t)'E' << 8) | ((uint32_t)'O' << 16) | ((uint32_t)'B' << 24))
 #define OB_CHUNK_COUNT 16
@@ -32,6 +33,7 @@ static size_t ObSize[OB_TYPE_COUNT] = {
     sizeof(struct IoRp),
     sizeof(struct IoVolumeNode),
     sizeof(struct IoSyslogHandle),
+    sizeof(struct IoEventHandler)
 };
 
 static inline void *ObCreateObjectWithOwner(enum ObObjectType type, size_t additional, struct KeProcessControlBlock *pcb)

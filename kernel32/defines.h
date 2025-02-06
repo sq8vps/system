@@ -228,14 +228,6 @@ typedef uint64_t time_t;
 #define barrier() ASM("" ::: "memory")
 
 /**
- * @brief Check if character \a x is alphanumeric
- * @param x Character to check
- * @return 1 if is alphanumeric, 0 otherwise
-*/
-#define IS_ALPHANUMERIC(x) ((((x) >= '0') && ((x) <= '9')) || (((x) >= 'A') && ((x) <= 'Z')) || (((x) >= 'a') && ((x) <= 'z')))
-
-
-/**
  * @brief Convert microseconds to nanoseconds (standard kernel time resolution)
  * @param us Value in microseconds
  * @return Value in nanoseconds

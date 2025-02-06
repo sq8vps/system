@@ -1,7 +1,6 @@
-#ifndef PCI_LOGGING_H_
-#define PCI_LOGGING_H_
+#ifndef TTY_LOGGING_H_
+#define TTY_LOGGING_H_
 
-#include "logging.h"
 #include "kernel.h"
 
 extern struct IoSyslogHandle *TtyLogHandle;

@@ -102,6 +102,7 @@ struct FatVolume
 
     //FAT12/16 specific
     uint16_t rootEntryCount;
+    uint32_t rootSize;
 
     //FAT32 specific
     uint32_t rootCluster;
@@ -113,7 +114,8 @@ struct FatVolume
     uint32_t modifiedClusterHigh;
 };
 
-#define FAT_GET_OFFSET(vol, cluster) ((((cluster) - 2) * (vol)->sectorsPerCluster + (vol)->fatCount * (vol)->fatSize + (vol)->reservedSectors) * (vol)->disk->blockSize)
+#define FAT_ROOT_OFFSET(vol) (((vol)->fatCount * (vol)->fatSize + (vol)->reservedSectors) * (vol)->disk->blockSize)
+#define FAT_GET_OFFSET(vol, cluster) ((((cluster) - 2) * (vol)->sectorsPerCluster + (vol)->fatCount * (vol)->fatSize + (vol)->reservedSectors) * (vol)->disk->blockSize + (vol)->rootSize)
 
 struct FatDirectory
 {
