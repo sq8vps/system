@@ -1,5 +1,7 @@
 #include "bridge.h"
-#include "kernel.h"
+#include "mm/heap.h"
+#include "ke/core/mutex.h"
+#include "rtl/string.h"
 
 //max number of PCI-PCI bridge levels
 //level = 1 means there is only a host bridge

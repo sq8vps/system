@@ -306,7 +306,7 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
 LoadKernelDriverFailure:
     
 
-    LOG(SYSLOG_INFO, "Driver %s loading failed", path);
+    LOG(SYSLOG_INFO, "Driver %s loading failed, error %d", path, status);
 
     KeReleaseMutex(&(ExKernelDriverState.mutex));
     

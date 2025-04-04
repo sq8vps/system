@@ -20,13 +20,13 @@ void I686VerifySyscall(uintptr_t ret, uintptr_t stack)
     status = HalGetPageFlags(ret, &mflags);
     if((OK != status) || (mflags & MM_FLAG_NON_EXECUTABLE) || !(mflags & MM_FLAG_USER_MODE) || !(mflags & MM_FLAG_PRESENT))
     {
-        //return address invalid, terminate task
+        //TODO: return address invalid, terminate task
         KePanic(UNEXPECTED_FAULT);
     }
     status = HalGetPageFlags(stack, &mflags);
     if((OK != status) || !(mflags & MM_FLAG_USER_MODE) || !(mflags & MM_FLAG_PRESENT) || !(mflags & MM_FLAG_WRITABLE) || (mflags & MM_FLAG_READ_ONLY))
     {
-        //stack address invalid, terminate task
+        //TODO: stack address invalid, terminate task
         KePanic(UNEXPECTED_FAULT);
     }
 }

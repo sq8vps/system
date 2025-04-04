@@ -1,8 +1,9 @@
-#include "kernel.h"
 #include "logging.h"
 #include "device.h"
 #include "utils.h"
 #include "bridge.h"
+#include "io/dev/rp.h"
+#include "io/dev/dev.h"
 
 static STATUS PciDispatch(struct IoRp *rp)
 {

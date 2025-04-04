@@ -1,8 +1,11 @@
 #include "device.h"
-#include "kernel.h"
 #include "logging.h"
-
 #include "acclib.h"
+#include "io/dev/rp.h"
+#include "io/dev/dev.h"
+#include "io/dev/res.h"
+#include "mm/heap.h"
+#include "rtl/string.h"
 
 static bool alreadyEnumerated = false;
 static bool pciHostBridgeFound = false; //allow only one PCI/PCI-E host bridge

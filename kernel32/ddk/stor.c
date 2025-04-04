@@ -20,14 +20,9 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
     rp->payload.deviceControl.code = STOR_GET_GEOMETRY;
     rp->payload.deviceControl.data = NULL;
     
-    status = IoSendRp(target, rp);
+    status = IoSendRpSync(target, rp);
     if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-            *geometry = rp->payload.deviceControl.data;
-    }
+        *geometry = rp->payload.deviceControl.data;
 
     IoFreeRp(rp);
     

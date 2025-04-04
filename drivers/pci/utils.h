@@ -24,6 +24,8 @@ enum PciClass PciGetClass(union IoBusId address);
 
 enum PciSubclass PciGetSubclass(union IoBusId address);
 
+uint8_t PciGetProgIf(union IoBusId address);
+
 uint8_t PciGetInterruptPin(union IoBusId address);
 
 bool PciIsPciPciBridge(union IoBusId address);

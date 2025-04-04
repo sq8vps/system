@@ -22,10 +22,10 @@ All multi-byte fields, except the UUID, are stored least significant byte first.
     - UUID (128 bits): `0x09` - stored most significant byte first
     - IEEE 754 single precision float (32 bits): `0x0A`
     - IEEE 754 double precision float (64 bits): `0x0B`
-    - Multibyte (n * 8 bits): `0x0C` - e.g. for numbers longer than 128 bits
+    - Multibyte (n * 8 bits): `0x0C` - e.g. for numbers longer than 64 bits
 
 * Name length (32 bits) of the *Name* field in bytes, including terminator
-* Data length (32 bits) in bytes - including termiator in *UTF-8 string*
+* Data length (32 bits) in bytes - including terminator in *UTF-8 string*
 * Name - UTF-8 string with terminator
 * Value (with terminator in *UTF-8 string*)
 

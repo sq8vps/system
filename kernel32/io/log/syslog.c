@@ -4,6 +4,8 @@
 #include "rtl/string.h"
 #include "io/fs/fs.h"
 #include "mm/heap.h"
+#include "io/fs/fs.h"
+#include "hal/video.h"
 
 struct IoSyslogHandle IoKernelLog = {.output = SYSLOG_OUTPUT_MAIN, .name = "Kernel"};
 
@@ -25,27 +27,31 @@ void IoCloseSyslog(struct IoSyslogHandle *handle)
 
 STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, va_list args)
 {
-    if(NULL == h)
+    if(unlikely(NULL == h))
         return NULL_POINTER_GIVEN;
 
-    RtlPrint("[%s] ", h->name);
-
-    switch(type)
+    if(HalVideoIsAvailable())
     {
-        case SYSLOG_INFO:
-            RtlPrint("INFO: ");
-            break;
-        case SYSLOG_WARNING:
-            RtlPrint("WARNING: ");
-            break;
-        case SYSLOG_ERROR:
-            RtlPrint("ERROR: ");
-            break;
-        default:
-            break;
+        HalVideoPrint("[%s] ", h->name);
+
+        switch(type)
+        {
+            case SYSLOG_INFO:
+                HalVideoPrint("INFO: ");
+                break;
+            case SYSLOG_WARNING:
+                HalVideoPrint("WARNING: ");
+                break;
+            case SYSLOG_ERROR:
+                HalVideoPrint("ERROR: ");
+                break;
+            default:
+                break;
+        }
+        HalVideoPrintV(format, args);
+        HalVideoPrintChar('\n');
     }
-    RtlVprint(format, args);
-    RtlPrint("\n");
+
     return OK;
 }
 

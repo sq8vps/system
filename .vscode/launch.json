@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "System QEMU Debug",
+            "name": "System GDB Debug",
             "type": "gdb",
             "request": "attach",
             "executable": "symbols/kernel32.sym",

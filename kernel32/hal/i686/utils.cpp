@@ -41,6 +41,18 @@ void operator delete[](void *p)
     MmFreeKernelHeap(p);
 }
 
+void operator delete(void *p, size_t sz)
+{
+    UNUSED(sz);
+    MmFreeKernelHeap(p);
+}
+
+void operator delete[](void *p, size_t sz)
+{
+    UNUSED(sz);
+    MmFreeKernelHeap(p);
+}
+
 // namespace __cxxabiv1 
 // {
 // #if defined(__i686__)

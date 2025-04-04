@@ -161,7 +161,7 @@ STATUS KeCreateKernelProcess(uint32_t flags, void (*entry)(void*), void *entryCo
     return OK;
 }
 
-STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb)
+STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[], const char *envp[], const struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb)
 {
     STATUS status = OK;
     if((NULL == path) || ('\0' == path[0]))

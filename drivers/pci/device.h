@@ -16,6 +16,7 @@ struct PciDeviceData
     uint16_t device;
     enum PciClass class;
     enum PciSubclass subclass;
+    uint8_t progIf;
     struct PciBridge *thisBridge;
     union IoBusId address;
     struct IoIrqEntry irq;

@@ -9,6 +9,7 @@
 #include "ddk/fs.h"
 #include "rtl/order.h"
 #include "logging.h"
+#include "rtl/string.h"
 
 struct FatGetEntryContext
 {

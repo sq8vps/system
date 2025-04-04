@@ -3,7 +3,7 @@
 
 #define DISABLE_KERNEL_STDLIB
 
-#include "kernel.h"
+#include "ke/core/mutex.h"
 // #define memcpy RtlMemcpy
 // #define memset RtlMemset
 // #define strlen RtlStrlen
@@ -33,7 +33,7 @@
 
 #include <stdint.h>
 
-#if defined(__x86_64__)
+#if defined(__amd64__)
 #define ACPI_MACHINE_WIDTH          64
 #define COMPILER_DEPENDENT_INT64    int64_t
 #define COMPILER_DEPENDENT_UINT64   uint64_t

@@ -1,5 +1,6 @@
 #include "utils.h"
-#include "kernel.h"
+#include "hal/i686/ioport.h"
+#include "mm/heap.h"
 
 #define PCI_CONFIG_IO_ENABLE_FLAG 0x80000000
 #define PCI_CONFIG_IO_ADDR 0xCF8
@@ -83,6 +84,11 @@ enum PciClass PciGetClass(union IoBusId address)
 enum PciSubclass PciGetSubclass(union IoBusId address)
 {
 	return PciConfigReadByte(address, PCI_CONFIG_STD_SUBCLASS);
+}
+
+uint8_t PciGetProgIf(union IoBusId address)
+{
+	return PciConfigReadByte(address, PCI_CONFIG_STD_PROG_IF);
 }
 
 uint8_t PciGetInterruptPin(union IoBusId address)

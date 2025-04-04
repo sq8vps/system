@@ -350,8 +350,8 @@ void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
     //clear buddies
     RtlMemset(MmBuddy, 0, sizeof(MmBuddy));
     //iterate through the kernel image mappings and mark used pages
-    for(PADDRESS i = ALIGN_DOWN((PADDRESS)(&_kstart), PAGE_SIZE); 
-        i < ALIGN_UP((PADDRESS)(&_kend), PAGE_SIZE); 
+    for(uintptr_t i = ALIGN_DOWN((uintptr_t)(&_kstart), PAGE_SIZE); 
+        i < ALIGN_UP((uintptr_t)(&_kend), PAGE_SIZE); 
         i += PAGE_SIZE)
     {
         PADDRESS physical;
@@ -400,7 +400,7 @@ void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
             }
             
         }
-        //mark frames occupied by the load modules
+        //mark frames occupied by the loaded modules
         else if(MB2_MODULE == tag->type)
         {
             const struct Multiboot2ModuleTag *mod = (const struct Multiboot2ModuleTag*)tag;

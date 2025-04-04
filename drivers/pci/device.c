@@ -4,6 +4,10 @@
 #include "bridge.h"
 #include "class.h"
 #include "io/dev/dev.h"
+#include "mm/heap.h"
+#include "rtl/string.h"
+#include "rtl/stdio.h"
+#include "io/dev/res.h"
 
 #define PCI_DEVICE_ID_PREFIX "PCI"
 
@@ -64,15 +68,12 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
         enum PciSubclass subclass = PciGetSubclass(address);
 
         bool isPciBridge = false;
-        enum IoDeviceType type;
 
         switch(class)
         {
             case STORAGE:
-                type = IO_DEVICE_TYPE_STORAGE;
                 break;
             case BRIDGE:
-                type = IO_DEVICE_TYPE_BUS;
                 switch(subclass)
                 {
                     case BRIDGE_PCI:
@@ -99,13 +100,12 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
             case ENCRYPTION:
             case SIGNAL_PROCESSING:
             default:
-                type = IO_DEVICE_TYPE_OTHER;
                 break;
         }
 
         //create subdevice for new device
         struct IoDeviceObject *dev;
-        if(OK != (status = IoCreateDevice(drv, type, 0, &dev)))
+        if(OK != (status = IoCreateDevice(drv, IO_DEVICE_TYPE_BUS, 0, &dev)))
         {
             return status;
         }
@@ -125,6 +125,7 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
         deviceInfo->thisBridge = NULL;
         deviceInfo->class = class;
         deviceInfo->subclass = subclass;
+        deviceInfo->progIf = PciGetProgIf(address);
         deviceInfo->vendor = vid;
         deviceInfo->device = did;
 
@@ -303,50 +304,6 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
     {
         struct PciDeviceData *info = dev->privateData;
         char *deviceId, **compatibleIds;
-        uint8_t compatibleIdCount = 0;
-
-        switch(info->class)
-        {
-            case STORAGE:
-                switch(info->subclass)
-                {
-                    case STORAGE_IDE:
-                    case STORAGE_SATA:
-                        compatibleIdCount = 1;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            case BRIDGE:
-                switch(info->subclass)
-                {
-                    case BRIDGE_PCI:
-                    case BRIDGE_PCI_2:
-                        compatibleIdCount = 1;
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            case NETWORK:
-            case DISPLAY:
-            case MULTIMEDIA:
-            case MEMORY:
-            case SIMPLE_COMM:
-            case SYSTEM_PERIPH:
-            case INPUT_DEVICE:
-            case DOCKING_STATION:
-            case PROCESSOR:
-            case SERIAL_BUS:
-            case WIRELESS:
-            case INTELLIGENT:
-            case SATELLITE_COMM:
-            case ENCRYPTION:
-            case SIGNAL_PROCESSING:
-            default:
-                break;
-        }
 
         deviceId = MmAllocateKernelHeap(128);
         if(NULL == deviceId)
@@ -355,7 +312,7 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
             return OUT_OF_RESOURCES;
         }
 
-        compatibleIds = RtlAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, compatibleIdCount, 128);
+        compatibleIds = RtlAllocateStringTable(IO_MAX_COMPATIBLE_DEVICE_IDS, 2, 128);
         if(NULL == compatibleIds)
         {
             MmFreeKernelHeap(deviceId);
@@ -363,54 +320,9 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
             return OUT_OF_RESOURCES;
         }
 
-        snprintf(deviceId, 128, PCI_DEVICE_ID_PREFIX "/%X/%X", info->vendor, info->device);
-
-        switch(info->class)
-        {
-            case STORAGE:
-                switch(info->subclass)
-                {
-                    case STORAGE_IDE:
-                        snprintf(compatibleIds[0], 128, "STORAGE/IDE");
-                        break;
-                    case STORAGE_SATA:
-                        snprintf(compatibleIds[0], 128, "STORAGE/AHCI");
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            case BRIDGE:
-                switch(info->subclass)
-                {
-                    case BRIDGE_PCI:
-                    case BRIDGE_PCI_2:
-                        snprintf(compatibleIds[0], 128, "BUS/PCI");
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            case NETWORK:
-            case DISPLAY:
-            case MULTIMEDIA:
-            case MEMORY:
-            case SIMPLE_COMM:
-            case SYSTEM_PERIPH:
-            case INPUT_DEVICE:
-            case DOCKING_STATION:
-            case PROCESSOR:
-            case SERIAL_BUS:
-            case WIRELESS:
-            case INTELLIGENT:
-            case SATELLITE_COMM:
-            case ENCRYPTION:
-            case SIGNAL_PROCESSING:
-            default:
-                break;
-        }
-        
-
+        snprintf(deviceId, 128, PCI_DEVICE_ID_PREFIX "/VEN_%04X/DEV_%04X", info->vendor, info->device);
+        snprintf(compatibleIds[0], 128, PCI_DEVICE_ID_PREFIX "/CC_%02X/SC_%02X", info->class, info->subclass);        
+        snprintf(compatibleIds[1], 128, PCI_DEVICE_ID_PREFIX "/CC_%02X/SC_%02X/IF_%02X", info->class, info->subclass, info->progIf);        
 
         rp->payload.deviceId.mainId = deviceId;
         rp->payload.deviceId.compatibleId = compatibleIds;

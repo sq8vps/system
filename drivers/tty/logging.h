@@ -1,7 +1,7 @@
 #ifndef TTY_LOGGING_H_
 #define TTY_LOGGING_H_
 
-#include "kernel.h"
+#include "io/log/syslog.h"
 
 extern struct IoSyslogHandle *TtyLogHandle;
 

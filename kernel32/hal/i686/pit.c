@@ -2,6 +2,7 @@
 
 #include "pit.h"
 #include "ioport.h"
+#include "ke/core/mutex.h"
 
 #define PIT_CH0_PORT 0x40
 #define PIT_CH2_PORT 0x42
@@ -9,6 +10,8 @@
 #define PIT_GATE_PORT 0x61
 
 #define PIT_CLOCK_FREQUENCY 1193182 //Hz
+
+static KeSpinlock PitLock = KeSpinlockInitializer;
 
 void PitInit(void)
 {
@@ -29,46 +32,62 @@ void PitSetInterval(uint32_t interval)
     IoPortWriteByte(PIT_CH0_PORT, val >> 8);
 }
 
-//one-shot mode terminal counter value
-static uint16_t oneShotValue = 0;
-
-void PitOneShotInit(uint32_t time)
+STATUS PitDoSingleShot(uint32_t time, PitCallback start, PitCallback stop, void *context)
 {
-    oneShotValue = (((uint64_t)time) * ((uint64_t)PIT_CLOCK_FREQUENCY)) / ((uint64_t)1000000);
+    //check whether the specified interval can be handled by PIT
+    if(time >= (((uint64_t)1000000 * (uint64_t)UINT16_MAX) / (uint64_t)PIT_CLOCK_FREQUENCY))
+        return BAD_PARAMETER;
+    if(time <= ((uint64_t)1000000 / (uint64_t)PIT_CLOCK_FREQUENCY))
+        return BAD_PARAMETER;
+
+    PRIO prio = KeAcquireDpcLevelSpinlock(&PitLock);
+
+    uint16_t cycles = (((uint64_t)time) * ((uint64_t)PIT_CLOCK_FREQUENCY)) / ((uint64_t)1000000);
     IoPortWriteByte(PIT_CMD_PORT, 0xB2); //channel 2, single shot mode
-    IoPortWriteByte(PIT_CH2_PORT, oneShotValue & 0xFF);
+    IoPortWriteByte(PIT_CH2_PORT, cycles & 0xFF);
     IoPortReadByte(PIT_GATE_PORT); //delay
-    IoPortWriteByte(PIT_CH2_PORT, oneShotValue >> 8);
-}
-
-void PitOneShotStart(void)
-{
-    //pulse gate low (produce rising edge)
-    uint8_t gate = IoPortReadByte(PIT_GATE_PORT) & 0xFE;
-    IoPortWriteByte(PIT_GATE_PORT, gate);
-    IoPortReadByte(PIT_GATE_PORT); //delay
-    IoPortWriteByte(PIT_GATE_PORT, gate | 1);
-    //wait for the counter to start counting
-    //that is wait until the counter is different than initial value
-    //it would be best to use timer output at port 0x61, though e.g. Qemu does not have this output connected
+    IoPortWriteByte(PIT_CH2_PORT, cycles >> 8);
+    //the initial count is written to the counter register on the next CLK pulse
+    //wait for the counter to be updated
     uint16_t v;
     do
     {
         v = IoPortReadByte(PIT_CH2_PORT);
         v |= (((uint16_t)IoPortReadByte(PIT_CH2_PORT)) << 8);
     }
-    while(v == oneShotValue);
-}
+    while(v != cycles);
 
-void PitOneShotWait(void)
-{
-    //wait for the counter to reach terminal value
-    uint16_t v = 0;
-    while(v < oneShotValue)
+    //pulse gate low (produce rising edge)
+    uint8_t gate = IoPortReadByte(PIT_GATE_PORT) & 0xFE;
+    IoPortWriteByte(PIT_GATE_PORT, gate);
+    IoPortReadByte(PIT_GATE_PORT); //delay
+    IoPortWriteByte(PIT_GATE_PORT, gate | 1);
+    //in general, PIT has the OUT pin that is set low when counting begins
+    //however, of course, some machines and emulators might not have this pin connected anywhere,
+    //thus, there is no sane way to determine whether the couting has started
+    //one might check if the current counter value decremented, but this way at least one cycle will be lost
+
+    if(NULL != start)
+        start(false, context);
+
+    //the PIT counter counts down and sets OUT high on terminal count (zero)
+    //however, since OUT might not be connected, we need to check the counter value directly
+    //unfortunately, the timer does not stop on terminal count and begins counting again from 0xFFFF
+    //to avoid missing zero, check whether counting is still in progress, that is, if it's between 0 and initial count
+    //if not, the counter is 0 or wrapped around and the coutining is finished
+    do
     {
         v = IoPortReadByte(PIT_CH2_PORT);
         v |= (((uint16_t)IoPortReadByte(PIT_CH2_PORT)) << 8);
     }
+    while((v > 0) && (v <= cycles));
+
+    KeReleaseSpinlock(&PitLock, prio);
+
+    if(NULL != stop)
+        stop(true, context);
+
+    return OK;
 }
 
 #endif

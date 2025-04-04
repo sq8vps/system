@@ -24,14 +24,25 @@ uint64_t TscGetRaw(void)
     return (((uint64_t)hi) << 32) | ((uint64_t)lo);
 }
 
+static void TscMeasurementCallback(bool finished, void *context)
+{
+    uint64_t *value = (uint64_t*)context;
+    if(!finished)
+    {
+       *value = TscGetRaw();
+    }
+    else
+    {
+        *value = TscGetRaw() - *value;
+        frequency = ((uint64_t)100) * *value;
+    }
+}
+
 STATUS TscCalibrate(void)
 {
-    PitOneShotInit(10000); //10000us=10ms
-    PitOneShotStart();
-    uint64_t value = TscGetRaw();
-    PitOneShotWait();
-    value = TscGetRaw() - value;
-    frequency = ((uint64_t)100) * value;
+    uint64_t value; 
+    PitDoSingleShot(10000, TscMeasurementCallback, TscMeasurementCallback, &value);
+
     return OK;
 }
 

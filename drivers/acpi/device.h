@@ -4,6 +4,7 @@
 #include "acpica/include/acpi.h"
 #include "io/dev/rp.h"
 #include "io/dev/dev.h"
+#include "rtl/string.h"
 
 #define PCI_ADR_EXTRACT_DEVICE(adr) (((adr) >> 16) & 0xFFFF)
 #define PCI_ADR_EXTRACT_FUNCTION(adr) ((adr) & 0xFFFF)

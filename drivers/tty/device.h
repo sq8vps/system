@@ -7,6 +7,7 @@
 
 struct ExDriverObject;
 struct IoRpQueue;
+struct IoRp;
 
 enum TtyType
 {
@@ -27,6 +28,8 @@ struct TtyDeviceData
     int inputHandle, outputHandle; /**< VT input event and output display handle */
 };
 
-STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, uint32_t *id);
+STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, struct TtyDeviceData *info);
+
+STATUS TtyHandleControl(struct IoRp *rp);
 
 #endif

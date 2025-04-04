@@ -1,8 +1,7 @@
 #ifndef DISK_LOGGING_H_
 #define DISK_LOGGING_H_
 
-#include "logging.h"
-#include "kernel.h"
+#include "io/log/syslog.h"
 
 extern struct IoSyslogHandle *DiskLogHandle;
 

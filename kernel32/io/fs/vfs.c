@@ -150,12 +150,7 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags)
                 {
                     rp->code = IO_RP_OPEN;
                     rp->vfsNode = node;
-                    status = IoSendRp(node->device, rp);
-                    if(OK == status)
-                    {
-                        IoWaitForRpCompletion(rp);
-                        status = rp->status;
-                    }
+                    status = IoSendRpSync(node->device, rp);
                     IoFreeRp(rp);
                 }
                 else
@@ -230,12 +225,7 @@ STATUS IoVfsClose(struct IoVfsNode *node)
                 {
                     rp->code = IO_RP_CLOSE;
                     rp->vfsNode = node;
-                    status = IoSendRp(node->device, rp);
-                    if(OK == status)
-                    {
-                        IoWaitForRpCompletion(rp);
-                        status = rp->status;
-                    }
+                    status = IoSendRpSync(node->device, rp);
                     IoFreeRp(rp);
                 }
                 else
@@ -541,8 +531,7 @@ STATUS IoVfsRead(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_t
 
     if(0 == size)
     {
-        callback(OK, 0, context);
-        return OK;
+        return BAD_PARAMETER;
     }
 
     switch(node->fsType)
@@ -584,8 +573,7 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_
 
     if(0 == size)
     {
-        callback(OK, 0, context);
-        return OK;
+        return BAD_PARAMETER;
     }
 
     //allow only overwriting or appending, no empty spaces

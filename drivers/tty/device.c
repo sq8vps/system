@@ -9,6 +9,8 @@
 #include "io/dev/rp.h"
 #include "write.h"
 #include "io/input/input.h"
+#include "io/input/event.h"
+#include "vt.h"
 
 const char *TtyTypePrefix[] = 
 {
@@ -69,18 +71,31 @@ static STATUS TtyCreateVt(struct ExDriverObject *drv, struct TtyParameters *para
 {
     STATUS status = OK;
 
-    IoRegisterEventHandler()
-
     struct TtyDeviceData *info = MmAllocateKernelHeapZeroed(sizeof(*info));
     if(NULL == info)
         return OUT_OF_RESOURCES;
 
+    struct IoEventHandler evHandler;
+    evHandler.type = IO_EVENT_KEYBOARD;
+    evHandler.aggregate = false;
+    evHandler.handle = params->request.createVt.inputEvent;
+    evHandler.context = info;
+    evHandler.event = TtyProcessVtInput;
+
+    status = IoRegisterEventHandler(&evHandler);
+    if(OK != status)
+        return status;
+
     status = TtyCreateDevice(drv, TTY_TYPE_VT, info);
     if(OK != status)
     {
+        IoUnregisterEventHandler(&evHandler);
         MmFreeKernelHeap(info);
         return status;
     }
+
+    info->inputHandle = params->request.createVt.inputEvent;
+    info->outputHandle = params->request.createVt.outputDisplay;
 
     RtlStrcpy(params->request.createVt.name, info->name);
 
@@ -95,7 +110,7 @@ STATUS TtyHandleControl(struct IoRp *rp)
     switch(rp->payload.deviceControl.code)
     {
         case TTY_CREATE_VT:
-
+            return TtyCreateVt(rp->device->driverObject, rp->payload.deviceControl.data);
             break;
         default:
             return RP_CODE_UNKNOWN;

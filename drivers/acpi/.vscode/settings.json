@@ -1,7 +1,6 @@
 {
     "files.associations": {
         "*.cpp": "cpp",
-        "kernel.h": "c",
         "acpi.h": "c",
         "cpu.h": "c",
         "kdrv.h": "c",

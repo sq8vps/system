@@ -1,8 +1,10 @@
 #include "acpica/include/acpi.h"
 #include "init.h"
-#include "kernel.h"
 #include "logging.h"
 #include "device.h"
+#include "io/dev/dev.h"
+#include "io/dev/rp.h"
+#include "ex/kdrv/kdrv.h"
 
 
 static struct IoRpQueue *rpQueue = NULL;

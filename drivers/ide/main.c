@@ -1,8 +1,12 @@
-#include "kernel.h"
 #include "logging.h"
 #include "device.h"
 #include "ata.h"
 #include "config.h"
+#include "io/dev/rp.h"
+#include "io/dev/dev.h"
+#include "ex/kdrv/kdrv.h"
+#include "mm/heap.h"
+#include "rtl/string.h"
 
 /**
  * @brief Request dispatch routine
@@ -77,7 +81,6 @@ static STATUS IdeAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
     RtlMemset(device->privateData, 0, sizeof(struct IdeDeviceData));
     
     IoAttachDevice(device, baseDeviceObject);
-    baseDeviceObject->driverObject->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
     ((struct IdeDeviceData*)device->privateData)->isController = 1;
     

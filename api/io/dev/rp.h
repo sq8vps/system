@@ -70,6 +70,7 @@ struct IoRp
     uint64_t size; /**< Request data size */
     STATUS status; /**< Request status */
     bool pending; /**< Pending flag */
+    bool sync; /**< Synchronous (blocking) request */
     struct KeTaskControlBlock *task; /**< Associated task */
     union
     {
@@ -238,17 +239,6 @@ struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp);
  * @param *rp Request Packet
 */
 void IoMarkRpPending(struct IoRp *rp);
-
-
-/**
- * @brief Wait for RP completion
- * 
- * This function blocks calling task and waits for RP completion.
- * This function returns when the driver calls \a IoFinalizeRp().
- * @param *rp Request Packet
- * @warning This function must not be called when \a IoSendRp() was not successful.
-*/
-void IoWaitForRpCompletion(struct IoRp *rp);
 
 
 /**

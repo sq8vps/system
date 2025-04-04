@@ -20,12 +20,7 @@ STATUS TtyCreateVt(struct IoDeviceObject *const dev, struct TtyParameters *const
     rp->payload.deviceControl.code = TTY_CREATE_VT;
     rp->payload.deviceControl.data = params;
     
-    status = IoSendRp(dev, rp);
-    if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-    }
+    status = IoSendRpSync(dev, rp);
 
     IoFreeRp(rp);
     

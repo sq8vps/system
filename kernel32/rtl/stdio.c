@@ -1,14 +1,15 @@
 #include "defines.h"
 #include "rtl/string.h"
-#include "hal/i686/bootvga/bootvga.h"
 #include "mm/heap.h"
 #include "io/fs/fs.h"
 #include <stdarg.h>
 #include "rtl/ctype.h"
 #include "rtl/stdlib.h"
+#include "rtl/stdio.h"
 
 struct RtlVPrintfConfig
 {
+    bool dry;
 	bool toFile;
 	struct IoFileHandle *file;
 	char *buffer;
@@ -46,6 +47,9 @@ static uint8_t RtlFindHighestPositionBase2(uint64_t n, uint8_t baseExponent)
 
 static int RtlPrintPad(struct RtlVPrintfConfig *config, uint32_t count, bool zeroPad, size_t alreadyWritten)
 {
+    if(config->dry)
+        return count;
+
     if (config->toFile)
     {
         // char *t = MmAllocateKernelHeap(count);
@@ -59,7 +63,7 @@ static int RtlPrintPad(struct RtlVPrintfConfig *config, uint32_t count, bool zer
         //padding should not be that long, better allocate in on the stack
         char t[count];
         RtlMemset(t, zeroPad ? '0' : ' ', count);
-        BootVgaPrintStringN(t, count);
+        //BootVgaPrintStringN(t, count);
         return count;
     }
     else
@@ -155,10 +159,13 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
         if (config->useMax && (leftWidthPadding > remainingSpace))
             leftWidthPadding = remainingSpace;
 
-        if (config->toFile)
-            RtlMemset(buf, (ZERO_PAD == flag) ? '0' : ' ', leftWidthPadding);
-        else
-            RtlMemset(&config->buffer[alreadyWritten + written], (ZERO_PAD == flag) ? '0' : ' ', leftWidthPadding);
+        if(!config->dry)
+        {
+            if (config->toFile)
+                RtlMemset(buf, (ZERO_PAD == flag) ? '0' : ' ', leftWidthPadding);
+            else
+                RtlMemset(&config->buffer[alreadyWritten + written], (ZERO_PAD == flag) ? '0' : ' ', leftWidthPadding);
+        }
         written += leftWidthPadding;
         remainingSpace -= leftWidthPadding;
     }
@@ -167,10 +174,13 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
     {
         if ((0 == baseExponent) || (DECIMAL != flag)) // decimal system or 2^n system but without prefix (0x, 0, 0B etc.)
         {
-            if (config->toFile)
-                buf[written] = sign ? ((SIGN_REPLACE == flag) ? ' ' : '+') : '-';
-            else
-                config->buffer[alreadyWritten + written] = sign ? ((SIGN_REPLACE == flag) ? ' ' : '+') : '-';
+            if(!config->dry)
+            {
+                if (config->toFile)
+                    buf[written] = sign ? ((SIGN_REPLACE == flag) ? ' ' : '+') : '-';
+                else
+                    config->buffer[alreadyWritten + written] = sign ? ((SIGN_REPLACE == flag) ? ' ' : '+') : '-';
+            }
 
             written++;
             remainingSpace--;
@@ -178,10 +188,13 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
         else // 2^n base with prefix
         {
             // each system uses '0' at the beginning
-            if (config->toFile)
-                buf[written] = '0';
-            else
-                config->buffer[alreadyWritten + written] = '0';
+            if(!config->dry)
+            {
+                if (config->toFile)
+                    buf[written] = '0';
+                else
+                    config->buffer[alreadyWritten + written] = '0';
+            }
 
             written++;
             remainingSpace--;
@@ -194,10 +207,14 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
                         symbol = upperCase ? 'B' : 'b';
                     else
                         symbol = upperCase ? 'X' : 'x';
-                    if (config->toFile)
-                        buf[written] = symbol;
-                    else
-                        config->buffer[alreadyWritten + written] = symbol;
+
+                    if(!config->dry)
+                    {
+                        if (config->toFile)
+                            buf[written] = symbol;
+                        else
+                            config->buffer[alreadyWritten + written] = symbol;
+                    }
 
                     written++;
                     remainingSpace--;
@@ -211,10 +228,13 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
         if (config->useMax && (leftPrecisionPadding > remainingSpace))
             leftPrecisionPadding = remainingSpace;
 
-        if (config->toFile)
-            RtlMemset(&buf[written], '0', leftPrecisionPadding);
-        else
-            RtlMemset(&config->buffer[alreadyWritten + written], '0', leftPrecisionPadding);
+        if(!config->dry)
+        {
+            if (config->toFile)
+                RtlMemset(&buf[written], '0', leftPrecisionPadding);
+            else
+                RtlMemset(&config->buffer[alreadyWritten + written], '0', leftPrecisionPadding);
+        }
         written += leftPrecisionPadding;
         remainingSpace -= leftPrecisionPadding;
     }
@@ -229,10 +249,13 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
             for (uint32_t i = 0; i < length; i++)
             {
                 uint8_t digit = x / power;
-                if (config->toFile)
-                    buf[written] = digit + '0';
-                else
-                    config->buffer[alreadyWritten + written] = digit + '0';
+                if(!config->dry)
+                {
+                    if (config->toFile)
+                        buf[written] = digit + '0';
+                    else
+                        config->buffer[alreadyWritten + written] = digit + '0';
+                }
                 x -= (digit * power);
                 power /= 10;
                 written++;
@@ -255,11 +278,14 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
                     else
                         symbol = val + 'a';
                 }
-                if (config->toFile)
-                    buf[written] = symbol;
-                else
-                    config->buffer[alreadyWritten + written] = symbol;
 
+                if(!config->dry)
+                {
+                    if (config->toFile)
+                        buf[written] = symbol;
+                    else
+                        config->buffer[alreadyWritten + written] = symbol;
+                }
                 power -= baseExponent;
                 written++;
                 remainingSpace--;
@@ -273,17 +299,20 @@ static int RtlPrintNumber(struct RtlVPrintfConfig *config, uint64_t x, bool sign
         if (config->useMax && (rightPadding > remainingSpace))
             rightPadding = remainingSpace;
 
-        if (config->toFile)
-            RtlMemset(&buf[written], ' ', rightPadding);
-        else
-            RtlMemset(&config->buffer[alreadyWritten + written], ' ', rightPadding);
+        if(!config->dry)
+        {
+            if (config->toFile)
+                RtlMemset(&buf[written], ' ', rightPadding);
+            else
+                RtlMemset(&config->buffer[alreadyWritten + written], ' ', rightPadding);
+        }
         written += rightPadding;
         remainingSpace -= rightPadding;
     }
 
     if (config->toFile)
     {
-        BootVgaPrintStringN(buf, written);
+        //BootVgaPrintStringN(buf, written);
         //MmFreeKernelHeap(buf);
     }
 
@@ -500,15 +529,18 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
             else if ('c' == format[k])
             {
                 char x = va_arg(args, int);
-                if (config.useMax && (written < config.max))
+                if(config.useMax && (written < config.max))
                 {
-                    if (config.toFile)
+                    if(!config.dry)
                     {
-                        BootVgaPrintChar(x);
-                    }
-                    else
-                    {
-                        config.buffer[written] = x;
+                        if (config.toFile)
+                        {
+                            //BootVgaPrintChar(x);
+                        }
+                        else
+                        {
+                            config.buffer[written] = x;
+                        }
                     }
                     written++;
                 }
@@ -548,11 +580,18 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
                         written += RtlPrintPad(&config, padLength, ZERO_PAD == pFlag, written);
                     }
                 }
-
-                if (config.toFile)
-                    BootVgaPrintStringN(x, len);
-                else
-                    RtlMemcpy(&(config.buffer[written]), x, toWrite);
+                
+                if(!config.dry)
+                {
+                    if (config.toFile)
+                    {
+                        //BootVgaPrintStringN(x, len);
+                    }
+                    else
+                    {
+                        RtlMemcpy(&(config.buffer[written]), x, toWrite);
+                    }
+                }
 
                 written += toWrite;
 
@@ -571,7 +610,10 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
             else if ('p' == format[k])
             {
                 void *x = va_arg(args, void *);
-                written += RtlPrintNumber(&config, (uintptr_t)x, true, width, precisionSpecified, precision, pFlag, 4, false, written);
+                if(precisionSpecified || (0 != width))
+                    written += RtlPrintNumber(&config, (uintptr_t)x, true, width, precisionSpecified, precision, pFlag, 4, true, written);
+                else
+                    written += RtlPrintNumber(&config, (uintptr_t)x, true, 0, true, sizeof(uintptr_t) * 2, pFlag, 4, true, written);
             }
             else if ('n' == format[k])
             {
@@ -606,12 +648,19 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
             }
             else if ('%' == format[k])
             {
-                if (config.useMax && (written < config.max))
+                if(!config.dry)
                 {
-                    if (config.toFile)
-                        BootVgaPrintChar('%');
-                    else
-                        config.buffer[written] = '%';
+                    if (config.useMax && (written < config.max))
+                    {
+                        if (config.toFile)
+                        {
+                            //BootVgaPrintChar('%');
+                        }
+                        else
+                        {
+                            config.buffer[written] = '%';
+                        }
+                    }
                 }
                 break;
             }
@@ -630,10 +679,17 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
             if (config.useMax && ((config.max - written) < len))
                 len = config.max - written;
 
-            if (config.toFile)
-                BootVgaPrintStringN((char *)format, len);
-            else
-                RtlMemcpy(&(config.buffer[written]), format, len);
+            if(!config.dry)
+            {
+                if (config.toFile)
+                {
+                    //BootVgaPrintStringN((char *)format, len);
+                }
+                else
+                {
+                    RtlMemcpy(&(config.buffer[written]), format, len);
+                }
+            }
 
             written += len;
             format = last - 1;
@@ -641,56 +697,52 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
         format++;
     }
 
-    if (!config.toFile)
-        config.buffer[written++] = '\0';
+    if(!config.toFile)
+    {
+        if(!config.dry)
+            config.buffer[written] = '\0';
+        written++;
+    }
 
     return (int)written;
 }
 
+__attribute__ ((format (printf, 1, 2)))
+int RtlSprintDry(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+    int ret = RtlSprintDryV(format, args);
+    va_end(args);
+    return ret;
+}
 
-int RtlVprint(const char *format, va_list args)
+int RtlSprintDryV(const char *format, va_list args)
 {
     struct RtlVPrintfConfig c;
-    c.toFile = true;
+    c.toFile = false;
+    c.dry = true;
     c.useMax = false;
     int ret = RtlVprintf(c, format, args);
     return ret;
 }
 
-__attribute__ ((format (printf, 1, 2)))
-int RtlPrint(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-    int ret = RtlVprint(format, args);
-    va_end(args);
-    return ret;
-}
-
-__attribute__ ((format (printf, 2, 3)))
-int RtlPrintN(size_t n, const char *format, ...)
+int RtlSprintV(char *s, const char *format, va_list args)
 {
     struct RtlVPrintfConfig c;
-    c.toFile = true;
-    c.useMax = true;
-    c.max = n;
-	va_list args;
-	va_start(args, format);
-    int ret = RtlVprintf(c, format, args);
-    va_end(args);
-    return ret;
+    c.dry = false;
+    c.toFile = false;
+    c.buffer = s;
+    c.useMax = false;
+    return RtlVprintf(c, format, args);
 }
 
 __attribute__ ((format (printf, 2, 3)))
 int RtlSprint(char *s, const char *format, ...)
 {
-    struct RtlVPrintfConfig c;
-    c.toFile = false;
-    c.buffer = s;
-    c.useMax = false;
 	va_list args;
 	va_start(args, format);
-    int ret = RtlVprintf(c, format, args);
+    int ret = RtlSprintV(s, format, args);
     va_end(args);
     return ret;
 }
@@ -703,6 +755,7 @@ int RtlSprintN(char *s, size_t n, const char *format, ...)
     c.buffer = s;
     c.useMax = true;
     c.max = n - 1;
+    c.dry = false;
 	va_list args;
 	va_start(args, format);
     int ret = RtlVprintf(c, format, args);

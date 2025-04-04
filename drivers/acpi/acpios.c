@@ -1,9 +1,21 @@
 #define DISABLE_KERNEL_STDLIB
 
-#include "kernel.h"
 #include "acpica/include/acpi.h"
 #include "logging.h"
-
+#include "mm/mm.h"
+#include "mm/heap.h"
+#include "ke/core/mutex.h"
+#include "mm/dynmap.h"
+#include "hal/mm.h"
+#include "ke/sched/sched.h"
+#include "ex/worker.h"
+#include "ke/sched/sleep.h"
+#include "mm/mmio.h"
+#include "hal/i686/ioport.h"
+#include "io/dev/res.h"
+#include "ke/core/panic.h"
+#include "hal/time.h"
+#include "rtl/string.h"
 
 ACPI_STATUS AcpiOsInitialize(void)
 {

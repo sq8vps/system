@@ -5,7 +5,7 @@
 #include "dcpuid.h"
 #include "ke/core/panic.h"
 #include "memory.h"
-#include "bootvga/bootvga.h"
+#include "hal/video.h"
 #include "math.h"
 #include "root.h"
 #include "irq.h"
@@ -16,6 +16,7 @@
 #include "it/it.h"
 #include "interrupts/it.h"
 #include "mm/palloc.h"
+#include "emu/emu.h"
 
 struct MmMemoryPool HalPhysicalPool[HAL_PHYSICAL_MEMORY_POOLS] = 
 {
@@ -55,8 +56,8 @@ void HalInitPhase1(void)
 void HalInitPhase2(void)
 {
     //boot VGA driver can be initialized when dynamic memory allocator is available
-	if(OK != BootVgaInit())
-		FAIL_BOOT("boot VGA driver initialization failed");
+	if(OK != HalVideoInit())
+		FAIL_BOOT("boot-time video driver initialization failed");
 	
     if(OK != I686InitMath())
         FAIL_BOOT("math coprocessor initialization failed");
@@ -72,6 +73,9 @@ void HalInitPhase2(void)
 
     if(OK != I686InitTimeController())
         FAIL_BOOT("time controller initialization failed");
+    
+    if(OK != I686InitializeEmulator())
+        FAIL_BOOT("real mode emulator initialization failed");
 }
 
 void HalInitPhase3(void)

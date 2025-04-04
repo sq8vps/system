@@ -43,7 +43,6 @@
 	"settings": {
 		"files.associations": {
 			"*.cpp": "cpp",
-			"kernel.h": "c",
 			"acpi.h": "c",
 			"cpu.h": "c",
 			"kdrv.h": "c",
@@ -129,7 +128,10 @@
 			"tuple": "c",
 			"typeinfo": "c",
 			"slab.h": "c",
-			"taskfs.h": "c"
+			"taskfs.h": "c",
+			"emu.h": "c",
+			"initializer_list": "c",
+			"reg.h": "c"
 		}
 	}
 }

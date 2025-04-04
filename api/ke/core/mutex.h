@@ -77,7 +77,7 @@ typedef struct KeSemaphore
 /**
  * @brief Semaphore initializer. Use it when creating semaphores.
 */
-#define KeSemaphoreInitializer {.current = 0, .max = 1, .head = NULL, .tail = NULL, .lock = KeSpinlockInitializer}
+#define KeSemaphoreInitializer {.current = 1, .max = 1, .head = NULL, .tail = NULL, .lock = KeSpinlockInitializer}
 
 
 /**

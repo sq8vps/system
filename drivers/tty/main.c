@@ -1,6 +1,8 @@
 #include "logging.h"
 #include "device.h"
 #include "io/dev/rp.h"
+#include "io/dev/dev.h"
+#include "ex/kdrv/kdrv.h"
 
 static STATUS TtyDispatch(struct IoRp *rp)
 {
@@ -15,7 +17,7 @@ static STATUS TtyDispatch(struct IoRp *rp)
             status = OK;
             break;
         case IO_RP_WRITE:
-            if(!info->activated || (NULL == info->queue.write))
+            if(NULL == info->queue.write)
                 status = DEVICE_NOT_AVAILABLE;
             else
             {

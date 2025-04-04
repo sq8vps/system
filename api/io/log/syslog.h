@@ -19,9 +19,9 @@ struct IoSyslogHandle;
 */
 enum IoSyslogMessageType
 {
-    SYSLOG_INFO,
-    SYSLOG_WARNING,
-    SYSLOG_ERROR,
+    SYSLOG_INFO = 0,
+    SYSLOG_WARNING = 1,
+    SYSLOG_ERROR = 2,
 };
 
 /**
@@ -30,7 +30,7 @@ enum IoSyslogMessageType
 enum IoSyslogOutput
 {
     SYSLOG_OUTPUT_MAIN = 0, /**< Main/kernel system log */
-    SYSLOG_OUTPUT_OWN, /**< Own system log in separate file */
+    SYSLOG_OUTPUT_OWN = 1, /**< Own system log in separate file */
     SYSLOG_OUTPUT_DEFAULT = SYSLOG_OUTPUT_MAIN, /**< Default system log */
 };
 

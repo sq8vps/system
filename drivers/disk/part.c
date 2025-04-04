@@ -7,6 +7,7 @@
 #include "io/dev/vol.h"
 #include "io/dev/op.h"
 #include "logging.h"
+#include "rtl/stdio.h"
 
 #define DISK_DEVICE_FILE_NAME_PREFIX "hd"
 

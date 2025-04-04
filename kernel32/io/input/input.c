@@ -125,7 +125,8 @@ STATUS IoRegisterEventHandler(const struct IoEventHandler *handler)
 
 STATUS IoUnregisterEventHandler(const struct IoEventHandler *handler)
 {
-    
+    //TODO: implement!!!
+    return NOT_IMPLEMENTED;   
 }
 
 STATUS IoReportEvent(int handle, const union IoEventData *data)

@@ -52,10 +52,10 @@ static KeSpinlock I686KernelMemoryLock = KeSpinlockInitializer;
  * @brief Allocate memory for page directory
  * @return Allocated physical address or 0 on failure
 */
-static uintptr_t allocatePageDirectory(void)
+static PADDRESS I686AllocatePageDirectory(void)
 {
-	uintptr_t address = 0;
-	uintptr_t n = MmAllocatePhysicalMemory(MM_PAGE_DIRECTORY_SIZE, &address);
+	PADDRESS address = 0;
+	PSIZE n = MmAllocatePhysicalMemory(MM_PAGE_DIRECTORY_SIZE, &address);
     if(MM_PAGE_DIRECTORY_SIZE != n)
     {
         MmFreePhysicalMemory(address, n);
@@ -65,13 +65,13 @@ static uintptr_t allocatePageDirectory(void)
 }
 
 /**
- * @brief Allocate memory for page tab;e
+ * @brief Allocate memory for page table
  * @return Allocated physical address or 0 on failure
 */
-static uintptr_t allocatePageTable(void)
+static PADDRESS I686AllocatePageTable(void)
 {
-	uintptr_t address = 0;
-	uintptr_t n = MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &address);
+	PADDRESS address = 0;
+	PSIZE n = MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &address);
     if(MM_PAGE_TABLE_SIZE != n)
     {
         MmFreePhysicalMemory(address, n);
@@ -137,7 +137,7 @@ STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags)
 	return OK;
 }
 
-STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress)
+STATUS HalGetPhysicalAddress(uintptr_t vAddress, PADDRESS *pAddress)
 {
 	PRIO prio = I686AcquireMemoryLock(vAddress);
 	if(0 == (pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT)) //check if page table is present
@@ -177,14 +177,14 @@ MmMemoryFlags I686GetPageFlagsFromPageFault(uintptr_t address)
 	return flags;	
 }
 
-STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
+STATUS HalMapMemory(uintptr_t vAddress, PADDRESS pAddress, MmMemoryFlags flags)
 {
 	PRIO prio = I686AcquireMemoryLock(vAddress);
 
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //check if page table is present
 	{
 		//if not, create one
-		uintptr_t pageTableAddr;
+		PADDRESS pageTableAddr;
 		if(MM_PAGE_TABLE_SIZE != MmAllocatePhysicalMemory(MM_PAGE_TABLE_SIZE, &pageTableAddr))
 		{
 			MmFreePhysicalMemory(pageTableAddr, MM_PAGE_TABLE_SIZE);
@@ -229,7 +229,7 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
 	return OK;	
 }
 
-STATUS HalMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmMemoryFlags flags)
+STATUS HalMapMemoryEx(uintptr_t vAddress, PADDRESS pAddress, uintptr_t size, MmMemoryFlags flags)
 {
 	STATUS ret = OK;
 	size = ALIGN_UP(size, PAGE_SIZE);
@@ -358,7 +358,7 @@ void I686InitVirtualAllocator(void)
 		if(pageDir[i >> 22] & PAGE_FLAG_PRESENT)
 			continue;
 
-		uintptr_t pta = allocatePageTable();
+		PADDRESS pta = I686AllocatePageTable();
 		if(0 == pta)
 			FAIL_BOOT("page table allocation failed");
 		pageDir[i >> 22] = pta | PAGE_FLAG_WRITABLE | PAGE_FLAG_PRESENT;
@@ -414,7 +414,7 @@ PADDRESS I686CreateNewMemorySpace(void)
 	MmPageDirectoryEntry *pd = NULL;
 	PADDRESS pdAddress = 0;
 
-	pdAddress = allocatePageDirectory();
+	pdAddress = I686AllocatePageDirectory();
 	if(0 == pdAddress)
 		goto I686CreateNewMemorySpaceFailure;
 	

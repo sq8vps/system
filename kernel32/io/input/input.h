@@ -28,6 +28,14 @@ STATUS IoRegisterInputDevice(const struct IoDeviceObject *dev, int *handle);
 STATUS IoRegisterEventHandler(const struct IoEventHandler *handler);
 
 /**
+ * @brief Unregister event handler
+ * @param *handler Event handler structure to be matched
+ * @return Status code
+ * @note Priority level <= HAL_PRIORITY_LEVEL_DPC
+ */
+STATUS IoUnregisterEventHandler(const struct IoEventHandler *handler);
+
+/**
  * @brief Report event and notify recipients
  * @param handle Event handle number
  * @param *data Event data

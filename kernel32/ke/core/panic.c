@@ -1,12 +1,13 @@
 #include "panic.h"
-#include "hal/i686/bootvga/bootvga.h"
+#include "hal/video.h"
 #include "ex/kdrv/kdrv.h"
 #include "it/it.h"
 #include "hal/cpu.h"
+#include "rtl/stdio.h"
 
 #define PANIC_STRING(code) [code] = STRINGIFY(code)
 
-static const char *panicStrings[] =
+static const char *KePanicStrings[] =
 {
     PANIC_STRING(NO_ERROR),
     PANIC_STRING(KERNEL_MODE_FAULT),
@@ -25,67 +26,50 @@ static const char *panicStrings[] =
     PANIC_STRING(INVALID_TASK_ATTACHMENT_ATTEMPT),
 };
 
-static void printHex(uintptr_t x)
+static void KePrintMainPanic(uintptr_t ip, uintptr_t code)
 {
-    BootVgaPrintString("0x");
-    uint8_t pos = (sizeof(uintptr_t) * 8) - 4;
-    for(uint8_t i = 0; i < (sizeof(uintptr_t) * 2); i++)
-    {
-        uint8_t val = (x >> pos) & 0xF;
-        if(val < 10)
-            BootVgaPrintChar(val + '0');
-        else
-            BootVgaPrintChar(val - 10 + 'A');
-        pos -= 4;
-    }
-}
+    const char *codeString = "????";
+    const char *moduleString = "unknown";
 
-static void printPanic(uintptr_t ip, uintptr_t code)
-{
-    BootVgaPrintString("KERNEL PANIC!\n\n\n");
-    BootVgaPrintString((char*)panicStrings[code]);
-    BootVgaPrintString(" (");
-    printHex(code);
-    BootVgaPrintString(")\n\nModule: ");
+    if(code < (sizeof(KePanicStrings) / sizeof(*KePanicStrings)))
+        codeString = KePanicStrings[code];
+
     uintptr_t addr = ip;
     struct ExDriverObject *t = ExFindDriverByAddress(&addr);
-    if(NULL != t)
-    {
-        //BootVgaPrintString(t->fileName);
-        BootVgaPrintString("??, base at: ");
-        printHex(addr);
-    }
-    else
-        BootVgaPrintChar('?');
-
-    BootVgaPrintString(" (IP: ");
-    printHex(ip);
-    BootVgaPrintString(")\n\n");
+    if((NULL != t) && (NULL != t->imageName))
+        moduleString = t->imageName;
+    
+    HalVideoPrint(
+        "KERNEL PANIC!\n\n"
+        "%s (0x%p)\n\n"
+        "Failing IP: 0x%p\n"
+        "Module: %s (base at 0x%p)\n\n",
+        codeString, (void*)code,
+        (void*)ip,
+        moduleString, (void*)addr 
+    );
 }
 
-NORETURN void KePanicInternal(uintptr_t ip, uintptr_t code)
+static void KePanicStopSystem(void)
 {
     HalHaltAllCpus();
     HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
-    printPanic(ip, code);
+    HalVideoInit();
+}
+
+NORETURN static void KePanicInternal(uintptr_t ip, uintptr_t code)
+{
+    KePanicStopSystem();
+    KePrintMainPanic(ip, code);
     while(1)
         ;
 }
 
-NORETURN void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+NORETURN static void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
-    HalHaltAllCpus();
-    //HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
-    HalDisableInterrupts();
-    printPanic(ip, code);
-    BootVgaPrintString("Additional informations: ");
-    printHex(arg1);
-    BootVgaPrintString(", ");
-    printHex(arg2);
-    BootVgaPrintString(", ");
-    printHex(arg3);
-    BootVgaPrintString(", ");
-    printHex(arg4);
+    KePanicStopSystem();
+    KePrintMainPanic(ip, code);
+    HalVideoPrint("Additional informations: 0x%p, 0x%p, 0x%p, 0x%p\n", (void*)arg1, (void*)arg2, (void*)arg3, (void*)arg4);
     while(1)
         ;
 }

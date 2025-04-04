@@ -55,15 +55,17 @@ enum IoDeviceFlags
 enum IoDeviceType
 {
     IO_DEVICE_TYPE_NONE = 0, /**< Dummy driver */
-    IO_DEVICE_TYPE_OTHER, /**< Other device */
-    IO_DEVICE_TYPE_ROOT, /**< Root device (ACPI, ...) */
-    IO_DEVICE_TYPE_BUS, /**< Bus controller (PCI, ISA, ...) */
-    IO_DEVICE_TYPE_STORAGE, /**< Storage controller (IDE, AHCI, NVMe...) */
-    IO_DEVICE_TYPE_DISK, /**< Disk with partition manager (MBR, GPT, ...) or disk partition */
-    IO_DEVICE_TYPE_FS, /**< Filesystem on partition (EXT, FAT...) */
-    IO_DEVICE_TYPE_TERMINAL, /**< Terminal device */
-    IO_DEVICE_TYPE_KEYBOARD, /**< Keyboard */
-    IO_DEVICE_TYPE_MOUSE, /**< Mouse */
+    IO_DEVICE_TYPE_OTHER = 1, /**< Other device */
+    IO_DEVICE_TYPE_ROOT = 2, /**< Root device (ACPI, ...) */
+    IO_DEVICE_TYPE_BUS = 3, /**< Bus controller (PCI, ISA, ...) */
+    IO_DEVICE_TYPE_STORAGE = 4, /**< Storage controller (IDE, AHCI, NVMe...) */
+    IO_DEVICE_TYPE_DISK = 5, /**< Disk with partition manager (MBR, GPT, ...) or disk partition */
+    IO_DEVICE_TYPE_FS = 6, /**< Filesystem on partition (EXT, FAT...) */
+    IO_DEVICE_TYPE_TERMINAL = 7, /**< Terminal device */
+    IO_DEVICE_TYPE_KEYBOARD = 8, /**< Keyboard */
+    IO_DEVICE_TYPE_MOUSE = 9, /**< Mouse */
+    IO_DEVICE_TYPE_VIDEO = 10, /**< Video device - graphic card */
+    IO_DEVICE_TYPE_DISPLAY = 11, /**< Display (screen) */
 
 
     __IO_DEVICE_TYPE_COUNT, /**< Count of device types, do not use */
@@ -205,12 +207,30 @@ STATUS IoRegisterStandaloneDevice(struct IoDeviceObject *dev);
 STATUS IoDestroyDeviceNode(struct IoDeviceNode *node);
 
 /**
- * @brief Send Request Packet to a given device or forward received RP to other device stack
+ * @brief Forward Request Packet to another device
+ * @param *dev Device object
+ * @param *rp RP to forward
+ * @return Status code
+ */
+STATUS IoForwardRp(struct IoDeviceObject *dev, struct IoRp *rp);
+
+/**
+ * @brief Send Request Packet to a given device
  * @param *dev Device object
  * @param *rp RP to be sent
  * @return Status code
+ * @warning To forward existing RP to another device use IoForwardRp()
 */
 STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp);
+
+/**
+ * @brief Send Request Packet to a given device and wait for completion
+ * @param *dev Device object
+ * @param *rp RP to be sent
+ * @return Status code
+ * @warning To forward existing RP to another device use IoForwardRp()
+*/
+STATUS IoSendRpSync(struct IoDeviceObject *dev, struct IoRp *rp);
 
 /**
  * @brief Send/pass Request Packet down the stack

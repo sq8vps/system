@@ -188,6 +188,10 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
             node->mdo = IoGetDeviceStackTop(node->bdo);
         d = d->next;
     }
+
+    if(0 == driverCount)
+        node->mdo = node->bdo;
+
     node->status = IO_DEVICE_STATUS_READY;
     MmFreeKernelHeap(drivers);
     return OK;
@@ -249,6 +253,17 @@ struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev)
     return dev;
 }
 
+STATUS IoForwardRp(struct IoDeviceObject *dev, struct IoRp *rp)
+{
+    ASSERT(rp);
+    ASSERT(dev);
+    if(NULL == dev->driverObject->dispatch)
+        return DEVICE_NOT_AVAILABLE;
+
+    rp->device = dev;
+    return dev->driverObject->dispatch(rp);  
+}
+
 STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
 {
     ASSERT(rp);
@@ -256,9 +271,45 @@ STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
     if(NULL == dev->driverObject->dispatch)
         return DEVICE_NOT_AVAILABLE;
 
+    rp->sync = false;
     rp->task = KeGetCurrentTask();
     rp->device = dev;
     return dev->driverObject->dispatch(rp);
+}
+
+STATUS IoSendRpSync(struct IoDeviceObject *dev, struct IoRp *rp)
+{
+    ASSERT(rp);
+    ASSERT(dev);
+    STATUS status;
+    
+    if(NULL == dev->driverObject->dispatch)
+        return DEVICE_NOT_AVAILABLE;
+
+    rp->sync = true;
+    rp->task = KeGetCurrentTask();
+    rp->device = dev;
+    status = dev->driverObject->dispatch(rp);
+    if(OK != status)
+        return status;
+
+    while(1)
+    {
+        PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
+        if(rp->pending)
+        {
+            KeBlockTask(rp->task, TASK_BLOCK_IO);
+            HalLowerPriorityLevel(lastPrio);
+            KeTaskYield();
+        }
+        else
+        {
+            HalLowerPriorityLevel(lastPrio);
+            break;
+        }
+    }
+
+    return rp->status;
 }
 
 STATUS IoSendRpDown(struct IoRp *rp)
@@ -267,10 +318,7 @@ STATUS IoSendRpDown(struct IoRp *rp)
     struct IoDeviceObject *dev = rp->device->attachedTo;
     if(NULL != dev)
     {
-        if(NULL != dev->driverObject->dispatch)
-        {
-            return IoSendRp(dev, rp);
-        }
+        return IoForwardRp(dev, rp);
     }
     return DEVICE_NOT_AVAILABLE;
 }
@@ -286,20 +334,13 @@ STATUS IoGetDeviceId(struct IoDeviceObject *dev, char **deviceId, char ***compat
         return OUT_OF_RESOURCES;
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_ID;
-    status = IoSendRp(dev, rp);
+    status = IoSendRpSync(dev, rp);
     if(OK == status)
     {
-        IoWaitForRpCompletion(rp);
-        if(OK == rp->status)
-        {
-            *deviceId = rp->payload.deviceId.mainId;
-            *compatibleIds = rp->payload.deviceId.compatibleId;
-        }
-        else
-        {
-            status = rp->status;
-        }
+        *deviceId = rp->payload.deviceId.mainId;
+        *compatibleIds = rp->payload.deviceId.compatibleId;
     }
+
     IoFreeRp(rp);
     return status;
 }
@@ -321,16 +362,10 @@ STATUS IoReadConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t s
     rp->payload.configSpace.offset = offset;
     rp->size = size;
     rp->payload.configSpace.buffer = NULL;
-    status = IoSendRp(dev, rp);
+    status = IoSendRpSync(dev, rp);
     if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-            *buffer = rp->payload.configSpace.buffer;
-    }
-    
-    if(OK != status)
+        *buffer = rp->payload.configSpace.buffer;
+    else
         MmFreeKernelHeap(rp->payload.configSpace.buffer);
 
     IoFreeRp(rp);
@@ -353,12 +388,7 @@ STATUS IoWriteConfigSpace(struct IoDeviceObject *dev, uint64_t offset, uint64_t 
     rp->payload.configSpace.offset = offset;
     rp->size = size;
     rp->payload.configSpace.buffer = buffer;
-    status = IoSendRp(dev, rp);
-    if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-    }
+    status = IoSendRpSync(dev, rp);
 
     IoFreeRp(rp);
     
@@ -379,16 +409,11 @@ STATUS IoGetDeviceResources(struct IoDeviceObject *dev, struct IoDeviceResource 
     
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_RESOURCES;
-    status = IoSendRp(dev, rp);
+    status = IoSendRpSync(dev, rp);
     if(OK == status)
     {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-        {
-            *res = rp->payload.resource.res;
-            *count = rp->payload.resource.count;
-        }
+        *res = rp->payload.resource.res;
+        *count = rp->payload.resource.count;
     }
 
     IoFreeRp(rp);
@@ -408,16 +433,11 @@ STATUS IoGetDeviceLocation(struct IoDeviceObject *dev, enum IoBusType *type, uni
     
     rp->device = dev;
     rp->code = IO_RP_GET_DEVICE_LOCATION;
-    status = IoSendRp(dev, rp);
+    status = IoSendRpSync(dev, rp);
     if(OK == status)
     {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-        {
-            *type = rp->payload.location.type;
-            *location = rp->payload.location.id;
-        }
+        *type = rp->payload.location.type;
+        *location = rp->payload.location.id;
     }
 
     IoFreeRp(rp);
@@ -439,15 +459,10 @@ STATUS IoPerfromIoctl(struct IoDeviceObject *dev, uint32_t ioctl, void *dataIn, 
     rp->code = IO_RP_IOCTL;
     rp->payload.ioctl.code = ioctl;
     rp->payload.ioctl.data = dataIn;
-    status = IoSendRp(dev, rp);
-    if(OK == status)
+    status = IoSendRpSync(dev, rp);
+    if((OK == status) && (NULL != dataOut))
     {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if((OK == status) && (NULL != dataOut))
-        {
-            *dataOut = rp->payload.ioctl.data;
-        }
+        *dataOut = rp->payload.ioctl.data;
     }
 
     IoFreeRp(rp);
@@ -478,12 +493,7 @@ static bool IoBuildDeviceStackAndEnumerate(struct IoEnumerationQueue *t)
             if(NULL != rp)
             {
                 rp->code = IO_RP_ENUMERATE;
-                status = IoSendRp(t->node->mdo, rp);
-                if(OK == status)
-                {
-                    IoWaitForRpCompletion(rp);
-                    status = rp->status;
-                }
+                status = IoSendRpSync(t->node->mdo, rp);
 
                 if(OK != status)
                 {

@@ -20,14 +20,9 @@ STATUS DiskGetSignature(struct IoDeviceObject *target, char **signature)
     rp->payload.deviceControl.code = DISK_GET_SIGNATURE;
     rp->payload.deviceControl.data = NULL;
     
-    status = IoSendRp(target, rp);
+    status = IoSendRpSync(target, rp);
     if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-            *signature = rp->payload.deviceControl.data;
-    }
+        *signature = rp->payload.deviceControl.data;
 
     IoFreeRp(rp);
     

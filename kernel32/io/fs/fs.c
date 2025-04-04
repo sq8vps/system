@@ -78,6 +78,7 @@ static void IoFileReadWriteCallback(STATUS status, size_t actualSize, void *cont
         }
         
         h->operation.completed = 1;
+        barrier();
         KeUnblockTask(h->operation.task);
         KeReleaseSpinlock(&(h->operation.lock), prio);
     }
@@ -430,6 +431,7 @@ static STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, vo
     PRIO prio = KeAcquireSpinlock(&(h->operation.lock));
     h->operation.task = tcb;
     h->operation.completed = 0;
+    barrier();
     KeReleaseSpinlock(&(h->operation.lock), prio);
 
     STATUS status = OK;
@@ -456,22 +458,25 @@ static STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, vo
     }
     
     prio = KeAcquireSpinlock(&(h->operation.lock));
+    barrier();
     if(!h->operation.completed)
     {
         //operation waiting to be completed
         KeBlockTask(tcb, TASK_BLOCK_IO);
+        barrier();
         KeReleaseSpinlock(&(h->operation.lock), prio);
         
         KeTaskYield();
+        barrier();
     }
     else
         KeReleaseSpinlock(&(h->operation.lock), prio);
 
+    barrier();
     if(NULL != actualSize) 
         *actualSize = h->operation.actualSize;
     status = h->operation.status;
 
-    barrier();
     KeReleaseMutex(&pcb->files.table[handle].mutex);
 
     return status;

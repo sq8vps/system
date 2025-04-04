@@ -325,7 +325,7 @@ STATUS KeCreateKernelProcess(uint32_t flags, void (*entry)(void*), void *entryCo
  * @attention This function returns immediately
  * @attention Created task must be enabled with \a KeEnableTask() before it can be executed
 */
-STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[], const char *envp[], struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb);
+STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[], const char *envp[], const struct KeTaskFileMapping *fileMap, struct KeTaskControlBlock **tcb);
 
 /**
  * @brief Create thread within the given kernel mode process

@@ -75,7 +75,7 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 {
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_SPINLOCK);
 #ifndef SMP
-    if(0 != spinlock->lock)
+    if(unlikely(0 != spinlock->lock))
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 1;
 #else
@@ -83,13 +83,13 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
     {
         //obtain previous value and try to set atomically
         //if previous value was 0, then we've acquired the lock
-        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_SEQ_CST))
+        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_ACQUIRE))
             break;
 
         //else we haven't acquired the lock
         //loop until the lock appears to be free
         //do not use atomic operations to avoid locking CPU memory bus
-        //and optimize such tight loop
+        //and optimize such a tight loop
         //after we detect possibly free lock, then do the atomic exchange again
         while(0 != spinlock->lock)
             TIGHT_LOOP_HINT();
@@ -103,7 +103,7 @@ PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
 {
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
 #ifndef SMP
-    if(0 != spinlock->lock)
+    if(unlikely(0 != spinlock->lock))
         KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 1;
 #else
@@ -111,7 +111,7 @@ PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
     {
         //obtain previous value and try to set atomically
         //if previous value was 0, then we've acquired the lock
-        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_SEQ_CST))
+        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_ACQUIRE))
             break;
 
         //else we haven't acquired the lock
@@ -130,13 +130,13 @@ PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
 void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 {
 #ifndef SMP
-    if(0 == spinlock->lock)
+    if(unlikely(0 == spinlock->lock))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 0;
 #else
-    if(0 == __atomic_load_n(&spinlock->lock, __ATOMIC_SEQ_CST))
+    if(unlikely(0 == __atomic_load_n(&spinlock->lock, __ATOMIC_ACQUIRE)))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
-    __atomic_store_n(&spinlock->lock, 0, __ATOMIC_SEQ_CST);
+    __atomic_store_n(&spinlock->lock, 0, __ATOMIC_RELEASE);
 #endif
     HalLowerPriorityLevel(previousPriority);
 }
@@ -246,7 +246,7 @@ bool KeAcquireSemaphoreEx(KeSemaphore *sem, uint32_t units, uint64_t timeout)
         return false;
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
     PRIO prio = KeAcquireSpinlock(&(sem->lock));
-    if((sem->max - sem->current) < units)
+    if(sem->current < units)
     {
         if(KE_MUTEX_NO_WAIT == timeout)
         {
@@ -290,7 +290,7 @@ bool KeAcquireSemaphoreEx(KeSemaphore *sem, uint32_t units, uint64_t timeout)
     }
     else
     {
-        sem->current += units;
+        sem->current -= units;
         KeReleaseSpinlock(&(sem->lock), prio);
         return true;
     }
@@ -298,7 +298,7 @@ bool KeAcquireSemaphoreEx(KeSemaphore *sem, uint32_t units, uint64_t timeout)
 
 static inline void KeSemaphoreProcessNextOnRelease(KeSemaphore *sem)
 {
-    if((sem->max - sem->current) >= sem->needed)
+    if(sem->current >= sem->needed)
     {
         if(NULL == sem->head)
         {
@@ -308,7 +308,7 @@ static inline void KeSemaphoreProcessNextOnRelease(KeSemaphore *sem)
         struct KeTaskControlBlock *next = sem->head;
         PRIO prio = KeAcquireSpinlock(&(next->scheduling.lock));
 
-        if((sem->max - sem->current) >= next->scheduling.block.count)
+        if(sem->current >= next->scheduling.block.count)
         {
             sem->head = next->scheduling.block.next;
             if(NULL != sem->head)
@@ -327,7 +327,7 @@ static inline void KeSemaphoreProcessNextOnRelease(KeSemaphore *sem)
             next->scheduling.block.previous = NULL;
             next->scheduling.block.semaphore = NULL;
             next->scheduling.block.acquired = true;
-            sem->current += next->scheduling.block.count;
+            sem->current -= next->scheduling.block.count;
             KeReleaseSpinlock(&(next->scheduling.lock), prio);
             if(0 != next->scheduling.block.timeout.until)
                 KeRemoveFromLockList(next);
@@ -344,10 +344,10 @@ void KeReleaseSemaphore(KeSemaphore *sem, uint32_t units)
         return;
     PRIO queuePrio = KeAcquireSpinlock(&(KeLockingQueue.lock));
     PRIO prio = KeAcquireSpinlock(&(sem->lock));
-    if(unlikely(sem->current < units))
+    if(unlikely((sem->max - sem->current) < units))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 2, (uintptr_t)sem, sem->current, units);
     
-    sem->current -= units;
+    sem->current += units;
     KeSemaphoreProcessNextOnRelease(sem);
     KeReleaseSpinlock(&(sem->lock), prio);
     KeReleaseSpinlock(&(KeLockingQueue.lock), queuePrio);

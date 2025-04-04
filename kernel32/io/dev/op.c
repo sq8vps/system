@@ -4,6 +4,7 @@
 #include "mm/mm.h"
 #include "mm/heap.h"
 #include "rtl/string.h"
+#include "assert.h"
 
 struct IoReadWriteCallbackContext
 {
@@ -201,6 +202,7 @@ IoReadWriteCallbackExit:
     }
 
     MmFreeMemoryDescriptorList(ctx->list);
+
     ctx->callback(status, ctx->size, ctx->context);
 
     MmFreeKernelHeap(ctx);
@@ -365,12 +367,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     }
     rp->payload.read.offset = alignedOffset;
     rp->size = alignedSize;
-    status = IoSendRp(dev, rp);
-    if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-    }
+    status = IoSendRpSync(dev, rp);
 
     if(OK != status)
         MmFreeKernelHeap(alignedBuffer);

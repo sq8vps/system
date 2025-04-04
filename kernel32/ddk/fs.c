@@ -32,14 +32,9 @@ STATUS FsGetNode(const struct IoVfsNode *parent, const char *name, struct IoVfsN
     req->getNode.parent = parent;
     req->getNode.name = name;
     
-    status = IoSendRp(parent->device, rp);
+    status = IoSendRpSync(parent->device, rp);
     if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-            *node = req->getNode.node;
-    }
+        *node = req->getNode.node;
 
     IoFreeRp(rp);
     MmFreeKernelHeap(req);
@@ -73,14 +68,9 @@ STATUS FsGetNodeChildren(const struct IoVfsNode *node, struct IoVfsNode **childr
 
     req->getChildren.node = node;
     
-    status = IoSendRp(node->device, rp);
+    status = IoSendRpSync(node->device, rp);
     if(OK == status)
-    {
-        IoWaitForRpCompletion(rp);
-        status = rp->status;
-        if(OK == status)
-            *children = req->getChildren.children;
-    }
+        *children = req->getChildren.children;
 
     IoFreeRp(rp);
     MmFreeKernelHeap(req);

@@ -1,6 +1,8 @@
 #include "device.h"
 #include "logging.h"
 #include "acpi.h"
+#include "io/dev/res.h"
+#include "mm/heap.h"
 
 static ACPI_STATUS AcpiExtractIrqResource(ACPI_RESOURCE *res, struct IoIrqEntry *irq, uint32_t index)
 {

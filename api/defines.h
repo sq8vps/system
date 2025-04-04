@@ -21,6 +21,11 @@ extern "C"
 #define INTERNAL __attribute__ ((visibility("hidden")))
 
 /**
+ * @brief Mark symbol as weak/overridable
+ */
+#define WEAK __attribute__ ((weak))
+
+/**
  * @brief Stringify without expanding
  * @param ... Arguments to stringify
  * @return Stringified arguments
@@ -222,6 +227,15 @@ typedef uint64_t time_t;
 */
 #define MS_TO_NS(ms) (((uint64_t)1000000) * (ms))
 
+/**
+ * @brief No wait
+*/
+#define NO_WAIT 0
+
+/**
+ * @brief Wait indefinitely
+*/
+#define NO_TIMEOUT UINT64_MAX
 
 /**
  * @brief Unique Identifier structure

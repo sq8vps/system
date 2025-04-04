@@ -4,4 +4,13 @@
 #include "defines.h"
 #include <stdint.h>
 
+#include "io/input/event.h"
+
+/**
+ * @brief Process VT input - system event callback
+ * @param *handler Event handler
+ * @param *data Event data
+ */
+void TtyProcessVtInput(const struct IoEventHandler *handler, const union IoEventData *data);
+
 #endif

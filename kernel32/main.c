@@ -10,7 +10,6 @@
 #include "ke/task/task.h"
 #include "ke/sched/sched.h"
 #include "ke/core/mutex.h"
-#include "hal/i686/bootvga/bootvga.h"
 #include "ke/core/panic.h"
 #include "io/fs/vfs.h"
 #include "io/fs/fs.h"
@@ -29,42 +28,6 @@
 #include "hal/arch.h"
 #include "multiboot.h"
 #include "rtl/stdlib.h"
-
-KeMutex s = KeMutexInitializer;
-KeSemaphore sem = KeSemaphoreInitializer;
-
-void task1(void *c)
-{
-	UNUSED(c);
-	while(1)
-	{
-		KeAcquireSemaphore(&sem, 1);
-		//PRINT("1");
-		KePutTaskToSleep(KeGetCurrentTask(), MS_TO_NS(3000));
-		KeReleaseSemaphore(&sem, 1);
-	}
-}
-
-void task2(void *c)
-{
-	UNUSED(c);
-	while(1)
-	{
-		if(true == KeAcquireSemaphoreEx(&sem, 1, MS_TO_NS(780)))
-		{
-			//PRINT("2");
-			KeReleaseSemaphore(&sem, 1);
-		}
-		//else
-			//PRINT("0");
-		// KeAcquireMutex(&s);
-		// RtlPrintf("2");
-		// KeReleaseMutex(&s);
-		//KeTaskYield();
-	}
-}
-
-struct KeTaskControlBlock *t1, *t2;
 
 static void KeInitProcess(void *context)
 {
@@ -151,7 +114,7 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 	LOG(SYSLOG_INFO, KERNEL_FULL_NAME_STRING);
 	LOG(SYSLOG_INFO, "Booting...");
 
-	ItInit(); //initialize interrupts and exceptions
+	ItInit();
 
 	HalInitPhase3();
 

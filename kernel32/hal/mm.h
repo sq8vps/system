@@ -21,7 +21,7 @@ STATUS HalGetPageFlags(uintptr_t vAddress, MmMemoryFlags *flags);
  * @param *pAddress Output physical address
  * @return Error code
  */
-STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress);
+STATUS HalGetPhysicalAddress(uintptr_t vAddress, PADDRESS *pAddress);
 
 
 /**
@@ -32,7 +32,7 @@ STATUS HalGetPhysicalAddress(uintptr_t vAddress, uintptr_t *pAddress);
  * @return Error code
  * @attention This function does not allocate physical memory.
 */
-STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags);
+STATUS HalMapMemory(uintptr_t vAddress, PADDRESS pAddress, MmMemoryFlags flags);
 
 
 /**
@@ -44,7 +44,7 @@ STATUS HalMapMemory(uintptr_t vAddress, uintptr_t pAddress, MmMemoryFlags flags)
  * @return Error code
  * @attention This function does not allocate physical memory.
 */
-STATUS HalMapMemoryEx(uintptr_t vAddress, uintptr_t pAddress, uintptr_t size, MmMemoryFlags flags);
+STATUS HalMapMemoryEx(uintptr_t vAddress, PADDRESS pAddress, uintptr_t size, MmMemoryFlags flags);
 
 
 /**

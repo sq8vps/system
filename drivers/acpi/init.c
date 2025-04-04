@@ -1,5 +1,5 @@
 #include "init.h"
-#include "kernel.h"
+#include "hal/i686/irq.h"
 
 #define _AcpiModuleName "Init"
 

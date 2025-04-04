@@ -3,6 +3,11 @@
 #include "mm/heap.h"
 #include "mm/palloc.h"
 #include "mm/dynmap.h"
+#include "rtl/string.h"
+#include "io/dev/res.h"
+#include "hal/i686/irq.h"
+#include "hal/i686/ioport.h"
+#include "rtl/stdio.h"
 
 #define IDE_BUFFER_BLOCK_SIZE 65536
 

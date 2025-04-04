@@ -5,7 +5,7 @@
 #include "structs.h"
 #include "rtl/order.h"
 #include "mm/heap.h"
-
+#include "rtl/string.h"
 #include "logging.h"
 
 #define FAT12_CLUSTER_COUNT_LIMIT 4084

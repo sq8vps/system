@@ -142,7 +142,7 @@ KeSwitchToTask:
     iret
 
 ;extern void HalPerformTaskSwitch(void)
-;Perform task switch immediately if new task is available
+;Perform task switch immediately if a new task is available
 ;This function returns when the calling task is scheduled again
 global HalPerformTaskSwitch:function
 HalPerformTaskSwitch:

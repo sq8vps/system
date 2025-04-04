@@ -1,8 +1,13 @@
-#include "kernel.h"
 #include "logging.h"
 #include "disk.h"
 #include "part.h"
 #include <stdatomic.h>
+#include "io/dev/rp.h"
+#include "io/dev/dev.h"
+#include "ddk/disk.h"
+#include "mm/heap.h"
+#include "io/dev/vol.h"
+#include "ex/kdrv/kdrv.h"
 
 static struct 
 {
@@ -31,7 +36,7 @@ static STATUS DiskDispatch(struct IoRp *rp)
                 if(info->isMdo) //is MDO of a partition 0, call BDO to get ID
                     return IoSendRpDown(rp);
                 else //is BDO of partition x, call partition 0 MDO
-                    return IoSendRp(info->part0device, rp);
+                    return IoForwardRp(info->part0device, rp);
                 break;
             case IO_RP_DISK_CONTROL:
                 switch(rp->payload.deviceControl.code)

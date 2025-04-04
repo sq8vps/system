@@ -117,7 +117,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     }
 
     PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
-    if((NULL != rp->task) && rp->pending)
+    if(rp->sync && rp->pending)
         KeUnblockTask(rp->task);
     rp->pending = false;
     HalLowerPriorityLevel(lastPrio);
@@ -169,25 +169,6 @@ void IoMarkRpPending(struct IoRp *rp)
 {
     ASSERT(rp);
     rp->pending = true;
-}
-
-void IoWaitForRpCompletion(struct IoRp *rp)
-{
-    while(1)
-    {
-        PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
-        if(rp->pending)
-        {
-            KeBlockTask(rp->task, TASK_BLOCK_IO);
-            HalLowerPriorityLevel(lastPrio);
-            KeTaskYield();
-        }
-        else
-        {
-            HalLowerPriorityLevel(lastPrio);
-            break;
-        }
-    }
 }
 
 struct IoRp *IoCloneRp(struct IoRp *rp)

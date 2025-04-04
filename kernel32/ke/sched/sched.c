@@ -326,8 +326,10 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
 
+    KeTaskYield();
+    
     while(1)
-        KeTaskYield();
+        HALT();
 }
 
 
@@ -477,7 +479,7 @@ struct KeProcessControlBlock* KeGetCurrentTaskParent(void)
 
 void KeTaskYield(void)
 {
-    if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE)
+    if(unlikely(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE))
         KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_PRIORITY_LEVEL_PASSIVE, 0, 0);
     
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
@@ -499,6 +501,7 @@ void KeTaskYield(void)
     
 #endif
     HalLowerPriorityLevel(prio);
+    barrier();
     HalPerformTaskSwitch();
 }
 

@@ -19,12 +19,12 @@
 */
 
 /**
- * @brief Export all following lines up to the \a END_EXPORT_API mark
+ * @brief Export all following lines up to the #END_EXPORT_API mark
  */
 #define EXPORT_API
 
 /**
- * @brief End to-be-exported block started with \a EXPORT_API
+ * @brief End to-be-exported block started with #EXPORT_API
  */
 #define END_EXPORT_API
 
@@ -39,6 +39,11 @@ EXPORT_API
  * @brief Mark symbol (function/variable) as internal/hidden
 */
 #define INTERNAL __attribute__ ((visibility("hidden")))
+
+/**
+ * @brief Mark symbol as weak/overridable
+ */
+#define WEAK __attribute__ ((weak))
 
 /**
  * @brief Stringify without expanding
@@ -242,6 +247,15 @@ typedef uint64_t time_t;
 */
 #define MS_TO_NS(ms) (((uint64_t)1000000) * (ms))
 
+/**
+ * @brief No wait
+*/
+#define NO_WAIT 0
+
+/**
+ * @brief Wait indefinitely
+*/
+#define NO_TIMEOUT UINT64_MAX
 
 /**
  * @brief Unique Identifier structure

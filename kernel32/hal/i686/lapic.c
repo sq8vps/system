@@ -171,6 +171,20 @@ STATUS ApicInitAp(void)
     return OK;
 }
 
+static void ApicTimerMeasurementCallback(bool finished, void *context)
+{
+    UNUSED(context);
+    if(!finished)
+    {
+        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = 0xFFFFFFFF;
+    }
+    else
+    {
+        uint32_t value = LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
+        ApicFrequency = ((uint64_t)100) * ((uint64_t)(0xFFFFFFFF - value));
+    }
+}
+
 STATUS ApicInitBsp(void)
 {
     STATUS ret = OK;
@@ -194,12 +208,7 @@ STATUS ApicInitBsp(void)
     }
 
     LAPIC(LAPIC_TIMER_DIVIDER_OFFSET) = LAPIC_DEFAULT_TIMER_DIVIDER & 0b1011;
-    PitOneShotInit(10000); //10000us=10ms
-    PitOneShotStart();
-    LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = 0xFFFFFFFF;
-    PitOneShotWait();
-    uint32_t value = LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
-    ApicFrequency = ((uint64_t)100) * ((uint64_t)(0xFFFFFFFF - value));
+    PitDoSingleShot(10000, ApicTimerMeasurementCallback, ApicTimerMeasurementCallback, NULL);
     
     return OK;
 }

@@ -7,29 +7,6 @@
 EXPORT_API
 
 /**
- * @brief Print formatted output to currently active output
- * @param *format Format string
- * @param ... Additional arguments
- * @return Count of characters written
- * @attention This function does not guarantee any output. The output is written to currently available and active
- * console output. Drivers should use \a IoWriteSyslog() instead.
-*/
-__attribute__ ((format (printf, 1, 2)))
-int RtlPrint(const char *format, ...);
-
-
-/**
- * @brief Print formatted output to currently active output
- * @param *format Format string
- * @param args List of additional arguments
- * @return Count of characters written
- * @attention This function does not guarantee any output. The output is written to currently available and active
- * console output. Drivers should use \a IoWriteSyslog() instead.
-*/
-int RtlVprint(const char *format, va_list args);
-
-
-/**
  * @brief Compose a formatted string
  * @param *format Format string
  * @param ... Additional arguments
@@ -37,6 +14,14 @@ int RtlVprint(const char *format, va_list args);
 */
 __attribute__ ((format (printf, 2, 3)))
 int RtlSprint(char *s, const char *format, ...);
+
+/**
+ * @brief Compose a formatted string
+ * @param *format Format string
+ * @param va_list Argument list
+ * @return Count of characters written
+*/
+int RtlSprintV(char *s, const char *format, va_list args);
 
 
 /**
@@ -49,6 +34,24 @@ int RtlSprint(char *s, const char *format, ...);
 __attribute__ ((format (printf, 3, 4)))
 int RtlSprintN(char *s, size_t n, const char *format, ...);
 
+/**
+ * @brief Perform dry composition a formatted string - only calculate resulting size
+ * @param *format Format string
+ * @param ... Additional arguments
+ * @return Count of characters in the resulting string
+ * @note There is no destination buffer. This function is used to get resulting string size
+*/
+__attribute__ ((format (printf, 1, 2)))
+int RtlSprintDry(const char *format, ...);
+
+/**
+ * @brief Perform dry composition a formatted string - only calculate resulting size
+ * @param *format Format string
+ * @param args List of arguments
+ * @return ount of characters in the resulting string
+ * @note There is no destination buffer. This function is used to get resulting string size
+*/
+int RtlSprintDryV(const char *format, va_list args);
 
 #ifndef DISABLE_KERNEL_STDLIB
 

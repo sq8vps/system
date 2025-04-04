@@ -86,7 +86,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
         }
         
         //everything is fine, forward RP
-        return IoSendRp(info->part0device, rp);
+        return IoForwardRp(info->part0device, rp);
     }
     else
     {

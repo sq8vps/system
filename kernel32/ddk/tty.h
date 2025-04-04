@@ -7,6 +7,8 @@
 
 EXPORT_API
 
+struct IoDeviceObject;
+
 /**
  * @brief TTY device name length limit
  */
