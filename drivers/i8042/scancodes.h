@@ -107,7 +107,7 @@ static uint16_t Ps2UsSet2[] =
     IO_KEY_KEYPAD_5,
     IO_KEY_KEYPAD_6,
     IO_KEY_KEYPAD_8,
-    IO_KEY_ESC,
+    0x1B, //escape
     IO_KEY_NUM_LOCK,
     IO_KEY_F11,
     IO_KEY_KEYPAD_PLUS,

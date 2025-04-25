@@ -31,12 +31,12 @@ struct TtyParameters
     /**
      * @brief Request-specific data
      */
-    union request
+    union
     {
         /**
          * @brief Data for TTY_CREATE_VT request
          */
-        struct createVt
+        struct
         {
             int inputEvent; /**< Event generator (keyboard) handle. -1 to disable input */
             int outputDisplay; /** Output display handle. -1 to disable output */

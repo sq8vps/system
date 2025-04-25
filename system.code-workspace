@@ -38,6 +38,9 @@
 		},
 		{
 			"path": "drivers/i8042"
+		},
+		{
+			"path": "drivers/vga"
 		}
 	],
 	"settings": {
@@ -131,7 +134,9 @@
 			"taskfs.h": "c",
 			"emu.h": "c",
 			"initializer_list": "c",
-			"reg.h": "c"
+			"reg.h": "c",
+			"output.h": "c",
+			"kbd.h": "c"
 		}
 	}
 }

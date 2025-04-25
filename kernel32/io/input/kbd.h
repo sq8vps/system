@@ -15,12 +15,17 @@ struct IoEventHandler;
 typedef uint16_t IoKeyCode;
 
 /**
+ * @brief Last ASCII key code
+ * @attention This is the last ASCII key code. The next key codes are defined in ::IoKeyMapping.
+ */
+#define IO_KEY_ASCII_LAST 127
+
+/**
  * @brief Mapping of non-ASCII keys to IoKeyCode
  */
 enum IoKeyMapping
 {
-    IO_KEY_ESC = 128, /**< Escape */
-    IO_KEY_LEFT_ALT, /**< Left alt */
+    IO_KEY_LEFT_ALT = 128, /**< Left alt */
     IO_KEY_RIGHT_ALT, /**<Right alt */
     IO_KEY_LEFT_SHIFT, /**< Left shift */
     IO_KEY_RIGHT_SHIFT, /**< Right shift */
@@ -96,6 +101,8 @@ enum IoKeyMapping
     IO_KEY_KEYPAD_7, /**< Keypad 7 */
     IO_KEY_KEYPAD_8, /**< Keypad 8 */
     IO_KEY_KEYPAD_9, /**< Keypad 9 */
+
+    IO_KEY_COUNT, /**< Number of key mappings */
 };
 
 /**

@@ -201,6 +201,42 @@ STATUS IoGetVideoOutput(int handle, IoVideoConfigChangeHandler changeHandler, vo
                 IoVideoOutputs.list[handle].changeHandler[i].handler = changeHandler;
                 IoVideoOutputs.list[handle].changeHandler[i].context = context;
                 status = OK;
+                break;
+            }
+        }
+        KeReleaseSpinlock(&(IoVideoOutputs.list[handle].lock), prio);
+    }
+    KeReleaseSpinlock(&(IoVideoOutputs.lock), prio);
+    return status;
+}
+
+STATUS IoRemoveVideoOutputConfigChangeHandler(int handle, IoVideoConfigChangeHandler changeHandler, void *context)
+{
+    STATUS status = OK;
+
+    if((handle < 0) || (handle >= IO_MAX_VIDEO_OUTPUTS))
+        return FILE_NOT_FOUND;
+    
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.lock));
+    if(!IoVideoOutputs.list[handle].used)
+    {
+        status = FILE_NOT_FOUND;  
+    }
+    else
+    {
+        prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
+        status = FILE_NOT_FOUND;
+        for(size_t i = 0; i < IO_MAX_VIDEO_EVENT_HANDLERS; i++)
+        {
+            if(IoVideoOutputs.list[handle].changeHandler[i].used
+                && (changeHandler == IoVideoOutputs.list[handle].changeHandler[i].handler)
+                && (context == IoVideoOutputs.list[handle].changeHandler[i].context))
+            {
+                IoVideoOutputs.list[handle].changeHandler[i].used = false;
+                IoVideoOutputs.list[handle].changeHandler[i].handler = NULL;
+                IoVideoOutputs.list[handle].changeHandler[i].context = NULL;
+                status = OK;
+                break;
             }
         }
         KeReleaseSpinlock(&(IoVideoOutputs.list[handle].lock), prio);

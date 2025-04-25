@@ -49,8 +49,7 @@ static void KeInitProcess(void *context)
 		FAIL_BOOT("unable to initialize ACPI subsystem\n");
 
 	LOG(SYSLOG_INFO, "Waiting for the main file system to be mounted...\n");
-	if(!IoWaitForMainFileSystemMount(MS_TO_NS(20000)))
-		FAIL_BOOT("main file system not mounted within the given time limit");
+	IoWaitForMainFileSystemMount(KE_MUTEX_NO_TIMEOUT);
 
 	if(OK != ExUpdateDriverDatabasePath())
 		FAIL_BOOT("unable to update driver database path");

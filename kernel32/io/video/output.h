@@ -47,6 +47,16 @@ typedef void (*IoVideoConfigChangeHandler)(int handle, const union IoVideoOutput
 STATUS IoGetVideoOutput(int handle, IoVideoConfigChangeHandler changeHandler, void *context, union IoVideoOutput *const output, enum IoVideoType *const type);
 
 /**
+ * @brief Remove video output configuration change handler
+ * @param handle Video output handle to match
+ * @param changeHandler Video config change callback to match
+ * @param *context Change callback context to match
+ * @return Status code
+ * @note Priority level <= ::HAL_PRIORITY_LEVEL_DPC
+ */
+STATUS IoRemoveVideoOutputConfigChangeHandler(int handle, IoVideoConfigChangeHandler changeHandler, void *context);
+
+/**
  * @brief Register or update frame buffer
  * @param *dev Associated display device (device type = \a IO_DEVICE_TYPE_DISPLAY)
  * @param *config Frame buffer configuration. This structure is copied and stored by the kernel

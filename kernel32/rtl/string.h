@@ -139,6 +139,14 @@ char** RtlAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, u
 */
 void RtlFreeStringTable(char **table, uint32_t count);
 
+/**
+ * @brief Get UTF-8 byte count
+ * @param c First UTF-8/ASCII character
+ * @return Number of bytes in UTF-8 character
+ * @return Always 1 if ASCII character
+ */
+#define GET_UTF8_BYTE_COUNT(c) (((c) & 0xE0) == 0xC0 ? 2 : ((c) & 0xF0) == 0xE0 ? 3 : ((c) & 0xF8) == 0xF0 ? 4 : 1)
+
 #ifndef DISABLE_KERNEL_STDLIB
 
 /**

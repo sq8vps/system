@@ -4,6 +4,7 @@
 #include "defines.h"
 #include <stdbool.h>
 #include "ddk/tty.h"
+#include "vt.h"
 
 struct ExDriverObject;
 struct IoRpQueue;
@@ -25,7 +26,10 @@ struct TtyDeviceData
     {
         struct IoRpQueue *write; /**< TTY write RP queue */
     } queue;
-    int inputHandle, outputHandle; /**< VT input event and output display handle */
+    union
+    {
+        struct TtyVtData vt; /**< VT-associated data */
+    };
 };
 
 STATUS TtyCreateDevice(struct ExDriverObject *drv, enum TtyType type, struct TtyDeviceData *info);
