@@ -163,7 +163,7 @@ HalCreateProcessExit:
 
 void HalInitializeScheduler(void)
 {
-    I686NotifyLapicTimerStarted();
+    
 }
 
 static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack)

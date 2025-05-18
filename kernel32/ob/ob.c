@@ -33,7 +33,7 @@ static size_t ObSize[OB_TYPE_COUNT] = {
     sizeof(struct IoRp),
     sizeof(struct IoVolumeNode),
     sizeof(struct IoSyslogHandle),
-    sizeof(struct IoEventHandler)
+    sizeof(struct IoEventHandler),
 };
 
 static inline void *ObCreateObjectWithOwner(enum ObObjectType type, size_t additional, struct KeProcessControlBlock *pcb)

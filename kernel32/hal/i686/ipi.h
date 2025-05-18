@@ -10,7 +10,10 @@ enum I686IpiType
 {
     I686_IPI_TLB_SHOOTDOWN,
     I686_IPI_CPU_SHUTDOWN,
+    I686_IPI_FUNCTION_CALL,
 };
+
+typedef int (*I686RemoteFunction)(void *context);
 
 struct I686IpiData
 {
@@ -26,6 +29,12 @@ struct I686IpiData
             bool kernel;
             uintptr_t cr3;
         } tlb;
+        struct
+        {
+            I686RemoteFunction function;
+            void *context;
+            int *result;
+        } call;
     } payload;
 };
 
@@ -55,5 +64,15 @@ INTERNAL void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages);
  * @brief Send shut down command to CPUs
  */
 INTERNAL void I686SendShutdownCpus(void);
+
+/**
+ * @brief Invoke function on given CPUs
+ * @param *targets Target CPU bitmap
+ * @param function Function to be invoked
+ * @param *context Context to be passed to the function
+ * @param results[] Table of function invocation on each CPU
+ */
+INTERNAL void I686InvokeRemoteFunction(const HalCpuBitmap *targets, 
+    I686RemoteFunction function, void *context, int results[MAX_CPU_COUNT]);
 
 #endif

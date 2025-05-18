@@ -14,6 +14,18 @@
         "ioport.h": "c",
         "input.h": "c",
         "kbd.h": "c",
-        "mutex.h": "c"
+        "mutex.h": "c",
+        "cpu.h": "c",
+        "time.h": "c",
+        "array": "c",
+        "*.tcc": "c",
+        "string": "c",
+        "vector": "c",
+        "string_view": "c",
+        "functional": "c",
+        "limits": "c",
+        "ostream": "c",
+        "streambuf": "c",
+        "tuple": "c"
     }
 }

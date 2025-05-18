@@ -57,6 +57,11 @@ static STATUS I686HandleIpi(void *context)
                         while(1)
                             ;
                         break;
+                    
+                    case I686_IPI_FUNCTION_CALL:
+                        *I686IpiState[cpu].data[i].payload.call.result =
+                            I686IpiState[cpu].data[i].payload.call.function(I686IpiState[cpu].data[i].payload.call.context); 
+                        break;
 
                     default:
                         KePanicEx(KERNEL_MODE_FAULT, IPI_UNKNOWN_TYPE, I686IpiState[cpu].data[i].source, 
@@ -222,6 +227,58 @@ void I686SendShutdownCpus(void)
         APIC_IPI_FIXED, I686_IPI_INTERRUPT_VECTOR, true);
     if(OK != ApicWaitForIpiDelivery(US_TO_NS(500)))
         KePanicEx(KERNEL_MODE_FAULT, IPI_DELIVERY_TIMEOUT, cpu, UINTPTR_MAX, I686_IPI_CPU_SHUTDOWN);
+
+    HalLowerPriorityLevel(prio);
+
+    while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
+        TIGHT_LOOP_HINT();
+}
+
+void I686InvokeRemoteFunction(const HalCpuBitmap *targets, I686RemoteFunction function, void *context, int results[MAX_CPU_COUNT])
+{
+    if(!I686IpiInitialized)
+        return;
+    uint16_t cpu = HalGetCurrentCpu();
+
+    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+
+    HAL_GET_CPU_BIT_COUNT(targets, I686IpiState[cpu].remainingAcks);
+
+    if(HalGetCpuCount() < I686IpiState[cpu].remainingAcks)
+        I686IpiState[cpu].remainingAcks = HalGetCpuCount();
+
+    --I686IpiState[cpu].remainingAcks;
+
+    if(unlikely(0 == I686IpiState[cpu].remainingAcks))
+    {
+        HalLowerPriorityLevel(prio);
+        return;
+    }
+
+    for(uint16_t i = 0; i < HalGetCpuCount(); i++)
+    {
+        if(i == cpu)
+            continue;
+        if(HAL_GET_CPU_BIT(targets, i))
+        {
+            uint16_t slot = I686ReserveIpiSlot(i);
+            I686IpiState[i].data[slot].type = I686_IPI_FUNCTION_CALL;
+            I686IpiState[i].data[slot].source = cpu;
+            I686IpiState[i].data[slot].payload.call.function = function;
+            I686IpiState[i].data[slot].payload.call.context = context;
+            I686IpiState[i].data[slot].payload.call.result = results + i;
+            I686IpiState[i].data[slot].remainingAcks = &(I686IpiState[cpu].remainingAcks);
+            I686IpiState[i].data[slot].payload.tlb.kernel = false;
+
+            __atomic_fetch_or(&(I686IpiState[i].slotsFilled), 1 << slot, __ATOMIC_SEQ_CST);
+
+            ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, HalGetCpuEntry(i)->extensions.lapicId, 
+                APIC_IPI_FIXED, I686_IPI_INTERRUPT_VECTOR, true);
+            if(OK != ApicWaitForIpiDelivery(US_TO_NS(100)))
+                KePanicEx(KERNEL_MODE_FAULT, IPI_DELIVERY_TIMEOUT, cpu, i, I686_IPI_FUNCTION_CALL);
+
+        }
+    }
 
     HalLowerPriorityLevel(prio);
 

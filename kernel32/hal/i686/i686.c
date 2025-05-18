@@ -17,6 +17,7 @@
 #include "interrupts/it.h"
 #include "mm/palloc.h"
 #include "emu/emu.h"
+#include "tsc.h"
 
 struct MmMemoryPool HalPhysicalPool[HAL_PHYSICAL_MEMORY_POOLS] = 
 {
@@ -36,9 +37,6 @@ void HalInitPhase1(void)
     if(!CpuidCheckIfFpuAvailable())
         FAIL_BOOT("FPU not available");
     
-    if(!CpuidCheckIfTscAvailable())
-        FAIL_BOOT("TSC not available");
-    
     MsrInit();
 
     I686InitVirtualAllocator();
@@ -46,7 +44,7 @@ void HalInitPhase1(void)
     if(OK != I686InitIdt())
         FAIL_BOOT("IDT initialization failed");
 
-    //mask all PIC IRQs, because they are mapped to a real-mode interrupt vector by the default,
+    //mask all PIC IRQs, because they are mapped to real-mode interrupt vectorw by the default,
     //and these vectors are the exception vectors in protected mode
     PicSetIrqMask(0xFFFF);
     //install IDT temporarily so we can handle exceptions properly
@@ -71,11 +69,8 @@ void HalInitPhase2(void)
     if(OK != I686InitInterruptController())
         FAIL_BOOT("IRQ controller initialization failed")
 
-    if(OK != I686InitTimeController())
-        FAIL_BOOT("time controller initialization failed");
-    
-    if(OK != I686InitializeEmulator())
-        FAIL_BOOT("real mode emulator initialization failed");
+    if(CpuidCheckIfTscAvailable())
+        TscInit();
 }
 
 void HalInitPhase3(void)
@@ -90,7 +85,13 @@ void HalInitPhase3(void)
 #ifdef SMP
     if(OK != I686StartProcessors())
         FAIL_BOOT("application CPU start failed");
+
+    if(CpuidCheckIfTscAvailable())
+        TscInitForSmp();
 #endif
+
+    if(OK != I686InitializeEmulator())
+        FAIL_BOOT("real mode emulator initialization failed");
 }
 
 #endif

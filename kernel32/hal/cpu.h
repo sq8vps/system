@@ -86,7 +86,7 @@ uint32_t HalGetCpuCount(void);
  * @brief Get current CPU number
  * @return Current CPU number
  */
-uint16_t HalGetCurrentCpu(void);
+uint32_t HalGetCurrentCpu(void);
 
 END_EXPORT_API
 

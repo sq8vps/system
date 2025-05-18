@@ -5,16 +5,28 @@
 #include "defines.h"
 
 /**
- * @brief Initialize Timestamp Counter and perfrom calibration
+ * @brief Initialize Timestamp Counter and perfrom calibration on bootstrap CPU
  * @return Status code
 */
 INTERNAL STATUS TscInit(void);
 
 /**
- * @brief Get raw Timestamp Counter value
+ * @brief Initialize Timestamp Counter on Application CPUs in a SMP system
+ * @return Status code
+ */
+INTERNAL STATUS TscInitForSmp(void);
+
+/**
+ * @brief Update TSC state
+ */
+INTERNAL void TscUpdate(void);
+
+/**
+ * @brief Get raw Timestamp Counter value for current CPU
+ * @param *context Unused, set to NULL
  * @return TSC value
 */
-INTERNAL uint64_t TscGetRaw(void);
+INTERNAL uint64_t TscGetRaw(void *context);
 
 /**
  * @brief Perform TSC calibration with currently best available timer
@@ -23,28 +35,12 @@ INTERNAL uint64_t TscGetRaw(void);
 INTERNAL STATUS TscCalibrate(void);
 
 /**
- * @brief Get TSC timestamp in nanoseconds
- * @return Timestamp in nanoseconds or 0 if TSC unavailable
-*/
-INTERNAL uint64_t TscGet(void);
-
-/**
- * @brief Get TSC timestamp in microseconds
- * @return Timestamp in microseconds or 0 if TSC unavailable
-*/
-INTERNAL uint64_t TscGetMicros(void);
-
-/**
- * @brief Get TSC timestamp in milliseconds
- * @return Timestamp in milliseconds or 0 if TSC unavailable
-*/
-INTERNAL uint64_t TscGetMillis(void);
-
-/**
  * @brief Convert nanoseconds to TSC ticks
  * @param time Time in ns
  * @return \a time converted to TSC ticks
+ * @attention Mind the overflows of 64 bit multiplication!
+ * @note This function should be used to calculate ticks for small (delta) times
 */
-INTERNAL uint64_t TscCalculateRaw(uint64_t time);
+INTERNAL uint64_t TscCalculateRaw(uint32_t time);
 
 #endif

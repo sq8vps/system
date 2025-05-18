@@ -96,6 +96,72 @@ typedef struct KeRwLock
 */
 #define KeRwLockInitializer {.readers = 0, .writers = 0, .head = NULL, .tail = NULL, .lock = KeSpinlockInitializer}
 
+/**
+ * @brief Sequence count type
+ */
+typedef uint32_t KeSeqCount;
+
+/**
+ * @brief A sequence counter structure
+ * @attention Initialize with KeSeqCounterInitializer
+ */
+typedef struct KeSeqCounter
+{
+    volatile KeSeqCount seq; /**< Sequence number */
+} KeSeqCounter;
+
+/**
+ * @brief Sequence counter initializer. Use it when creating sequence counter.
+*/
+#define KeSeqCounterInitializer {.readers = 0, .writers = 0, .head = NULL, .tail = NULL, .lock = KeSpinlockInitializer}
+
+/**
+ * @brief Begin non-locked sequence counter-protected write section
+ * @param *seqCounter Sequence counter structure
+ */
+static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
+{
+    ++seqCounter->seq;
+}
+
+/**
+ * @brief End non-locked sequence counter-protected write section
+ * @param *seqCounter Sequence counter structure
+ */
+static inline void KeSeqCounterWriteEnd(KeSeqCounter *seqCounter)
+{
+    ++seqCounter->seq;
+}
+
+/**
+ * @brief Begin non-locked sequence counter-protected read section
+ * @param *seqCounter Sequence counter structure
+ * @return Sequence count at the beginning of the section
+ */
+static inline KeSeqCount KeSeqCounterReadBegin(KeSeqCounter *seqCounter)
+{
+    return seqCounter->seq;
+}
+
+/**
+ * @brief End or retry non-locked sequence counter-protected read section
+ * @param *seqCounter Sequence counter structure
+ * @param *seq Sequence count to be compared
+ * @return Flase if sequence was in order and the section might be escaped
+ * @return True if sequence was out of order and the section must be repeated 
+ */
+static inline bool KeSeqCounterReadRetry(KeSeqCounter *seqCounter, KeSeqCount *seq)
+{
+    if(seqCounter->seq == *seq)
+    {
+        return false;
+    }
+    else
+    {
+        *seq = seqCounter->seq;
+        return true;
+    }
+}
 
 /**
  * @brief Acquire spinlock with high priority level
