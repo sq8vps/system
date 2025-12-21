@@ -268,7 +268,6 @@ void I686InvokeRemoteFunction(const HalCpuBitmap *targets, I686RemoteFunction fu
             I686IpiState[i].data[slot].payload.call.context = context;
             I686IpiState[i].data[slot].payload.call.result = results + i;
             I686IpiState[i].data[slot].remainingAcks = &(I686IpiState[cpu].remainingAcks);
-            I686IpiState[i].data[slot].payload.tlb.kernel = false;
 
             __atomic_fetch_or(&(I686IpiState[i].slotsFilled), 1 << slot, __ATOMIC_SEQ_CST);
 

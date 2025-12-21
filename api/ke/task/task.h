@@ -130,6 +130,7 @@ struct KeTaskControlBlock
     struct HalTaskData data; /**< Architecture-specific task data */
     HalCpuBitmap affinity; /**< CPU affinity */
     bool main; /**< Task is the main task in the process */
+    void *tls; /**< Thread Local Storage pointer - set by the user mode application */
 
     /**
      * @brief Task stack parameters

@@ -5,6 +5,11 @@
 
 void I686EmuMul(struct I686Registers *regs, uint32_t a, uint32_t b, uint32_t *upper, uint32_t *lower, uint8_t bits, bool sign)
 {
+    uint32_t signMask = (uint32_t)1 << (bits - 1);
+    //mask inputs to given size
+    a &= (signMask | (signMask - 1));
+    b &= (signMask | (signMask - 1));
+
     bool flags = false;
     if(8 == bits)
     {
@@ -57,9 +62,14 @@ void I686EmuMul(struct I686Registers *regs, uint32_t a, uint32_t b, uint32_t *up
 uint32_t I686EmuAddSub(struct I686Registers *regs, uint32_t a, uint32_t b, uint8_t bits, bool add, bool withCarry)
 {
     uint32_t signMask = (uint32_t)1 << (bits - 1);
+    uint32_t mask = (signMask | (signMask - 1));
     uint32_t carry = (withCarry && (regs->flags & FLAG_CF)) ? 1 : 0; //carry bit to be included in calculations
     
     uint32_t s = 0; //result
+
+    //mask inputs to given size
+    a &= mask;
+    b &= mask;
 
     if(add)
     {
@@ -94,6 +104,8 @@ uint32_t I686EmuAddSub(struct I686Registers *regs, uint32_t a, uint32_t b, uint8
         else
             regs->flags &= ~FLAG_AF;
     }
+
+    s &= mask;
     
     if(((a & signMask) ^ (b & signMask)) & ((a & signMask) ^ (s & signMask)))
         regs->flags |= FLAG_OF;
@@ -130,6 +142,7 @@ uint32_t I686EmuAddSub(struct I686Registers *regs, uint32_t a, uint32_t b, uint8
 
 uint32_t I686EmuBitwise(uint8_t type, struct I686Registers *regs, uint32_t a, uint32_t b, uint8_t bits)
 {
+    uint32_t mask = ((uint64_t)1 << bits) - (uint64_t)1;
     uint32_t r = 0;
     switch(type)
     {
@@ -143,6 +156,8 @@ uint32_t I686EmuBitwise(uint8_t type, struct I686Registers *regs, uint32_t a, ui
             r = a ^ b;
             break;
     }
+
+    r &= mask;
 
     regs->flags &= ~(FLAG_CF | FLAG_OF);
 

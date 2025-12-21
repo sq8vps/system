@@ -42,7 +42,7 @@ void MmFreeKernelHeap(const void *ptr);
  * @return Pointer to allocated memory or NULL on failure
 */
 __attribute__((malloc, malloc(MmFreeKernelHeap)))
-void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
+void *MmAllocateKernelHeapAligned(size_t n, size_t align);
 
 
 /**
@@ -52,7 +52,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align);
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
 __attribute__((malloc, malloc(MmFreeKernelHeap)))
-void *MmAllocateKernelHeap(uintptr_t n);
+void *MmAllocateKernelHeap(size_t n);
 
 
 /**
@@ -62,7 +62,7 @@ void *MmAllocateKernelHeap(uintptr_t n);
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
 __attribute__((malloc, malloc(MmFreeKernelHeap)))
-void *MmAllocateKernelHeapZeroed(uintptr_t n);
+void *MmAllocateKernelHeapZeroed(size_t n);
 
 /**
  * @brief Reallocate memory on kernel heap
@@ -71,7 +71,7 @@ void *MmAllocateKernelHeapZeroed(uintptr_t n);
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
 __attribute__((malloc, malloc(MmFreeKernelHeap)))
-void *MmReallocateKernelHeap(void *ptr, uintptr_t n);
+void *MmReallocateKernelHeap(void *ptr, size_t n);
 
 /**
  * @brief Allocate memory on kernel heap

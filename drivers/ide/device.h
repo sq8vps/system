@@ -94,9 +94,7 @@ struct IdeControllerData
         //I/O ports
         uint16_t cmdPort;
         uint16_t controlPort;
-        uint16_t masterPort;
-        //last selected slot/device
-        uint8_t lastSelectedSlot : 1;
+        uint16_t bmPort;
 
         //buffer and PRD table
         struct IdePrdTable prdt;

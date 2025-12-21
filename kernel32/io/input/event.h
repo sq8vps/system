@@ -4,6 +4,7 @@
 #include "defines.h"
 #include <stdint.h>
 #include "kbd.h"
+#include "ob/ob.h"
 
 EXPORT_API
 
@@ -42,6 +43,7 @@ typedef void (*IoEventCallback)(const struct IoEventHandler *handler, const unio
  */
 struct IoEventHandler
 {
+    OBJECT;
     enum IoEventType type; /**< Event/source device type */
     int handle; /**< Input device handle */
     bool aggregate; /**< Aggregate all events of given type instead of using handle */

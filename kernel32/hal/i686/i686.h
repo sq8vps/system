@@ -146,6 +146,10 @@ struct HalCpuExtensions
 #define HAL_KERNEL_SPACE_SIZE (HAL_VIRTUAL_SPACE_SIZE - HAL_KERNEL_SPACE_BASE)
 #define HAL_USER_SPACE_TOP (HAL_KERNEL_SPACE_BASE - PAGE_SIZE)
 
+/**
+ * @brief Native register-sized type
+ */
+typedef uint32_t reg_t;
 
 END_EXPORT_API
 

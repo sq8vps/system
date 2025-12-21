@@ -45,7 +45,7 @@ typedef struct KeMutex
     struct KeTaskControlBlock *head; /**< Queue head */
     struct KeTaskControlBlock *tail; /**< Queue tail */
     struct KeTaskControlBlock *owner; /**< Current mutex owner */
-    uint32_t current; /**< Mutex lock state */
+    uint32_t current; /**< Number of current mutex acquisitions */
 } KeMutex;
 
 
@@ -121,7 +121,7 @@ typedef struct KeSeqCounter
  */
 static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
 {
-    ++seqCounter->seq;
+    __atomic_add_fetch(&seqCounter->seq, 1, __ATOMIC_SEQ_CST);
 }
 
 /**
@@ -130,7 +130,7 @@ static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
  */
 static inline void KeSeqCounterWriteEnd(KeSeqCounter *seqCounter)
 {
-    ++seqCounter->seq;
+    __atomic_add_fetch(&seqCounter->seq, 1, __ATOMIC_SEQ_CST);
 }
 
 /**

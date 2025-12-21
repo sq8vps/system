@@ -49,36 +49,18 @@ INTERNAL void HalVideoFillScreen(RtlRGB color);
 INTERNAL void HalVideoClearScreen(void);
 
 /**
- * @brief Put formatted string starting at given position
+ * @brief Put null-terminated string starting at given position
  * @param x Horizontal position
  * @param y Vertical position
- * @param *format Format string
- * @param args Argument list
+ * @param *s Null-terminated string
  */
-INTERNAL void HalVideoPrintVXY(uint16_t x, uint16_t y, const char *format, va_list args);
+INTERNAL void HalVideoPrintXY(uint16_t x, uint16_t y, const char *s);
 
 /**
- * @brief Put formatted string starting at given position
- * @param x Horizontal position
- * @param y Vertical position
- * @param *format Format string
- * @param ... Formatting arguments
+ * @brief Put null-termninated string
+ * @param *s Null-terminated string
  */
-INTERNAL void HalVideoPrintXY(uint16_t x, uint16_t y, const char *format, ...);
-
-/**
- * @brief Put formatted string
- * @param *format Format string
- * @param args Argument list
- */
-INTERNAL void HalVideoPrintV(const char *format, va_list args);
-
-/**
- * @brief Put formatted string
- * @param *format Format string
- * @param ... Formatting arguments
- */
-INTERNAL void HalVideoPrint(const char *format, ...);
+INTERNAL void HalVideoPrint(const char *s);
 
 /**
  * @brief Set colors
@@ -130,6 +112,20 @@ EXPORT_API
  * @brief Deinitialize boot-time video driver - gain ownership of the video adapter
 */
 void HalVideoDeinit(void);
+
+typedef STATUS (*HalVideoResetRoutine)(void *context);
+
+/**
+ * @brief Register video driver reset routine
+ * 
+ * The reset routine is used by the kernel to reset the video adapter to a known state,
+ * where it can be set up and used by the kernel video driver.
+ * The reset routine is invoked only on kernel panic to print the panic message without relying
+ * on the external video driver.
+ * @param *resetRoutine Pointer to the reset routine
+ * @param *context Context pointer passed to the reset routine
+ */
+void HalRegisterVideoResetRoutine(HalVideoResetRoutine resetRoutine, void *context);
 
 END_EXPORT_API
 

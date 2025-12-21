@@ -14,7 +14,7 @@
 // 		if(p->p_memsz == 0) //skip empty segments
 // 			continue;
 // 		if(p->p_filesz > p->p_memsz) //file size must not be bigger than memory size
-// 			return ELF_BROKEN;
+// 			return CORRUPTED;
 
 // 		// ret = Mm_allocateEx(p->vAddr, p->memSize / PAGE_SIZE + ((p->memSize % PAGE_SIZE) ? 1 : 0), 0); //allocate page(s)
 // 		// if(ret != OK)
@@ -64,7 +64,7 @@ STATUS ExGetElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *
 
 					if(SHN_UNDEF == symbol[i].st_shndx) //symbol is undefined
 					{
-						return ELF_UNDEFINED_EXTERNAL_SYMBOL;
+						return UNDEFINED_SYMBOL;
 					}
 					else if(SHN_ABS == symbol[i].st_shndx) //absolute symbol not affected by relocation
 					{
@@ -84,7 +84,7 @@ STATUS ExGetElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *
 		}
 	}
 
-    return ELF_UNDEFINED_SYMBOL;
+    return UNDEFINED_SYMBOL;
 }
 
 STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, ExElfResolver_t resolver)
@@ -99,7 +99,7 @@ STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t inde
 	uint32_t symTabEntries = symTabHdr->sh_size / symTabHdr->sh_entsize; //calculate number of entries
 	if(index >= symTabEntries) //index exceeding table boundaries
 	{
-		return ELF_BROKEN;
+		return CORRUPTED;
 	}
 
 	//get symbol structure from symbol table
@@ -123,7 +123,7 @@ STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t inde
 			else //no definition found and this symbol is not weak: failure
 			{
 				LOG(SYSLOG_ERROR, "Unknown symbol: %s", name);
-				return ELF_UNDEFINED_EXTERNAL_SYMBOL;
+				return UNDEFINED_SYMBOL;
 			}
 		}
 		else //external symbol value found
@@ -146,7 +146,7 @@ STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t inde
 		return OK;
 	}
 
-	return ELF_UNDEFINED_SYMBOL;
+	return UNDEFINED_SYMBOL;
 }
 
 STATUS ExRelocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSectionHdr, struct Elf32_Rel *relEntry, ExElfResolver_t resolver)
@@ -180,7 +180,7 @@ STATUS ExRelocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSection
 			*point = *point + value - (uintptr_t)point;
 			break;
 		default:
-			return ELF_UNSUPPORTED_TYPE;
+			return NOT_SUPPORTED;
 			break;
 	}
 	return OK;
@@ -215,22 +215,22 @@ STATUS ExPerformElf32Relocation(struct Elf32_Ehdr *h, ExElfResolver_t resolver)
 STATUS ExVerifyElf32Header(struct Elf32_Ehdr *h)
 {
 	if(h->ei_mag[0] != ELFMAG0 || h->ei_mag[1] != ELFMAG1 || h->ei_mag[2] != ELFMAG2 || h->ei_mag[3] != ELFMAG3) //check for magic number
-		return ELF_BAD_FORMAT;
+		return BAD_TYPE;
 
 	if(h->ei_class != ELFCLASS32)
-		return ELF_BAD_ARCHITECTURE;
+		return BAD_TYPE;
 
 	if(h->ei_data != ELFDATA2LSB)
-		return ELF_BAD_ENDIANESS;
+		return BAD_TYPE;
 
 	if(h->e_machine != EM_386)
-		return ELF_BAD_INSTRUCTION_SET;
+		return BAD_TYPE;
 
 	if(h->ei_version != EV_CURRENT)
-		return ELF_BROKEN;
+		return CORRUPTED;
 
 	if(h->e_version != EV_CURRENT)
-		return ELF_BROKEN;
+		return CORRUPTED;
 
 	return OK;
 }

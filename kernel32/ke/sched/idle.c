@@ -8,6 +8,7 @@ static struct KeProcessControlBlock *KeIdlePCB = NULL;
 NORETURN static void KeIdleWorker(void *context)
 {
     UNUSED(context);
+
     while(1)
     {
         //KeTaskYield();

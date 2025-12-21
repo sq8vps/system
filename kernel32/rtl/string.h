@@ -83,6 +83,15 @@ void* RtlMemcpy(void *to, const void *from, uintptr_t n);
 volatile void* RtlMemcpyV(volatile void *to, volatile const void *from, uintptr_t n);
 
 /**
+ * @brief Move memory
+ * @param to Destination buffer
+ * @param from Source buffer
+ * @param n Number of bytes to move
+ * @return Destination buffer
+*/
+void *RtlMemmove(void *to, const void *from, size_t n);
+
+/**
  * @brief Fill memory with given value
  * @param *ptr Memory pointer
  * @param c Filler value
@@ -138,14 +147,6 @@ char** RtlAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, u
  * @param count Number of strings in table
 */
 void RtlFreeStringTable(char **table, uint32_t count);
-
-/**
- * @brief Get UTF-8 byte count
- * @param c First UTF-8/ASCII character
- * @return Number of bytes in UTF-8 character
- * @return Always 1 if ASCII character
- */
-#define GET_UTF8_BYTE_COUNT(c) (((c) & 0xE0) == 0xC0 ? 2 : ((c) & 0xF0) == 0xE0 ? 3 : ((c) & 0xF8) == 0xF0 ? 4 : 1)
 
 #ifndef DISABLE_KERNEL_STDLIB
 

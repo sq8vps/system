@@ -28,7 +28,7 @@ STATUS AcpiGetDeviceLocation(struct IoRp *rp)
         }
         return OK;
     }
-    return RP_PROCESSING_FAILED;
+    return NOT_SUPPORTED;
 }
 
 STATUS AcpiGetDeviceResources(struct IoRp *rp)
@@ -54,7 +54,7 @@ STATUS AcpiGetDeviceResources(struct IoRp *rp)
             return OK;
         }
     }
-    return RP_PROCESSING_FAILED;
+    return NOT_SUPPORTED;
 }
 
 struct AcpiEnumerationContext
@@ -169,7 +169,9 @@ static ACPI_STATUS AcpiEnumerationCallback(ACPI_HANDLE Object, UINT32 NestingLev
         return AE_OK;
     }
 
+#ifdef DEBUG
     IoWriteSyslog(AcpiLogHandle, SYSLOG_INFO, "Device found at %s (HID: %s)", private->path, private->pnpId);
+#endif
 
     return AE_OK;
 }
@@ -230,5 +232,5 @@ STATUS AcpiGetDeviceId(struct IoRp *rp)
         rp->payload.deviceId.compatibleId = compatibleIds;
         return OK;
     }
-    return RP_PROCESSING_FAILED;
+    return NOT_SUPPORTED;
 }

@@ -30,6 +30,13 @@ STATUS VgaVesaGetDisplayInfo(struct VgaDisplayInfo *info);
  */
 STATUS VgaVesaSetMode(uint16_t vbeMode, const struct VgaTiming *timing);
 
-
+/**
+ * @brief Reset video adapter to know state on kernel request
+ * 
+ * This routine is used by the kernel in case of a kernel panic.
+ * @param *context Context pointer passed to the reset routine
+ * @return Status code
+ */
+STATUS VgaResetAdapter(void *context);
 
 #endif

@@ -3,6 +3,8 @@
 #include "io/dev/rp.h"
 #include "io/dev/dev.h"
 #include "ex/kdrv/kdrv.h"
+#include "font.h"
+#include "mm/heap.h"
 
 static STATUS TtyDispatch(struct IoRp *rp)
 {
@@ -13,14 +15,26 @@ static STATUS TtyDispatch(struct IoRp *rp)
     switch(rp->code)
     {
         case IO_RP_OPEN:
+            
+            break;
         case IO_RP_CLOSE:
             status = OK;
             break;
-        case IO_RP_WRITE:
-            if(NULL == info->queue.write)
-                status = DEVICE_NOT_AVAILABLE;
+        case IO_RP_READ:
+            if(NULL == info->queue.read)
+                status = NOT_SUPPORTED;
             else
             {
+                IoMarkRpPending(rp);
+                return IoStartRp(info->queue.read, rp, NULL);
+            }
+            break;    
+        case IO_RP_WRITE:
+            if(NULL == info->queue.write)
+                status = NOT_SUPPORTED;
+            else
+            {
+                IoMarkRpPending(rp);
                 return IoStartRp(info->queue.write, rp, NULL);
             }
             break;
@@ -28,7 +42,7 @@ static STATUS TtyDispatch(struct IoRp *rp)
             status = TtyHandleControl(rp);
             break;
         default:
-            status = RP_PROCESSING_FAILED;
+            status = BAD_PARAMETER;
             break;
     }
 
@@ -39,9 +53,14 @@ static STATUS TtyDispatch(struct IoRp *rp)
 
 static STATUS TtyInit(struct ExDriverObject *driverObject)
 {
-    return TtyCreateDevice(driverObject, TTY_TYPE_VT, NULL);
-} 
+    struct TtyDeviceData *info = MmAllocateKernelHeapZeroed(sizeof(*info));
+    if(NULL == info)
+        return OUT_OF_RESOURCES;
 
+    info->type = TTY_TYPE_DUMMY;
+    //this should result in creation of dummy /dev/ttyM0
+    return TtyCreateDevice(driverObject, TTY_TYPE_DUMMY, info);
+}
 
 STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
 {
@@ -49,6 +68,7 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
     driverObject->dispatch = TtyDispatch;
     driverObject->addDevice = NULL;
     TtyLoggingInit();
+    TtyInitializeDefaultKeymap();
     return OK;
 }
 

@@ -26,6 +26,16 @@
 #define ACPI_LAPIC_ENTRY_FLAG_ENABLED 1
 #define ACPI_LAPIC_ENTRY_FLAG_ONLINE_CAPABLE 2
 
+#define ACPI_IRQ_OVERRIDE_FLAG_POLARITY_MASK 0x03
+#define ACPI_IRQ_OVERRIDE_FLAG_POLARITY_CONFORMS 0x00
+#define ACPI_IRQ_OVERRIDE_FLAG_POLARITY_ACTIVE_HIGH 0x01
+#define ACPI_IRQ_OVERRIDE_FLAG_POLARITY_ACTIVE_LOW 0x03
+
+#define ACPI_IRQ_OVERRIDE_FLAG_TRIGGER_MASK 0x0C
+#define ACPI_IRQ_OVERRIDE_FLAG_TRIGGER_CONFORMS 0x00
+#define ACPI_IRQ_OVERRIDE_FLAG_TRIGGER_EDGE 0x04
+#define ACPI_IRQ_OVERRIDE_FLAG_TRIGGER_LEVEL 0x0C
+
 struct AcpiRsdp
 {
     char signature[8];
@@ -211,7 +221,16 @@ static void AcpiReadEntries(struct AcpiMadt *hdr)
                 break;
             case ACPI_MADT_ENTRY_INTERRUPT_SOURCE:
                 struct AcpiIrqOverrideEntry *irq = (struct AcpiIrqOverrideEntry*)entry;
-                I686AddIsaRemapEntry(irq->source, irq->globalIrq);
+                I686AddIsaRemapEntry(irq->source, irq->globalIrq, (struct HalInterruptParams)
+                    {
+                        .mode = HAL_IT_MODE_FIXED,
+                        .polarity = ACPI_IRQ_OVERRIDE_FLAG_POLARITY_ACTIVE_LOW == (irq->flags & ACPI_IRQ_OVERRIDE_FLAG_POLARITY_MASK) 
+                            ? HAL_IT_POLARITY_ACTIVE_LOW : HAL_IT_POLARITY_ACTIVE_HIGH,
+                        .trigger = ACPI_IRQ_OVERRIDE_FLAG_TRIGGER_LEVEL == (irq->flags & ACPI_IRQ_OVERRIDE_FLAG_TRIGGER_MASK) 
+                            ? HAL_IT_TRIGGER_LEVEL : HAL_IT_TRIGGER_EDGE,
+                        .shared = HAL_IT_NOT_SHAREABLE,
+                        .wake = HAL_IT_WAKE_INCAPABLE
+                    });
                 entry = (uint8_t*)entry + irq->length;
                 break;
             default:
@@ -225,7 +244,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
 {
     uintptr_t rsdtPhysical = AcpiGetRxsdtAddress();
     if(0 == rsdtPhysical)
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     
     struct AcpiRXsdt *rxsdt = MmMapDynamicMemory(rsdtPhysical, sizeof(struct AcpiRXsdt), 0);
     if(NULL == rxsdt)
@@ -244,7 +263,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     if(!AcpiVerifyChecksum(rxsdt, rxsdtLength))
     {
         MmUnmapDynamicMemory(rxsdt);
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     }
 
     for(uint32_t i = 0; i < entryCount; i++)
@@ -274,7 +293,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
         {
             MmUnmapDynamicMemory(rxsdt);
             MmUnmapDynamicMemory(madt);
-            return FILE_NOT_FOUND;
+            return NOT_FOUND;
         }
 
         *lapicAddress = madt->lapicAddress;
@@ -287,7 +306,7 @@ STATUS AcpiInit(uintptr_t *lapicAddress)
     }
     
     MmUnmapDynamicMemory(rxsdt);
-    return FILE_NOT_FOUND;
+    return NOT_FOUND;
 
 }
 

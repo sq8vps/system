@@ -8,6 +8,7 @@
 #include "rtl/string.h"
 #include "rtl/stdio.h"
 #include "ddk/display.h"
+#include "logging.h"
 
 #define DISPLAY_DEVICE_ID_PREFIX "DISPLAY"
 
@@ -20,7 +21,7 @@ void VgaEnumerateDisplays(struct IoRp *rp)
 
     if(VGA_INFO_ADAPTER != adapter->type)
     {
-        rp->status = DEVICE_NOT_AVAILABLE;
+        rp->status = NOT_SUPPORTED;
         IoFinalizeRp(rp);
         return;
     }
@@ -89,6 +90,12 @@ void VgaEnumerateDisplays(struct IoRp *rp)
     }
 
     HalVideoDeinit();
+
+    LOG(SYSLOG_INFO, "Setting VESA mode 0x%X: %lux%lu@%u",
+        adapter->mode[mode].mode,
+        adapter->mode[mode].config.width,
+        adapter->mode[mode].config.height,
+        (unsigned int)adapter->mode[mode].config.bitsPerPixel);
 
     status = VgaVesaSetMode(adapter->mode[mode].mode, VgaFindTimingForMode(info, adapter, mode));
     if(OK != status)
@@ -217,7 +224,7 @@ void VgaGetDisplayDeviceId(struct IoRp *rp)
 
     if(VGA_INFO_DISPLAY != info->type)
     {
-        rp->status = RP_PROCESSING_FAILED;
+        rp->status = NOT_SUPPORTED;
         IoFinalizeRp(rp);
         return;
     }   

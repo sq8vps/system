@@ -8,6 +8,7 @@
 #include "io/dev/op.h"
 #include "logging.h"
 #include "rtl/stdio.h"
+#include "ke/sched/sleep.h"
 
 #define DISK_DEVICE_FILE_NAME_PREFIX "hd"
 
@@ -106,6 +107,7 @@ static STATUS DiskAnalyzeMbr(struct IoDeviceObject *bdo, struct DiskData *info)
 
     uint64_t size = (bdo->blockSize > MBR_SIZE_ON_DISK) ? bdo->blockSize : MBR_SIZE_ON_DISK;
     status = IoReadDeviceSync(bdo, MBR_LBA_OFFSET * bdo->blockSize, size, &buffer);
+    LOG(SYSLOG_INFO, "MBR has been read");
     if(OK != status)
     {
         return status;
@@ -132,15 +134,22 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
 {
     STATUS status;
     status = DiskAnalyzeMbr(bdo, info);
+
     if(OK != status)
+    {
         return status;
-    
+    }
+
     if(info->isGpt)
     {
     
     }
     else if(info->isMbr)
     {
+#ifdef DEBUG
+        LOG(SYSLOG_INFO, "Disk %lu is MBR-partitioned", info->index);
+#endif
+
         for(uint32_t i = 0; i < sizeof(info->mbr->partition) / sizeof(info->mbr->partition[0]); i++)
         {
             if(DiskMbrIsPartitionUsable(&(info->mbr->partition[i])))
@@ -200,6 +209,10 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
                 if(OK != status)
                     LOG(SYSLOG_ERROR, "Failed to register volume %lu on disk %lu with status 0x%X", partitionInfo->index, info->index, status);
             }
+#ifdef DEBUG
+            else
+                LOG(SYSLOG_INFO, "Partition %lu at disk %lu is not usable", i, info->index);
+#endif
         }
     }
     return OK;

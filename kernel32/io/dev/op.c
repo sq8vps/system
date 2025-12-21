@@ -226,7 +226,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
     
     //check device capabilities, align offset and size
     if(0 == (dev->flags & (IO_DEVICE_FLAG_DIRECT_IO | IO_DEVICE_FLAG_BUFFERED_IO)))
-        return OPERATION_NOT_ALLOWED;
+        return NOT_SUPPORTED;
 
     if(0 == alignment)
         alignment = 1;
@@ -239,7 +239,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
         alignedSize = size;
 
     if(forceDirectIo && !useDirectIo)
-        return OPERATION_NOT_ALLOWED;
+        return NOT_SUPPORTED;
 
     if(forceDirectIo && ((alignedOffset != offset) || (alignedSize != size)))
         return BAD_ALIGNMENT;
@@ -322,7 +322,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     uint64_t alignedOffset = 0;
     
     if(0 == (dev->flags & (IO_DEVICE_FLAG_DIRECT_IO | IO_DEVICE_FLAG_BUFFERED_IO)))
-        return OPERATION_NOT_ALLOWED;
+        return NOT_SUPPORTED;
 
     if(0 == alignment)
         alignment = 1;

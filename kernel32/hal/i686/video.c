@@ -18,10 +18,8 @@
 #include "hal/i686/ioport.h"
 #include "mm/mmio.h"
 #include "font.h"
-#include "rtl/string.h"
-#include "rtl/stdio.h"
 #include "hal/video.h"
-#include "mm/heap.h"
+#include "rtl/string.h"
 
 //uncomment to enable 640x480 mode
 //otherwise 320x200 mode is used
@@ -69,8 +67,12 @@ static struct
 
 	uint8_t *vmem;
 
+	HalVideoResetRoutine reset;
+	void (*resetContext)(void *context);
+
 	bool initialized;
-} HalVideoState = {.vmem = NULL, .initialized = false};
+	bool ownership;
+} HalVideoState = {.vmem = NULL, .reset = NULL, .initialized = false, .ownership = true};
 
 
 #ifdef HAL_VIDEO_USE_640_480
@@ -214,9 +216,27 @@ static void HalVideoWriteColorPalette(void)
 	IoPortWriteByte(HAL_VIDEO_AC_INDEX, 0x20); //disable access to color palette
 }
 
+void HalRegisterVideoResetRoutine(HalVideoResetRoutine resetRoutine, void *context)
+{
+	HalVideoState.reset = resetRoutine;
+	HalVideoState.resetContext = context;
+}
 
 STATUS HalVideoInit(void)
 {	
+	if(!HalVideoState.ownership)
+	{
+		if(NULL != HalVideoState.reset)
+		{
+			HalVideoState.reset(HalVideoState.resetContext);
+			HalVideoState.ownership = true;
+		}
+		else
+		{
+			return DEVICE_NOT_AVAILABLE;
+		}
+	}
+
 	if(NULL == HalVideoState.vmem)
 	{
 		HalVideoState.vmem = MmMapMmIo(HAL_VIDEO_FRAME_BUFFER_ADDRESS, HAL_VIDEO_WIDTH * HAL_VIDEO_HEIGHT);
@@ -256,6 +276,7 @@ void HalVideoDeinit(void)
 		return;
 	
 	HalVideoState.initialized = false;
+	HalVideoState.ownership = false;
 
 	IoPortWriteByte(HAL_VIDEO_GC_INDEX, 0x08);
     IoPortWriteByte(HAL_VIDEO_GC_DATA, 0xff);
@@ -308,8 +329,8 @@ void HalVideoSetColor(RtlRGB fg, RtlRGB bg)
 	HalVideoSetBackgroundColor(bg);
 }
 
-__attribute__ ((hot))
-static inline void HalVideoSetPixelNormalized(uint16_t x, uint16_t y, uint8_t color)
+
+HOT static inline void HalVideoSetPixelNormalized(uint16_t x, uint16_t y, uint8_t color)
 {	
 	if(unlikely((y >= HAL_VIDEO_HEIGHT) || (x >= HAL_VIDEO_WIDTH)))
 		return;
@@ -340,8 +361,7 @@ static inline void HalVideoSetPixelNormalized(uint16_t x, uint16_t y, uint8_t co
 /**
  * @brief Set pixel only in given plane. The plane must be selected first with HalVideoSetPlane()
 */
-__attribute__ ((hot))
-static inline void HalVideoSetPixelInCurrentPlane(uint16_t x, uint16_t y, uint8_t plane, uint8_t color)
+HOT static inline void HalVideoSetPixelInCurrentPlane(uint16_t x, uint16_t y, uint8_t plane, uint8_t color)
 {
 	if(unlikely((y >= HAL_VIDEO_HEIGHT) || (x >= HAL_VIDEO_WIDTH)))
 		return;
@@ -490,72 +510,20 @@ inline void HalVideoPrintChar(char c)
 	HalVideoState.x += HAL_VIDEO_FONT_WIDTH;
 }
 
-void HalVideoPrintVXY(uint16_t x, uint16_t y, const char *format, va_list args)
+void HalVideoPrintXY(uint16_t x, uint16_t y, const char *s)
 {
 	if(unlikely(!HalVideoState.initialized))
 		return;
+		
+	HalVideoSetPosition(x, y);
 
-	bool isFormatted = false;
-	const char *f = format;
-	while('\0' != *f)
-	{
-		if('%' == *f)
-		{
-			isFormatted = true;
-			break;
-		}
-		++f;
-	}
-
-	HalVideoState.x = x;
-	HalVideoState.y = y;
-
-	if(isFormatted)
-	{
-		int size = RtlSprintDryV(format, args);
-		if(size <= 0)
-			return;
-		char *buffer = MmAllocateKernelHeap(size + 1);
-		if(NULL == buffer)
-			return;
-		RtlSprintV(buffer, format, args);
-		const char *b = buffer;
-		while('\0' != *b)
-		{
-			HalVideoPrintChar(*b);
-			++b;
-		}
-		MmFreeKernelHeap(buffer);
-	}
-	else
-	{
-		while('\0' != *format)
-		{
-			HalVideoPrintChar(*format);
-			++format;
-		}
-	}
+	while('\0' != *s)
+		HalVideoPrintChar(*s++);
 }
 
-void HalVideoPrintXY(uint16_t x, uint16_t y, const char *format, ...)
+void HalVideoPrint(const char *s)
 {
-    va_list args;
-    va_start(args, format);
-    HalVideoPrintVXY(x, y, format, args);
-    va_end(args);
-}
-
-void HalVideoPrintV(const char *format, va_list args)
-{
-	HalVideoPrintVXY(HalVideoState.x, HalVideoState.y, format, args);
-}
-
-void HalVideoPrint(const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    HalVideoPrintVXY(HalVideoState.x, HalVideoState.y, format, args);
-    va_end(args);
+    HalVideoPrintXY(HalVideoState.x, HalVideoState.y, s);
 }
 
 void HalVideoSetPosition(uint16_t x, uint16_t y)

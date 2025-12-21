@@ -62,7 +62,7 @@ STATUS HalRegisterClockSource(struct HalClockSource *cs)
 
         t->next = c;
     }
-    KeReleaseSpinlock(&HalClockState.clock, prio);
+    KeReleaseSpinlock(&HalClockState.lock, prio);
 
     HalUpdateClockSource(cs);
 
@@ -96,8 +96,9 @@ void HalUpdateClockSource(struct HalClockSource *cs)
     struct HalClock *c = cs->control;
 
     KeSeqCounterWriteBegin(&c->seqCounter);
-    c->lastTicks = cs->read(cs->context);
-    c->lastTime = HalCalculateNewTimestamp(c, c->lastTicks);
+    uint64_t currentTicks = cs->read(cs->context);
+    c->lastTime = HalCalculateNewTimestamp(c, currentTicks);
+    c->lastTicks = currentTicks;
     KeSeqCounterWriteEnd(&c->seqCounter);
 
     HalSelectBestClock(cs);

@@ -1,9 +1,9 @@
 [bits 32]
 
-;void I686VerifySyscall(uintptr_t ret, uintptr_t stack)
+;void I686VerifySyscall(reg_t ret, reg_t stack)
 extern I686VerifySyscall
 
-;INTERNAL STATUS KePerformSyscall(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5)
+;INTERNAL reg_t KePerformSyscall(reg_t code, reg_t arg1, reg_t arg2, reg_t arg3, reg_t arg4, reg_t arg5)
 extern KePerformSyscall
 
 global I686Sysenter:function

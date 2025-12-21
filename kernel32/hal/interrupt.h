@@ -142,10 +142,10 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr);
 
 /**
  * @brief Clear external interrupt flag
- * @param input IRQ (input) number
+ * @param input Interrupt vector
  * @return Error code
 */
-STATUS HalClearInterruptFlag(uint32_t input);
+STATUS HalClearInterruptFlag(uint32_t vector);
 
 /**
  * @brief Raise current task priority level
@@ -200,9 +200,10 @@ INTERNAL void HalSetTaskPriority(PRIO prio);
 
 /**
  * @brief Check if generated interrupt is spurious and should not be processed
+ * @param vector Generated interrupt vector
  * @return True if spurious, false if not
 */
-INTERNAL bool HalIsInterruptSpurious(void);
+INTERNAL bool HalIsInterruptSpurious(uint8_t vector);
 
 /**
  * @brief Obtain vector corresponding to given IRQ (if applicable)

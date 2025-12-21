@@ -36,7 +36,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
             else
             {
                 //TODO: implement user mode buffer handling
-                rp->status = NOT_COMPATIBLE;
+                rp->status = NOT_IMPLEMENTED;
                 IoFinalizeRp(rp);
                 return OK;
             }
@@ -44,7 +44,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
             if(size > info->partition.sizeBytes)
             {
                 //won't fit
-                rp->status = VOLUME_TOO_SMALL;
+                rp->status = OUT_OF_RESOURCES;
                 IoFinalizeRp(rp);
                 return OK;
             }
@@ -64,7 +64,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
             else
             {
                 //TODO: implement user mode buffer handling
-                rp->status = NOT_COMPATIBLE;
+                rp->status = NOT_IMPLEMENTED;
                 IoFinalizeRp(rp);
                 return OK;
             }
@@ -72,7 +72,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
             if(size > info->partition.sizeBytes)
             {
                 //won't fit
-                rp->status = VOLUME_TOO_SMALL;
+                rp->status = OUT_OF_RESOURCES;
                 IoFinalizeRp(rp);
                 return OK;
             }
@@ -80,7 +80,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
         }
         else
         {
-            rp->status = RP_PROCESSING_FAILED;
+            rp->status = BAD_PARAMETER;
             IoFinalizeRp(rp);
             return OK;
         }
@@ -91,7 +91,7 @@ STATUS DiskReadWrite(struct IoRp *rp)
     else
     {
         //bad disk configuration, should not happen
-        rp->status = RP_PROCESSING_FAILED;
+        rp->status = NOT_SUPPORTED;
         IoFinalizeRp(rp);
         return OK;
     }
@@ -130,7 +130,7 @@ STATUS DiskGetSig(struct DiskData *info, char **signature)
         {
             //fail on non-partitioned disks, since there is no obtainable UUID
             MmFreeKernelHeap(t);
-            return RP_PROCESSING_FAILED;
+            return NOT_SUPPORTED;
         }
     }
 

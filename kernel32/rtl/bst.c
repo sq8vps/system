@@ -30,7 +30,7 @@
     return top;
 }
 
- struct BstNode *BstFindExact(struct BstNode *root, size_t key)
+ struct BstNode *BstFindExact(struct BstNode *root, tree_key_t key)
 {
     while(NULL != root)
     {       
@@ -50,7 +50,7 @@
     return NULL;
 }
 
- struct BstNode *BstFindLess(struct BstNode *root, size_t key)
+ struct BstNode *BstFindLess(struct BstNode *root, tree_key_t key)
 {
     struct BstNode *best = NULL;
     while(NULL != root)
@@ -80,7 +80,7 @@
     return NULL;
 }
 
- struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, size_t key)
+ struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key)
 {
     struct BstNode *best = NULL;
 

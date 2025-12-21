@@ -18,6 +18,8 @@
 #define PIC_ICW1_FLAG_INIT 0x10	//constant bit set to 1
 #define PIC_ICW4_FLAG_8086 0x01 //8086 mode
 
+#define PIC_SLAVE_IRQ 2
+
 #define IS_MASTER_INPUT(x) ((x) <= 7)
 #define IS_SLAVE_INPUT(x) (((x) >= 8) && ((x) <= 15))
 #define CHECK_INPUT(x) (IS_MASTER_INPUT(x) || IS_SLAVE_INPUT(x))
@@ -26,12 +28,13 @@ static struct
 {
     KeSpinlock mutex;
     uint8_t usage;
+    uint8_t offset;
 } Pic[2];
 
 STATUS PicSendEoi(uint32_t input)
 {
     if(!CHECK_INPUT(input))
-        return BAD_INTERRUPT_VECTOR;
+        return BAD_PARAMETER;
     
     if(IS_SLAVE_INPUT(input))
     {
@@ -52,25 +55,45 @@ void PicRemap(uint8_t masterIrqOffset, uint8_t slaveIrqOffset)
     uint8_t mMask = IoPortReadByte(PIC_MASTER_DATA_PORT);
     IoPortWriteByte(PIC_MASTER_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
     IoPortWriteByte(PIC_MASTER_DATA_PORT, masterIrqOffset);
-    IoPortWriteByte(PIC_MASTER_DATA_PORT, 4);
+    IoPortWriteByte(PIC_MASTER_DATA_PORT, 1 << PIC_SLAVE_IRQ);
     IoPortWriteByte(PIC_MASTER_DATA_PORT, PIC_ICW4_FLAG_8086);
     IoPortWriteByte(PIC_MASTER_DATA_PORT, mMask);
+    Pic[0].offset = masterIrqOffset;
     KeReleaseSpinlock(&(Pic[0].mutex), prio);
 
     prio = KeAcquireSpinlock(&(Pic[1].mutex));
     uint8_t sMask = IoPortReadByte(PIC_SLAVE_DATA_PORT);
     IoPortWriteByte(PIC_SLAVE_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
     IoPortWriteByte(PIC_SLAVE_DATA_PORT, slaveIrqOffset);
-    IoPortWriteByte(PIC_SLAVE_DATA_PORT, 2);
+    IoPortWriteByte(PIC_SLAVE_DATA_PORT, 2); //slave ID
     IoPortWriteByte(PIC_SLAVE_DATA_PORT, PIC_ICW4_FLAG_8086);
     IoPortWriteByte(PIC_SLAVE_DATA_PORT, sMask);
+    Pic[1].offset = slaveIrqOffset;
     KeReleaseSpinlock(&(Pic[1].mutex), prio);
+}
+
+void PicEnable(void)
+{
+    PRIO prio = KeAcquireSpinlock(&(Pic[0].mutex));
+    IoPortWriteByte(PIC_MASTER_DATA_PORT, IoPortReadByte(PIC_MASTER_DATA_PORT) & ~(1 << PIC_SLAVE_IRQ));
+    KeReleaseSpinlock(&(Pic[0].mutex), prio);    
+}
+
+void PicDisable(void)
+{
+    PRIO prio = KeAcquireSpinlock(&(Pic[0].mutex));
+    IoPortWriteByte(PIC_MASTER_DATA_PORT, 0xFF);
+    KeReleaseSpinlock(&(Pic[0].mutex), prio);
+
+    prio = KeAcquireSpinlock(&(Pic[1].mutex));
+    IoPortWriteByte(PIC_SLAVE_DATA_PORT, 0xFF);
+    KeReleaseSpinlock(&(Pic[1].mutex), prio);    
 }
 
 STATUS PicDisableIrq(uint32_t input)
 {
     if(!CHECK_INPUT(input))
-        return BAD_INTERRUPT_VECTOR;
+        return BAD_PARAMETER;
 
     if(IS_MASTER_INPUT(input))
     {
@@ -91,7 +114,7 @@ STATUS PicDisableIrq(uint32_t input)
 STATUS PicEnableIrq(uint32_t input)
 {
     if(!CHECK_INPUT(input))
-        return BAD_INTERRUPT_VECTOR;
+        return BAD_PARAMETER;
 
     if(IS_MASTER_INPUT(input))
     {
@@ -106,16 +129,6 @@ STATUS PicEnableIrq(uint32_t input)
         KeReleaseSpinlock(&(Pic[1].mutex), prio);
     }
     return OK;
-}
-
-void PicSetIrqMask(uint16_t mask)
-{
-    PRIO prio = KeAcquireSpinlock(&(Pic[0].mutex));
-    prio = KeAcquireSpinlock(&(Pic[1].mutex));
-    IoPortWriteByte(PIC_MASTER_DATA_PORT, mask & 0xFF);
-    IoPortWriteByte(PIC_SLAVE_DATA_PORT, (mask >> 8) & 0xFF);
-    KeReleaseSpinlock(&(Pic[1].mutex), prio);
-    KeReleaseSpinlock(&(Pic[0].mutex), prio);
 }
 
 uint16_t PicGetIsr(void)
@@ -144,19 +157,25 @@ uint16_t PicGetIrr(void)
     return ret;
 }
 
-bool PicIsIrqSpurious(void)
+bool PicIsIrqSpurious(uint8_t vector)
 {
-    uint16_t isr = PicGetIsr();
-    //a real interrupt results in setting a bit in the ISR register
-    //check if there is any bit set. Omit bit 2 (bit 2 of master PIC), where slave PIC output is connected
-    //if bit 2 is set, but no bit is set in slave PIC ISR, then the interrupt is spurious
-    if(isr & 0xFB)
-        return false;
-    
-    if(isr & 0x04) //spurious interrupt occured on slave PIC, so master PIC must be acknowledged
-        PicSendEoi(0x04);
+    if(((vector >= Pic[0].offset) && (vector < (Pic[0].offset + 8)))
+        || ((vector >= Pic[1].offset) && (vector < (Pic[1].offset + 8))))
+    {
+        uint16_t isr = PicGetIsr();
+        //a real interrupt results in setting a bit in the ISR register
+        //check if there is any bit set. Omit bit 2 (bit 2 of master PIC), where slave PIC output is connected
+        //if bit 2 is set, but no bit is set in slave PIC ISR, then the interrupt is spurious
+        if(isr & 0xFFFB)
+            return false;
+        
+        if(isr & 0x0004) //spurious interrupt occured on slave PIC, so master PIC must be acknowledged
+            PicSendEoi(0x04);
 
-    return true;
+        return true;
+    }
+    else
+        return false;
 }
 
 uint32_t PicReserveInput(uint32_t input)

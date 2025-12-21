@@ -22,7 +22,7 @@
 /**
  * @brief Value returned by Ps2KeyboardParse when read is still incomplete
  */
-#define PS2_KEY_INCOMPLETE 0xFFFF
+#define PS2_UNKNOWN_KEY 0xFFFF
 
 /**
  * @brief Keyboard LED state bits
@@ -43,7 +43,7 @@ struct IoRp;
  * @param *buffer Buffer of size at least 8 for internal use
  * @param *index Index for internal use
  * @return Decoded code as in IoKeyMappings, optionally with PS2_KEY_STATE_BIT or PS2_KEY_PULSE_BIT.
- * PS2_KEY_INCOMPLETE is returned when key parsing is in progress
+ * PS2_UNKNOWN_KEY is returned when key parsing is in progress
  */
 uint16_t Ps2KeyboardParse(uint8_t data, uint8_t *buffer, uint8_t *index);
 

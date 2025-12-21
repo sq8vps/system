@@ -7,6 +7,7 @@
 #include "rtl/order.h"
 #include "rtl/stdio.h"
 #include "timings.h"
+#include "logging.h"
 
 struct VbeInfoBlock
 {
@@ -72,6 +73,7 @@ struct VbeModeInfoBlock
 
 enum
 {
+    VBE_MEMORY_MODEL_TEXT_MODE = 0x00,
     VBE_MEMORY_MODEL_DIRECT_COLOR = 0x06,
 };
 
@@ -190,6 +192,8 @@ enum
 #define VBE_MODE_LIST_BUFFER_SIZE 256
 #define VBE_MODE_LIST_TERMINATOR 0xFFFF
 
+
+
 STATUS VgaVesaGetAdapterInfo(struct VgaAdapterInfo *info)
 {
     STATUS status = OK;
@@ -220,7 +224,7 @@ STATUS VgaVesaGetAdapterInfo(struct VgaAdapterInfo *info)
 
     if(EMU_OK != I686EmulatorDoInterrupt(VBE_INT, &regs, vbeInfo, sizeof(*vbeInfo)))
     {
-        status = DEVICE_NOT_AVAILABLE;
+        status = NOT_SUPPORTED;
         goto VgeVesaGetAdapterInfoExit;
     }
 
@@ -229,7 +233,7 @@ STATUS VgaVesaGetAdapterInfo(struct VgaAdapterInfo *info)
         || (vbeInfo->capabilities[0] & (1 << 1)) //not VGA-compatible?
         || ((vbeInfo->version >> 8) < 2)) //version <2.x?
     {
-        status = DEVICE_NOT_AVAILABLE;
+        status = NOT_SUPPORTED;
         goto VgeVesaGetAdapterInfoExit;
     }
 
@@ -254,9 +258,10 @@ STATUS VgaVesaGetAdapterInfo(struct VgaAdapterInfo *info)
     while(1)
     {
         uint32_t max = VBE_MODE_LIST_BUFFER_SIZE;
+
         if(EMU_OK != I686EmulatorReadMemory(offset, VBE_MODE_LIST_BUFFER_SIZE * sizeof(*modeList), modeList))
         {
-            status = DEVICE_NOT_AVAILABLE;
+            status = NOT_SUPPORTED;
             goto VgeVesaGetAdapterInfoExit;
         }
 
@@ -270,8 +275,17 @@ STATUS VgaVesaGetAdapterInfo(struct VgaAdapterInfo *info)
             regs.di = EMU_DATA_OFFSET;
             if(EMU_OK != I686EmulatorDoInterrupt(VBE_INT, &regs, modeInfo, sizeof(*modeInfo)))
             {
-                status = DEVICE_NOT_AVAILABLE;
+                status = NOT_SUPPORTED;
                 goto VgeVesaGetAdapterInfoExit;
+            }
+
+            //VGA should support text mode 3, which is 80x25
+            //however, new VBE specifications say not to rely on the predefined mode numbers
+            if((VBE_AL_SUCCESS == regs.al) && (VBE_AH_SUCCESS == regs.ah)
+                && (VBE_MEMORY_MODEL_TEXT_MODE == modeInfo->memoryModel)
+                && (80 == modeInfo->xRes) && (25 == modeInfo->yRes))
+            {
+                info->resetMode = *mode;
             }
 
             if((VBE_AL_SUCCESS == regs.al) && (VBE_AH_SUCCESS == regs.ah)
@@ -291,35 +305,37 @@ STATUS VgaVesaGetAdapterInfo(struct VgaAdapterInfo *info)
                 if(isVbe3)
                 {
                     info->mode[k].config.pitch = modeInfo->linBytesPerScanLine;
-                    info->mode[k].config.mask.red.position = modeInfo->linRedPosition;
-                    info->mode[k].config.mask.red.size = modeInfo->linRedMaskSize;
-                    info->mode[k].config.mask.green.position = modeInfo->linGreenPosition;
-                    info->mode[k].config.mask.green.size = modeInfo->linGreenMaskSize;
-                    info->mode[k].config.mask.blue.position = modeInfo->linBluePosition;
-                    info->mode[k].config.mask.blue.size = modeInfo->linBlueMaskSize;
-                    info->mode[k].config.mask.reserved.position = modeInfo->linRsvdPosition;
-                    info->mode[k].config.mask.reserved.size = modeInfo->linRsvdMaskSize;
+                    info->mode[k].config.mask.color[RED_INDEX].position = modeInfo->linRedPosition;
+                    info->mode[k].config.mask.color[RED_INDEX].size = modeInfo->linRedMaskSize;
+                    info->mode[k].config.mask.color[GREEN_INDEX].position = modeInfo->linGreenPosition;
+                    info->mode[k].config.mask.color[GREEN_INDEX].size = modeInfo->linGreenMaskSize;
+                    info->mode[k].config.mask.color[BLUE_INDEX].position = modeInfo->linBluePosition;
+                    info->mode[k].config.mask.color[BLUE_INDEX].size = modeInfo->linBlueMaskSize;
+                    info->mode[k].config.mask.color[RESERVED_INDEX].position = modeInfo->linRsvdPosition;
+                    info->mode[k].config.mask.color[RESERVED_INDEX].size = modeInfo->linRsvdMaskSize;
                 }
                 else
                 {
                     info->mode[k].config.pitch = modeInfo->bytesPerScanLine;
-                    info->mode[k].config.mask.red.position = modeInfo->redPosition;
-                    info->mode[k].config.mask.red.size = modeInfo->redMaskSize;
-                    info->mode[k].config.mask.green.position = modeInfo->greenPosition;
-                    info->mode[k].config.mask.green.size = modeInfo->greenMaskSize;
-                    info->mode[k].config.mask.blue.position = modeInfo->bluePosition;
-                    info->mode[k].config.mask.blue.size = modeInfo->blueMaskSize;
-                    info->mode[k].config.mask.reserved.position = modeInfo->rsvdPosition;
-                    info->mode[k].config.mask.reserved.size = modeInfo->rsvdMaskSize;
+                    info->mode[k].config.mask.color[RED_INDEX].position = modeInfo->redPosition;
+                    info->mode[k].config.mask.color[RED_INDEX].size = modeInfo->redMaskSize;
+                    info->mode[k].config.mask.color[GREEN_INDEX].position = modeInfo->greenPosition;
+                    info->mode[k].config.mask.color[GREEN_INDEX].size = modeInfo->greenMaskSize;
+                    info->mode[k].config.mask.color[BLUE_INDEX].position = modeInfo->bluePosition;
+                    info->mode[k].config.mask.color[BLUE_INDEX].size = modeInfo->blueMaskSize;
+                    info->mode[k].config.mask.color[RESERVED_INDEX].position = modeInfo->rsvdPosition;
+                    info->mode[k].config.mask.color[RESERVED_INDEX].size = modeInfo->rsvdMaskSize;
                 }
 
                 if(VGA_MAX_MODES == ++info->modeCount)
                     goto VgeVesaGetAdapterInfoExit;
             }
 
-
             ++mode;
         }
+
+        if(VBE_MODE_LIST_TERMINATOR == *mode)
+            break;
 
         offset += VBE_MODE_LIST_BUFFER_SIZE * sizeof(*modeList);
     }
@@ -426,6 +442,7 @@ STATUS VgaVesaGetDisplayInfo(struct VgaDisplayInfo *info)
         || (VBE_AL_SUCCESS != regs.al) || (VBE_AH_SUCCESS != regs.ah)
         || (!(regs.bl & (0x1 | 0x2)))) //no DDC1 nor DDC2 support
     {
+        LOG(SYSLOG_WARNING, "DDC not available, AX=%hX", (uint16_t)regs.ax);
         goto VgaVesaGetDisplayInfoExit;
     }
 
@@ -444,6 +461,7 @@ STATUS VgaVesaGetDisplayInfo(struct VgaDisplayInfo *info)
     if((EMU_OK != I686EmulatorDoInterrupt(VBE_INT, &regs, edid, sizeof(*edid)))
         || ((VBE_AL_SUCCESS != regs.al) || (VBE_AH_SUCCESS != regs.ah)))
     {
+        LOG(SYSLOG_WARNING, "DDC read failed, AX=%hX", (uint16_t)regs.ax);
         goto VgaVesaGetDisplayInfoExit;
     }
 
@@ -547,4 +565,27 @@ STATUS VgaVesaSetMode(uint16_t vbeMode, const struct VgaTiming *timing)
     I686ReleaseEmulator();
     MmFreeKernelHeap(crtc);
     return status;    
+}
+
+STATUS VgaResetAdapter(void *context)
+{
+    STATUS status = OK;
+    struct I686Registers regs;
+
+    //reset the adapter
+    regs.ah = VBE_AH_DO;
+    regs.al = VBE_AL_SET_MODE;
+    regs.bx = ((struct VgaAdapterInfo*)context)->resetMode; //text mode 80x25
+    regs.es = EMU_DATA_SEGMENT;
+    regs.di = EMU_DATA_OFFSET;
+
+    status = I686AcquireEmulatorOnPanic();
+    if(OK != status)
+        return status;
+
+    if((EMU_OK != I686EmulatorDoInterrupt(VBE_INT, &regs, NULL, 0)) 
+        || (VBE_AL_SUCCESS != regs.al) || (VBE_AH_SUCCESS != regs.ah))
+        return UNKNOWN_ERROR;
+    else
+        return OK;
 }

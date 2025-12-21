@@ -105,3 +105,9 @@ void MmSlabFree(void *slabHandle, void *memory)
     barrier();
     KeReleaseSpinlock(&(slab->lock), prio);
 }
+
+void MmSlabDestroy(void *slabHandle)
+{
+    UNUSED(slabHandle);
+    //TODO: implement!!!!
+}

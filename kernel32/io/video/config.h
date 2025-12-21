@@ -5,6 +5,14 @@
 
 EXPORT_API
 
+enum
+{
+    RED_INDEX = 0,
+    GREEN_INDEX = 1,
+    BLUE_INDEX = 2,
+    RESERVED_INDEX = 3,
+};
+
 /**
  * @brief General frame buffer configuration data
  */
@@ -20,7 +28,7 @@ struct IoFrameBufferConfig
         {
             uint8_t size; /**< Color mask size in bits */
             uint8_t position; /**< Mask position (count of left shifts) */
-        } red, green, blue, reserved; /**< Red, green, blue, and reserved bit masks */
+        } color[4]; /**< Red, green, blue, and reserved bit masks */
     } mask; /**< Color masks */
 };
 

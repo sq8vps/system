@@ -20,6 +20,13 @@ bool I686IsIoApicUsed(void);
 */
 uint32_t I686ResolveIsaIrqMapping(uint32_t irq);
 
+/**
+ * @brief Get legacy ISA IRQ parameters
+ * @param irq ISA IRQ from device
+ * @return Resolved ISA IRQ parameters
+*/
+struct HalInterruptParams I686ResolveIsaIrqParams(uint32_t irq);
+
 END_EXPORT_API
 
 /**
@@ -43,8 +50,10 @@ INTERNAL STATUS I686InitInterruptController(void);
  * @brief Add ISA remap entry when I/O APIC is used
  * @param isaIrq Original ISA IRQ
  * @param gsi Global System Interrupt (Global IRQ number)
+ * @param params Interrupt parameters
  * @return Status code
 */
-INTERNAL STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi);
+INTERNAL STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi, struct HalInterruptParams params);
+
 
 #endif

@@ -36,7 +36,7 @@ STATUS PciRegisterBridge(union IoBusId address, struct PciBridge *upstreamBridge
     //     // {
     //     //     KeReleaseSpinlock(&PciBridgeListMutex);
     //     //     MmFreeKernelHeap(b);
-    //     //     return NULL_POINTER_GIVEN;
+    //     //     return BAD_PARAMETER;
     //     // }
     //     // //TODO: basically untested
     //     // if(upstreamBridge->level >= BRIDGE_MAX_LEVEL)

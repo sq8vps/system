@@ -11,11 +11,17 @@
 
 static bool DualPicPresent = false;
 static bool UseIoApic = false;
-static uint32_t IsaRemapTable[ISA_INTERRUPT_COUNT];
+
+static struct
+{
+    uint32_t gsi;
+    struct HalInterruptParams params;
+}
+IsaRemapTable[ISA_INTERRUPT_COUNT];
 
 STATUS I686InitInterruptController(void)
 {
-    PicSetIrqMask(0xFFFF); //mask all PIC interrupts
+    PicDisable();
     PicRemap(PIC_REMAP_VECTOR, PIC_REMAP_VECTOR + 8);
 
     if(OK == ApicInitBsp()) //try to initialize APIC on bootstrap CPU
@@ -27,6 +33,7 @@ STATUS I686InitInterruptController(void)
         }
         else if(DualPicPresent)
         {
+            PicEnable();
             UseIoApic = false;
             return OK;
         }
@@ -47,15 +54,22 @@ void I686SetDualPicPresence(bool state)
 void I686SetDefaultIsaRemap(void)
 {
     for(uint16_t i = 0; i < ISA_INTERRUPT_COUNT; i++)
-        I686AddIsaRemapEntry(i, i);
+        I686AddIsaRemapEntry(i, i, (struct HalInterruptParams){
+            .mode = HAL_IT_MODE_FIXED,
+            .polarity = HAL_IT_POLARITY_ACTIVE_HIGH,
+            .trigger = HAL_IT_TRIGGER_EDGE,
+            .shared = HAL_IT_NOT_SHAREABLE,
+            .wake = HAL_IT_WAKE_INCAPABLE
+        });
 }
 
-STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi)
+STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi, struct HalInterruptParams params)
 {
     if(isaIrq >= ISA_INTERRUPT_COUNT)
-        return BAD_INTERRUPT_VECTOR;
+        return BAD_PARAMETER;
     
-    IsaRemapTable[isaIrq] = gsi;
+    IsaRemapTable[isaIrq].gsi = gsi;
+    IsaRemapTable[isaIrq].params = params;
     return OK;
 }
 
@@ -64,10 +78,27 @@ uint32_t I686ResolveIsaIrqMapping(uint32_t irq)
     if(UseIoApic)
     {
         if(irq < ISA_INTERRUPT_COUNT)
-            return IsaRemapTable[irq];
+            return IsaRemapTable[irq].gsi;
     }
     
     return irq;
+}
+
+struct HalInterruptParams I686ResolveIsaIrqParams(uint32_t irq)
+{
+    if(UseIoApic)
+    {
+        if(irq < ISA_INTERRUPT_COUNT)
+            return IsaRemapTable[irq].params;
+    }
+    
+    return (struct HalInterruptParams){
+        .mode = HAL_IT_MODE_FIXED,
+        .polarity = HAL_IT_POLARITY_ACTIVE_HIGH,
+        .trigger = HAL_IT_TRIGGER_EDGE,
+        .shared = HAL_IT_NOT_SHAREABLE,
+        .wake = HAL_IT_WAKE_INCAPABLE
+    };
 }
 
 bool I686IsIoApicUsed(void)
@@ -107,20 +138,20 @@ void HalFreeIrq(uint32_t input)
         PicFreeInput(input);
 }
 
-STATUS HalClearInterruptFlag(uint32_t input)
+STATUS HalClearInterruptFlag(uint32_t vector)
 {
     if(!UseIoApic)
-        PicSendEoi(input);
+        PicSendEoi(vector - PIC_REMAP_VECTOR);
     
     return ApicSendEoi();
 }
 
-bool HalIsInterruptSpurious(void)
+bool HalIsInterruptSpurious(uint8_t vector)
 {
     if(UseIoApic)
         return false;
     else
-        return PicIsIrqSpurious();
+        return PicIsIrqSpurious(vector);
 }
 
 STATUS HalArchRegiserIrq(uint32_t input, uint8_t vector, struct HalInterruptParams params)
@@ -131,9 +162,9 @@ STATUS HalArchRegiserIrq(uint32_t input, uint8_t vector, struct HalInterruptPara
     }
     else //8259 PIC
     {
-        if(((input - PIC_REMAP_VECTOR) >= PIC_INPUT_COUNT) || (input < PIC_REMAP_VECTOR))
+        if(input >= PIC_INPUT_COUNT)
         {
-            return INTERRUPT_VECTOR_NOT_FREE;
+            return BAD_PARAMETER;
         }
         else
             return OK;

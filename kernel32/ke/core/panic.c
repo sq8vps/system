@@ -4,6 +4,7 @@
 #include "it/it.h"
 #include "hal/cpu.h"
 #include "rtl/stdio.h"
+#include "hal/debug.h"
 
 #define PANIC_STRING(code) [code] = STRINGIFY(code)
 
@@ -23,11 +24,15 @@ static const char *KePanicStrings[] =
     PANIC_STRING(ILLEGAL_PRIORITY_LEVEL_CHANGE),
     PANIC_STRING(ILLEGAL_PRIORITY_LEVEL),
     PANIC_STRING(OBJECT_LOCK_UNAVAILABLE),
+    PANIC_STRING(MEMORY_ACCESS_VIOLATION),
     PANIC_STRING(INVALID_TASK_ATTACHMENT_ATTEMPT),
 };
 
+static bool KeInPanicState = false; /**< Remember whether the kernel is already panicking to avoid panic during panic */
+
 static void KePrintMainPanic(uintptr_t ip, uintptr_t code)
 {
+    char buffer[128];
     const char *codeString = "????";
     const char *moduleString = "unknown";
 
@@ -39,15 +44,19 @@ static void KePrintMainPanic(uintptr_t ip, uintptr_t code)
     if((NULL != t) && (NULL != t->imageName))
         moduleString = t->imageName;
     
-    HalVideoPrint(
-        "KERNEL PANIC!\n\n"
-        "%s (0x%p)\n\n"
-        "Failing IP: 0x%p\n"
-        "Module: %s (base at 0x%p)\n\n",
-        codeString, (void*)code,
-        (void*)ip,
-        moduleString, (void*)addr 
-    );
+    HalVideoPrint("KERNEL PANIC!\n\n");
+    HalDebugPutString("KERNEL PANIC!\n\n");
+    HalVideoPrint(codeString);
+    HalDebugPutString(codeString);
+    snprintf(buffer, sizeof(buffer), 
+        " (0x%p)\n\n"
+        "Failing IP: 0x%p\n\n", 
+        (void*)code, (void*)ip);
+    HalVideoPrint(buffer);
+    HalDebugPutString(buffer);
+    snprintf(buffer, sizeof(buffer), "Module: %s (base at 0x%p)\n\n", moduleString, (void*)addr);
+    HalVideoPrint(buffer);
+    HalDebugPutString(buffer);
 }
 
 static void KePanicStopSystem(void)
@@ -59,6 +68,12 @@ static void KePanicStopSystem(void)
 
 NORETURN static void KePanicInternal(uintptr_t ip, uintptr_t code)
 {
+    if(KeInPanicState)
+    {
+        while(1)
+            HALT();
+    }
+    KeInPanicState = true;
     KePanicStopSystem();
     KePrintMainPanic(ip, code);
     while(1)
@@ -67,9 +82,18 @@ NORETURN static void KePanicInternal(uintptr_t ip, uintptr_t code)
 
 NORETURN static void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
+    char buffer[100];
+    if(KeInPanicState)
+    {
+        while(1)
+            HALT();
+    }
+    KeInPanicState = true;
     KePanicStopSystem();
     KePrintMainPanic(ip, code);
-    HalVideoPrint("Additional informations: 0x%p, 0x%p, 0x%p, 0x%p\n", (void*)arg1, (void*)arg2, (void*)arg3, (void*)arg4);
+    snprintf(buffer, 100, "Additional informations: 0x%p, 0x%p, 0x%p, 0x%p\n", (void*)arg1, (void*)arg2, (void*)arg3, (void*)arg4);
+    HalVideoPrint(buffer);
+    HalDebugPutString(buffer);
     while(1)
         ;
 }

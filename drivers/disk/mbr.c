@@ -34,11 +34,20 @@ struct RawMbr
     uint16_t bootSignature;
 } PACKED;
 
+#include "logging.h"
+#include "ke/sched/sleep.h"
+
 bool DiskMbrParse(const void *data, struct Mbr *mbr)
 {
     const struct RawMbr *rmbr = data;
     if(RtlLeU16(rmbr->bootSignature) != MBR_BOOT_SIGNATURE)
+    {
+        for(size_t i = 0; i < 100000000; i++)
+            ASM("nop");
+
+        LOG(SYSLOG_ERROR, "MBR signature is 0x%hX", rmbr->bootSignature);
         return false;
+    }
     mbr->signature = RtlLeU32(rmbr->signature);
     mbr->copyProtection = (rmbr->copyProtectionFlag == MBR_COPY_PROTECTION_FLAG);
     for(uint8_t i = 0; i < 4; i++)
@@ -86,7 +95,7 @@ bool DiskMbrIsPartitionUsable(struct MbrPartition *part)
 STATUS DiskMbrGetUuid(struct DiskData *info, char *str)
 {
     if(!info->isMbr)
-        return SYSTEM_INCOMPATIBLE;
+        return NOT_SUPPORTED;
     
     uint8_t uuid[16] = MBR_UUID_HEADER;
     *(uint32_t*)(uuid + 12) = RtlBeU32(info->mbr->signature);

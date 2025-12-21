@@ -405,13 +405,13 @@ static bool I686EmuReadMemory(const struct I686EmuState *state, uint32_t address
  * @param *data Source buffer
  * @return False on success, true on failure
  */
-static bool I686EmuWriteMemory(const struct I686EmuState *state, uint32_t address, uint8_t size, void *data)
+static bool I686EmuWriteMemory(const struct I686EmuState *state, uint32_t address, uint8_t size, const void *data)
 {
     if(((address + size) < address) //address wrapping around zero
         || ((address + size) >= I686_EMU_REAL_MODE_SPACE_SIZE)) //or crossing the real mode space boundary
         return true; //results in memory violation
 
-    uint8_t *d = data;
+    const uint8_t *d = data;
     if(1 == size)
         state->code[address] = d[0];
     else if(2 == size)
@@ -455,29 +455,39 @@ static bool I686EmuWriteMemory(const struct I686EmuState *state, uint32_t addres
 /**
  * @brief Push value on the stack
  * @param *state Emulator state
+ * @param *params Instruction params
  * @param pushSize Size of the push = stack pointer decrement value
  * @param valueSize Size of the element
  * @param *value Value to push
  * @return False on success, true on memory violation
  */
-static bool I686EmuPush(struct I686EmuState *state, uint8_t pushSize, uint8_t valueSize, void *value)
+static bool I686EmuPush(struct I686EmuState *state, const struct I686InstructionParams *params, uint8_t pushSize, uint8_t valueSize, void *value)
 {
-    state->registers.esp -= pushSize;
-    return I686EmuWriteMemory(state, state->registers.ss * 16 + state->registers.esp, valueSize, value);
+    if(params->override.address)
+        state->registers.esp -= pushSize;
+    else
+        state->registers.sp -= pushSize;
+    return I686EmuWriteMemory(state, 
+        EMU_FAR_POINTER_TO_LINEAR(state->registers.ss, params->override.address ? state->registers.esp : (uint16_t)state->registers.sp), valueSize, value);
 }
 
 /**
  * @brief Pop value from the stack
- * @param *state Emulator state
+ * @param *state Emulator state 
+ * @param *params Instruction params
  * @param pushSize Size of the pop = stack pointer increment value
  * @param valueSize Size of the element
  * @param *value Memory to store the popped value
  * @return False on success, true on memory violation
  */
-static bool I686EmuPop(struct I686EmuState *state, uint8_t popSize, uint8_t valueSize, void *value)
+static bool I686EmuPop(struct I686EmuState *state, const struct I686InstructionParams *params, uint8_t popSize, uint8_t valueSize, void *value)
 {
-    bool ret = I686EmuReadMemory(state, state->registers.ss * 16 + state->registers.esp, valueSize, value);
-    state->registers.esp += popSize;
+    bool ret = I686EmuReadMemory(state, 
+        EMU_FAR_POINTER_TO_LINEAR(state->registers.ss, params->override.address ? state->registers.esp : (uint16_t)state->registers.sp), valueSize, value);
+    if(params->override.address)
+        state->registers.esp += popSize;
+    else
+        state->registers.sp += popSize;
     return ret;
 }
 
@@ -487,7 +497,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
     bool expansion = false;
     bool skipStore = false;
     struct I686Registers *reg = &(state->registers);
-    uint8_t *code = state->code + reg->cs * 16;
+    uint8_t *code = (uint8_t*)EMU_FAR_POINTER_TO_LINEAR(reg->cs, state->code);
     uint32_t originalIp = reg->eip;
     uint32_t next;
 
@@ -626,7 +636,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
             case 0x19: //sbb r/m16,r16, sbb r/m32,r32
             case 0x39: //cmp r/m16,r16, cmp r/m32,r32
                 target = &modrmOp;
-                __attribute__ ((fallthrough));
+                FALLTHROUGH;
             case 0x02: //add r8,r/m8
             case 0x12: //adc r8,r/m8
             case 0x2A: //sub r8,r/m8
@@ -662,11 +672,11 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     reg->ax = I686EmuAddSub(reg, reg->ax, imm, 16, !(opcode & 0x8), (opcode & 0x10));
                 break;
             case 0x3D: //cmp ax,imm16; cmp eax,imm32
-                I686EmuSub(reg, (32 == bits) ? reg->eax : reg->ax, imm, bits, false);
+                I686EmuSub(reg, (32 == bits) ? reg->eax : (uint16_t)reg->ax, imm, bits, false);
                 break;
             case 0x83: //add/adc/and/sub/sbb/cmp/or/xor r/m16,imm8; add/adc/and/sub/sbb/cmp/or/xor r/m32, imm8 - sign extension
                 imm = (int32_t)((int8_t)imm);
-                __attribute__ ((fallthrough));
+                FALLTHROUGH;
             case 0x80: //add/adc/and/sub/sbb/cmp/or/xor r/m8,imm8
             case 0x81: //add/adc/and/sub/sbb/cmp/or/xor r/m16,imm16; add/adc/and/sub/sbb/cmp/or/xor r/m32, imm32
                 switch(variant)
@@ -773,7 +783,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
             case 0x30: //xor r/m8,r8
             case 0x31: //xor r/m16,r16; xor r/m32,r32
                 target = &modrmOp;
-                __attribute__ ((fallthrough));
+                FALLTHROUGH;
             case 0x22: //and r8,r/m8
             case 0x23: //and r16,r/m16, and r32,r/m32
             case 0x0A: //or r8,r/m8
@@ -949,17 +959,17 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 //also push r/m16; push r/m32
                 if((0xFF == opcode) && (0x6 == variant)) //handle push
                 {
-                    params.override.operand ? I686EmuPush(state, 4, 4, &modrmOp) : I686EmuPush(state, 2, 2, &modrmOp);
+                    params.override.operand ? I686EmuPush(state, &params, 4, 4, &modrmOp) : I686EmuPush(state, &params, 2, 2, &modrmOp);
                     break;
                 }
                 else if((0xFF == opcode) && ((0x2 == variant) || (0x3 == variant) || (0x4 == variant) || (0x5 == variant))) //handle jumps and calls
                 {
                     if(0x3 == variant) //far call, store segment
-                        fail |= I686EmuPush(state, params.override.operand ? 4 : 2, 2, &reg->cs);
+                        fail |= I686EmuPush(state, &params, params.override.operand ? 4 : 2, 2, &reg->cs);
                     if((0x2 == variant) || (0x3 == variant)) //calls, store return address
                     {
                         v1.u32 = reg->eip + 2;
-                        fail |= I686EmuPush(state, params.override.operand ? 4 : 2, params.override.operand ? 4 : 2, &v1);
+                        fail |= I686EmuPush(state, &params, params.override.operand ? 4 : 2, params.override.operand ? 4 : 2, &v1);
                     }
                     if((0x4 == variant) || (0x2 == variant)) //near absolute indirect jump or call
                     {
@@ -985,10 +995,10 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     skipStore = true;
                     break;
                 }
-                __attribute__ ((fallthrough));
+                FALLTHROUGH;
             case 0xFE: //inc r/m8; dec r/m8
                 target = &modrmOp;
-                __attribute__ ((fallthrough));
+                FALLTHROUGH;
             case 0x40 ... 0x47: //inc r16; inc r32
             case 0x48 ... 0x4F: //dec r16; dec r32
                 v1.u16 = reg->flags & FLAG_CF;
@@ -1132,7 +1142,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 
                 case 0x6B: //imul r16,r/m16,imm8; imul r32,r/m32,imm8 - sign extension
                     imm = (int32_t)((int8_t)(imm)); 
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0x69: //imul r16,r/m16,imm16; imul r32,r/m32,imm32 
                     I686EmuMul(reg, (uint32_t)modrmOp, (uint32_t)imm, NULL, (uint32_t*)&regOp, params.override.operand ? 32 : 16, true);
                     params.noModRmWrite = 1;
@@ -1141,13 +1151,13 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 //I/O ports
                 case 0xEC: //in al,dx
                     imm = reg->dx;
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xE4: //in al,imm8
                     reg->al = IoPortReadByte(imm);
                     break;
                 case 0xED: //in ax,dx; in eax,dx
                     imm = reg->dx;
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xE5: //in ax,imm8; in eax,imm8
                     if(params.override.operand)
                         reg->eax = IoPortReadDWord(imm);
@@ -1156,22 +1166,22 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     break;
                 case 0x6C: //insb (ins m8,dx)
                     v1.u8 = IoPortReadByte(reg->dx);
-                    fail |= I686EmuWriteMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di), 1, &v1);
+                    fail |= I686EmuWriteMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, (params.override.address ? reg->edi : reg->di)), 1, &v1);
                     break;
                 case 0x6D: //insw; insd (ins m16/m32, dx)
                     v1.u32 = params.override.operand ? IoPortReadDWord(reg->dx) : IoPortReadWord(reg->dx);
-                    fail |= I686EmuWriteMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di), params.override.operand ? 4 : 2, &v1);
+                    fail |= I686EmuWriteMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, (params.override.address ? reg->edi : reg->di)), params.override.operand ? 4 : 2, &v1);
                     break;
 
                 case 0xEE: //out dx,al
                     imm = reg->dx;
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xE6: //out imm8,al
                     IoPortWriteByte(imm, reg->al);
                     break;
                 case 0xEF: //out dx,ax; out dx,eax
                     imm = reg->dx;
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xE7: //out imm8,ax; out imm8,eax
                     if(params.override.operand)
                         IoPortWriteDWord(imm, reg->eax);
@@ -1179,11 +1189,13 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                         IoPortWriteWord(imm, reg->ax);
                     break;
                 case 0x6E: //outsb (outs dx,m8)
+                    v1.u64 = 0;
                     fail |= I686EmuReadMemory(state, seg + (params.override.address ? reg->esi : reg->si), 1, &v1);
                     if(!fail)
                         IoPortWriteByte(reg->dx, v1.u8);
                     break;
                 case 0x6F: //outsw; outsd (outs dx, m16/m32)
+                    v1.u64 = 0;
                     fail |= I686EmuReadMemory(state, seg + (params.override.address ? reg->esi : reg->si), params.override.operand ? 4 : 2, &v1);
                     if(!fail)
                         params.override.operand ? IoPortWriteDWord(reg->dx, v1.u32) : IoPortWriteWord(reg->dx, v1.u16);
@@ -1193,7 +1205,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 case 0xCE: //into
                     if(!(reg->flags & FLAG_OF))
                         break;
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xCC: //int3
                 case 0xF1: //int1
                 case 0xCD: //int imm8
@@ -1203,10 +1215,10 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                         imm = 3;
                     else if(0xF1 == opcode)
                         imm = 1;
-                    fail |= I686EmuPush(state, 2, 2, &reg->flags);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->flags);
                     reg->flags &= ~(FLAG_IF | FLAG_TF);
-                    fail |= I686EmuPush(state, 2, 2, &reg->cs);
-                    fail |= I686EmuPush(state, 2, 2, &reg->ip);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->cs);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->ip);
                     reg->cs = state->ivt[imm] >> 16;
                     reg->eip = state->ivt[imm] & 0xFFFF;
                     skipStore = true;
@@ -1214,40 +1226,46 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
 
                 //returns
                 case 0xCF: //iret, iretd
-                    if((reg->ss * 16 + reg->esp) == I686_EMULATOR_STACK_TOP)
+                    if(EMU_FAR_POINTER_TO_LINEAR(reg->ss, reg->esp) == I686_EMULATOR_STACK_TOP)
                         return EMU_OK;
                     reg->eip = 0;
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->eip) : I686EmuPop(state, 2, 2, &reg->ip);
-                    fail |= I686EmuPop(state, params.override.operand ? 4 : 2, 2, &reg->cs);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->eip) : I686EmuPop(state, &params, 2, 2, &reg->ip);
+                    fail |= I686EmuPop(state, &params, params.override.operand ? 4 : 2, 2, &reg->cs);
                     if(params.override.operand)
                     {
-                        fail |= I686EmuPop(state, 4, 4, &v1);
+                        fail |= I686EmuPop(state, &params, 4, 4, &v1);
                         reg->eflags = (reg->eflags & 0x1A0000) | (v1.u32 & 0x257FD5);
                     }
                     else
-                        fail |= I686EmuPop(state, 2, 2, &reg->flags);
+                        fail |= I686EmuPop(state, &params, 2, 2, &reg->flags);
                     skipStore = true;
                     break;
                 
                 case 0xC3: //ret near
                 case 0xC2: //ret imm16 (near)
-                    if((reg->ss * 16 + reg->esp) == I686_EMULATOR_STACK_TOP)
+                    if(EMU_FAR_POINTER_TO_LINEAR(reg->ss, reg->esp) == I686_EMULATOR_STACK_TOP)
                         return EMU_OK;
                     reg->eip = 0;
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->eip) : I686EmuPop(state, 2, 2, &reg->ip);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->eip) : I686EmuPop(state, &params, 2, 2, &reg->ip);
                     if(0xC2 == opcode)
-                        params.override.operand ? (reg->esp += (uint16_t)imm) : (reg->sp += (uint16_t)imm);
+                    {
+                        imm = (int16_t)imm;
+                        params.override.address ? (reg->esp += imm) : (reg->sp += imm);
+                    }
                     skipStore = true;
                     break;
                 case 0xCB: //ret far
                 case 0xCA: //ret imm16 (far)
-                    if((reg->ss * 16 + reg->esp) == I686_EMULATOR_STACK_TOP)
+                    if(EMU_FAR_POINTER_TO_LINEAR(reg->ss, reg->esp) == I686_EMULATOR_STACK_TOP)
                         return EMU_OK;
                     reg->eip = 0;
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->eip) : I686EmuPop(state, 2, 2, &reg->ip);
-                    fail |= I686EmuPop(state, params.override.operand ? 4 : 2, 2, &reg->cs);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->eip) : I686EmuPop(state, &params, 2, 2, &reg->ip);
+                    fail |= I686EmuPop(state, &params, params.override.operand ? 4 : 2, 2, &reg->cs);
                     if(0xCA == opcode)
-                        params.override.operand ? (reg->esp += (uint16_t)imm) : (reg->sp += (uint16_t)imm);
+                    {
+                        imm = (int16_t)imm;
+                        params.override.address ? (reg->esp += imm) : (reg->sp += imm);
+                    }
                     skipStore = true;
                     break;
                 
@@ -1262,14 +1280,14 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     if(params.override.operand)
                     {
                         v1.u32 = reg->eip + 5;
-                        fail |= I686EmuPush(state, 4, 4, &v1);
+                        fail |= I686EmuPush(state, &params, 4, 4, &v1);
                     }
                     else
                     {
                         v1.u16 = reg->ip + 3;
-                        fail |= I686EmuPush(state, 2, 2, &v1);
+                        fail |= I686EmuPush(state, &params, 2, 2, &v1);
                     }
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xE9: //jmp rel16; jmp rel32
                     if(params.override.operand)
                         reg->eip += 5 + (int32_t)coffs;
@@ -1281,18 +1299,18 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     skipStore = true;
                     break;
                 case 0x9A: //call ptr16:16; call ptr16:32
-                    fail |= I686EmuPush(state, params.override.operand ? 4 : 2, 2, &reg->cs);
+                    fail |= I686EmuPush(state, &params, params.override.operand ? 4 : 2, 2, &reg->cs);
                     if(params.override.operand)
                     {
                         v1.u32 = reg->eip + 7;
-                        fail |= I686EmuPush(state, 4, 4, &v1);
+                        fail |= I686EmuPush(state, &params, 4, 4, &v1);
                     }
                     else
                     {
                         v1.u16 = reg->ip + 5;
-                        fail |= I686EmuPush(state, 2, 2, &v1);
+                        fail |= I686EmuPush(state, &params, 2, 2, &v1);
                     }
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0xEA: //jmp ptr16:16; jmp ptr16:32
                     if(params.override.operand)
                     {
@@ -1366,7 +1384,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     //segment might be overriden only for the 1st operand (ds:esi)
                     fail |= I686EmuReadMemory(state, seg + params.override.address ? reg->esi : reg->si,
                         (0xA6 == opcode) ? 1 : (params.override.operand ? 4 : 2), &v1);
-                    fail |= I686EmuReadMemory(state, reg->es * 16 + params.override.address ? reg->edi : reg->di,
+                    fail |= I686EmuReadMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, params.override.address ? reg->edi : reg->di),
                         (0xA6 == opcode) ? 1 : (params.override.operand ? 4 : 2), &v2);
                     
                     I686EmuSub(reg, v1.u32, v2.u32, (0xA6 == opcode) ? 8 : (params.override.operand ? 32 : 16), false);
@@ -1420,7 +1438,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     fail |= I686EmuReadMemory(state, seg + (params.override.address ? reg->esi : reg->si),
                         (0xA4 == opcode) ? 1 : (params.override.operand ? 4 : 2), &v1);
                     
-                    fail |= I686EmuWriteMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di),
+                    fail |= I686EmuWriteMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, params.override.address ? reg->edi : reg->di),
                         (0xA4 == opcode) ? 1 : (params.override.operand ? 4 : 2), &v1);
 
                     if(params.override.address)
@@ -1443,8 +1461,10 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 
                 case 0xAE: //scasb
                 case 0xAF: //scasw; scasd
-                    fail |= I686EmuReadMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di), (0xAE == opcode) ? 1 : (params.override.operand ? 4 : 2), &v1);
-                    I686EmuSub(reg, (0xAE == opcode) ? reg->al : (params.override.operand ? reg->eax : reg->ax), v1.u32,
+                    v1.u32 = 0;
+                    fail |= I686EmuReadMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, params.override.address ? reg->edi : reg->di), (0xAE == opcode) ? 1 : (params.override.operand ? 4 : 2), &v1);
+                    
+                    I686EmuSub(reg, (0xAE == opcode) ? reg->al : (params.override.operand ? reg->eax : reg->ax), v1.u8,
                         (0xAE == opcode) ? 8 : (params.override.operand ? 32 : 16), false);
                     
                     if(params.override.address)
@@ -1462,11 +1482,11 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 case 0xAA: //stsob
                 case 0xAB: //stosw; stosd
                     if(0xAA == opcode)
-                        fail |= I686EmuWriteMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di), 1, &reg->al);
+                        fail |= I686EmuWriteMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, params.override.address ? reg->edi : reg->di), 1, &reg->al);
                     else if(params.override.operand)
-                        fail |= I686EmuWriteMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di), 4, &reg->eax);
+                        fail |= I686EmuWriteMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, params.override.address ? reg->edi : reg->di), 4, &reg->eax);
                     else
-                        fail |= I686EmuWriteMemory(state, reg->es * 16 + (params.override.address ? reg->edi : reg->di), 2, &reg->ax);
+                        fail |= I686EmuWriteMemory(state, EMU_FAR_POINTER_TO_LINEAR(reg->es, params.override.address ? reg->edi : reg->di), 2, &reg->ax);
                     
                     if(params.override.address)
                     {
@@ -1505,73 +1525,73 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 //stack
                 case 0x8F: //pop r/m16; pop r/m32
                     target = &modrmOp;
-                    __attribute__ ((fallthrough));
+                    FALLTHROUGH;
                 case 0x58 ... 0x5F: //pop r16; pop r32
-                    fail |= I686EmuPop(state, params.override.operand ? 4 : 2, params.override.operand ? 4 : 2, target);
+                    fail |= I686EmuPop(state, &params, params.override.operand ? 4 : 2, params.override.operand ? 4 : 2, target);
                     break;
                 case 0x1F: //pop ds
-                    fail |= I686EmuPop(state, 2, 2, &reg->ds);
+                    fail |= I686EmuPop(state, &params, 2, 2, &reg->ds);
                     break;
                 case 0x07: //pop es
-                    fail |= I686EmuPop(state, 2, 2, &reg->es);
+                    fail |= I686EmuPop(state, &params, 2, 2, &reg->es);
                     break;    
                 case 0x17: //pop ss
-                    fail |= I686EmuPop(state, 2, 2, &reg->ss);
+                    fail |= I686EmuPop(state, &params, 2, 2, &reg->ss);
                     break;   
                 case 0x9D: //popf; popfd
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->eflags) : I686EmuPop(state, 2, 2, &reg->flags);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->eflags) : I686EmuPop(state, &params, 2, 2, &reg->flags);
                     break;
                 case 0x50 ... 0x57: //push r16; push r32
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &regOp) : I686EmuPush(state, 2, 2, &regOp);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &regOp) : I686EmuPush(state, &params, 2, 2, &regOp);
                     break;
                 case 0x6A: //push imm8
-                    fail |= I686EmuPush(state, params.override.operand ? 4 : 2, 1, &imm);
+                    fail |= I686EmuPush(state, &params, params.override.operand ? 4 : 2, 1, &imm);
                     break;
                 case 0x68: //push imm16; push imm32
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &imm) : I686EmuPush(state, 2, 2, &imm);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &imm) : I686EmuPush(state, &params, 2, 2, &imm);
                     break;
                 case 0x0E: //push cs
-                    fail |= I686EmuPush(state, 2, 2, &reg->cs);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->cs);
                     break;
                 case 0x16: //push ss
-                    fail |= I686EmuPush(state, 2, 2, &reg->ss);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->ss);
                     break;
                 case 0x1E: //push ds
-                    fail |= I686EmuPush(state, 2, 2, &reg->ds);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->ds);
                     break;
                 case 0x06: //push es
-                    fail |= I686EmuPush(state, 2, 2, &reg->es);
+                    fail |= I686EmuPush(state, &params, 2, 2, &reg->es);
                     break;
                 case 0x9C: //pushf; pushfd
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->eflags) : I686EmuPush(state, 2, 2, &reg->flags);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->eflags) : I686EmuPush(state, &params, 2, 2, &reg->flags);
                     break;
                 case 0x61: //popa; popad
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->edi) : I686EmuPop(state, 2, 2, &reg->di);
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->esi) : I686EmuPop(state, 2, 2, &reg->si);
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->ebp) : I686EmuPop(state, 2, 2, &reg->bp);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->edi) : I686EmuPop(state, &params, 2, 2, &reg->di);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->esi) : I686EmuPop(state, &params, 2, 2, &reg->si);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->ebp) : I686EmuPop(state, &params, 2, 2, &reg->bp);
                     reg->esp += (params.override.operand ? 4 : 2);
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->ebx) : I686EmuPop(state, 2, 2, &reg->bx);
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->edx) : I686EmuPop(state, 2, 2, &reg->dx);
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->ecx) : I686EmuPop(state, 2, 2, &reg->cx);
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->eax) : I686EmuPop(state, 2, 2, &reg->ax);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->ebx) : I686EmuPop(state, &params, 2, 2, &reg->bx);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->edx) : I686EmuPop(state, &params, 2, 2, &reg->dx);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->ecx) : I686EmuPop(state, &params, 2, 2, &reg->cx);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->eax) : I686EmuPop(state, &params, 2, 2, &reg->ax);
                     break;
                 case 0x60: //pusha; pushad
                     v1.u32 = params.override.operand ? reg->esp : reg->sp;
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->eax) : I686EmuPush(state, 2, 2, &reg->ax);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->ecx) : I686EmuPush(state, 2, 2, &reg->cx);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->edx) : I686EmuPush(state, 2, 2, &reg->dx);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->ebx) : I686EmuPush(state, 2, 2, &reg->bx);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &v1) : I686EmuPush(state, 2, 2, &v1);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->ebp) : I686EmuPush(state, 2, 2, &reg->bp);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->esi) : I686EmuPush(state, 2, 2, &reg->si);
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->edi) : I686EmuPush(state, 2, 2, &reg->di);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->eax) : I686EmuPush(state, &params, 2, 2, &reg->ax);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->ecx) : I686EmuPush(state, &params, 2, 2, &reg->cx);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->edx) : I686EmuPush(state, &params, 2, 2, &reg->dx);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->ebx) : I686EmuPush(state, &params, 2, 2, &reg->bx);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &v1) : I686EmuPush(state, &params, 2, 2, &v1);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->ebp) : I686EmuPush(state, &params, 2, 2, &reg->bp);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->esi) : I686EmuPush(state, &params, 2, 2, &reg->si);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->edi) : I686EmuPush(state, &params, 2, 2, &reg->di);
                     break;
 
                 //function handling
                 case 0xC8: //enter imm16,imm8
                     v2.u8 = code[reg->eip + 3]; //nesting level
 
-                    fail |= params.override.operand ? I686EmuPush(state, 4, 4, &reg->ebp) : I686EmuPush(state, 2, 2, &reg->bp);
+                    fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &reg->ebp) : I686EmuPush(state, &params, 2, 2, &reg->bp);
                     v1.u32 = params.override.operand ? (uint32_t)reg->esp : (uint32_t)reg->sp;
 
                     if(v2.u8 >= 1) //nesting level >= 1
@@ -1583,16 +1603,16 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                                 if(params.override.address)
                                 {
                                     reg->ebp -= (params.override.operand ? 4 : 2);
-                                    fail |= I686EmuPush(state, (params.override.operand ? 4 : 2), 4, &reg->ebp);
+                                    fail |= I686EmuPush(state, &params, (params.override.operand ? 4 : 2), 4, &reg->ebp);
                                 }
                                 else
                                 {
                                     reg->bp -= (params.override.operand ? 4 : 2);
-                                    fail |= I686EmuPush(state, (params.override.operand ? 4 : 2), 2, &reg->bp);
+                                    fail |= I686EmuPush(state, &params, (params.override.operand ? 4 : 2), 2, &reg->bp);
                                 }
                             }
                         }
-                        fail |= params.override.operand ? I686EmuPush(state, 4, 4, &v1) : I686EmuPush(state, 2, 2, &v1);
+                        fail |= params.override.operand ? I686EmuPush(state, &params, 4, 4, &v1) : I686EmuPush(state, &params, 2, 2, &v1);
                     }
 
                     v1.u16 = (uint16_t)code[reg->eip + 1] | ((uint16_t)code[reg->eip + 2] << 8); //alloc size
@@ -1616,7 +1636,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     else
                         reg->sp = reg->bp;
 
-                    fail |= params.override.operand ? I686EmuPop(state, 4, 4, &reg->ebp) : I686EmuPop(state, 2, 2, &reg->bp);
+                    fail |= params.override.operand ? I686EmuPop(state, &params, 4, 4, &reg->ebp) : I686EmuPop(state, &params, 2, 2, &reg->bp);
                     break;
                 
                 //other
@@ -1631,20 +1651,21 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     break;
                 
                 case 0xD7: //xlatb
-                    fail |= I686EmuReadMemory(state, seg * 16 + (params.override.address ? reg->ebx : reg->bx) + (uint8_t)reg->al, 1, &reg->al);
+                    fail |= I686EmuReadMemory(state, EMU_FAR_POINTER_TO_LINEAR(seg, params.override.address ? reg->ebx : reg->bx) + (uint8_t)reg->al, 1, &reg->al);
                     break;
                 
                 case 0x62: //bound r16,m16&14; bound r32,m32&32
                     params.noModRmWrite = 1;
+                    v1.u64 = 0;
                     fail |= I686EmuReadMemory(state, modrmOp, params.override.operand ? 8 : 4, &v1);
                     if(params.override.operand
                         ? (((int32_t)regOp < (int32_t)(v1.u32)) || ((int32_t)regOp > (int32_t)(v1.u64 >> 32)))
                         : (((int16_t)regOp < (int16_t)(v1.u16)) || ((int16_t)regOp > (int16_t)(v1.u32 >> 16))))
                     {
-                        fail |= I686EmuPush(state, 2, 2, &reg->flags);
+                        fail |= I686EmuPush(state, &params, 2, 2, &reg->flags);
                         reg->flags &= ~(FLAG_IF | FLAG_TF);
-                        fail |= I686EmuPush(state, 2, 2, &reg->cs);
-                        fail |= I686EmuPush(state, 2, 2, &reg->ip);
+                        fail |= I686EmuPush(state, &params, 2, 2, &reg->cs);
+                        fail |= I686EmuPush(state, &params, 2, 2, &reg->ip);
                         reg->cs = state->ivt[5] >> 16;
                         reg->eip = state->ivt[5] & 0xFFFF;
                     }
@@ -1701,16 +1722,16 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
             
             //stack
             case 0xA1: //pop fs
-                fail |= I686EmuPop(state, params.override.operand ? 4 : 2, 2, &reg->fs);
+                fail |= I686EmuPop(state, &params, params.override.operand ? 4 : 2, 2, &reg->fs);
                 break;
             case 0xA9: //pop gs
-                fail |= I686EmuPop(state, params.override.operand ? 4 : 2, 2, &reg->gs);
+                fail |= I686EmuPop(state, &params, params.override.operand ? 4 : 2, 2, &reg->gs);
                 break;
             case 0xA0: //push fs
-                fail |= I686EmuPush(state, params.override.operand ? 4 : 2, 2, &reg->fs);
+                fail |= I686EmuPush(state, &params, params.override.operand ? 4 : 2, 2, &reg->fs);
                 break;
             case 0xA8: //push gs
-                fail |= I686EmuPush(state, params.override.operand ? 4 : 2, 2, &reg->gs);
+                fail |= I686EmuPush(state, &params, params.override.operand ? 4 : 2, 2, &reg->gs);
                 break;
             
             //bit test
@@ -1761,7 +1782,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
             case 0xA5: //shld r/m16,r16,cl; shld r/m32,r32,cl
             case 0xAD: //shrd r/m16,r16,cl; shrd r/m32,r32,cl
                 imm = reg->cl;
-                __attribute__ ((fallthrough));
+                FALLTHROUGH;
             case 0xA4: //shld r/m16,r16,imm8; shld r/m32,r32,imm8
             case 0xAC: //shrd r/m16,r16,imm8; shrd r/m32,r32,imm8
                 if(0 == imm)
@@ -1871,6 +1892,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     reg->ax = modrmOp;
                 break;
             case 0xC7: //cmpxchg8b m64
+                v1.u64 = 0;
                 fail |= I686EmuReadMemory(state, modrmOp, 8, &v1);
                 v2.u64 = (uint64_t)reg->eax | ((uint64_t)reg->edx << 32);
                 if(v1.u64 == v2.u64)
@@ -1912,7 +1934,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
         reg->eip = next;
     }
 
-    if((reg->cs * 16 + reg->eip) >= I686_EMU_REAL_MODE_SPACE_SIZE)
+    if(EMU_FAR_POINTER_TO_LINEAR(reg->cs, reg->eip)  >= I686_EMU_REAL_MODE_SPACE_SIZE)
         return EMU_MEMORY_VIOLATION;
 
     if(params.repne)
@@ -1936,7 +1958,7 @@ static uint32_t I686GetSetOperands(struct I686EmuState *state, const struct I686
 {
     struct I686Registers *reg = &(state->registers);
     uint8_t *code = state->code;
-    uint32_t segmentShift = reg->cs * 16;
+    uint32_t segmentShift = EMU_FAR_POINTER_TO_LINEAR(reg->cs, 0);
     uint32_t ip = segmentShift + reg->eip + 1; //IP is at the byte following the opcode
     uint32_t fail = 0;
 
@@ -1975,7 +1997,7 @@ static uint32_t I686GetSetOperands(struct I686EmuState *state, const struct I686
         }
         else //for other MOD values, things are much more complicated
         {
-            int32_t address = 0;
+            uint32_t address = 0;
             bool ebpBase = false;
 
             if(params->override.address) //32-bit addressing
@@ -2002,7 +2024,7 @@ static uint32_t I686GetSetOperands(struct I686EmuState *state, const struct I686
                         index = I686EmuGetRegisterValue(reg, params, (code[ip] >> 3) & 0x7, false, true) //get index register value
                             << (code[ip] >> 6); //and scale it
                     }
-                    address = (int32_t)base + (int32_t)index;
+                    address = base + index;
                 }
                 else if((0x5 == rm) && (0x0 == mod)) //if r/m=5 (BP) and mod=0, then no register is used, but instead a 32-bit displacement is used
                 {
@@ -2010,7 +2032,7 @@ static uint32_t I686GetSetOperands(struct I686EmuState *state, const struct I686
                 }
                 else //in any other case, use register and displacement
                 {
-                    address = (int32_t)I686EmuGetRegisterValue(reg, params, rm, false, true);
+                    address = I686EmuGetRegisterValue(reg, params, rm, false, true);
                     if(0x5 == rm)
                         ebpBase = true;
                 }
@@ -2018,14 +2040,14 @@ static uint32_t I686GetSetOperands(struct I686EmuState *state, const struct I686
             else //16 bit addressing
             {
                 if((0 == rm) || (1 == rm) || (7 == rm))
-                    address += reg->bx; //BX is the common term
+                    address += (uint32_t)((uint16_t)reg->bx); //BX is the common term
                 if((0 == rm) || (2 == rm) || (4 == rm))
-                    address += reg->si; //SI is the common term
+                    address += (uint32_t)((uint16_t)reg->si); //SI is the common term
                 if((1 == rm) || (3 == rm) || (5 == rm))
-                    address += reg->di; //DI is the common term
+                    address += (uint32_t)((uint16_t)reg->di); //DI is the common term
                 if((2 == rm) || (3 == rm) || ((6 == rm) && (0 != mod)))
                 {
-                    address += reg->bp; //BP is the common term
+                    address += (uint32_t)((uint16_t)reg->bp); //BP is the common term
                     ebpBase = true;
                 }
                 //for rm=6 and mod=0 no register is used, but a 16-bit displacement
@@ -2037,25 +2059,29 @@ static uint32_t I686GetSetOperands(struct I686EmuState *state, const struct I686
 
             if(0x1 == mod) //MOD=1, 8-bit displacement
             {
-                address += (int8_t)code[ip++];
+                if(params->override.address)
+                    address += (uint32_t)((int32_t)((int8_t)code[ip++]));
+                else
+                    address += (uint16_t)((int16_t)((int8_t)code[ip++]));
             }
             else if(0x2 == mod) //MOD=0x2, 32-bit or 16-bit displacement
             {
                 if(params->override.address)
                 {
-                    int32_t t = ((uint32_t)code[ip] | (((uint32_t)code[ip + 1]) << 8) | (((uint32_t)code[ip + 2]) << 16) | (((uint32_t)code[ip + 3]) << 24));
-                    address += t;
+                    address += ((uint32_t)code[ip] | (((uint32_t)code[ip + 1]) << 8) | (((uint32_t)code[ip + 2]) << 16) | (((uint32_t)code[ip + 3]) << 24));
                     ip += 4;
                 }
                 else
                 {
-                    int32_t t = (uint32_t)code[ip] | (uint32_t)((code[ip + 1]) << 8);
-                    address += t;
+                    address += (uint16_t)((int16_t)((uint16_t)code[ip] | (uint16_t)((code[ip + 1]) << 8)));
                     ip += 2;
                 }
             }
             //no displacement in 0x00 mode, except when in 32-bit mode and r/m=5, or there is a SIB and SIB base=5,
             //or r/m=6 in 16-bit mode, but this case is handled by explicitly setting mod=0x2 earlier
+
+            if(!params->override.address)
+                address &= 0xFFFF;
 
             //select segment register
             if(!(params->params & NO_SEGMENT))

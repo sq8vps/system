@@ -2,66 +2,40 @@
 #include "io/fs/fs.h"
 #include "ke/sched/sched.h"
 
-enum KeSyscallCode
+#include "mmap.h"
+#include "file.h"
+
+#define SYSCALL_NONE 0 /**< No operation syscall */
+
+static reg_t KeSyscallNone(reg_t arg1, reg_t arg2, reg_t arg3, reg_t arg4, reg_t arg5)
 {
-    SYSCALL_NONE = 0,
-    SYSCALL_EXIT = 1,
-    SYSCALL_OPEN = 2,
-    SYSCALL_CLOSE = 3,
-    SYSCALL_READ = 4,
-    SYSCALL_WRITE = 5,
-    _SYSCALL_LIMIT,
+    UNUSED(arg1);
+    UNUSED(arg2);
+    UNUSED(arg3);
+    UNUSED(arg4);
+    UNUSED(arg5);
+    return -OK;
+}
+
+static const KeSyscallHandler KeSyscallTable[] = 
+{
+    [SYSCALL_NONE] = KeSyscallNone,
+    [SYSCALL_OPEN] = KeSyscallOpen,
+    [SYSCALL_CLOSE] = KeSyscallClose,
+    [SYSCALL_READ] = KeSyscallRead,
+    [SYSCALL_WRITE] = KeSyscallWrite,
+    [SYSCALL_MMAP] = KeSyscallMmap,
+    [SYSCALL_EXMMAP] = KeSyscallExMmap,
+    [SYSCALL_SET_TLS] = KeSyscallSetTls,
 };
 
-typedef STATUS (*KeSyscallHandler)(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5);
-
-static STATUS KeSyscallNone(void)
+reg_t KePerformSyscall(reg_t code, reg_t arg1, reg_t arg2, reg_t arg3, reg_t arg4, reg_t arg5)
 {
-    return OK;
-}
-
-static int KeSyscallOpen(const char *file, IoFileOpenMode mode, IoFileFlags flags)
-{
-    int handle = -1;
-    IoOpenFile(file, mode, flags, &handle);
-    return handle;
-}
-
-static STATUS KeSyscallClose(int handle)
-{
-    return IoCloseFile(handle);
-}
-
-static size_t KeSyscallRead(int handle, void *buffer, size_t size, uint64_t offset)
-{
-    size_t actualSize = 0;
-    IoReadFileSync(handle, buffer, size, offset, &actualSize);
-    return actualSize;
-}
-
-static size_t KeSyscallWrite(int handle, void *buffer, size_t size, uint64_t offset)
-{
-    size_t actualSize = 0;
-    IoWriteFileSync(handle, buffer, size, offset, &actualSize);
-    return actualSize;
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-static KeSyscallHandler KeSyscallTable[] = 
-{
-    [SYSCALL_NONE] = (KeSyscallHandler)KeSyscallNone,
-    [SYSCALL_OPEN] = (KeSyscallHandler)KeSyscallOpen,
-    [SYSCALL_CLOSE] = (KeSyscallHandler)KeSyscallClose,
-    [SYSCALL_READ] = (KeSyscallHandler)KeSyscallRead,
-    [SYSCALL_WRITE] = (KeSyscallHandler)KeSyscallWrite,
-};
-#pragma GCC diagnostic pop
-
-STATUS KePerformSyscall(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5)
-{
-    if(code >= _SYSCALL_LIMIT)
-        return SYSCALL_CODE_UNKNOWN;
+    if(
+        (code >= (sizeof(KeSyscallTable) / sizeof(KeSyscallTable[0])))
+        || (NULL == KeSyscallTable[code])
+    )
+        return -NOT_IMPLEMENTED;
     
     return KeSyscallTable[code](arg1, arg2, arg3, arg4, arg5);
 }

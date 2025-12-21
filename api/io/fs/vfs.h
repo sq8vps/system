@@ -226,11 +226,11 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node, struct IoTaskFsContex
  * @brief Create symbolic link
  * @param *path Link path
  * @param *destination Link destination path
- * @param flags File flags
+ * @param flags VFS node flags
  * @return Status code
  * @warning Link destination must exist
 */
-STATUS IoVfsCreateLink(const char *path, const char *destination, IoFileFlags flags);
+STATUS IoVfsCreateLink(const char *path, const char *destination, enum IoVfsFlags flags);
 
 /**
  * @brief Remove symbolic link

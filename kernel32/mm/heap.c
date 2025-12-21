@@ -15,9 +15,9 @@
  */
 struct MmHeapBlock
 {
-    bool free;      // is block free?
-    uintptr_t size; // block size, not including structure size
-    // pointer to neighboring blocks, either free or not
+    bool free;      //is block free?
+    size_t size; //block size, not including structure size
+    //pointer to neighboring blocks, either free or not
     struct MmHeapBlock *previous;
     struct MmHeapBlock *next;
 };
@@ -50,7 +50,7 @@ static void mmInsertFreeHeapBlock(struct MmHeapBlock *block)
 }
 #endif
 
-static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
+static struct MmHeapBlock *MmHeapAllocateNewBlock(size_t n, size_t align)
 {
     uintptr_t heapTop = HalGetHeapSpaceBase();
     uintptr_t heapLimit = heapTop + HalGetHeapSpaceSize();
@@ -59,10 +59,10 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
         heapTop = (uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE;
     }
     uintptr_t alignedStart = ALIGN_UP(heapTop + META_SIZE, align);
-    uintptr_t padding = alignedStart - (heapTop + META_SIZE);
+    size_t padding = alignedStart - (heapTop + META_SIZE);
 
-    uintptr_t bytesToAllocate = ALIGN_UP(n + META_SIZE + padding, 4096);
-    uintptr_t pageRemainder = bytesToAllocate - (n + META_SIZE + padding);
+    size_t bytesToAllocate = ALIGN_UP(n + META_SIZE + padding, PAGE_SIZE);
+    size_t pageRemainder = bytesToAllocate - (n + META_SIZE + padding);
 
     if (bytesToAllocate > (heapLimit - heapTop))
         return NULL;
@@ -107,15 +107,11 @@ static struct MmHeapBlock *MmHeapAllocateNewBlock(uintptr_t n, uintptr_t align)
     }
     else
         block->size = n + pageRemainder;
-    
-    ASSERT(block->size != 0);
-
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
 
     return block;
 }
 
-static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, uintptr_t align)
+static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, size_t n, size_t align)
 {
     if (NULL == block->previous)
     {
@@ -128,8 +124,8 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
     }
 
     uintptr_t alignedStart = ALIGN_UP((uintptr_t)block + META_SIZE, align);
-    uintptr_t padding = alignedStart - ((uintptr_t)block + META_SIZE);
-    uintptr_t remaining = block->size - padding;
+    size_t padding = alignedStart - ((uintptr_t)block + META_SIZE);
+    size_t remaining = block->size - padding;
 
     if ((block->size - padding) < n)
         return NULL;
@@ -174,17 +170,14 @@ static struct MmHeapBlock *MmSplitBlock(struct MmHeapBlock *block, uintptr_t n, 
         block->size = remaining;
     }
 
-    ASSERT(block->size != 0);
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
-
     block->free = false;
     return block;
 }
 
-static bool MmHeapExtendLastBlock(uintptr_t n)
+static bool MmHeapExtendLastBlock(size_t n)
 {
     uintptr_t heapTop = (uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE;
-    uintptr_t bytesToAllocate = ALIGN_UP(n - MmHeapBlockTail->size, 4096);
+    size_t bytesToAllocate = ALIGN_UP(n - MmHeapBlockTail->size, PAGE_SIZE);
 
     if (bytesToAllocate > (HalGetHeapSpaceBase() + HalGetHeapSpaceSize() - heapTop))
         return false;
@@ -194,21 +187,13 @@ static bool MmHeapExtendLastBlock(uintptr_t n)
 
     MmHeapBlockTail->size += bytesToAllocate;
 
-    ASSERT(MmHeapBlockTail->size != 0);
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
-
     return true;
 }
 
-void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
+void *MmAllocateKernelHeapAligned(size_t n, size_t align)
 {
     if(0 == n)
         return NULL;
-
-#ifdef DEBUG
-    if(n <= sizeof(uintptr_t))
-        LOG(SYSLOG_WARNING, "Suspicious heap allocation of %lu bytes", n);
-#endif
 
     struct MmHeapBlock *ret;
 
@@ -247,7 +232,7 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
         // no block of proper size found
         if(MmHeapBlockTail->free)
         {
-            uintptr_t padding = ALIGN_UP((uintptr_t)MmHeapBlockTail + META_SIZE, align) - ((uintptr_t)MmHeapBlockTail + META_SIZE);
+            size_t padding = ALIGN_UP((uintptr_t)MmHeapBlockTail + META_SIZE, align) - ((uintptr_t)MmHeapBlockTail + META_SIZE);
 
             if (MmHeapExtendLastBlock(n + padding))
             {
@@ -274,12 +259,12 @@ void *MmAllocateKernelHeapAligned(uintptr_t n, uintptr_t align)
         return NULL;
 }
 
-void *MmAllocateKernelHeap(uintptr_t n)
+void *MmAllocateKernelHeap(size_t n)
 {
     return MmAllocateKernelHeapAligned(n, MM_KERNEL_HEAP_ALIGNMENT);
 }
 
-void *MmAllocateKernelHeapZeroed(uintptr_t n)
+void *MmAllocateKernelHeapZeroed(size_t n)
 {
     void *ptr = MmAllocateKernelHeap(n);
     if (NULL != ptr)
@@ -329,15 +314,11 @@ void MmFreeKernelHeap(const void *ptr)
             block->next->previous = block->previous;
     }
 
-    ASSERT(MmHeapBlockTail->next == NULL);
-
-    ASSERT(0 == (((uintptr_t)MmHeapBlockTail + MmHeapBlockTail->size + META_SIZE) & (PAGE_SIZE - 1)));
-
     barrier();
     KeReleaseSpinlock(&MmHeapAllocatorLock, prio);
 }
 
-void *MmReallocateKernelHeap(void *ptr, uintptr_t n)
+void *MmReallocateKernelHeap(void *ptr, size_t n)
 {
     void *p = MmAllocateKernelHeap(n);
     if(NULL == p)

@@ -14,18 +14,72 @@ struct IoEventHandler;
  */
 typedef uint16_t IoKeyCode;
 
-/**
- * @brief Last ASCII key code
- * @attention This is the last ASCII key code. The next key codes are defined in ::IoKeyMapping.
- */
-#define IO_KEY_ASCII_LAST 127
 
 /**
- * @brief Mapping of non-ASCII keys to IoKeyCode
+ * @brief Mapping of keys to key codes
  */
 enum IoKeyMapping
 {
-    IO_KEY_LEFT_ALT = 128, /**< Left alt */
+    IO_FIRST_PRINTABLE_KEY = 0, /**< First printable key code. Not a real key. */
+
+    IO_KEY_A = IO_FIRST_PRINTABLE_KEY,
+    IO_KEY_B,
+    IO_KEY_C,
+    IO_KEY_D,
+    IO_KEY_E,
+    IO_KEY_F,
+    IO_KEY_G,
+    IO_KEY_H,
+    IO_KEY_I,
+    IO_KEY_J,
+    IO_KEY_K,
+    IO_KEY_L,
+    IO_KEY_M,
+    IO_KEY_N,
+    IO_KEY_O,
+    IO_KEY_P,
+    IO_KEY_Q,
+    IO_KEY_R,
+    IO_KEY_S,
+    IO_KEY_T,
+    IO_KEY_U,
+    IO_KEY_V,
+    IO_KEY_W,
+    IO_KEY_X,
+    IO_KEY_Y,
+    IO_KEY_Z,
+    IO_KEY_0, /**< 0 */
+    IO_KEY_1, /**< 1 */
+    IO_KEY_2, /**< 2 */
+    IO_KEY_3, /**< 3 */
+    IO_KEY_4, /**< 4 */
+    IO_KEY_5, /**< 5 */
+    IO_KEY_6, /**< 6 */
+    IO_KEY_7, /**< 7 */
+    IO_KEY_8, /**< 8 */
+    IO_KEY_9, /**< 9 */
+    IO_KEY_SPACE, /**< Space */
+    IO_KEY_MINUS, /**< Minus */
+    IO_KEY_EQUAL, /**< Equal */
+    IO_KEY_LEFT_BRACKET, /**< Left bracket */
+    IO_KEY_RIGHT_BRACKET, /**< Right bracket */
+    IO_KEY_BACKSLASH, /**< Backslash */
+    IO_KEY_SEMICOLON, /**< Semicolon */
+    IO_KEY_APOSTROPHE, /**< Apostrophe */
+    IO_KEY_COMMA, /**< Comma */
+    IO_KEY_DOT, /**< Dot */
+    IO_KEY_SLASH, /**< Slash */
+    IO_KEY_GRAVE, /**< Grave accent */
+
+    IO_PRINTABLE_KEY_COUNT = IO_KEY_GRAVE - IO_FIRST_PRINTABLE_KEY + 1, /**< Count of printable keys */
+    IO_FIRST_CONTROL_KEY = IO_PRINTABLE_KEY_COUNT, /**< First control key code. Not a real key. */
+
+    IO_KEY_TAB = IO_FIRST_CONTROL_KEY, /**< Tab */
+    IO_KEY_BACKSPACE, /**< Backspace */
+    IO_KEY_DELETE, /**< Delete */
+    IO_KEY_ENTER, /**< Enter */
+    IO_KEY_ESCAPE , /**< Escape */
+    IO_KEY_LEFT_ALT, /**< Left alt */
     IO_KEY_RIGHT_ALT, /**<Right alt */
     IO_KEY_LEFT_SHIFT, /**< Left shift */
     IO_KEY_RIGHT_SHIFT, /**< Right shift */
@@ -35,7 +89,6 @@ enum IoKeyMapping
     IO_KEY_RIGHT_SYSTEM, /**< Right system key */
     IO_KEY_MENU, /**< Context menu key */
     IO_KEY_CAPS_LOCK, /**< Caps lock */
-    IO_KEY_ENTER, /**< Enter */
     IO_KEY_END, /**< End */
     IO_KEY_LEFT_ARROW, /**< Left arrow */
     IO_KEY_RIGHT_ARROW, /**< Right arrow */
@@ -102,7 +155,8 @@ enum IoKeyMapping
     IO_KEY_KEYPAD_8, /**< Keypad 8 */
     IO_KEY_KEYPAD_9, /**< Keypad 9 */
 
-    IO_KEY_COUNT, /**< Number of key mappings */
+    IO_CONTROL_KEY_COUNT = IO_KEY_KEYPAD_9 - IO_FIRST_CONTROL_KEY + 1, /**< Number of control key mappings */
+    IO_KEY_COUNT = IO_PRINTABLE_KEY_COUNT + IO_CONTROL_KEY_COUNT, /**< Total number of key mappings */
 };
 
 /**
@@ -110,7 +164,7 @@ enum IoKeyMapping
  */
 struct IoKeyboardEventData
 {
-    enum IoKeyMapping key; /**< Key code */
+    IoKeyCode key; /**< Key code */
     bool state; /**< Key state: true if pressed, false if released */
 };
 

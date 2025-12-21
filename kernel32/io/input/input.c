@@ -5,6 +5,8 @@
 #include "io/dev/dev.h"
 #include "rtl/string.h"
 
+#include "io/log/syslog.h"
+
 /**
  * @brief Maximum number of registered input devices
  */
@@ -62,27 +64,32 @@ STATUS IoRegisterEventHandler(const struct IoEventHandler *handler)
     STATUS status = OK;
 
     if(!handler->aggregate && ((handler->handle < 0) || (handler->handle >= IO_INPUT_MAX)))
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
 
     if(handler->aggregate && ((handler->type < 0) || (handler->type >= IO_EVENT_TYPE_COUNT)))
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     
     if(NULL == handler->event)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     struct IoEventHandler *h = ObCreateKernelObject(OB_EVENT);
     if(NULL == h)
         return OUT_OF_RESOURCES;
 
-    *h = *handler;
+    h->aggregate = handler->aggregate;
+    h->context = handler->context;
+    h->event = handler->event;
+    h->handle = handler->handle;
+    h->type = handler->type;
     h->next = NULL;
 
     PRIO prio = KeAcquireDpcLevelSpinlock(&IoEventListsLock);
+
     if(!handler->aggregate)
     {
         if(IoInputDeviceList[h->handle].handle < 0)
         {
-            status = FILE_NOT_FOUND;
+            status = NOT_FOUND;
         }
         else
         {
@@ -90,7 +97,7 @@ STATUS IoRegisterEventHandler(const struct IoEventHandler *handler)
             {
                 KeReleaseSpinlock(&IoEventListsLock, prio);
                 ObDestroyObject(h);
-                return BAD_FILE_TYPE;
+                return BAD_TYPE;
             }
 
             if(NULL == IoInputDeviceList[h->handle].event)
@@ -100,7 +107,7 @@ STATUS IoRegisterEventHandler(const struct IoEventHandler *handler)
                 struct IoEventHandler *t = IoInputDeviceList[handler->handle].event;
                 while(NULL != t->next)
                     t = t->next;
-            
+
                 t->next = h;
             }
         }
@@ -125,6 +132,7 @@ STATUS IoRegisterEventHandler(const struct IoEventHandler *handler)
 
 STATUS IoUnregisterEventHandler(const struct IoEventHandler *handler)
 {
+    UNUSED(handler);
     //TODO: implement!!!
     return NOT_IMPLEMENTED;   
 }
@@ -132,10 +140,10 @@ STATUS IoUnregisterEventHandler(const struct IoEventHandler *handler)
 STATUS IoReportEvent(int handle, const union IoEventData *data)
 {
     if((handle < 0) || (handle >= IO_INPUT_MAX))
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
 
     if(IoInputDeviceList[handle].handle < 0)
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
 
     PRIO prio = KeAcquireDpcLevelSpinlock(&IoEventListsLock);
     //notify aggregated event recipients

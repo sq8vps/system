@@ -19,7 +19,7 @@ static STATUS NullDispatch(struct IoRp *rp)
             rp->size = 0;
             break;
         default:
-            status = RP_PROCESSING_FAILED;
+            status = BAD_PARAMETER;
             break;
     }
 

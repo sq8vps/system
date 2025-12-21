@@ -129,10 +129,10 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr);
 
 /**
  * @brief Clear external interrupt flag
- * @param input IRQ (input) number
+ * @param input Interrupt vector
  * @return Error code
 */
-STATUS HalClearInterruptFlag(uint32_t input);
+STATUS HalClearInterruptFlag(uint32_t vector);
 
 /**
  * @brief Raise current task priority level

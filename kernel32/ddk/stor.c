@@ -7,10 +7,10 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
     STATUS status = OK;
 
     if(!target || !geometry)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     if(IO_DEVICE_TYPE_STORAGE != target->type)
-        return SYSTEM_INCOMPATIBLE;
+        return BAD_TYPE;
     
     struct IoRp *rp = IoCreateRp();
     if(NULL == rp)

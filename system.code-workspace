@@ -41,6 +41,9 @@
 		},
 		{
 			"path": "drivers/vga"
+		},
+		{
+			"path": "libs/libc"
 		}
 	],
 	"settings": {
@@ -136,7 +139,11 @@
 			"initializer_list": "c",
 			"reg.h": "c",
 			"output.h": "c",
-			"kbd.h": "c"
+			"kbd.h": "c",
+			"tree.h": "c",
+			"order.h": "c",
+			"vga.h": "c",
+			"mmap.h": "c"
 		}
 	}
 }

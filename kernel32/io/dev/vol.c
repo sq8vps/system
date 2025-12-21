@@ -47,10 +47,10 @@ STATUS IoInitializeVolumeManager(void)
         return status;
     
     char *t = NULL;
-    if(OK != ExDbGetNextString(h, "MountPointDatabasePath", &t))
+    if(OK != ExDbGetNextString(h, "MountPointDatabase", &t))
     {
         ExDbClose(h);
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     }
 
     IoVolumeState.mountPointDbPath = MmAllocateKernelHeap(RtlStrlen(t) + 1);
@@ -73,15 +73,15 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
 
     //sanity check
     if(!RtlCheckPath(mountPoint))
-        return ILLEGAL_NAME;
+        return BAD_PARAMETER;
 
     STATUS status = OK;
 
     if(IO_DEVICE_TYPE_DISK != dev->type)
-        status = SYSTEM_INCOMPATIBLE;
+        status = BAD_TYPE;
     
     if(NULL == dev->associatedVolume)
-        status = VOLUME_NOT_REGISTERED;
+        status = DEVICE_NOT_AVAILABLE;
     
     if(OK != status)
         return status;
@@ -92,7 +92,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     if(OK == status)
     {
         if(NULL == dev->associatedVolume->fsdo)
-            status = VOLUME_NOT_REGISTERED;
+            status = DEVICE_NOT_AVAILABLE;
     }
     
     if(OK != status)
@@ -101,7 +101,7 @@ STATUS IoMountVolumeByDevice(struct IoDeviceObject *dev, const char *mountPoint)
     }
 
     if(IoVfsCheckIfNodeExists(mountPoint))
-        return FILE_ALREADY_EXISTS;
+        return ALREADY_EXISTS;
     
     struct IoVfsNode *node = NULL;
     node = IoVfsCreateNode(RtlGetFileName(mountPoint));
@@ -140,13 +140,13 @@ STATUS IoMountVolume(const char *devPath, const char *mountPoint)
     struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
     struct IoVfsNode *devNode = IoVfsGetNode(devPath, &taskfs);
     if(NULL == devNode)
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
 
     if(IO_VFS_DEVICE != devNode->type)
-        status = BAD_FILE_TYPE;
+        status = BAD_TYPE;
     
     if(NULL == devNode->device)
-        status = FILE_NOT_FOUND;
+        status = NOT_FOUND;
     
     if(OK != status)
     {
@@ -163,12 +163,12 @@ STATUS IoRegisterVolume(struct IoDeviceObject *dev)
 {
     if(dev->type != IO_DEVICE_TYPE_DISK)
     {
-        return NOT_COMPATIBLE;
+        return NOT_SUPPORTED;
     }
     
     if(NULL != dev->associatedVolume)
     {
-        return VOLUME_ALREADY_EXISTS;
+        return ALREADY_EXISTS;
     }
 
     struct IoVolumeNode *node = ObCreateKernelObject(OB_VOLUME);
@@ -202,7 +202,7 @@ STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
 {
     if(NULL == dev->associatedVolume)
     {
-        return VOLUME_NOT_REGISTERED;
+        return DEVICE_NOT_AVAILABLE;
     }
 
     struct IoVolumeNode *vol = dev->associatedVolume;
@@ -215,13 +215,13 @@ STATUS IoSetVolumeSerialNumber(struct IoDeviceObject *dev, uint64_t serial)
 STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label)
 {
     if(RtlStrlen(label) > IO_VOLUME_MAX_LABEL_LENGTH)
-        return ILLEGAL_NAME;
+        return BAD_PARAMETER;
     
     
     if(NULL == dev->associatedVolume)
     {
         
-        return VOLUME_NOT_REGISTERED;
+        return DEVICE_NOT_AVAILABLE;
     }
 
     struct IoVolumeNode *vol = dev->associatedVolume;
@@ -239,24 +239,24 @@ STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *
     
     if(IO_DEVICE_TYPE_DISK != disk->type)
     {
-        return SYSTEM_INCOMPATIBLE;
+        return BAD_TYPE;
     }
 
     if(NULL == disk->associatedVolume)
     {
-        return VOLUME_NOT_REGISTERED;
+        return DEVICE_NOT_AVAILABLE;
     }
 
     
     if(IO_DEVICE_TYPE_FS != fs->type)
     {
-        return SYSTEM_INCOMPATIBLE;
+        return BAD_TYPE;
     }
 
     
     if(NULL != disk->associatedVolume->fsdo)
     {
-        return VOLUME_ALREADY_MOUNTED;
+        return ALREADY_EXISTS;
     }
 
     disk->associatedVolume->fsdo = fs;
@@ -302,7 +302,7 @@ static void IoAutoMountWorker(void *context)
                                 if(OK == status)
                                 {
                                     char *t = NULL;
-                                    if(OK != ExDbGetNextString(h, "MountPointDatabasePath", &t))
+                                    if(OK != ExDbGetNextString(h, "MountPointDatabase", &t))
                                     {
                                         LOG(SYSLOG_ERROR, 
                                             "Unable to get mount point database path\n");

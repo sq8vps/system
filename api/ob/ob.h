@@ -30,10 +30,10 @@ enum ObObjectType
     OB_DRIVER = 0x09, /**< Driver object */
     OB_DEVICE = 0x0A, /**< Device object */
     OB_DEVICE_NODE = 0x0B, /**< Device node */
-    OB_RP, /**< I/O request packet */
-    OB_VOLUME, /**< Volume node */
-    OB_SYSLOG, /**< System logger handle */
-    OB_EVENT, /**< Event handler */
+    OB_RP = 0x0C, /**< I/O request packet */
+    OB_VOLUME = 0x0D, /**< Volume node */
+    OB_SYSLOG = 0x0E, /**< System logger handle */
+    OB_EVENT = 0x0F, /**< Event handler */
 
     OB_TYPE_COUNT, /**< Kernel object type count, do not use */
 };

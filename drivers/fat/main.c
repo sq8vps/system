@@ -29,13 +29,13 @@ static STATUS FatDispatch(struct IoRp *rp)
                 return FatReadWrite(rp);
                 break;
             default:
-                rp->status = RP_CODE_UNKNOWN;
+                rp->status = NOT_IMPLEMENTED;
                 IoFinalizeRp(rp);
-                return RP_CODE_UNKNOWN;
+                return NOT_IMPLEMENTED;
                 break;
         }
     }
-    return RP_PROCESSING_FAILED;
+    return NOT_SUPPORTED;
 }
 
 static STATUS FatInit(struct ExDriverObject *driverObject)

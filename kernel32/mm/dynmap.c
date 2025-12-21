@@ -32,7 +32,7 @@ struct MmDynamicMemoryRegion
  * @param treeNode Tree node pointer
  * @return \a MmDynamicMemoryRegion pointer
  */
-#define REGION(treeNode) ((struct MmDynamicMemoryRegion*)((treeNode)->main))
+#define REGION(treeNode) ((struct MmDynamicMemoryRegion*)((treeNode)->aux))
 
 static struct MmDynamicMemoryRegion* MmDynamicInsertFreePair(const void *base, size_t size)
 {
@@ -51,13 +51,13 @@ static struct MmDynamicMemoryRegion* MmDynamicInsertFreePair(const void *base, s
     b->base = base;
     b->size = size;
     b->buddy = s;
-    b->tree.main = b;
+    b->tree.aux = b;
 
     s->tree.key = size;
     s->base = base;
     s->size = size;
     s->buddy = b;
-    s->tree.main = s;
+    s->tree.aux = s;
 
     MM_DYNAMIC_ADDRESS_FREE_TREE = TreeInsert(MM_DYNAMIC_ADDRESS_FREE_TREE, &b->tree);
     MM_DYNAMIC_SIZE_FREE_TREE = TreeInsert(MM_DYNAMIC_SIZE_FREE_TREE, &s->tree);
@@ -89,7 +89,7 @@ void *MmReserveDynamicMemory(uintptr_t n)
     }
 
     node->tree.key = vAddress;
-    node->tree.main = node;
+    node->tree.aux = node;
     node->base = (void*)vAddress;
     node->size = REGION(region)->size;
     MM_DYNAMIC_ADDRESS_USED_TREE = TreeInsert(MM_DYNAMIC_ADDRESS_USED_TREE, &node->tree);

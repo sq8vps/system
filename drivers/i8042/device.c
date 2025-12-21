@@ -3,8 +3,9 @@
 #include "hal/i686/irq.h"
 #include "hal/interrupt.h"
 #include "ps2.h"
+#include "hal/time.h"
 
-struct I8042Controller I8042ControllerInfo = {.lock = KeSpinlockInitializer};
+struct I8042Controller I8042ControllerInfo = {.mutex = KeMutexInitializer};
 
 #define I8042_DATA_PORT 0x60
 #define I8042_STATUS_PORT 0x64
@@ -38,22 +39,24 @@ struct I8042Controller I8042ControllerInfo = {.lock = KeSpinlockInitializer};
 #define I8042_CONFIG_SECOND_PORT_CLOCK_DISABLE_BIT 0x20
 #define I8042_CONFIG_FIRST_PORT_TRANSLATION_ENABLE_BIT 0x40
 
-#define I8042_TIMEOUT 100
+#define I8042_TIMEOUT 10000 //us - 10 ms is roughly 10 times the one byte transmission time
 
 static inline bool I8042_WAIT_FOR_READY_WRITE(uint32_t timeout)
 {
+    uint64_t t = HalGetTimestampMicros() + timeout;
     while(IoPortReadByte(I8042_STATUS_PORT) & I8042_STATUS_INPUT_BUFFER_FULL_BIT)
     {
-        if(0 == --timeout)
+        if(HalGetTimestampMicros() >= t)
             return false;
     }
     return true;
 } 
 static inline bool I8042_WAIT_FOR_READY_READ(uint32_t timeout)
 {
+    uint64_t t = HalGetTimestampMicros() + timeout;
     while(!(IoPortReadByte(I8042_STATUS_PORT) & I8042_STATUS_OUTPUT_BUFFER_FULL_BIT))
     {
-        if(0 == --timeout)
+        if(HalGetTimestampMicros() >= t)
             return false;
     }
     return true;
@@ -94,6 +97,9 @@ STATUS I8402HandleIrq(void *context)
 STATUS I8042InitializeController(void)
 {
     STATUS status = OK;
+    for(size_t i = 0; i < 10; i++)
+        IoPortReadByte(I8042_DATA_PORT);
+
     //disable ports
     IoPortWriteByte(I8042_COMMAND_PORT, I8042_COMMAND_DISABLE_FIRST_PORT);
     I8042_WAIT_FOR_READY_WRITE(I8042_TIMEOUT);

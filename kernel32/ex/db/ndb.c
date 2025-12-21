@@ -1,24 +1,9 @@
 #include "ndb.h"
 #include "rtl/string.h"
+#include "rtl/crc.h"
 
 #define CRC32_POLYNOMIAL 0xEDB88320
 #define CRC32_INITIAL 0xFFFFFFFF
-
-static uint32_t NablaDbCrc32(const void *data, uint32_t size) 
-{
-    const uint8_t *d = data;
-    uint32_t crc = CRC32_INITIAL;
-
-    for(uint32_t i = 0; i < size; ++i)
-    {
-        crc = crc ^ d[i];
-        for(int8_t k = 7; k >= 0; k--) 
-        {
-            crc = (crc >> 1) ^ (CRC32_POLYNOMIAL & (-(crc & 1)));
-        }
-    }
-    return ~crc;
-}
 
 uint32_t NablaDbGetTotalPayloadSize(const struct NablaDbEntry *e)
 {
@@ -101,7 +86,7 @@ bool NablaDbVerify(struct NablaDbHeader *h)
     
     uint32_t crc = h->crc;
     h->crc = 0;
-    if(crc != (h->crc = NablaDbCrc32(h, h->size + sizeof(*h))))
+    if(crc != (h->crc = RtlCrc32(CRC32_INITIAL, CRC32_POLYNOMIAL, h, h->size + sizeof(*h))))
     {
         return false;
     }

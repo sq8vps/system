@@ -65,6 +65,8 @@ struct VgaAdapterInfo
     } mode[VGA_MAX_MODES];
     size_t modeCount; /**< Number of available modes */
 
+    uint16_t resetMode; /**< Number of a fundamental VGA mode to be used on adapter reset, e.g, on kernel panic */
+
     struct IoDeviceObject *display; /**< Display device object */
     KeSpinlock lock; /**< Adapter info lock */
 };

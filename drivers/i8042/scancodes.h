@@ -4,12 +4,14 @@
 #include <stdint.h>
 #include "io/input/kbd.h"
 
+#define PS2_UNKNOWN_KEY 0xFFFF
+
 /**
  * @brief Scan code set 2 key mappings for 101-, 102-, 104-key US QWERTY keyboards
  */
 static uint16_t Ps2UsSet2[] = 
 {
-    0, //empty
+    PS2_UNKNOWN_KEY, //empty
     IO_KEY_F9,
     0, //empty
     IO_KEY_F5,
@@ -17,97 +19,97 @@ static uint16_t Ps2UsSet2[] =
     IO_KEY_F1,
     IO_KEY_F2,
     IO_KEY_F12,
-    0, //empty
+    PS2_UNKNOWN_KEY, //empty
     IO_KEY_F10,
     IO_KEY_F8,
     IO_KEY_F6,
     IO_KEY_F4,
-    '\t',
-    '`',
-    0, 0, //empty
+    IO_KEY_TAB,
+    IO_KEY_GRAVE,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
     IO_KEY_LEFT_ALT,
     IO_KEY_LEFT_SHIFT,
-    0, //empty
+    PS2_UNKNOWN_KEY, //empty
     IO_KEY_LEFT_CTRL,
-    'Q',
-    '1',
-    0, 0, 0, //empty
-    'Z',
-    'S',
-    'A',
-    'W',
-    '2',
-    0, //system left, extended only
-    0, //empty
-    'C',
-    'X',
-    'D',
-    'E',
-    '4',
-    '3',
-    0, //system right, extended only
-    0, //empty
-    ' ',
-    'V',
-    'F',
-    'T',
-    'R',
-    '5',
-    0, //context menu, extended only
-    0, //empty
-    'N',
-    'B',
-    'H',
-    'G',
-    'Y',
-    '6',
-    0, 0, 0, //empty
-    'M',
-    'J',
-    'U',
-    '7',
-    '8',
-    0, 0, //empty
-    ',',
-    'K',
-    'I',
-    'O',
-    '0',
-    '9',
-    0, 0, //empty
-    '.',
-    '/',
-    'L',
-    ';',
-    'P',
-    '-',
-    0, 0, 0, //empty
-    '\'',
-    0, //empty
-    '[',
-    '=',
-    0, 0, //empty
+    IO_KEY_Q,
+    IO_KEY_1,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
+    IO_KEY_Z,
+    IO_KEY_S,
+    IO_KEY_A,
+    IO_KEY_W,
+    IO_KEY_2,
+    PS2_UNKNOWN_KEY, //system left, extended only
+    PS2_UNKNOWN_KEY, //empty
+    IO_KEY_C,
+    IO_KEY_X,
+    IO_KEY_D,
+    IO_KEY_E,
+    IO_KEY_4,
+    IO_KEY_3,
+    PS2_UNKNOWN_KEY, //system right, extended only
+    PS2_UNKNOWN_KEY, //empty
+    IO_KEY_SPACE,
+    IO_KEY_V,
+    IO_KEY_F,
+    IO_KEY_T,
+    IO_KEY_R,
+    IO_KEY_5,
+    PS2_UNKNOWN_KEY, //context menu, extended only
+    PS2_UNKNOWN_KEY, //empty
+    IO_KEY_N,
+    IO_KEY_B,
+    IO_KEY_H,
+    IO_KEY_G,
+    IO_KEY_Y,
+    IO_KEY_6,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
+    IO_KEY_M,
+    IO_KEY_J,
+    IO_KEY_U,
+    IO_KEY_7,
+    IO_KEY_8,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
+    IO_KEY_COMMA,
+    IO_KEY_K,
+    IO_KEY_I,
+    IO_KEY_O,
+    IO_KEY_0,
+    IO_KEY_9,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
+    IO_KEY_DOT,
+    IO_KEY_SLASH,
+    IO_KEY_L,
+    IO_KEY_SEMICOLON,
+    IO_KEY_P,
+    IO_KEY_MINUS,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
+    IO_KEY_APOSTROPHE,
+    PS2_UNKNOWN_KEY, //empty
+    IO_KEY_LEFT_BRACKET,
+    IO_KEY_EQUAL,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
     IO_KEY_CAPS_LOCK,
     IO_KEY_RIGHT_SHIFT,
     IO_KEY_ENTER,
-    ']',
-    0, //empty
-    '\\',
-    0, 0, 0, 0, 0, 0, 0, 0, //empty
-    '\b',
-    0, 0, //empty
+    IO_KEY_RIGHT_BRACKET,
+    PS2_UNKNOWN_KEY, //empty
+    IO_KEY_BACKSLASH,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
+    IO_KEY_BACKSPACE,
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
     IO_KEY_KEYPAD_1,
-    0, //empty
+    PS2_UNKNOWN_KEY, //empty
     IO_KEY_KEYPAD_4,
     IO_KEY_KEYPAD_7,
-    0, 0, 0, //empty
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
     IO_KEY_KEYPAD_0,
     IO_KEY_KEYPAD_DOT,
     IO_KEY_KEYPAD_2,
     IO_KEY_KEYPAD_5,
     IO_KEY_KEYPAD_6,
     IO_KEY_KEYPAD_8,
-    0x1B, //escape
+    IO_KEY_ESCAPE, //escape
     IO_KEY_NUM_LOCK,
     IO_KEY_F11,
     IO_KEY_KEYPAD_PLUS,
@@ -116,7 +118,7 @@ static uint16_t Ps2UsSet2[] =
     IO_KEY_KEYPAD_ASTERISK,
     IO_KEY_KEYPAD_9,
     IO_KEY_SCROLL_LOCK,
-    0, 0, 0, 0, //empty
+    PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, PS2_UNKNOWN_KEY, //empty
     IO_KEY_F7,
 };
 
@@ -157,7 +159,7 @@ static uint16_t Ps2UsSet2Ext[] =
     [107] = IO_KEY_LEFT_ALT,
     [108] = IO_KEY_HOME,
     [112] = IO_KEY_INSERT,
-    [113] = 0xFF, //ASCII DEL
+    [113] = IO_KEY_DELETE,
     [114] = IO_KEY_DOWN_ARROW,
     [116] = IO_KEY_RIGHT_ARROW,
     [117] = IO_KEY_UP_ARROW,

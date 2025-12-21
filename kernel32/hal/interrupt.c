@@ -83,7 +83,7 @@ STATUS HalRegisterIrq(
             ))
         {
             KeReleaseSpinlock(&HalInterruptListLock, prio);
-            return INTERRUPT_ALREADY_REGISTERED;
+            return ALREADY_EXISTS;
         }
 
         status = ItInstallInterruptHandler(matching->vector, isr, context);
@@ -187,7 +187,7 @@ STATUS HalUnregisterIrq(uint32_t input, ItHandler isr)
     }
     else
     {
-        status = INTERRUPT_NOT_REGISTERED;
+        status = BAD_PARAMETER;
     }
 HalUnregisterIrqExit:
     KeReleaseSpinlock(&HalInterruptListLock, prio);
@@ -236,7 +236,7 @@ STATUS HalEnableIrq(uint32_t input, ItHandler isr)
         }
     }
     else
-        status = INTERRUPT_NOT_REGISTERED;
+        status = BAD_PARAMETER;
 
     KeReleaseSpinlock(&HalInterruptListLock, prio);
     return status;
@@ -266,7 +266,7 @@ STATUS HalDisableIrq(uint32_t input, ItHandler isr)
         }
     }
     else
-        status = INTERRUPT_NOT_REGISTERED;
+        status = BAD_PARAMETER;
 
     KeReleaseSpinlock(&HalInterruptListLock, prio);
     return status;

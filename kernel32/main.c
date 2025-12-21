@@ -28,10 +28,14 @@
 #include "hal/arch.h"
 #include "multiboot.h"
 #include "rtl/stdlib.h"
+#include "ddk/tty.h"
+#include "hal/debug.h"
 
 static void KeInitProcess(void *context)
 {
 	STATUS ret = OK;
+
+	HalInitPhase4();
 
 	if(OK != ExLoadKernelSymbols(context))
 		FAIL_BOOT("unable to load kernel symbols\n");
@@ -58,12 +62,27 @@ static void KeInitProcess(void *context)
 	
 	if(OK != ExLoadKernelDriversByName("null.ndb", NULL, NULL))
 		FAIL_BOOT("unable to load null device driver");
+
+	if(OK != ExLoadKernelDriversByName("tty.ndb", NULL, NULL))
+		FAIL_BOOT("unable to load TTY device driver");
+
+	struct TtyParameters params = {
+		.request.createVt.inputEvent = 0,
+		.request.createVt.outputDisplay = 0,
+	};
+
+	int ttyHandle = -1;
+	struct IoDeviceObject *ttyDev = NULL;
+	IoOpenFile("/dev/ttyM0", IO_FILE_READ, IO_FILE_FLAG_SHARED, &ttyHandle);
+	IoGetDeviceForFile(IoGetVfsNodeForFile(KeGetCurrentTaskParent(), ttyHandle), &ttyDev);
+	TtyCreateVt(ttyDev, &params);
+	IoCloseFile(ttyHandle);
 	
 	int fd[3] = {0, 1, 2};
-	IoOpenFile("/dev/null", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[0]);
-	IoOpenFile("/dev/null", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[1]);
-	IoOpenFile("/dev/null", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[2]);
-	
+	IoOpenFile("/dev/tty0", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[0]);
+	IoOpenFile("/dev/tty0", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[1]);
+	IoOpenFile("/dev/tty0", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[2]);
+
 	IoVfsCreateLink("/dev/stdin", "/task/self/fd/0", 0);
 	IoVfsCreateLink("/dev/stdout", "/task/self/fd/1", 0);
 	IoVfsCreateLink("/dev/stderr", "/task/self/fd/2", 0);
@@ -73,7 +92,8 @@ static void KeInitProcess(void *context)
 	const char *envp[] = {"PATH=/", "NABLA", NULL};
 	struct KeTaskFileMapping map[4] = {{.mapFrom = 0, .mapTo = 0}, {.mapFrom = 1, .mapTo = 1}, {.mapFrom = 2, .mapTo = 2}, KE_TASK_FILE_MAPPING_END};
 
-	KeCreateUserProcess("/main/system/test", 0, argv, envp, map, &tcb);
+	STATUS status = KeCreateUserProcess("/main/system/test", 0, argv, envp, map, &tcb);
+	LOG(SYSLOG_INFO, "Process creation status %X", status);
 	KeEnableTask(tcb);
 
 	while(1)
@@ -110,12 +130,14 @@ NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
 
 	HalInitPhase2();
 
-	LOG(SYSLOG_INFO, KERNEL_FULL_NAME_STRING);
-	LOG(SYSLOG_INFO, "Booting...");
-
 	ItInit();
 
 	HalInitPhase3();
+
+	HalDebugPortInit();
+
+	LOG(SYSLOG_INFO, KERNEL_FULL_NAME_STRING);
+	LOG(SYSLOG_INFO, "Booting...");
 
 	ObInitialize();
 	RtlInitializeRandom();

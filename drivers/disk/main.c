@@ -46,18 +46,18 @@ static STATUS DiskDispatch(struct IoRp *rp)
                         return rp->status;
                         break;
                     default:
-                        return RP_CODE_UNKNOWN;
+                        return NOT_IMPLEMENTED;
                         break;
                 }
                 break;
             default:
-                rp->status = RP_CODE_UNKNOWN;
+                rp->status = NOT_IMPLEMENTED;
                 IoFinalizeRp(rp);
-                return RP_CODE_UNKNOWN;
+                return NOT_IMPLEMENTED;
                 break;
         }
     }
-    return RP_PROCESSING_FAILED;
+    return BAD_PARAMETER;
 }
 
 static STATUS DiskInit(struct ExDriverObject *driverObject)
@@ -136,7 +136,7 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         
         MmFreeKernelHeap(device->privateData);
         IoDestroyDevice(device);
-        return DEVICE_NOT_AVAILABLE;
+        return NOT_SUPPORTED;
     }
         
     return OK;

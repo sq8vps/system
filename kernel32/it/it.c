@@ -75,7 +75,7 @@ void ItFreeVector(uint8_t vector)
 STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return BAD_INTERRUPT_VECTOR;
+		return BAD_PARAMETER;
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 
@@ -84,7 +84,7 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 	if(ItHandlerDescriptorTable[vector].count == IT_MAX_SHARED_IRQ_CONSUMERS)
 	{
 		KeReleaseSpinlock(&ItHandlerTableMutex, prio);
-		return INTERRUPT_VECTOR_NOT_FREE;
+		return OUT_OF_RESOURCES;
 	}
 
 	ItHandlerDescriptorTable[vector].consumer[ItHandlerDescriptorTable[vector].count].callback = isr;
@@ -99,7 +99,7 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return BAD_INTERRUPT_VECTOR;
+		return BAD_PARAMETER;
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
@@ -123,13 +123,13 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 		}
 	}
 	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
-	return INTERRUPT_NOT_REGISTERED;
+	return BAD_PARAMETER;
 }
 
 STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
 {
 	if(vector < IT_FIRST_INTERRUPT_VECTOR)
-		return BAD_INTERRUPT_VECTOR;
+		return BAD_PARAMETER;
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
@@ -144,7 +144,7 @@ STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
 		}
 	}
 	KeReleaseSpinlock(&ItHandlerTableMutex, prio);
-	return INTERRUPT_NOT_REGISTERED;	
+	return BAD_PARAMETER;	
 }
 
 STATUS ItInit(void)
@@ -160,7 +160,7 @@ STATUS ItInit(void)
 void ItHandleIrq(uint8_t vector)
 {
 	HalEnableInterrupts();
-	if(!HalIsInterruptSpurious())                                               
+	if(!HalIsInterruptSpurious(vector))                                               
 	{
 		for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector - IT_FIRST_INTERRUPT_VECTOR].count; i++)        
 		{                                

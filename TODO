@@ -1,0 +1,3 @@
+Kernel heap allocator -> AVL(?) trees
+Scheduler -> CFS
+PCI driver -> MMIO access, MSI

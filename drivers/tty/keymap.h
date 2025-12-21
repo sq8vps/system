@@ -4,6 +4,8 @@
 #include "defines.h"
 #include "io/input/kbd.h"
 
+struct TtyVtData;
+
 /**
  * @brief Keymap modifiers
  */
@@ -34,10 +36,10 @@ enum TtyKeymapModifiers
 void TtyInitializeDefaultKeymap(void);
 
 /**
- * @brief Decode key and return pointer to the respective UTF-8 character
+ * @brief Decode key and return pointer to the respective UTF-8 character or sequence of characters
  * @param code Key code
  * @param modifiers Key modifiers
- * @return Pointer to the UTF-8 character or NULL if not found
+ * @return Pointer to the UTF-8 character/sequence of characters or NULL if not found
  */
 const char *TtyDecodeKey(IoKeyCode code, uint8_t modifiers);
 

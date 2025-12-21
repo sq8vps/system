@@ -25,7 +25,7 @@ STATUS IoCreateRpQueue(IoProcessRpCallback callback, struct IoRpQueue **queue)
     ASSERT(NULL != queue);
 
     if(NULL == callback)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     *queue = MmAllocateKernelHeap(sizeof(**queue));
     if(NULL == *queue)
@@ -117,9 +117,11 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     }
 
     PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
+    barrier();
     if(rp->sync && rp->pending)
         KeUnblockTask(rp->task);
     rp->pending = false;
+    barrier();
     HalLowerPriorityLevel(lastPrio);
 
     if(NULL != rp->completionCallback)
@@ -131,13 +133,13 @@ STATUS IoFinalizeRp(struct IoRp *rp)
 STATUS IoCancelRp(struct IoRp *rp)
 {
     if(NULL == rp->queue)
-        return RP_NOT_CANCELLABLE;
+        return BAD_PARAMETER;
 
     PRIO prio = KeAcquireSpinlock(&(rp->queue->queueLock));
     if(rp->queue->head == rp)
     {
         KeReleaseSpinlock(&(rp->queue->queueLock), prio); 
-        return RP_NOT_CANCELLABLE;
+        return BUSY;
     }
     struct IoRp *t = rp->queue->head;
     while(NULL != t)
@@ -156,7 +158,7 @@ STATUS IoCancelRp(struct IoRp *rp)
         t = t->next;
     }
     KeReleaseSpinlock(&(rp->queue->queueLock), prio); 
-    return RP_NOT_CANCELLABLE;
+    return NOT_FOUND;
 }
 
 struct IoDeviceObject* IoGetCurrentRpPosition(struct IoRp *rp)

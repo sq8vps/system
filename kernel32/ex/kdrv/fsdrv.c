@@ -22,7 +22,7 @@ STATUS ExMountVolume(struct IoVolumeNode *volume)
     //first driver is assumed to be the main driver
     if(NULL == d->this->mount)
     {
-        status = DEVICE_NOT_AVAILABLE;
+        status = NOT_SUPPORTED;
         goto ExMountVolumeFailed;
     }
 

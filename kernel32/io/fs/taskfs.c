@@ -74,7 +74,7 @@ STATUS IoTaskFsGetNode(const struct IoVfsNode *parent, const char *name, struct 
     if(IoTaskFsState.root == parent)
     {
         //TODO: look for task with given TID
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     }
     else if(IoTaskFsState.self.fd.root == parent)
     {
@@ -86,7 +86,7 @@ STATUS IoTaskFsGetNode(const struct IoVfsNode *parent, const char *name, struct 
         while('\0' != *t)
         {
             if(!RtlIsdigit(*t))
-                return FILE_NOT_FOUND;
+                return NOT_FOUND;
             ++t;
         }
         int fd = RtlAtoi(name);
@@ -98,11 +98,11 @@ STATUS IoTaskFsGetNode(const struct IoVfsNode *parent, const char *name, struct 
             return OK;
         }
         else
-            return FILE_NOT_FOUND;
+            return NOT_FOUND;
     }
     else
     {
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     }
 }
 

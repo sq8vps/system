@@ -7,10 +7,10 @@ STATUS DiskGetSignature(struct IoDeviceObject *target, char **signature)
     STATUS status = OK;
 
     if(!target || !signature)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     if(IO_DEVICE_TYPE_DISK != target->type)
-        return SYSTEM_INCOMPATIBLE;
+        return BAD_TYPE;
     
     struct IoRp *rp = IoCreateRp();
     if(NULL == rp)

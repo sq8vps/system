@@ -34,7 +34,7 @@ EXPORT_API
 /**
  * @brief Main configuration database path
  */
-#define CONFIG_DATABASE (MAIN_MOUNT_POINT "/system/" CONFIG_DATABASE_NAME)
+#define CONFIG_DATABASE (MAIN_MOUNT_POINT "/system/config/" CONFIG_DATABASE_NAME)
 
 END_EXPORT_API
 

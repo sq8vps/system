@@ -18,8 +18,8 @@ FILE_EPILOGUE = """
 import glob
 import os
 
-def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXPORT_START_KEYWORD, EXPORT_END_KEYWORD, 
-                OUTPUT_PATH):
+def exportHeader(SEARCH_PATH, EXPORT_START_KEYWORD, EXPORT_END_KEYWORD, 
+                OUTPUT_PATH, skipIncludes = False):
     print("Exporting to " + OUTPUT_PATH)
     print("Headers from " + SEARCH_PATH + " (recursively)")
     print('\tBlock export keywords are "' + EXPORT_START_KEYWORD + '" and "' + EXPORT_END_KEYWORD + '"')
@@ -39,7 +39,7 @@ def exportHeader(SEARCH_PATH, EXPORT_KEYWORD, EXPORT_START_KEYWORD, EXPORT_END_K
                 content = header.readlines()
                 keywordFound = False
                 for line in content:
-                    if line.startswith("#include"):
+                    if line.startswith("#include") and not skipIncludes:
                         newHeader.write(line.replace(SEARCH_PATH, ''))
                         continue
 

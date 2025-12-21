@@ -39,6 +39,14 @@ uint32_t IdeAddPrdEntry(struct IdePrdTable *table, uint32_t address, uint16_t si
 STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct IdeControllerData *info);
 
 /**
+ * @brief Read Bus Master command register
+ * @param *info Controller data structure
+ * @param chan Channel number
+ * @return Command register value
+*/
+uint8_t IdeReadBmrCommand(struct IdeControllerData *info, uint8_t chan);
+
+/**
  * @brief Issue a Bus Master command
  * @param *info Controller data structure
  * @param chan Channel number

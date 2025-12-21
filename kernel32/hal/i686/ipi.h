@@ -70,7 +70,7 @@ INTERNAL void I686SendShutdownCpus(void);
  * @param *targets Target CPU bitmap
  * @param function Function to be invoked
  * @param *context Context to be passed to the function
- * @param results[] Table of function invocation on each CPU
+ * @param results[] Table of function return value on each CPU
  */
 INTERNAL void I686InvokeRemoteFunction(const HalCpuBitmap *targets, 
     I686RemoteFunction function, void *context, int results[MAX_CPU_COUNT]);

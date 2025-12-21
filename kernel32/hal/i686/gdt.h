@@ -47,6 +47,12 @@
 #define GDT_TSS(cpu) (5 + (cpu))
 
 /**
+ * @brief TLS descriptor index for given CPU
+ * @param cpu CPU number
+ */
+#define GDT_TLS(cpu) (5 + MAX_CPU_COUNT + (cpu))
+
+/**
  * @brief Get GDT offset from entry number
  */
 #define GDT_OFFSET(entry) (8 * (entry))
@@ -73,9 +79,10 @@ INTERNAL void GdtInit(void);
 
 /**
  * @brief Apply GDT to current CPU
+ * @param cpu CPU number
  * @attention GDT must be initialized first with \a GdtInit()
  */
-INTERNAL void GdtApply(void);
+INTERNAL void GdtApply(uint16_t cpu);
 
 /**
  * @brief Create TSS for CPU and add to GDT

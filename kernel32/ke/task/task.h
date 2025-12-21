@@ -126,6 +126,7 @@ struct KeTaskControlBlock
     struct HalTaskData data; /**< Architecture-specific task data */
     HalCpuBitmap affinity; /**< CPU affinity */
     bool main; /**< Task is the main task in the process */
+    void *tls; /**< Thread Local Storage pointer - set by the user mode application */
 
     /**
      * @brief Task stack parameters
@@ -363,5 +364,13 @@ STATUS KeCreateUserThread(uint32_t flags,
 struct KeTaskArguments* KeBuildTaskArguments(const char *argv[], const char *envp[]);
 
 END_EXPORT_API
+
+/**
+ * @brief Set Thread-local Storage pointer for given task
+ * @param *tcb Target Task Control Block pointer
+ * @param *tls Thread-local Storage pointer
+ * @note @ref HalUpdateTls must be used for this to take effect before a task switch
+ */
+INTERNAL STATUS KeSetThreadLocalStorage(struct KeTaskControlBlock *tcb, void *tls);
 
 #endif

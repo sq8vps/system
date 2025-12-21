@@ -7,10 +7,10 @@ STATUS TtyCreateVt(struct IoDeviceObject *const dev, struct TtyParameters *const
     STATUS status = OK;
 
     if(!dev || !params)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     if(IO_DEVICE_TYPE_TERMINAL != dev->type)
-        return SYSTEM_INCOMPATIBLE;
+        return NOT_SUPPORTED;
     
     struct IoRp *rp = IoCreateRp();
     if(NULL == rp)

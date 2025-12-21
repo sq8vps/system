@@ -14,6 +14,8 @@
 #include "hal/cpu.h"
 #include "ipi.h"
 
+#include "ke/core/panic.h"
+
 #define LAPIC_SPURIOUS_VECTOR 255
 
 enum ApicTimerDivider
@@ -82,20 +84,34 @@ enum ApicTimerDivider
 
 #define LAPIC_VECTOR_MASK 0xFF
 
-static uint64_t ApicTimerGetRaw(void *context);
+/**
+ * @brief Check if TSC is available
+ * @return True if TSC is available, false otherwise
+ */
+#define CHECK_TSC_AVAILABLE() CpuidCheckIfTscAvailable()
 
-//LAPIC configuration space handler
-//remains NULL when APIC is unavailable
-//use uint8_t for easy well-defined pointer arithmetics
-static volatile uint8_t *lapic = NULL;
+/**
+ * @brief Check if TSC is available and reliable and can be used as a system timer
+ * @return True if TSC is available and reliable, false otherwise
+ */
+#define CHECK_TSC_USABLE() (CpuidCheckIfTscAvailable() && CpuidCheckIfTscInvariant() && CpuidCheckIfTscDeadlineAvailable())
 
 #define LAPIC_DEFAULT_TIMER_DIVIDER APIC_TIMER_DIVIDE_16
 
-#ifndef SMP
-static uint64_t ApicCounter = 0;
+static struct
+{
+    volatile uint8_t *space; /**< Mapped LAPIC space */
+    bool tscAvailable; /**< TSC is available */
+    bool useTsc; /**< Use TSC = TSC is available and reliable */
+} ApicState = {.space = NULL, .useTsc = false};
+
+#ifdef SMP
+static uint64_t ApicCounter[MAX_CPU_COUNT];
 #else
-static uint64_t ApicCounter[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = 0};
+static uint64_t ApicCounter = 0;
 #endif
+
+static uint64_t ApicTimerGetRaw(void *context);
 
 static struct HalClockSource ApicClockSource = 
 {
@@ -108,17 +124,18 @@ static struct HalClockSource ApicClockSource =
 /**
  * @brief A convenience macro for 32-bit Local APIC register access
 */
-#define LAPIC(register) (*(volatile uint32_t*)(lapic + (register)))
+#define LAPIC(register) (*(volatile uint32_t*)(ApicState.space + (register)))
 
 static STATUS ApicSpuriousInterruptHandler(void *context)
 {
+    KePanic(UNEXPECTED_FAULT);
     UNUSED(context);
     return OK;
 }
 
 STATUS ApicSendEoi(void)
 {
-    if(unlikely(NULL == lapic))
+    if(unlikely(NULL == ApicState.space))
         return DEVICE_NOT_AVAILABLE;
 
     LAPIC(LAPIC_EOI_OFFSET) = 0;
@@ -149,7 +166,7 @@ STATUS ApicWaitForIpiDelivery(uint64_t timeLimit)
 
 STATUS ApicInitAp(void)
 {
-    if(NULL == lapic)
+    if(NULL == ApicState.space)
         return DEVICE_NOT_AVAILABLE;
 
     MsrSet(MSR_IA32_APIC_BASE, MsrGet(MSR_IA32_APIC_BASE) | MSR_IA32_APIC_BASE_ENABLE_MASK);
@@ -182,24 +199,30 @@ static void ApicTimerMeasurementCallback(bool finished, void *context)
 STATUS ApicInitBsp(void)
 {
     STATUS ret = OK;
+
+    ApicState.tscAvailable = CHECK_TSC_AVAILABLE();
+    ApicState.useTsc = CHECK_TSC_USABLE();
+
     if(OK != (ret = ApicInitAp()))
     {
-        lapic = NULL;
+        ApicState.space = NULL;
         return ret;
     }
 
     if(OK != (ret = ItInstallInterruptHandler(LAPIC_SPURIOUS_VECTOR, ApicSpuriousInterruptHandler, NULL)))
     {
-        lapic = NULL;
+        ApicState.space = NULL;
         return ret;
     }
 
     if(OK != (ret = ItSetInterruptHandlerEnable(LAPIC_SPURIOUS_VECTOR, ApicSpuriousInterruptHandler, true)))
     {
         ItUninstallInterruptHandler(LAPIC_SPURIOUS_VECTOR, ApicSpuriousInterruptHandler);
-        lapic = NULL;
+        ApicState.space = NULL;
         return ret;
     }
+
+    LAPIC(LAPIC_LINT0_OFFSET) = LAPIC_MODE_EXTINT | LAPIC_ICR_TRIGGER_EDGE | LAPIC_POLARITY_ACTIVE_HIGH;
 
     LAPIC(LAPIC_TIMER_DIVIDER_OFFSET) = LAPIC_DEFAULT_TIMER_DIVIDER & 0b1011;
     PitDoSingleShot(10000, ApicTimerMeasurementCallback, ApicTimerMeasurementCallback, NULL);
@@ -210,10 +233,10 @@ STATUS ApicInitBsp(void)
 STATUS ApicInit(uintptr_t address)
 {
     if(0 == address)
-        return DEVICE_NOT_AVAILABLE;
+        return BAD_PARAMETER;
 
-    lapic = MmMapMmIo(address, PAGE_SIZE);
-    if(NULL == lapic)
+    ApicState.space = MmMapMmIo(address, PAGE_SIZE);
+    if(NULL == ApicState.space)
         return OUT_OF_RESOURCES;
     return OK;
 }
@@ -221,13 +244,18 @@ STATUS ApicInit(uintptr_t address)
 STATUS ApicConfigureSystemTimer(uint8_t vector)
 {
     if(vector < IT_FIRST_INTERRUPT_VECTOR)  
-        return BAD_INTERRUPT_VECTOR;
+        return BAD_PARAMETER;
     
-    if(lapic)
+    //if the bootstrap CPU can use TSC, but the current CPU cannot, there system is incompatible
+    //if the bootstrap CPU cannot use TSC, then stick to the LAPIC timer regardless of the current CPU capabilities
+    if(ApicState.useTsc && !CHECK_TSC_USABLE())
+        return NOT_SUPPORTED;
+
+    if(NULL != ApicState.space)
     {
         LAPIC(LAPIC_TIMER_DIVIDER_OFFSET) = LAPIC_DEFAULT_TIMER_DIVIDER & 0b1011;
         LAPIC(LAPIC_LVT_TIMER_OFFSET) = vector;
-        if(CpuidCheckIfTscAvailable() && CpuidCheckIfTscInvariant() && CpuidCheckIfTscDeadlineAvailable())
+        if(ApicState.useTsc)
             LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_TSC_DEADLINE_FLAG;
         else
             LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_ONE_SHOT_FLAG;
@@ -240,13 +268,12 @@ STATUS ApicConfigureSystemTimer(uint8_t vector)
 
 void ApicStartSystemTimer(uint64_t time)
 {
-    if(LAPIC(LAPIC_LVT_TIMER_OFFSET) & LAPIC_TIMER_TSC_DEADLINE_FLAG)
+    if(ApicState.useTsc)
     {
         MsrSet(MSR_IA32_TSC_DEADLINE, TscCalculateRaw(time * (uint64_t)1000) + TscGetRaw(NULL));
     }
     else
     {
-
         __atomic_add_fetch(
 #ifndef SMP
             &ApicCounter,
@@ -257,14 +284,39 @@ void ApicStartSystemTimer(uint64_t time)
         LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = (time * ApicClockSource.frequency) / (uint64_t)1000000;
     }
     LAPIC(LAPIC_LVT_TIMER_OFFSET) &= ~LAPIC_LOCAL_MASK;
+
+    if(ApicState.tscAvailable)
+        TscUpdate();
 }
 
 static uint64_t ApicTimerGetRaw(void *context)
 {
     UNUSED(context);
     
-    return ApicCounter[HalGetCurrentCpu()] 
-        + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
+    if(ApicState.useTsc)
+        return TscGetRaw(NULL);
+    else
+        return ApicCounter[HalGetCurrentCpu()] 
+            + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
+}
+
+static int ApicSynchronize(void *context)
+{
+    uint32_t cpu = HalGetCurrentCpu();
+    const int64_t delta = *((uint64_t*)context) - ApicTimerGetRaw(NULL);
+
+    ApicCounter[cpu] += delta;
+
+    return 0;
+}
+
+void ApicSynchronizeTimers(void)
+{
+    HalCpuBitmap cpu = HAL_CPU_ALL;
+    int results[MAX_CPU_COUNT];
+    uint64_t current = ApicTimerGetRaw(NULL);
+
+    I686InvokeRemoteFunction(&cpu, ApicSynchronize, &current, results);
 }
 
 STATUS HalConfigureSystemTimer(uint8_t vector)
@@ -280,7 +332,7 @@ STATUS HalStartSystemTimer(uint64_t time)
 
 STATUS ApicSetTaskPriority(uint8_t priority)
 {
-    if(unlikely(NULL == lapic))
+    if(unlikely(NULL == ApicState.space))
         return DEVICE_NOT_AVAILABLE;
     LAPIC(LAPIC_TPR_OFFSET) = (priority & 0xF) << 4;
     return OK;
@@ -288,14 +340,14 @@ STATUS ApicSetTaskPriority(uint8_t priority)
 
 uint8_t ApicGetTaskPriority(void)
 {
-    if(unlikely(NULL == lapic))
+    if(unlikely(NULL == ApicState.space))
         return 0;
     return (LAPIC(LAPIC_TPR_OFFSET) >> 4) & 0xF;
 }
 
 uint8_t ApicGetProcessorPriority(void)
 {
-    if(unlikely(NULL == lapic))
+    if(unlikely(NULL == ApicState.space))
         return 0;
     return (LAPIC(LAPIC_PPR_OFFSET) >> 4) & 0xF;
 }

@@ -52,7 +52,7 @@ STATUS IoCreateDevice(
 STATUS IoDestroyDevice(struct IoDeviceObject *device)
 {
     if(device->attachedTo || device->attachedDevice || device->node.deviceNode || device->node.volumeNode || (device->flags & IO_DEVICE_FLAG_PERSISTENT))
-        return OPERATION_NOT_ALLOWED;
+        return RESOURCE_BOUND;
     
     ObDestroyObject(device);
     return OK;
@@ -219,7 +219,7 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     if(1 != driverCount)
     {
         MmFreeKernelHeap(drivers);
-        return ROOT_DEVICE_INIT_FAILURE;
+        return NOT_SUPPORTED;
     }
     struct IoDeviceObject *rootBaseDevice = NULL;
     if(OK != (ret = IoCreateDevice(drivers->this, IO_DEVICE_TYPE_ROOT, 0, &rootBaseDevice)))
@@ -258,7 +258,7 @@ STATUS IoForwardRp(struct IoDeviceObject *dev, struct IoRp *rp)
     ASSERT(rp);
     ASSERT(dev);
     if(NULL == dev->driverObject->dispatch)
-        return DEVICE_NOT_AVAILABLE;
+        return NOT_SUPPORTED;
 
     rp->device = dev;
     return dev->driverObject->dispatch(rp);  
@@ -269,7 +269,7 @@ STATUS IoSendRp(struct IoDeviceObject *dev, struct IoRp *rp)
     ASSERT(rp);
     ASSERT(dev);
     if(NULL == dev->driverObject->dispatch)
-        return DEVICE_NOT_AVAILABLE;
+        return NOT_SUPPORTED;
 
     rp->sync = false;
     rp->task = KeGetCurrentTask();
@@ -284,7 +284,7 @@ STATUS IoSendRpSync(struct IoDeviceObject *dev, struct IoRp *rp)
     STATUS status;
     
     if(NULL == dev->driverObject->dispatch)
-        return DEVICE_NOT_AVAILABLE;
+        return NOT_SUPPORTED;
 
     rp->sync = true;
     rp->task = KeGetCurrentTask();
@@ -296,14 +296,17 @@ STATUS IoSendRpSync(struct IoDeviceObject *dev, struct IoRp *rp)
     while(1)
     {
         PRIO lastPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
+        barrier();
         if(rp->pending)
         {
             KeBlockTask(rp->task, TASK_BLOCK_IO);
+            barrier();
             HalLowerPriorityLevel(lastPrio);
             KeTaskYield();
         }
         else
         {
+            barrier();
             HalLowerPriorityLevel(lastPrio);
             break;
         }
@@ -473,7 +476,7 @@ STATUS IoPerfromIoctl(struct IoDeviceObject *dev, uint32_t ioctl, void *dataIn, 
 STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev)
 {
     if(IO_VFS_DEVICE != node->type)
-        return DEVICE_NOT_AVAILABLE;
+        return BAD_TYPE;
     
     if(NULL != dev)
         *dev = node->device;

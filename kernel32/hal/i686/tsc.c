@@ -10,7 +10,7 @@
 #include "ipi.h"
 #include "rtl/string.h"
 
-volatile static struct
+static volatile struct
 {
     bool present; /**< TSC is present */
     int64_t offset; /**< Per-core TSC offset relative to BSP */
@@ -62,7 +62,7 @@ STATUS TscInitForSmp(void)
 
 STATUS TscInit(void)
 {
-    RtlMemset(TscState, 0, sizeof(TscState));
+    RtlMemsetV(TscState, 0, sizeof(TscState));
 
     uint16_t cpu = HalGetCurrentCpu();
 

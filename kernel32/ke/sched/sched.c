@@ -45,7 +45,7 @@ static struct KeSchedulerQueue KeReadyToRun[PRIORITY_LOWEST + 1][TCB_MINOR_PRIOR
 static struct KeSchedulerQueue KeFinished = {.head = NULL, .lock = KeSpinlockInitializer}; //finished tasks to be removed
 static struct KeTaskControlBlock *KeCleanupTask = NULL;
 
-static bool KeSchedulerStarted = false;
+static uint32_t KeJoinedCpus = 0; 
 
 static void KeSchedule(uint16_t cpu);
 static void KeTaskCleanupWorker(void *context);
@@ -252,6 +252,7 @@ static void KeSchedule(uint16_t cpu)
                 //update state
                 KeNextTask[cpu]->scheduling.state = TASK_RUNNING;
                 KeNextTask[cpu]->scheduling.requestedState = TASK_READY_TO_RUN;
+                HalUpdateTls(KeNextTask[cpu]->tls);
                 KeReleaseSpinlock(&(KeNextTask[cpu]->scheduling.lock), taskPrio);
                 KeReleaseSpinlock(&KeReadyToRun[major][minor].lock, prio);
                 HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
@@ -294,16 +295,16 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
     STATUS ret = OK;
     //create idle task
     if(OK != (ret = KeCreateIdleTask()))
-        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
+        KePanicEx(BOOT_FAILURE, 1, ret, 0, 0);
     
     if(OK != (ret = KeCreateIdleTask()))
-        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 0, 0);
+        KePanicEx(BOOT_FAILURE, 1, ret, 0, 0);
     
     if(NULL != continuationTask)
     {
         struct KeTaskControlBlock *tcb;
         if(OK != (ret = KeCreateKernelProcess(0, continuationTask, continuationContext, NULL, &tcb)))
-            KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 1, 0);
+            KePanicEx(BOOT_FAILURE, 1, ret, 1, 0);
         
         KeChangeTaskMajorPriority(tcb, PRIORITY_NORMAL);
         KeChangeTaskMinorPriority(tcb, TCB_DEFAULT_MINOR_PRIORITY);
@@ -312,16 +313,16 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
 
     ret = ExCreateKernelWorker(KeTaskCleanupWorker, NULL, &KeCleanupTask);
     if(OK != ret)
-        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 2, 0);
+        KePanicEx(BOOT_FAILURE, 1, ret, 2, 0);
 
     if(OK != (ret = ItInstallInterruptHandler(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, NULL)))
-        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 3, 0);
+        KePanicEx(BOOT_FAILURE, 1, ret, 3, 0);
     if(OK != (ret = ItSetInterruptHandlerEnable(IT_SYSTEM_TIMER_VECTOR, KeSchedulerISR, true)))
-        KePanicEx(BOOT_FAILURE, SCHEDULER_INITIALIZATION_FAILURE, ret, 4, 0);
+        KePanicEx(BOOT_FAILURE, 1, ret, 4, 0);
         
     HalInitializeScheduler();
 
-    __atomic_store_n(&KeSchedulerStarted, true, __ATOMIC_SEQ_CST);
+    __atomic_add_fetch(&KeJoinedCpus, 1, __ATOMIC_SEQ_CST);
 
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
@@ -336,7 +337,7 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
 STATUS KeChangeTaskMajorPriority(struct KeTaskControlBlock *tcb, enum KeTaskMajorPriority priority)
 {
     if(NULL == tcb)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
     tcb->scheduling.majorPriority = priority;
@@ -348,7 +349,7 @@ STATUS KeChangeTaskMajorPriority(struct KeTaskControlBlock *tcb, enum KeTaskMajo
 STATUS KeChangeTaskMinorPriority(struct KeTaskControlBlock *tcb, uint8_t priority)
 {
     if(NULL == tcb)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
     if(priority > TCB_MINOR_PRIORITY_LIMIT)
@@ -363,7 +364,7 @@ STATUS KeChangeTaskMinorPriority(struct KeTaskControlBlock *tcb, uint8_t priorit
 STATUS KeEnableTask(struct KeTaskControlBlock *tcb)
 {
     if(NULL == tcb)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
 
@@ -507,7 +508,7 @@ void KeTaskYield(void)
 
 void KeJoinScheduler(void)
 {
-    while(false == __atomic_load_n(&KeSchedulerStarted, __ATOMIC_SEQ_CST))
+    while(0 == __atomic_load_n(&KeJoinedCpus, __ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
     if(OK != KeCreateIdleTask())
     {
@@ -521,6 +522,14 @@ void KeJoinScheduler(void)
     }
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
+
+    __atomic_add_fetch(&KeJoinedCpus, 1, __ATOMIC_SEQ_CST);
+}
+
+void KeWaitForCpusToJoinScheduler(uint32_t cpus)
+{
+    while(cpus > __atomic_load_n(&KeJoinedCpus, __ATOMIC_SEQ_CST))
+        TIGHT_LOOP_HINT();
 }
 
 static void KeTaskCleanupWorker(void *context)
@@ -596,10 +605,3 @@ static void KeTaskCleanupWorker(void *context)
         KeWaitForWakeUp();
     }
 }
-
-#if false != 0
-#error False is not zero!
-#endif
-#if true != 1
-#error True is not one!
-#endif

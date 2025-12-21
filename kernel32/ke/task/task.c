@@ -67,7 +67,7 @@ STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlo
     else
     {
         KeReleaseSpinlock(&(pcb->tasks.lock), prio);
-        return KERNEL_THREAD_LIMIT_REACHED;
+        return OUT_OF_RESOURCES;
     }
 
     tcb->parent = pcb;
@@ -165,7 +165,7 @@ STATUS KeCreateUserProcess(const char *path, uint32_t flags, const char *argv[],
 {
     STATUS status = OK;
     if((NULL == path) || ('\0' == path[0]))
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     struct KeTaskArguments *args = KeBuildTaskArguments(argv, envp);
     if(NULL == args)
         return OUT_OF_RESOURCES;
@@ -240,4 +240,10 @@ struct KeTaskArguments* KeBuildTaskArguments(const char *argv[], const char *env
         while('\0' != envp[i][k++]);
     }
     return s;
+}
+
+STATUS KeSetThreadLocalStorage(struct KeTaskControlBlock *tcb, void *tls)
+{
+    tcb->tls = tls;
+    return OK;
 }

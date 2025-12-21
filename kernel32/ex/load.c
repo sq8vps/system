@@ -16,7 +16,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 
     if(!IoCheckIfFileExists(path))
 	{
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
 	}
 	
     status = IoOpenFile(path, IO_FILE_READ, 0, &f);
@@ -35,7 +35,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 		goto ExProcessLoadWorkerFailed;
 	else if(actualSize < sizeof(*ehdr))
 	{
-		status = READ_INCOMPLETE;
+		status = OPERATION_INCOMPLETE;
 		goto ExProcessLoadWorkerFailed;
 	}
 
@@ -45,7 +45,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 
 	if(ET_EXEC != ehdr->e_type)
 	{
-		status = ELF_UNSUPPORTED_TYPE;
+		status = BAD_TYPE;
 		goto ExProcessLoadWorkerFailed;
 	}
 	//TODO: implement PIE handling
@@ -63,7 +63,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 		goto ExProcessLoadWorkerFailed;
 	else if(actualSize < phdrSize)
 	{
-		status = READ_INCOMPLETE;
+		status = OPERATION_INCOMPLETE;
 		goto ExProcessLoadWorkerFailed;
 	}
 
@@ -87,7 +87,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 			if(phdr[i].p_flags & PF_X)
 				flags |= MM_TASK_MEMORY_EXECUTABLE;
 			
-			status = MmMapTaskMemory((void*)base, top - base, flags, f, ALIGN_DOWN(phdr[i].p_offset, PAGE_SIZE), 0, NULL);
+			status = MmMapTaskMemory((void*)base, top - base, flags, f, 0, ALIGN_DOWN(phdr[i].p_offset, PAGE_SIZE), 0, NULL);
 			if(OK != status)
 			{
 				goto ExProcessLoadWorkerFailed;

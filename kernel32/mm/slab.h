@@ -32,6 +32,12 @@ void *MmSlabAllocate(void *slabHandle);
 */
 void MmSlabFree(void *slabHandle, void *memory);
 
+/**
+ * @brief Destroy slab cache
+ * @param *slabHandle Slab handle obtained from MmSlabCreate()
+ */
+void MmSlabDestroy(void *slabHandle);
+
 END_EXPORT_API
 
 #endif

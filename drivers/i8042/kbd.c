@@ -17,7 +17,7 @@ uint16_t Ps2KeyboardParse(uint8_t data, uint8_t *buffer, uint8_t *index)
     {
         if((0xF0 == data) || (0xE0 == data) || (0xE1 == data)) //break or extended code, wait for the next byte
         {
-            return PS2_KEY_INCOMPLETE;
+            return PS2_UNKNOWN_KEY;
         }
         else //not an extended code, the scan code is 1 byte wide
         {
@@ -35,7 +35,7 @@ uint16_t Ps2KeyboardParse(uint8_t data, uint8_t *buffer, uint8_t *index)
             //key is not extended, otherwise 0xE0 would be first
             *index = 0;
             if(data >= (sizeof(Ps2UsSet2) / sizeof(*Ps2UsSet2)))
-                return 0;
+                return PS2_UNKNOWN_KEY;
             else
                 return Ps2UsSet2[data];
         }
@@ -45,20 +45,20 @@ uint16_t Ps2KeyboardParse(uint8_t data, uint8_t *buffer, uint8_t *index)
             {
                 //if current byte is 0xF0, which is break (key released), then wait for the actual key code
                 //if current byte is 0x12, this should be print screen key, wait
-                return PS2_KEY_INCOMPLETE;
+                return PS2_UNKNOWN_KEY;
             }
             else //key is extended
             {
                 *index = 0;
                 if(data >= (sizeof(Ps2UsSet2Ext) / sizeof(*Ps2UsSet2Ext)))
-                    return 0;
+                    return PS2_UNKNOWN_KEY;
                 else
-                    return Ps2UsSet2Ext[data] | PS2_KEY_STATE_BIT;
+                    return Ps2UsSet2Ext[data] ? (Ps2UsSet2Ext[data] | PS2_KEY_STATE_BIT) : PS2_UNKNOWN_KEY;
             }
         }
         else //if(0xE1 == buffer[0]), only pause key starts with 0xE1
         {
-            return PS2_KEY_INCOMPLETE; //wait for all bytes
+            return PS2_UNKNOWN_KEY; //wait for all bytes
         }
     }
     else if(3 == *index) //third byte
@@ -67,28 +67,28 @@ uint16_t Ps2KeyboardParse(uint8_t data, uint8_t *buffer, uint8_t *index)
         if((0xE0 == buffer[0]) && (0xF0 == buffer[1]))
         {
             if(0x7C == data) //print screen break, wait
-                return PS2_KEY_INCOMPLETE;
+                return PS2_UNKNOWN_KEY;
 
             *index = 0;
             if(data >= (sizeof(Ps2UsSet2Ext) / sizeof(*Ps2UsSet2Ext)))
-                return 0;
+                return PS2_UNKNOWN_KEY;
             else
-                return Ps2UsSet2Ext[data];
+                return Ps2UsSet2Ext[data] ? Ps2UsSet2Ext[data] : PS2_UNKNOWN_KEY;
         }
         //print screen combination, wait
         else if((0xE0 == buffer[0]) && (0x12 == buffer[1]) && (0xE0 == data))
         {
-            return PS2_KEY_INCOMPLETE;
+            return PS2_UNKNOWN_KEY;
         }
         //pause combination, wait
         else if((0xE1 == buffer[0]) && (0x14 == buffer[1]) && (0x77 == data))
         {
-            return PS2_KEY_INCOMPLETE;
+            return PS2_UNKNOWN_KEY;
         }
         else
         {
             *index = 0;
-            return 0; //key unknown
+            return PS2_UNKNOWN_KEY; //key unknown
         }
     }
     else //4th and next bytes
@@ -120,12 +120,12 @@ uint16_t Ps2KeyboardParse(uint8_t data, uint8_t *buffer, uint8_t *index)
         else if(8 == *index)
         {
             *index = 0;
-            return 0;
+            return PS2_UNKNOWN_KEY;
         }
         //wait until 8 bytes are received
         else
         {
-            return PS2_KEY_INCOMPLETE;
+            return PS2_UNKNOWN_KEY;
         }
     }
 }

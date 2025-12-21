@@ -116,7 +116,7 @@ struct Multiboot2ElfSymbolsTag
     struct Multiboot2InfoTag header;
     /*
     Apparently, the Multiboot2 specification (https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html) 
-    is completely inconsistent on how this tag should look like. In specification, the following fields
+    is completely inconsistent on how this tag should look. In specification, the following fields
     should be 16-bit and there should be a 16-bit "reserved" field. In the example code, however,
     all fields are 32-bit and there is no "reserved" field. It looks like Grub2 adheres to the latter.
     */

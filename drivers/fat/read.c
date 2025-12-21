@@ -25,7 +25,7 @@ static STATUS FatReadWriteCallback(struct IoRp *rp, void *context)
     struct FatReadCallbackContext *ctx = context;
     STATUS status = rp->status;
     if(rp->size != ctx->toTransfer)
-        status = ctx->write ? WRITE_INCOMPLETE : READ_INCOMPLETE;
+        status = OPERATION_INCOMPLETE;
     
     if(OK != status)
         goto FatReadCallbackExit;
@@ -46,7 +46,7 @@ static STATUS FatReadWriteCallback(struct IoRp *rp, void *context)
 
     if(!FAT_CLUSTER_VALID(ctx->vol, ctx->cluster))
     {
-        status = FILE_BROKEN;
+        status = CORRUPTED;
         goto FatReadCallbackExit;
     }
 
@@ -132,20 +132,20 @@ STATUS FatReadWrite(struct IoRp *rp)
     bool eof = false;
 
     if((IO_RP_READ != rp->code) && (IO_RP_WRITE != rp->code))
-        return RP_PROCESSING_FAILED;
+        return NOT_SUPPORTED;
     
     if(NULL == rp->vfsNode)
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     
     if(!((IO_VFS_FILE == rp->vfsNode->type) || (IO_VFS_LINK == rp->vfsNode->type)))
-        return BAD_FILE_TYPE;
+        return BAD_TYPE;
     
     if(rp->vfsNode->device != rp->device)
-        return RP_PROCESSING_FAILED;
+        return BAD_PARAMETER;
     
     struct FatVolume *vol = rp->device->privateData;
     if(NULL == vol)
-        return RP_PROCESSING_FAILED;
+        return NOT_SUPPORTED;
     
     if(!write)
     {
@@ -162,7 +162,7 @@ STATUS FatReadWrite(struct IoRp *rp)
     {
         if(rp->payload.write.offset > rp->vfsNode->size)
         {
-            return FILE_TOO_SMALL;
+            return BAD_PARAMETER;
         }
     }
 
@@ -200,7 +200,7 @@ STATUS FatReadWrite(struct IoRp *rp)
     {
         MmFreeKernelHeap(ctx);
         IoFreeRp(n);
-        return FILE_BROKEN;
+        return CORRUPTED;
     }
 
     uint64_t consecutive = 0; //number of available consecutive bytes

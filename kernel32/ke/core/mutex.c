@@ -203,7 +203,7 @@ void KeReleaseMutex(KeMutex *mutex)
     PRIO prio = KeAcquireSpinlock(&(mutex->lock));
     if(unlikely((NULL == mutex->owner) || (0 == mutex->current)))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 1, (uintptr_t)mutex, 0, 0);
-    mutex->current--;
+    --mutex->current;
     if(0 == mutex->current)
     {
         if(NULL == mutex->head)

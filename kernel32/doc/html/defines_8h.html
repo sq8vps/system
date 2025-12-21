@@ -151,19 +151,19 @@ $(document).ready(function(){initNavTree('defines_8h.html',''); initResizable();
 <tr class="separator:ga638f01e78d9750d6cd695b77033ef4d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga32c27cc471df37f4fc818d65de0a56c4"><td class="memItemLeft" align="right" valign="top"><a id="ga32c27cc471df37f4fc818d65de0a56c4" name="ga32c27cc471df37f4fc818d65de0a56c4"></a>enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__defines.html#ga32c27cc471df37f4fc818d65de0a56c4">STATUS</a> { <br />
 &#160;&#160;<b>OK</b> = 0
-, <b>NULL_POINTER_GIVEN</b> = 1
+, <b>BAD_PARAMETER</b> = 1
 , <b>NOT_IMPLEMENTED</b>
 , <b>OUT_OF_RESOURCES</b>
 , <br />
-&#160;&#160;<b>BAD_INTERRUPT_VECTOR</b> = 0x00001000
+&#160;&#160;<b>BAD_PARAMETER</b> = 0x00001000
 , <b>IT_NO_CONTROLLER_CONFIGURED</b>
-, <b>INTERRUPT_ALREADY_REGISTERED</b>
-, <b>INTERRUPT_NOT_REGISTERED</b>
+, <b>ALREADY_EXISTS</b>
+, <b>BAD_PARAMETER</b>
 , <br />
-&#160;&#160;<b>NO_FREE_INTERRUPT_VECTORS</b>
+&#160;&#160;<b>OUT_OF_RESOURCES</b>
 , <b>OUT_OF_RESOURCES</b> = 0x00002000
 , <b>PAGE_NOT_PRESENT</b>
-, <b>MEMORY_ALREADY_MAPPED</b>
+, <b>ALREADY_EXISTS</b>
 , <br />
 &#160;&#160;<b>MM_TOO_MANY_ENTRIES</b>
 , <b>BAD_ALIGNMENT</b>
@@ -173,16 +173,16 @@ $(document).ready(function(){initNavTree('defines_8h.html',''); initResizable();
 &#160;&#160;<b>MEMORY_ALREADY_UNMAPPED</b>
 , <b>MM_HEAP_ALLOCATION_FAILURE</b>
 , <b>MM_DYNAMIC_MEMORY_ALLOCATION_FAILURE</b>
-, <b>ELF_BAD_ARCHITECTURE</b> = 0x00003000
+, <b>INCOMPATIBLE</b> = 0x00003000
 , <br />
-&#160;&#160;<b>ELF_BAD_INSTRUCTION_SET</b>
-, <b>ELF_BAD_FORMAT</b>
-, <b>ELF_BAD_ENDIANESS</b>
-, <b>ELF_BROKEN</b>
+&#160;&#160;<b>INCOMPATIBLE</b>
+, <b>INCOMPATIBLE</b>
+, <b>INCOMPATIBLE</b>
+, <b>CORRUPTED</b>
 , <br />
-&#160;&#160;<b>ELF_UNSUPPORTED_TYPE</b>
-, <b>ELF_UNDEFINED_SYMBOL</b>
-, <b>ELF_UNDEFINED_EXTERNAL_SYMBOL</b>
+&#160;&#160;<b>INCOMPATIBLE</b>
+, <b>UNDEFINED_SYMBOL</b>
+, <b>UNDEFINED_SYMBOL</b>
 , <b>EXEC_MALLOC_FAILED</b>
 , <br />
 &#160;&#160;<b>EXEC_UNSUPPORTED_KERNEL_MODE_DRIVER_TYPE</b>
@@ -195,19 +195,19 @@ $(document).ready(function(){initNavTree('defines_8h.html',''); initResizable();
 , <b>KE_TCB_PREPARATION_FAILURE</b>
 , <b>ROOT_DEVICE_INIT_FAILURE</b> = 0x00005000
 , <br />
-&#160;&#160;<b>ILLEGAL_NAME</b>
-, <b>FILE_NOT_FOUND</b>
-, <b>FILE_ALREADY_EXISTS</b>
-, <b>SYSTEM_INCOMPATIBLE</b>
+&#160;&#160;<b>BAD_PARAMETER</b>
+, <b>NOT_FOUND</b>
+, <b>ALREADY_EXISTS</b>
+, <b>INCOMPATIBLE</b>
 , <br />
-&#160;&#160;<b>NOT_A_DIRECTORY</b>
+&#160;&#160;<b>BAD_TYPE</b>
 , <b>FILE_COUNT_LIMIT_REACHED</b>
-, <b>BAD_FILE_TYPE</b>
-, <b>FILE_LOCKED</b>
+, <b>BAD_TYPE</b>
+, <b>TIMEOUT</b>
 , <br />
-&#160;&#160;<b>FILE_IRREMOVABLE</b>
+&#160;&#160;<b>OPERATION_NOT_ALLOWED</b>
 , <b>DIRECTORY_NOT_EMPTY</b>
-, <b>FILE_IN_USE</b>
+, <b>BUSY</b>
 , <b>MP_FLOATING_POINTER_TABLE_NOT_FOUND</b> = 0x01000000
 , <br />
 &#160;&#160;<b>MP_CONFIGURATION_TABLE_NOT_FOUND</b>
@@ -217,10 +217,10 @@ $(document).ready(function(){initNavTree('defines_8h.html',''); initResizable();
 , <br />
 &#160;&#160;<b>APIC_LAPIC_BAD_LINT_NUMBER</b>
 , <b>APIC_IOAPIC_BAD_INPUT_NUMBER</b>
-, <b>FILE_NOT_FOUND</b> = 0x03000000
-, <b>FILE_NOT_FOUND</b>
+, <b>NOT_FOUND</b> = 0x03000000
+, <b>NOT_FOUND</b>
 , <br />
-&#160;&#160;<b>FILE_NOT_FOUND</b>
+&#160;&#160;<b>NOT_FOUND</b>
 , <b>BOOTVGA_INIT_FAILURE</b>
 , <b>INITRD_INIT_FAILURE</b>
 , <b>HAL_INIT_FAILURE</b>

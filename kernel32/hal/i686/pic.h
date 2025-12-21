@@ -36,10 +36,15 @@ INTERNAL STATUS PicEnableIrq(uint32_t input);
 INTERNAL STATUS PicDisableIrq(uint32_t input);
 
 /**
- * @brief Set PICs IRQ mask directly
- * @param mask New mask to apply (master in LSB, slave in MSB)
-*/
-INTERNAL void PicSetIrqMask(uint16_t mask);
+ * @brief Enable PIC
+ */
+INTERNAL void PicEnable(void);
+
+/**
+ * @brief Disable PIC completely
+ * @attention Do not use this function to disable interrupts
+ */
+INTERNAL void PicDisable(void);
 
 /**
  * @brief Get ISR register from both PICs
@@ -55,9 +60,10 @@ INTERNAL uint16_t PicGetIrr(void);
 
 /**
  * @brief Check if interrupt is spurious
+ * @param vector Generated interrupt vector
  * @return True if spurious, false if not
 */
-INTERNAL bool PicIsIrqSpurious(void);
+INTERNAL bool PicIsIrqSpurious(uint8_t vector);
 
 /**
  * @brief Reserve PIC input

@@ -9,10 +9,10 @@ STATUS FsGetNode(const struct IoVfsNode *parent, const char *name, struct IoVfsN
     STATUS status = OK;
 
     if(!node)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     if(IO_DEVICE_TYPE_FS != parent->device->type)
-        return SYSTEM_INCOMPATIBLE;
+        return BAD_TYPE;
     
     struct IoRp *rp = IoCreateRp();
     if(NULL == rp)
@@ -46,10 +46,10 @@ STATUS FsGetNodeChildren(const struct IoVfsNode *node, struct IoVfsNode **childr
     STATUS status = OK;
 
     if(!node)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     if(IO_DEVICE_TYPE_FS != node->device->type)
-        return SYSTEM_INCOMPATIBLE;
+        return BAD_TYPE;
     
     struct IoRp *rp = IoCreateRp();
     if(NULL == rp)

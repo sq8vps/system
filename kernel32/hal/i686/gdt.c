@@ -3,7 +3,7 @@
 #include "config.h"
 #include "msr.h"
 
-#define GDT_MAX_ENTRIES (4 + MAX_CPU_COUNT)
+#define GDT_MAX_ENTRIES (4 + 2 * MAX_CPU_COUNT)
 #define GDT_PRESENT_FLAG (1 << 7)
 #define GDT_PRIVILEGE_LEVEL_0 (0)
 #define GDT_PRIVILEGE_LEVEL_3 ((1 << 6) | (1 << 5))
@@ -110,13 +110,21 @@ void GdtInit(void)
     I686Gdt[GDT_USER_DS].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
     I686Gdt[GDT_USER_DS].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;
 
+    for(size_t i = 0; i < MAX_CPU_COUNT; i++)
+    {
+        I686Gdt[GDT_TLS(i)].limit1 = 0xFFFF;
+        I686Gdt[GDT_TLS(i)].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
+        I686Gdt[GDT_TLS(i)].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;  
+    }
+
+
     I686GdtRegister.size = (sizeof(I686Gdt)) - 1;
     I686GdtRegister.offset = (uintptr_t)I686Gdt;
 
-    GdtApply();
+    GdtApply(0);
 }
 
-void GdtApply(void)
+void GdtApply(uint16_t cpu)
 {
     ASM("lgdt %0" : : "m" (I686GdtRegister) : "memory"); //load new GDT register
     ASM("jmp %0:.1%=\n.1%=:" : : "X" (GDT_OFFSET(GDT_KERNEL_CS)) : "memory"); //perform far jump with code selector, CS can't be set directly
@@ -124,7 +132,7 @@ void GdtApply(void)
     ASM("mov ss,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
     ASM("mov es,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
     ASM("mov fs,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
-    ASM("mov gs,%0" : : "a" (GDT_OFFSET(GDT_KERNEL_DS)) : "memory");
+    ASM("mov gs,%0" : : "a" (USER_SELECTOR(GDT_TLS(cpu))) : "memory");
 }
 
 STATUS GdtAddCpu(uint16_t cpu)
@@ -161,4 +169,18 @@ void GdtUpdateTss(uintptr_t esp0)
     //convert GDT descriptor offset to CPU number and update kernel stack pointer
     I686Tss[GDT_CPU(GDT_ENTRY(t))].esp0 = esp0;
     MsrSet(MSR_IA32_SYSENTER_ESP, esp0);
+}
+
+__attribute__((fastcall))
+void HalUpdateTls(void *tls)
+{
+    register uint16_t t;
+    //get GDT descriptor with TSS from task register
+    ASM("str %0" : "=r" (t) :);
+    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].limit1 = 0xFFFF;
+    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base1 = (uintptr_t)tls & 0xFFFF;
+    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base2 = ((uintptr_t)tls >> 16) & 0xFF;
+    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
+    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;  
+    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base3 = ((uintptr_t)tls >> 24) & 0xFF;
 }

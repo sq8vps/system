@@ -31,7 +31,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         || (0 == bpb->sectorsPerCluster))
     {
         MmFreeKernelHeap(bpb);
-        return UNKNOWN_FILE_SYSTEM;
+        return BAD_TYPE;
     }
 
     status = IoCreateDevice(drv, IO_DEVICE_TYPE_FS, 0, &dev);
@@ -143,6 +143,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     status = IoReadDeviceSync(disk, info->reservedSectors * disk->blockSize, info->fatSize * disk->blockSize, &(info->fat));
     if(OK != status)
     {
+        LOG(SYSLOG_INFO, "Failed to read FAT table: %d", (int)status);
         IoDestroyDevice(disk);
         MmFreeKernelHeap(info->fat);
         MmFreeKernelHeap(info);
@@ -170,8 +171,11 @@ STATUS FatVerify(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         || (0 == bpb->bytesPerSector)
         || (0 == bpb->sectorsPerCluster))
     {
+#ifdef DEBUG
+        LOG(SYSLOG_INFO, "Volume is not FAT-formatted");
+#endif
         MmFreeKernelHeap(bpb);
-        return UNKNOWN_FILE_SYSTEM;
+        return BAD_TYPE;
     }
     else
     {

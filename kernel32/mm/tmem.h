@@ -52,7 +52,7 @@ struct MmTaskMemory
  * @return True if user-space memory, false otherwise
  * @note This macro accounts for address wrapping
  */
-#define IS_USER_MEMORY(base, size) ((((uintptr_t)(base) + (uintptr_t)(size)) < HAL_USER_SPACE_TOP) && (((uintptr_t)(base) + (uintptr_t)(size)) >= (uintptr_t)(base)))
+#define IS_USER_MEMORY(base, size) ((((uintptr_t)(base) + (uintptr_t)(size)) <= HAL_USER_SPACE_TOP) && (((uintptr_t)(base) + (uintptr_t)(size)) >= (uintptr_t)(base)))
 
 /**
  * @brief Map task memory
@@ -65,13 +65,23 @@ struct MmTaskMemory
  * @param flags Mapping flags. Refer to #MmTaskMemoryFlags
  * @param fd Descriptor of the file to be mapped. If negative (<0), a zero-initialized memory mapping, not backed by any file, is created. 
  * File open mode must not conflict with provided flags.
+ * @param alignment Required alignment. Memory is always at least page aliged.
  * @param offset Offset within the file, must be page aligned. If file is not provided, then it is ignored.
  * @param limit Region size limit if \a MM_TASK_MEMORY_GROWABLE flag is specified. The limit does not include the guard page size.
  * @param **mapped Mapped region pointer. If \a MM_TASK_MEMORY_REVERSED flag is specified, the pointer referes to the *top* (highest) address of the mapping.
  * If the returned status is not \a OK, the value is invalid. NULL can be provided if this pointer is not needed.
  * @return Status code
  */
-STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags, int fd, uint64_t offset, size_t limit, void **mapped);
+STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags, int fd, size_t alignment, uint64_t offset, size_t limit, void **mapped);
+
+/**
+ * @brief Unmap task memory
+ * @param *ptr Pointer within the mapped region to be unmapped
+ * @param length Length of the mapping to be unmapped. All mappings containing a part of the indicated range are unmapped. 
+ * Might be set to zero to delete the mapping pointed by *ptr.
+ * @return Status code. OK when at least one memory region was unmapped. NOT_FOUND if no memory region was unmapped.
+ */
+STATUS MmUnmapTaskMemory(const void *const ptr, size_t length);
 
 /**
  * @brief Get task memory descriptor for given pointer

@@ -50,7 +50,7 @@
 STATUS IdeClearPrdTable(struct IdePrdTable *t)
 {
     if((NULL == t) || (NULL == t->table))
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     RtlMemset(t->table, 0, IDE_MAX_PRD_ENTRIES * sizeof(*(t->table)));
     t->entries = 0;
@@ -60,7 +60,7 @@ STATUS IdeClearPrdTable(struct IdePrdTable *t)
 STATUS IdeInitializePrdTables(struct IdeControllerData *info)
 {
     if(NULL == info)
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     for(uint16_t t = 0; t < 2; t++)
     {
@@ -83,6 +83,7 @@ STATUS IdeInitializePrdTables(struct IdeControllerData *info)
             return OUT_OF_RESOURCES;
         }
         IdeClearPrdTable(&(info->channel[t].prdt));
+        IdeWriteBmrPrdt(info, t, &(info->channel[t].prdt));
     }
 
     return OK;
@@ -121,7 +122,7 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
     {
         LOG(SYSLOG_ERROR, "This device is not a PCI IDE controller");
         MmFreeKernelHeap(hdr);
-        return SYSTEM_INCOMPATIBLE;
+        return DEVICE_NOT_AVAILABLE;
     }
 
     mdo->flags = IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
@@ -137,14 +138,14 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
             {
                 LOG(SYSLOG_ERROR, "Primary channel is in native mode, but its command I/O port is 0");
                 MmFreeKernelHeap(hdr);
-                return SYSTEM_INCOMPATIBLE;
+                return NOT_SUPPORTED;
             }
         } 
         else
         {
             LOG(SYSLOG_ERROR, "Primary channel has no I/O command port. Hardware bug?");
             MmFreeKernelHeap(hdr);
-            return SYSTEM_INCOMPATIBLE;
+            return NOT_SUPPORTED;
         }
         if(hdr->standard.bar[PCI_IDE_CONTROL_PRIMARY_BAR] & PCI_IDE_BAR_IO_PORT_FLAG)
         {
@@ -154,14 +155,14 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
             {
                 LOG(SYSLOG_ERROR, "Primary channel is in native mode, but its control I/O port is 0");
                 MmFreeKernelHeap(hdr);
-                return SYSTEM_INCOMPATIBLE;
+                return NOT_SUPPORTED;
             }
         } 
         else
         {
             LOG(SYSLOG_ERROR, "Primary channel has no I/O control port. Hardware bug?");
             MmFreeKernelHeap(hdr);
-            return SYSTEM_INCOMPATIBLE;
+            return NOT_SUPPORTED;
         }
     }
     else
@@ -180,14 +181,14 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
             {
                 LOG(SYSLOG_ERROR, "Secondary channel is in native mode, but its command I/O port is 0");
                 MmFreeKernelHeap(hdr);
-                return SYSTEM_INCOMPATIBLE;
+                return NOT_SUPPORTED;
             }
         } 
         else
         {
             LOG(SYSLOG_ERROR, "Secondary channel has no I/O command port. Hardware bug?");
             MmFreeKernelHeap(hdr);
-            return SYSTEM_INCOMPATIBLE;
+            return NOT_SUPPORTED;
         }
         if(hdr->standard.bar[PCI_IDE_CONTROL_SECONDARY_BAR] & PCI_IDE_BAR_IO_PORT_FLAG)
         {
@@ -197,14 +198,14 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
             {
                 LOG(SYSLOG_ERROR, "Secondary channel is in native mode, but its control I/O port is 0");
                 MmFreeKernelHeap(hdr);
-                return SYSTEM_INCOMPATIBLE;
+                return NOT_SUPPORTED;
             }
         } 
         else
         {
             LOG(SYSLOG_ERROR, "Secondary channel has no I/O control port. Hardware bug?");
             MmFreeKernelHeap(hdr);
-            return SYSTEM_INCOMPATIBLE;
+            return NOT_SUPPORTED;
         }
         
     }
@@ -226,8 +227,8 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
             else
             {
                 LOG(SYSLOG_INFO, "Controller is bus master capable");
-                info->channel[PCI_IDE_CHANNEL_PRIMARY].masterPort = port;
-                info->channel[PCI_IDE_CHANNEL_SECONDARY].masterPort = port + 8;
+                info->channel[PCI_IDE_CHANNEL_PRIMARY].bmPort = port;
+                info->channel[PCI_IDE_CHANNEL_SECONDARY].bmPort = port + 8;
                 info->busMaster = true;
                 hdr->command |= PCI_HEADER_COMMAND_BUS_MASTER;
             }
@@ -337,22 +338,27 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
     return status;
 }
 
+uint8_t IdeReadBmrCommand(struct IdeControllerData *info, uint8_t chan)
+{
+    return IoPortReadByte(info->channel[chan].bmPort + IDE_BMR_COMMAND_SHIFT);
+}
+
 void IdeWriteBmrCommand(struct IdeControllerData *info, uint8_t chan, uint8_t command)
 {
-    IoPortWriteByte(info->channel[chan].masterPort + IDE_BMR_COMMAND_SHIFT, command);
+    IoPortWriteByte(info->channel[chan].bmPort + IDE_BMR_COMMAND_SHIFT, command);
 }
 
 uint8_t IdeReadBmrStatus(struct IdeControllerData *info, uint8_t chan)
 {
-    return IoPortReadByte(info->channel[chan].masterPort + IDE_BMR_STATUS_SHIFT);
+    return IoPortReadByte(info->channel[chan].bmPort + IDE_BMR_STATUS_SHIFT);
 }
 
 void IdeWriteBmrStatus(struct IdeControllerData *info, uint8_t chan, uint8_t status)
 {
-    IoPortWriteByte(info->channel[chan].masterPort + IDE_BMR_STATUS_SHIFT, status);
+    IoPortWriteByte(info->channel[chan].bmPort + IDE_BMR_STATUS_SHIFT, status);
 }
 
 void IdeWriteBmrPrdt(struct IdeControllerData *info, uint8_t chan, struct IdePrdTable *prdt)
 {
-    IoPortWriteDWord(info->channel[chan].masterPort + IDE_BMR_PRDT_SHIFT, prdt->physical);
+    IoPortWriteDWord(info->channel[chan].bmPort + IDE_BMR_PRDT_SHIFT, prdt->physical);
 }

@@ -11,13 +11,14 @@
 #include "irq.h"
 #include "it/it.h"
 #include "cpu.h"
-#include "time.h"
 #include "pic.h"
 #include "it/it.h"
 #include "interrupts/it.h"
 #include "mm/palloc.h"
 #include "emu/emu.h"
 #include "tsc.h"
+#include "ke/sched/sched.h"
+#include "lapic.h"
 
 struct MmMemoryPool HalPhysicalPool[HAL_PHYSICAL_MEMORY_POOLS] = 
 {
@@ -44,9 +45,9 @@ void HalInitPhase1(void)
     if(OK != I686InitIdt())
         FAIL_BOOT("IDT initialization failed");
 
-    //mask all PIC IRQs, because they are mapped to real-mode interrupt vectorw by the default,
+    //mask all PIC IRQs, because they are mapped to real-mode interrupt vectors by the default,
     //and these vectors are the exception vectors in protected mode
-    PicSetIrqMask(0xFFFF);
+    PicDisable();
     //install IDT temporarily so we can handle exceptions properly
     I686InstallIdt(0);
 }
@@ -93,5 +94,4 @@ void HalInitPhase3(void)
     if(OK != I686InitializeEmulator())
         FAIL_BOOT("real mode emulator initialization failed");
 }
-
 #endif

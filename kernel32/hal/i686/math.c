@@ -13,7 +13,7 @@ static bool HalSseAvailable = false;
 STATUS I686InitMath(void)
 {
     if(!CpuidCheckIfFpuAvailable())
-        return SYSTEM_INCOMPATIBLE;
+        return DEVICE_NOT_AVAILABLE;
     
     if(CpuidCheckIfSseAvailable())
     {

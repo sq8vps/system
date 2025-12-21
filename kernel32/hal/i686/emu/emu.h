@@ -19,7 +19,7 @@ EXPORT_API
  * @param offset Offset
  * @return Linear address
  */
-#define EMU_FAR_POINTER_TO_LINEAR(seg, offset) ((seg) * 16 + (offset))
+#define EMU_FAR_POINTER_TO_LINEAR(seg, offset) ((uint32_t)(seg) * (uint32_t)16 + (uint32_t)(offset))
 
 /**
  * @brief Segment used for passing data to emulator
@@ -51,6 +51,13 @@ enum I686EmulatorState
  * @return Status code
  */
 STATUS I686AcquireEmulator(uint64_t timeout);
+
+/**
+ * @brief Acquire real mode emulator immediately in case of a kernel panic
+ * @return Status code
+ * @warning Prioriy level must be HAL_PRIORITY_LEVEL_HIGHEST
+ */
+STATUS I686AcquireEmulatorOnPanic(void);
 
 /**
  * @brief Release real mode emulator

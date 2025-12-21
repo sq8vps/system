@@ -12,7 +12,6 @@
 #include "mm/dynmap.h"
 #include "assert.h"
 #include "config.h"
-#include "time.h"
 #include "rtl/stdlib.h"
 #include "ex/load.h"
 #include "hal/math.h"
@@ -187,7 +186,7 @@ static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context, v
             uintptr_t alignedSize = alignedBase - ALIGN_DOWN((uintptr_t)stack - I686_USER_STACK_DEFAULT_SIZE, PAGE_SIZE);
 
             status = MmMapTaskMemory((void*)alignedBase, alignedSize, 
-                MM_TASK_MEMORY_STACK | MM_TASK_MEMORY_LOCKED | MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_GROWABLE, -1, 0, I686_USER_STACK_MAX_SIZE, NULL);
+                MM_TASK_MEMORY_STACK | MM_TASK_MEMORY_LOCKED | MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_GROWABLE, -1, 0, 0, I686_USER_STACK_MAX_SIZE, NULL);
             //since MM_TASK_MEMORY_FIXED is used, then the stack is allocated at *alignedBase* or the function fails
             if(OK == status)
             {
@@ -205,7 +204,7 @@ static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context, v
                     struct KeTaskArguments *args = context;
                     void *argsBuffer = NULL;
                     status = MmMapTaskMemory(NULL, args->size + (args->argc + 1 + args->envc) * sizeof(char*), 
-                        MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, -1, 0, 0, &argsBuffer);
+                        MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, -1, 0, 0, 0, &argsBuffer);
                     if(OK == status)
                     {
                         RtlMemcpy(&((char**)argsBuffer)[args->argc + 1 + args->envc + 1], args->data, args->size);
@@ -238,8 +237,14 @@ static NORETURN void I686ProcessBootstrap(void (*entry)(void*), void *context, v
 
                         MmFreeKernelHeap(args);
                     }
+                    else
+                        LOG(SYSLOG_ERROR, "Failed to allocate memory for entry arguments: error 0x%X", (unsigned int)status);
                 }
+                else
+                    LOG(SYSLOG_ERROR, "Failed to load process image: error 0x%X", (unsigned int)status);
             }
+            else
+                LOG(SYSLOG_ERROR, "Failed to allocate user stack at 0x%p of size 0x%p: error 0x%X", (void*)alignedBase, (void*)alignedSize, (unsigned int)status);
         }
         else //a child thread
         {

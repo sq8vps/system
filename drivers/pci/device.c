@@ -179,7 +179,7 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
 STATUS PciEnumerate(struct ExDriverObject *drv, struct IoDeviceObject *dev, struct PciBridge *bridge)
 {
     if(!((dev->type == IO_DEVICE_TYPE_BUS) || (dev->flags & IO_DEVICE_FLAG_ENUMERATION_CAPABLE)))
-        return OPERATION_NOT_ALLOWED;
+        return NOT_SUPPORTED;
     if(alreadyEnumerated)
         return OK;
     alreadyEnumerated = true;
@@ -231,7 +231,7 @@ STATUS PciAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *
     
     if(IO_BUS_TYPE_PCI != busType)
     {
-        status = SYSTEM_INCOMPATIBLE;
+        status = NOT_SUPPORTED;
         goto _PciAddDeviceFailure;
     }
 
@@ -328,7 +328,7 @@ STATUS PciGetSystemDeviceId(struct IoRp *rp)
         rp->payload.deviceId.compatibleId = compatibleIds;
         return OK;
     }
-    return RP_PROCESSING_FAILED;
+    return NOT_SUPPORTED;
 }
 
 STATUS PciGetResources(struct IoRp *rp)
@@ -368,5 +368,5 @@ STATUS PciGetResources(struct IoRp *rp)
 
         return OK;
     }
-    return RP_PROCESSING_FAILED;    
+    return NOT_SUPPORTED;    
 }

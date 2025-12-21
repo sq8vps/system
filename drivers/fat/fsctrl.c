@@ -11,11 +11,11 @@
 STATUS FatFsControl(struct IoRp *rp)
 {
     if(IO_RP_FILESYSTEM_CONTROL != rp->code)
-        return RP_PROCESSING_FAILED;
+        return BAD_PARAMETER;
 
     struct FatVolume *vol = rp->device->privateData;
     if(NULL == vol)
-        return RP_PROCESSING_FAILED;
+        return NOT_SUPPORTED;
 
     return FatGetNode(rp, vol);
 }

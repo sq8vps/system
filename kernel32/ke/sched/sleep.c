@@ -46,7 +46,7 @@ void KeDelay(uint64_t time)
 {
     time += HalGetTimestamp();
     while(HalGetTimestamp() < time)
-        ;
+        TIGHT_LOOP_HINT();
 }
 
 STATUS KeRefreshSleepingTasks(void)

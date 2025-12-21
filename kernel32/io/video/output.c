@@ -4,6 +4,7 @@
 #include "mm/mmio.h"
 #include "mm/heap.h"
 #include "hal/interrupt.h"
+#include "io/log/syslog.h"
 
 /**
  * @brief Maximum number of registered video outputs
@@ -170,7 +171,7 @@ STATUS IoGetVideoOutput(int handle, IoVideoConfigChangeHandler changeHandler, vo
     STATUS status = OK;
 
     if((handle < 0) || (handle >= IO_MAX_VIDEO_OUTPUTS))
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     
     PRIO prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.lock));
     if(IoVideoOutputs.list[handle].used)
@@ -187,11 +188,11 @@ STATUS IoGetVideoOutput(int handle, IoVideoConfigChangeHandler changeHandler, vo
         }
     }
     else
-        status = FILE_NOT_FOUND;
+        status = NOT_FOUND;
 
     if(OK == status)
     {
-        prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
         status = OUT_OF_RESOURCES;
         for(size_t i = 0; i < IO_MAX_VIDEO_EVENT_HANDLERS; i++)
         {
@@ -215,17 +216,17 @@ STATUS IoRemoveVideoOutputConfigChangeHandler(int handle, IoVideoConfigChangeHan
     STATUS status = OK;
 
     if((handle < 0) || (handle >= IO_MAX_VIDEO_OUTPUTS))
-        return FILE_NOT_FOUND;
+        return NOT_FOUND;
     
     PRIO prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.lock));
     if(!IoVideoOutputs.list[handle].used)
     {
-        status = FILE_NOT_FOUND;  
+        status = NOT_FOUND;  
     }
     else
     {
-        prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
-        status = FILE_NOT_FOUND;
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
+        status = NOT_FOUND;
         for(size_t i = 0; i < IO_MAX_VIDEO_EVENT_HANDLERS; i++)
         {
             if(IoVideoOutputs.list[handle].changeHandler[i].used
@@ -245,6 +246,8 @@ STATUS IoRemoveVideoOutputConfigChangeHandler(int handle, IoVideoConfigChangeHan
     return status;
 }
 
+#include "assert.h"
+
 void IoDrawVideo(int handle)
 {
     if(unlikely((handle < 0) || (handle >= IO_MAX_VIDEO_OUTPUTS)))
@@ -259,7 +262,7 @@ void IoDrawVideo(int handle)
 
     if(IO_VIDEO_FRAME_BUFFER == IoVideoOutputs.list[handle].type)
     {
-        uint32_t *ufb = IoVideoOutputs.list[handle].fb.ufb;
+        volatile uint32_t *ufb = IoVideoOutputs.list[handle].fb.ufb;
         uint32_t *fb = IoVideoOutputs.list[handle].fb.fb;
         uint32_t *pfb = IoVideoOutputs.list[handle].fb.pfb;
         size_t size = (IoVideoOutputs.list[handle].fb.size < IoVideoOutputs.list[handle].fb.pSize) ? IoVideoOutputs.list[handle].fb.size : IoVideoOutputs.list[handle].fb.pSize;

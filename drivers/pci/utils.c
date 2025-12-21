@@ -142,7 +142,7 @@ STATUS PciWriteConfigurationSpace(union IoBusId address, struct IoRp *rp)
 	if(0 == rp->size)
 		return OK;
 	if(NULL == rp->payload.configSpace.buffer)
-		return NULL_POINTER_GIVEN;
+		return BAD_PARAMETER;
 	uint8_t *d = (uint8_t*)rp->payload.configSpace.buffer;
 	for(uint64_t i = 0; i < rp->size; i++)
 	{

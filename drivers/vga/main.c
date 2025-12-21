@@ -5,6 +5,7 @@
 #include "mm/heap.h"
 #include "vga.h"
 #include "vesa.h"
+#include "hal/video.h"
 
 /**
  * @brief Request dispatch routine
@@ -13,7 +14,7 @@ static STATUS VgaDispatch(struct IoRp *rp)
 {
     struct IoDeviceObject *dev = IoGetCurrentRpPosition(rp);
     if(NULL == dev->privateData)
-        return DEVICE_NOT_AVAILABLE;
+        return NOT_SUPPORTED;
 
     switch(rp->code)
     {
@@ -34,13 +35,13 @@ static STATUS VgaDispatch(struct IoRp *rp)
             }
             else
             {
-                rp->status = DEVICE_NOT_AVAILABLE;
+                rp->status = NOT_IMPLEMENTED;
                 IoFinalizeRp(rp);
                 break;
             }
             break;
         default:
-            rp->status = RP_PROCESSING_FAILED;
+            rp->status = BAD_PARAMETER;
             IoFinalizeRp(rp);
             break;
     }
@@ -71,6 +72,8 @@ static STATUS VgaAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
     }
 
     info->type = VGA_INFO_ADAPTER;
+    info->resetMode = 0xFFFF;
+    
     device->privateData = info;
     device->flags |= IO_DEVICE_FLAG_ENUMERATION_CAPABLE;
 
@@ -81,8 +84,10 @@ static STATUS VgaAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
         IoDestroyDevice(device);
         return status;
     }
-    
+
     IoAttachDevice(device, baseDeviceObject);
+
+    HalRegisterVideoResetRoutine(VgaResetAdapter, info);
         
     return OK;
 }

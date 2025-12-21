@@ -4,6 +4,11 @@
 #include <stddef.h>
 #include "tree.h"
 
+EXPORT_API
+
+/**
+ * @brief Generic binary search tree node
+ */
 struct BstNode
 {
   TREE_GENERAL(struct BstNode);
@@ -23,14 +28,46 @@ struct BstNode
 
 #endif
 
+/**
+ * @brief Insert a node into the binary search tree
+ * @param root Root of the tree
+ * @param node Node to insert
+ * @return New root of the tree
+ */
 struct BstNode* BstInsert(struct BstNode *root, struct BstNode *node);
 
-struct BstNode *BstFindExact(struct BstNode *root, size_t key);
+/**
+ * @brief Find a node with an exact key in the binary search tree
+ * @param root Root of the tree
+ * @param key Key to search for
+ * @return Node with the exact key or NULL if not found
+ */
+struct BstNode *BstFindExact(struct BstNode *root, tree_key_t key);
 
-struct BstNode *BstFindLess(struct BstNode *root, size_t key);
+/**
+ * @brief Find the largest node with a key less than the given key
+ * @param root Root of the tree
+ * @param key Key to search for
+ * @return Node with the largest key less than the given key or NULL if not found
+ */
+struct BstNode *BstFindLess(struct BstNode *root, tree_key_t key);
 
-struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, size_t key);
+/**
+ * @brief Find the smallest node with a key greater than or equal to the given key
+ * @param root Root of the tree
+ * @param key Key to search for
+ * @return Node with the smallest key greater than or equal to the given key or NULL if not found
+ */
+struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key);
 
+/**
+ * @brief Remove a node from the binary search tree
+ * @param root Root of the tree
+ * @param node Node to remove
+ * @return New root of the tree
+ */
 struct BstNode *BstRemove(struct BstNode *root, struct BstNode *node);
+
+END_EXPORT_API
 
 #endif

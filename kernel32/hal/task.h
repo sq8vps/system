@@ -49,4 +49,11 @@ INTERNAL void HalInitializeScheduler(void);
 */
 INTERNAL void HalPerformTaskSwitch(void);
 
+/**
+ * @brief Update Thread Local Storage pointer for current CPU
+ * @param *tls TLS pointer
+ */
+__attribute__((fastcall))
+INTERNAL void HalUpdateTls(void *tls);
+
 #endif

@@ -10,6 +10,7 @@
 #include "rtl/stdio.h"
 #include "io/dev/rp.h"
 #include "ddk/stor.h"
+#include "ke/core/panic.h"
 
 #define IDE_DEVICE_ID_PREFIX "DISK"
 #define IDE_DEVICE_ID_GENERIC "GENERIC"
@@ -35,7 +36,7 @@ void IdeProcessRequest(struct IoRp *rp)
             status = IdeReadWrite(info, true, rp->payload.write.offset, rp->size, rp->payload.write.memory);
             break;
         default:
-            status = RP_CODE_UNKNOWN;
+            status = BAD_PARAMETER;
             break;
     }
     
@@ -63,7 +64,7 @@ static void IdeFinalizeRequest(void *context)
 STATUS IdeCreateDriveDevice(struct IdeDeviceData *deviceData, struct IoDeviceObject *enumerator, struct ExDriverObject *driver)
 {
     if((NULL == deviceData) || (NULL == driver))
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
 
     STATUS status;
     
@@ -108,6 +109,14 @@ STATUS IdeCreateAllDriveDevices(struct IdeControllerData *info, struct IoDeviceO
 
 static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t lba, uint64_t size, struct MmMemoryDescriptor *buffer)
 {
+    AtaSelectDrive(info->controller, info->channel, info->drive);
+
+    uint8_t channelStatus = AtaGetChannelStatus(info->controller, info->channel);
+    if((channelStatus & ATA_STATUS_BSY) || !(channelStatus & ATA_STATUS_RDY))
+    {
+        return BUSY;
+    }
+
     PRIO prio = KeAcquireSpinlock(&(info->controller->channel[info->channel].lock));
     //clear Physical Region Descriptors
     IdeClearPrdTable(&(info->controller->channel[info->channel].prdt));
@@ -116,15 +125,25 @@ static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t 
     uint64_t byteLimit = info->sectorSize * (info->lba48 ? 0x10000 : 0x100); 
     uint64_t blockRemainingBytes = buffer->size;
     uint64_t blockNextAddress = buffer->physical;
-    while(blockRemainingBytes > 0)
+
+    uint64_t totalPrd = 0;
+
+    while(remainingBytes > 0)
     {
+        if(0 == blockRemainingBytes)
+        {
+            buffer = buffer->next;
+            blockRemainingBytes = buffer->size;
+            blockNextAddress = buffer->physical;
+        }
+
         if((size - remainingBytes) >= byteLimit)
             goto IdeStartReadWriteContinue;
         uint64_t bytes = remainingBytes;
         if(bytes > blockRemainingBytes)
             bytes = blockRemainingBytes;
-        if(bytes > byteLimit)
-            bytes = byteLimit;
+        if((size - remainingBytes + bytes) > byteLimit)
+            bytes = byteLimit - (size - remainingBytes);
         while(bytes > 0)
         {
             bool prdFull = false;
@@ -136,6 +155,7 @@ static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t 
                 blockNextAddress += IDE_PRD_MAX_SIZE;
                 blockRemainingBytes -= IDE_PRD_MAX_SIZE;
                 remainingBytes -= IDE_PRD_MAX_SIZE;
+                totalPrd += IDE_PRD_MAX_SIZE;
             }
             else
             {
@@ -143,16 +163,12 @@ static STATUS IdeStartReadWrite(struct IdeDriveData *info, bool write, uint64_t 
                 blockNextAddress += bytes;
                 blockRemainingBytes -= bytes;
                 remainingBytes -= bytes;
+                totalPrd += bytes;
                 bytes = 0;
             }
             if(prdFull)
                 goto IdeStartReadWriteContinue;
         }
-        if(0 == remainingBytes)
-            break;
-        buffer = buffer->next;
-        blockRemainingBytes = buffer->size;
-        blockNextAddress = buffer->physical;
     }
 
 IdeStartReadWriteContinue:
@@ -180,13 +196,6 @@ IdeStartReadWriteContinue:
     info->controller->channel[info->channel].operation.busy = 1;
     KeReleaseSpinlock(&(info->controller->channel[info->channel].lock), prio);
 
-    //store PRD table
-    IdeWriteBmrPrdt(info->controller, info->channel, &(info->controller->channel[info->channel].prdt));
-    //clear bus master status
-    uint8_t status = IdeReadBmrStatus(info->controller, info->channel);
-    status |= IDE_BMR_STATUS_INTERRUPT | IDE_BMR_STATUS_ERROR;
-    IdeWriteBmrStatus(info->controller, info->channel, status);
-
     //set operation parameters
     if(info->lba48)
         IdeWriteLba48Parameters(info->controller, info->channel, info->drive, lba, (size - remainingBytes) / info->sectorSize);
@@ -195,6 +204,9 @@ IdeStartReadWriteContinue:
 
     //issue ATA command
     IdeStartTransfer(info->controller, info->channel, info->drive, write, true == info->lba48);
+
+    //clear bus master status
+    IdeWriteBmrStatus(info->controller, info->channel, IDE_BMR_STATUS_INTERRUPT | IDE_BMR_STATUS_ERROR);
 
     //start DMA
     IdeWriteBmrCommand(info->controller, info->channel, IDE_BMR_COMMAND_START | (write ? 0 : IDE_BMR_COMMAND_RW_CONTROL));
@@ -227,8 +239,8 @@ STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint
             if(t->physical & 1)
                 return BAD_ALIGNMENT;
             //memory region must fit in 32 bits
-            if((t->physical + t->size) > 0x100000000)
-                return SYSTEM_INCOMPATIBLE;
+            if(((uint64_t)t->physical + (uint64_t)t->size) > (uint64_t)0x100000000)
+                return OUT_OF_RESOURCES;
             //find closest 64 KiB boundary
             uint32_t closestBoundary = (t->physical & 0xFFFF0000) + 0x10000;
             //check if the distance between the memory base and the closest boundary is a multiple of sector size
@@ -240,7 +252,7 @@ STATUS IdeReadWrite(struct IdeDriveData *info, bool write, uint64_t offset, uint
         }
     }
     else
-        return NULL_POINTER_GIVEN;
+        return BAD_PARAMETER;
     
     if(availableMemory < size)
         return OUT_OF_RESOURCES;
@@ -257,16 +269,19 @@ STATUS IdeIsr(void *context)
         if(bmrStatus & IDE_BMR_STATUS_INTERRUPT)
         {
             IdeWriteBmrCommand(info, i, 0);
-            IdeWriteBmrStatus(info, i, bmrStatus | IDE_BMR_STATUS_INTERRUPT | IDE_BMR_STATUS_ERROR);
+            IdeWriteBmrStatus(info, i, IDE_BMR_STATUS_INTERRUPT);
             PRIO prio = KeAcquireSpinlock(&(info->channel[i].lock));
             if(info->channel[i].operation.busy)
             {
                 KeReleaseSpinlock(&(info->channel[i].lock), prio);
+
+                AtaSelectDrive(info, i, info->channel[i].operation.slot);
+                uint8_t channelStatus = AtaGetChannelStatus(info, i);
+
                 //after successful completion the activity bit must be cleared. Of course the error bit must be cleared too.
                 if(!(bmrStatus & IDE_BMR_STATUS_ACTIVE) && !(bmrStatus & IDE_BMR_STATUS_ERROR))
                 {
                     //more data to transfer
-                    //TODO: this was actually not tested
                     if(info->channel[i].operation.remaining > 0)
                     {
                         IdeStartReadWrite(&(info->channel[i].drive[info->channel[i].operation.slot]->drive),
@@ -292,6 +307,10 @@ STATUS IdeIsr(void *context)
                 }
                 else //failure
                 {
+                    //Active=1 and interrupt=1 is only valid when total PRD size is bigger than the transfer size
+                    //In this driver implementation, this should never happen
+                    //Also note that when there is an error, the interrupt is not generated
+                    //TODO: maybe include this in error handling
                     PRIO prio = KeAcquireSpinlock(&(info->channel[i].lock));
                     //RP finalization
                     info->channel[i].rp->status = UNKNOWN_ERROR;
@@ -361,7 +380,7 @@ STATUS IdeStorageControl(struct IoRp *rp)
         case STOR_GET_GEOMETRY:
             if(t->isController)
             {
-                rp->status = RP_PROCESSING_FAILED;
+                rp->status = NOT_SUPPORTED;
                 break;
             }
             struct IdeDriveData *info = &(t->drive);
@@ -379,7 +398,7 @@ STATUS IdeStorageControl(struct IoRp *rp)
             break;
         
         default:
-            rp->status = RP_CODE_UNKNOWN;
+            rp->status = NOT_IMPLEMENTED;
             break;
     }
  

@@ -22,7 +22,7 @@ static STATUS I8042Dispatch(struct IoRp *rp)
     switch(rp->code)
     {
         default:
-            status = RP_PROCESSING_FAILED;
+            status = BAD_PARAMETER;
             break;
     }
 
@@ -36,11 +36,11 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
     struct IoDeviceObject *dev = NULL;
     STATUS status = OK;
 
-    PRIO prio = KeAcquireSpinlock(&(I8042ControllerInfo.lock));
+    KeAcquireMutex(&(I8042ControllerInfo.mutex));
     if(I8042ControllerInfo.port[PORT_FIRST].present && I8042ControllerInfo.port[PORT_SECOND].present)
     {
-        KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
-        return FILE_ALREADY_EXISTS;
+        KeReleaseMutex(&(I8042ControllerInfo.mutex));
+        return ALREADY_EXISTS;
     }
 
     if(!I8042ControllerInfo.initialized)
@@ -48,13 +48,13 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
         status = I8042InitializeController();
         if(OK != status)
         {
-            KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
+            KeReleaseMutex(&(I8042ControllerInfo.mutex));
             return status;
         }
         status = IoCreateRpQueue(I8042ProcessRp, &I8042RpQueue);
         if(OK != status)
         {
-            KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
+            KeReleaseMutex(&(I8042ControllerInfo.mutex));
             return status;
         }
         I8042ControllerInfo.initialized = 1;
@@ -63,7 +63,7 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
     status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_OTHER, 0, &dev);
     if(OK != status)
     {
-        KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
+        KeReleaseMutex(&(I8042ControllerInfo.mutex));
         return status;
     }
 
@@ -91,7 +91,7 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
         I8042ControllerInfo.port[PORT_SECOND].present = Ps2ProbePort(info);
     }
 
-    KeReleaseSpinlock(&(I8042ControllerInfo.lock), prio);
+    KeReleaseMutex(&(I8042ControllerInfo.mutex));
 
     status = IoRegisterInputDevice(dev, &(info->handle));
     if(OK != status)

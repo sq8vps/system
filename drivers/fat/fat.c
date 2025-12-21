@@ -249,12 +249,12 @@ static void FatGetEntryCallback(STATUS status, size_t actualSize, void *context)
                     if((0 != ctx->lastFileName[0]) || (0 != ctx->lastFileName[1])) //long file name
                     {
                         if(0 != FatUcs2ToUtf8(name, ctx->lastFileName, IoVfsGetMaxFileNameLength()))
-                            status = ILLEGAL_NAME;
+                            status = BAD_PARAMETER;
                     }
                     else //8.3 file name
                     {
                         if(0 != FatDosNameToFileName(name, ctx->list[i].name))
-                            status = ILLEGAL_NAME;
+                            status = BAD_PARAMETER;
                     }
 
                     if(OK == status)
@@ -313,7 +313,7 @@ FatGetEntryCallbackContinue:
         {
             //special case - cluster number was 0, that is, we were reading root directory in FAT16/12
             if(FS_GET_NODE == ctx->rp->payload.deviceControl.code)
-                ctx->rp->status = FILE_NOT_FOUND;
+                ctx->rp->status = NOT_FOUND;
             else
                 ctx->rp->status = OK;
             IoFinalizeRp(ctx->rp);
@@ -344,7 +344,7 @@ FatGetEntryCallbackContinue:
     }
 
     if(FS_GET_NODE == ctx->rp->payload.deviceControl.code)
-        ctx->rp->status = FILE_NOT_FOUND;
+        ctx->rp->status = NOT_FOUND;
     else
         ctx->rp->status = OK;
 

@@ -39,7 +39,7 @@ struct I8042Controller
         uint32_t gsi; /**< Global IRQ number */
     } port[2];
 
-    KeSpinlock lock; /**< Structure lock */
+    KeMutex mutex; /**< Structure lock */
 };
 
 extern struct I8042Controller I8042ControllerInfo;

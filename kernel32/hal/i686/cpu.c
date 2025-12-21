@@ -174,7 +174,7 @@ STATUS I686StartProcessors(void)
 void I686CpuBootstrap(uint32_t cpuId)
 {
     __atomic_fetch_add(&I686StartedCpuCount, 1, __ATOMIC_SEQ_CST);
-    GdtApply();
+    GdtApply(cpuId);
     GdtAddCpu(cpuId);
     GdtLoadTss(cpuId);
     I686InstallIdt(cpuId);
@@ -195,7 +195,13 @@ void I686CpuBootstrap(uint32_t cpuId)
     }
 }
 
-uint16_t HalGetCurrentCpu(void)
+void HalInitPhase4(void)
+{
+    KeWaitForCpusToJoinScheduler(I686ReadyCpuCount);
+    ApicSynchronizeTimers();
+}
+
+uint32_t HalGetCurrentCpu(void)
 {
     register uint16_t t;
     //get GDT descriptor with TSS from task register

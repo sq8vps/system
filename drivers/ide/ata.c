@@ -19,22 +19,6 @@
 #define ATA_REG_DEVICE_CONTROL 0x00
 #define ATA_REG_DRIVE_ADDRESS 0x01
 
-#define ATA_STATUS_ERR 0x01
-#define ATA_STATUS_DRQ 0x08
-#define ATA_STATUS_SRV 0x10
-#define ATA_STATUS_DF 0x20
-#define ATA_STATUS_RDY 0x40
-#define ATA_STATUS_BSY 0x80
-
-#define ATA_ERROR_AMNF 0x01
-#define ATA_ERROR_TKZNF 0x01
-#define ATA_ERROR_ABRT 0x04
-#define ATA_ERROR_MCR 0x08
-#define ATA_ERROR_IDNF 0x10
-#define ATA_ERROR_MC 0x20
-#define ATA_ERROR_UNC 0x40
-#define ATA_ERROR_BBK 0x80
-
 #define ATA_DEVICE_MASTER_FLAG 0x00
 #define ATA_DEVICE_SLAVE_FLAG 0x10
 #define ATA_DEVICE_LBA_FLAG 0x40
@@ -51,17 +35,10 @@
 #define ATA_COMMAND_READ_DMA_LBA28 0xC8
 #define ATA_COMMAND_WRITE_DMA_LBA28 0xCA
 
-static void selectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t slot)
+void AtaSelectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t slot)
 {
-    if(ide->channel[channel].lastSelectedSlot != slot)
-    {
-        IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_DEVICE, 
-           ATA_DEVICE_RSVD_BITS | ATA_DEVICE_LBA_FLAG | ((slot == PCI_IDE_SLOT_MASTER) ? ATA_DEVICE_MASTER_FLAG : ATA_DEVICE_SLAVE_FLAG));
-        for(uint8_t i = 0; i < 15; i++)
-            IoPortReadByte(ide->channel[channel].controlPort + ATA_REG_ALTERNATE_STATUS);
-        
-        ide->channel[channel].lastSelectedSlot = slot;
-    }
+    IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_DEVICE, 
+        ATA_DEVICE_RSVD_BITS | ATA_DEVICE_LBA_FLAG | ((slot == PCI_IDE_SLOT_MASTER) ? ATA_DEVICE_MASTER_FLAG : ATA_DEVICE_SLAVE_FLAG));
 }
 
 STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t slot)
@@ -69,7 +46,7 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
     uint16_t cmdPort = ide->channel[channel].cmdPort;
     uint16_t controlPort = ide->channel[channel].controlPort;
 
-    selectDrive(ide, channel, slot);
+    AtaSelectDrive(ide, channel, slot);
     IoPortWriteByte(cmdPort + ATA_REG_SECTOR_COUNT, 0);
     IoPortWriteByte(cmdPort + ATA_REG_LBA_LOW, 0);
     IoPortWriteByte(cmdPort + ATA_REG_LBA_MID, 0);
@@ -207,12 +184,6 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
 
 STATUS IdeDetectAllDrives(struct IdeControllerData *ide)
 {
-    //force drive selection to save state 
-    selectDrive(ide, PCI_IDE_CHANNEL_PRIMARY, PCI_IDE_SLOT_SLAVE);
-    selectDrive(ide, PCI_IDE_CHANNEL_PRIMARY, PCI_IDE_SLOT_MASTER);
-    selectDrive(ide, PCI_IDE_CHANNEL_SECONDARY, PCI_IDE_SLOT_SLAVE);
-    selectDrive(ide, PCI_IDE_CHANNEL_SECONDARY, PCI_IDE_SLOT_MASTER);
-
     IdeDetectDrive(ide, PCI_IDE_CHANNEL_PRIMARY, PCI_IDE_SLOT_MASTER);
     IdeDetectDrive(ide, PCI_IDE_CHANNEL_PRIMARY, PCI_IDE_SLOT_SLAVE);
     IdeDetectDrive(ide, PCI_IDE_CHANNEL_SECONDARY, PCI_IDE_SLOT_MASTER);
@@ -222,7 +193,6 @@ STATUS IdeDetectAllDrives(struct IdeControllerData *ide)
 
 void IdeWriteLba28Parameters(struct IdeControllerData *ide, uint8_t channel, uint8_t slot, uint32_t lba, uint8_t sectors)
 {
-    selectDrive(ide, channel, slot);
     IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_LOW, lba & 0xFF);
     IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_MID, lba >> 8);
     IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_HIGH, lba >> 16);
@@ -233,7 +203,6 @@ void IdeWriteLba28Parameters(struct IdeControllerData *ide, uint8_t channel, uin
 
 void IdeWriteLba48Parameters(struct IdeControllerData *ide, uint8_t channel, uint8_t slot, uint64_t lba, uint16_t sectors)
 {
-    selectDrive(ide, channel, slot);
     IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_LOW, lba >> 24);
     IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_MID, lba >> 32);
     IoPortWriteByte(ide->channel[channel].cmdPort + ATA_REG_LBA_HIGH, lba >> 40);
@@ -246,8 +215,6 @@ void IdeWriteLba48Parameters(struct IdeControllerData *ide, uint8_t channel, uin
 
 void IdeStartTransfer(struct IdeControllerData *info, uint8_t channel, uint8_t slot, bool write, bool lba48)
 {
-    selectDrive(info, channel, slot);
-
     uint8_t command;
     if(lba48)
     {
@@ -264,4 +231,9 @@ void IdeStartTransfer(struct IdeControllerData *info, uint8_t channel, uint8_t s
             command = ATA_COMMAND_READ_DMA_LBA28;  
     }
     IoPortWriteByte(info->channel[channel].cmdPort + ATA_REG_COMMAND, command);
+}
+
+uint8_t AtaGetChannelStatus(struct IdeControllerData *info, uint8_t channel)
+{
+    return IoPortReadByte(info->channel[channel].controlPort + ATA_REG_ALTERNATE_STATUS);
 }

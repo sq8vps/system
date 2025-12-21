@@ -88,22 +88,9 @@ INTERNAL STATUS ApicConfigureSystemTimer(uint8_t vector);
 INTERNAL void ApicStartSystemTimer(uint64_t time);
 
 /**
- * @brief Get APIC timestamp in nanoseconds
- * @return Timestamp in nanoseconds
-*/
-INTERNAL uint64_t ApicGetTimestamp(void);
-
-/**
- * @brief Get APIC timestamp in microseconds
- * @return Timestamp in microseconds
-*/
-INTERNAL uint64_t ApicGetTimestampMicros(void);
-
-/**
- * @brief Get APIC timestamp in milliseconds
- * @return Timestamp in milliseconds
-*/
-INTERNAL uint64_t ApicGetTimestampMillis(void);
+ * @brief Synchronize APIC timers across all CPUs
+ */
+INTERNAL void ApicSynchronizeTimers(void);
 
 /**
  * @brief Set current task priority in TPR register
@@ -129,11 +116,5 @@ INTERNAL uint8_t ApicGetProcessorPriority(void);
  * @return LAPIC ID
  */
 INTERNAL uint8_t ApicGetCurrentId(void);
-
-/**
- * @brief Apply real time fix to all APIC counters
- * @param realTime Real time in ns
- */
-INTERNAL void ApicSetRealTime(uint64_t realTime);
 
 #endif

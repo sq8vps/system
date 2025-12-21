@@ -6,9 +6,10 @@ AR = i686-elf-ar
 ASM = nasm
 
 API = ../../api
+LIBS = ../../libs
 
-C_FLAGS = -I. -I.. -I$(API) -c -g -ffreestanding -masm=intel -D DEBUG -Wall -DDRIVER_NAME='"$(NAME)"' -Og
-CPP_FLAGS = -I. -I.. -I$(API) -c -g -ffreestanding -masm=intel -D DEBUG -Wall -DDRIVER_NAME='"$(NAME)"' -Og
+C_FLAGS = -I. -I.. -I$(API) -I$(LIBS) -c -g -ffreestanding -masm=intel -D DEBUG -Wall -DDRIVER_NAME='"$(NAME)"' -Og
+CPP_FLAGS = -I. -I.. -I$(API) -I$(LIBS) -c -g -ffreestanding -masm=intel -D DEBUG -Wall -DDRIVER_NAME='"$(NAME)"' -Og
 ASM_FLAGS = -f elf32 -D DEBUG -g -F dwarf -DDRIVER_NAME='"$(NAME)"'
 LNK_FLAGS = -r -g -nostdlib -ffreestanding -z noexecstack
 LNK_STATIC_LIBS = -lgcc
@@ -40,7 +41,7 @@ $(NAME) : $(C_OBJ) $(CPP_OBJ) $(ASM_OBJ)
 	$(LNK) $(LNK_FLAGS) -o $@ $^ $(LNK_STATIC_LIBS)
 	objcopy --only-keep-debug $@ ${@:.drv=.sym}
 	objcopy --strip-debug $@
-	cp $@ ../../output/drivers/
+	cp $@ ../../output/drivers/bin/
 	cp ${@:.drv=.sym} ../../symbols/
 	
 clean:

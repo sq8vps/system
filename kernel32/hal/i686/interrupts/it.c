@@ -42,10 +42,10 @@ static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT] ALIGN(8);
 static STATUS InsertIdtEntry(uint16_t cpu, uint8_t vector, void *isr)
 {
     if(vector < IT_FIRST_INTERRUPT_VECTOR)
-        return NO_FREE_INTERRUPT_VECTORS;
+        return BAD_PARAMETER;
 
     if(cpu >= MAX_CPU_COUNT)
-        return OUT_OF_RESOURCES;
+        return BAD_PARAMETER;
 
     idt[cpu][vector].isrLow = (uint32_t)isr & 0xFFFF;
     idt[cpu][vector].isrHigh = (uint32_t)isr >> 16;
@@ -57,10 +57,10 @@ static STATUS InsertIdtEntry(uint16_t cpu, uint8_t vector, void *isr)
 STATUS I686InstallExceptionHandler(uint16_t cpu, uint8_t vector, void *isr)
 {
     if(vector >= IT_FIRST_INTERRUPT_VECTOR)
-        return BAD_INTERRUPT_VECTOR;
+        return BAD_PARAMETER;
 
     if(cpu >= MAX_CPU_COUNT)
-        return OUT_OF_RESOURCES;
+        return BAD_PARAMETER;
 
     idt[cpu][vector].isrLow = (uint32_t)isr & 0xFFFF;
     idt[cpu][vector].isrHigh = (uint32_t)isr >> 16;

@@ -9,21 +9,7 @@ extern "C"
 
 #include <stddef.h>
 #include <stdint.h>
-
-/**
- * @brief Mark function parameter as unused
- */
-#define UNUSED(x) (void)(x)
-
-/**
- * @brief Mark symbol (function/variable) as internal/hidden
-*/
-#define INTERNAL __attribute__ ((visibility("hidden")))
-
-/**
- * @brief Mark symbol as weak/overridable
- */
-#define WEAK __attribute__ ((weak))
+#include "status.h"
 
 /**
  * @brief Stringify without expanding
@@ -56,93 +42,6 @@ extern "C"
 #define CEIL_DIV(dividend, divisor) ((dividend) / (divisor) + (((dividend) % (divisor)) ? 1 : 0))
 
 /**
- * @brief Kernel status codes
-*/
-typedef enum
-{
-    //OK response
-    OK = 0,
-
-    //common errors
-    NULL_POINTER_GIVEN = 0x100,
-    NOT_IMPLEMENTED,
-    OUT_OF_RESOURCES,
-    DEVICE_NOT_AVAILABLE,
-    SYSTEM_INCOMPATIBLE,
-    BAD_PARAMETER,
-    OPERATION_NOT_ALLOWED,
-    BAD_ALIGNMENT,
-    NOT_COMPATIBLE,
-    TIMEOUT,
-    ILLEGAL_OPERATION,
-    SYSCALL_CODE_UNKNOWN,
-    INVALID_ARGUMENT,
-
-    //interrupt module errors
-    BAD_INTERRUPT_VECTOR, //bad interrupt vector number
-    INTERRUPT_VECTOR_NOT_FREE,
-    INTERRUPT_ALREADY_REGISTERED,
-    INTERRUPT_NOT_REGISTERED,
-    NO_FREE_INTERRUPT_VECTORS,
-
-    //memory management module errors
-    PAGE_NOT_PRESENT, //page not present in physical memory
-    MEMORY_ALREADY_MAPPED, //page is already mapped to other virtual address
-    MEMORY_ALREADY_UNMAPPED, //memory is already unmapped
-
-    ELF_BAD_ARCHITECTURE,
-    ELF_BAD_INSTRUCTION_SET,
-    ELF_BAD_FORMAT,
-    ELF_BAD_ENDIANESS,
-    ELF_BROKEN,
-    ELF_UNSUPPORTED_TYPE,
-    ELF_UNDEFINED_SYMBOL,
-    ELF_UNDEFINED_EXTERNAL_SYMBOL,
-    DRIVER_INITIALIZATION_FAILED,
-    DATABASE_BROKEN,
-    DATABASE_ENTRY_NOT_FOUND,
-
-    SCHEDULER_INITIALIZATION_FAILURE,
-    KERNEL_THREAD_LIMIT_REACHED,
-
-    ROOT_DEVICE_INIT_FAILURE,
-    ILLEGAL_NAME,
-    FILE_NOT_FOUND,
-    FILE_ALREADY_EXISTS,
-    NOT_A_DIRECTORY,
-    FILE_COUNT_LIMIT_REACHED,
-    BAD_FILE_TYPE,
-    FILE_CLOSED,
-    FILE_LOCKED,
-    FILE_IRREMOVABLE,
-    DIRECTORY_NOT_EMPTY,
-    FILE_IN_USE,
-    FILE_READ_ONLY,
-    READ_INCOMPLETE,
-    WRITE_INCOMPLETE,
-    VFS_INITIALIZATION_FAILED,
-    RP_NOT_CANCELLABLE,
-    RP_PROCESSING_FAILED,
-    RP_CODE_UNKNOWN,
-    VOLUME_NOT_REGISTERED,
-    VOLUME_ALREADY_EXISTS,
-    VOLUME_ALREADY_MOUNTED,
-    VOLUME_TOO_SMALL,
-    UNKNOWN_FILE_SYSTEM,
-    FILE_BROKEN,
-    FILE_BAD_MODE,
-    FILE_TOO_SMALL,
-    IOCTL_UNKNOWN,
-    FILE_SHARING_VIOLATION,
-
-    UNKNOWN_OBJECT_TYPE,
-
-    UNKNOWN_ERROR = 0xFFFFFFFF,
-
-} STATUS;
-
-
-/**
  * @brief General privilege level enum
 */
 typedef enum PrivilegeLevel
@@ -170,6 +69,35 @@ typedef uint64_t time_t;
 */
 #define PACKED __attribute__ ((packed))
 
+/**
+ * @brief Mark function parameter as unused
+ */
+#define UNUSED(x) (void)(x)
+
+/**
+ * @brief Mark symbol (function/variable) as internal/hidden
+*/
+#define INTERNAL __attribute__ ((visibility("hidden")))
+
+/**
+ * @brief Mark symbol as weak/overridable
+ */
+#define WEAK __attribute__ ((weak))
+
+/**
+ * @brief Mark function as frequently called for compiler optimization
+ */
+#define HOT __attribute__ ((hot))
+
+/**
+ * @brief Mark function as deprecated
+ */
+#define DEPRECATED __attribute__ ((deprecated))
+
+/**
+ * @brief Mark case as fallthrough
+ */
+#define FALLTHROUGH __attribute__ ((fallthrough))
 
 /**
  * @brief Variable alignment macro

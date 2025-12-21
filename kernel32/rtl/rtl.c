@@ -110,6 +110,27 @@ volatile void* RtlMemcpyV(volatile void *to, volatile const void *from, uintptr_
     return to;
 }
 
+void *RtlMemmove(void *to, const void *from, size_t n)
+{
+    uint8_t *cto = (uint8_t*)to;
+    const uint8_t *cfrom = (const uint8_t*)from;
+
+    if(cto < cfrom)
+    {
+        while(n--)
+            *(cto++) = *(cfrom++);
+    }
+    else
+    {
+        cto += n;
+        cfrom += n;
+        while(n--)
+            *(--cto) = *(--cfrom);
+    }
+    
+    return to;
+}
+
 uint64_t RtlAbs(int64_t x)
 {
     return (x > 0) ? x : -x;

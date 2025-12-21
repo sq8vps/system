@@ -209,7 +209,7 @@ STATUS HalMapMemory(uintptr_t vAddress, PADDRESS pAddress, MmMemoryFlags flags)
 	if(PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT) //check if page is already present
 	{
 		I686ReleaseMemoryLock(vAddress, prio);
-		return MEMORY_ALREADY_MAPPED;
+		return ALREADY_EXISTS;
 	}
 
 	uint16_t f = 0;
@@ -252,13 +252,13 @@ static STATUS HalUnmapMemoryNoLock(uintptr_t vAddress)
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //page table not present?
 	{
 		//this is not mapped
-		KePanicEx(MEMORY_ACCESS_VIOLATION, MEMORY_ALREADY_UNMAPPED, vAddress, 0, 0);
+		KePanicEx(MEMORY_ACCESS_VIOLATION, 1, vAddress, 0, 0);
 	}
 
 	if(0 == (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT))
 	{
 		//this memory is already unmapped
-		KePanicEx(MEMORY_ACCESS_VIOLATION, MEMORY_ALREADY_UNMAPPED, vAddress, 0, 0);
+		KePanicEx(MEMORY_ACCESS_VIOLATION, 1, vAddress, 0, 0);
 	}
 
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (MmPageTableEntry)0; //clear entry
@@ -375,39 +375,39 @@ uintptr_t I686GetPageDirectoryAddress(void)
 	return pageDir;
 }
 
-static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectoryEntry *pd, uintptr_t base, uintptr_t size)
-{
-	base = ALIGN_DOWN(base, PAGE_SIZE);
-	size = ALIGN_UP(size, PAGE_SIZE);
+// static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectoryEntry *pd, uintptr_t base, uintptr_t size)
+// {
+// 	base = ALIGN_DOWN(base, PAGE_SIZE);
+// 	size = ALIGN_UP(size, PAGE_SIZE);
 
-	while(size > 0)
-	{
-		MmPageTableEntry *pt = MmMapDynamicMemory(pd[base >> 22] & 0xFFFFF000, MM_PAGE_TABLE_SIZE, MM_FLAG_WRITABLE);
-		if(NULL == pt)
-		{
-			return OUT_OF_RESOURCES;
-		}
+// 	while(size > 0)
+// 	{
+// 		MmPageTableEntry *pt = MmMapDynamicMemory(pd[base >> 22] & 0xFFFFF000, MM_PAGE_TABLE_SIZE, MM_FLAG_WRITABLE);
+// 		if(NULL == pt)
+// 		{
+// 			return OUT_OF_RESOURCES;
+// 		}
 
-		PRIO prio = KeAcquireSpinlock(tcb->parent->data.userMemoryLock);
-		uintptr_t initialBase = base;
-		uint16_t pages = 0;
-		for(uint16_t i = (MM_PAGE_TABLE_ENTRY_COUNT - ((base >> 12) & 0x3FF)); i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
-		{
-			pt[(base >> 12) & 0x3FF] = 0;
-			I686_INVALIDATE_TLB(base);
-			size -= PAGE_SIZE;
-			size += PAGE_SIZE;
-			++pages;
-			if(0 == size)
-				break;
-		}
-		I686SendInvalidateTlb(&(tcb->affinity), tcb->data.cr3, initialBase, pages);
-		KeReleaseSpinlock(tcb->parent->data.userMemoryLock, prio);
-		MmUnmapDynamicMemory(pt);
-	}
+// 		PRIO prio = KeAcquireSpinlock(tcb->parent->data.userMemoryLock);
+// 		uintptr_t initialBase = base;
+// 		uint16_t pages = 0;
+// 		for(uint16_t i = (MM_PAGE_TABLE_ENTRY_COUNT - ((base >> 12) & 0x3FF)); i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
+// 		{
+// 			pt[(base >> 12) & 0x3FF] = 0;
+// 			I686_INVALIDATE_TLB(base);
+// 			size -= PAGE_SIZE;
+// 			size += PAGE_SIZE;
+// 			++pages;
+// 			if(0 == size)
+// 				break;
+// 		}
+// 		I686SendInvalidateTlb(&(tcb->affinity), tcb->data.cr3, initialBase, pages);
+// 		KeReleaseSpinlock(tcb->parent->data.userMemoryLock, prio);
+// 		MmUnmapDynamicMemory(pt);
+// 	}
 
-	return OK;
-}
+// 	return OK;
+// }
 
 PADDRESS I686CreateNewMemorySpace(void)
 {
@@ -543,7 +543,7 @@ bool HalValidateUserBuffer(const void *buffer, uintptr_t size)
 
 // 	if(pt[(vAddress >> 12) & 0x3FF] & PAGE_FLAG_PRESENT) //check if page is already present
 // 	{
-// 		status = MEMORY_ALREADY_MAPPED;
+// 		status = ALREADY_EXISTS;
 // 		goto HalMapForeignMemoryExit;
 // 	}
 

@@ -151,7 +151,7 @@ static void Ps2ProcessDpc(void *context)
             head++;
             head &= (PS2_BUFFER_SIZE - 1);
 
-            if((PS2_KEY_INCOMPLETE != key[keyCount]) && (0 != (key[keyCount] & PS2_KEY_VALUE_MASK)))
+            if(PS2_UNKNOWN_KEY != key[keyCount])
             {
                 keyHead = head;
                 keyCount++;
@@ -252,12 +252,14 @@ bool Ps2ProbePort(struct I8042Peripheral *info)
             //don't care if it timed out - device may send less than 3 bytes
             if(PS2_RESPONSE_ACK == buffer[0])
             {
+
                 switch(buffer[1])
                 {
                     case 0x00:
                     case 0x03:
                     case 0x04:
                         info->type = PS2_MOUSE;
+                        info->device->type = IO_DEVICE_TYPE_MOUSE;
                         break;
                     case 0xAB:
                         switch(buffer[2])

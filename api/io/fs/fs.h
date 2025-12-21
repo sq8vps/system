@@ -18,7 +18,7 @@ struct KeTaskControlBlock;
 struct IoVfsNode;
 
 /**
- * @brief File flags
+ * @brief File handle/object flags
 */
 typedef enum
 {

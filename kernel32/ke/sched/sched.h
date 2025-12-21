@@ -104,6 +104,12 @@ INTERNAL void KeStartScheduler(void (*continuationTask)(void*), void *continuati
 INTERNAL void KeJoinScheduler(void);
 
 /**
+ * @brief Wait for the given number of CPUs to join scheduler
+ * @param cpus Number of CPUs to wait for
+ */
+INTERNAL void KeWaitForCpusToJoinScheduler(uint32_t cpus);
+
+/**
  * @brief Attach last task to appropriate queue
  * @param cpu CPU number
  * @attention This function is for context switch code use only

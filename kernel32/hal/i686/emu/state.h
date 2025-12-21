@@ -79,6 +79,7 @@ struct I686EmuState
     uint8_t *code; /**< Mapped real mode code pointer */
     uint32_t *ivt; /**< Real mode IVT pointer within \a code */
     struct KeTaskControlBlock *owner; /**< Emulator owner */
+    bool dead; /**< True if the emulator is dead, i.e. it cannot be used anymore */
     KeMutex mutex; /**< Emulator mutex */
 };
 
