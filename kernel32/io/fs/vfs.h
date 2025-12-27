@@ -1,3 +1,9 @@
+/**
+ * @file vfs.h
+ * @brief Virtual File System layer
+ * @ingroup io_fs
+ */
+
 #ifndef KERNEL_VFS_H_
 #define KERNEL_VFS_H_
 
@@ -12,6 +18,19 @@
 
 EXPORT_API
 
+/**
+ * @addtogroup io_fs_vfs Virtual File System layer
+ * @brief Virtual File System layer
+ * @ingroup io_fs
+ * 
+ * This module is an intermediate layer between the actual file system drivers (such as ext4) and the high-level file support layer,
+ * which is used by kernel-mode drivers and user-mode programs to access files.
+ * @{
+ */
+
+/**
+ * @brief VFS node flags
+ */
 enum IoVfsFlags
 {
     IO_VFS_FLAG_READ_ONLY = 0x1, /**< File is read only */
@@ -312,5 +331,9 @@ void IoVfsLockTreeForWriting(void);
 void IoVfsUnlockTree(void);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

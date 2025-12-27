@@ -4,16 +4,16 @@
 #include "mm/heap.h"
 #include "ctype.h"
 
-uint32_t RtlStrlen(const char *str)
+size_t RtlStrlen(const char *str)
 {
-    char *s = (char*)str;
+    const char *s = (const char*)str;
     while(*s)
         s++;
     
     return (uintptr_t)s - (uintptr_t)str;
 }
 
-char* RtlStrcpy(char *strTo, const char *strFrom)
+char* RtlStrcpy(char *restrict strTo, const char *restrict strFrom)
 {
     char *initial = strTo;
     while(0 != (*strTo++ = *strFrom++))
@@ -21,7 +21,7 @@ char* RtlStrcpy(char *strTo, const char *strFrom)
     return initial;
 }
 
-char* RtlStrncpy(char *strTo, const char *strFrom, uintptr_t n)
+char* RtlStrncpy(char *restrict strTo, const char *restrict strFrom, size_t n)
 {
     char *initial = strTo;
     while(0 != (*strTo++ = *strFrom++))
@@ -46,7 +46,7 @@ int RtlStrcmp(const char *s1, const char *s2)
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
 
-int RtlStrncmp(const char *s1, const char *s2, int n)
+int RtlStrncmp(const char *s1, const char *s2, size_t n)
 {
     while(n && *s1 && (*s1 == *s2))
     {
@@ -71,7 +71,7 @@ int RtlStrcasecmp(const char *s1, const char *s2)
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
 
-int RtlStrcasencmp(const char *s1, const char *s2, int n)
+int RtlStrcasencmp(const char *s1, const char *s2, size_t n)
 {
     while(n && *s1 && (RtlToupper(*s1) == RtlToupper(*s2)))
     {
@@ -86,7 +86,7 @@ int RtlStrcasencmp(const char *s1, const char *s2, int n)
     return *(unsigned char*)s1 - *(unsigned char*)s2;
 }
 
-void* RtlMemcpy(void *to, const void *from, uintptr_t n)
+void* RtlMemcpy(void *restrict to, const void *restrict from, size_t n)
 {
     uint8_t *cto = (uint8_t*)to;
     const uint8_t *cfrom =  (const uint8_t*)from;
@@ -98,7 +98,7 @@ void* RtlMemcpy(void *to, const void *from, uintptr_t n)
     return to;
 }
 
-volatile void* RtlMemcpyV(volatile void *to, volatile const void *from, uintptr_t n)
+volatile void* RtlMemcpyV(volatile void *restrict to, volatile const void *restrict from, size_t n)
 {
     volatile uint8_t *cto = (volatile uint8_t*)to;
     volatile const uint8_t *cfrom = (volatile const uint8_t*)from;
@@ -136,7 +136,7 @@ uint64_t RtlAbs(int64_t x)
     return (x > 0) ? x : -x;
 }
 
-void* RtlMemset(void *ptr, int c, uintptr_t num)
+void* RtlMemset(void *ptr, int c, size_t num)
 {
     uint8_t *p = ptr;
     while(num)
@@ -147,7 +147,7 @@ void* RtlMemset(void *ptr, int c, uintptr_t num)
     return ptr;
 }
 
-volatile void* RtlMemsetV(volatile void *ptr, int c, uintptr_t num)
+volatile void* RtlMemsetV(volatile void *ptr, int c, size_t num)
 {
     volatile uint8_t *p = ptr;
     while(num)
@@ -158,7 +158,7 @@ volatile void* RtlMemsetV(volatile void *ptr, int c, uintptr_t num)
     return ptr;
 }
 
-int RtlMemcmp(const void *s1, const void *s2, uintptr_t n)
+int RtlMemcmp(const void *s1, const void *s2, size_t n)
 {
     register const unsigned char *str1 = (const unsigned char*)s1;
     register const unsigned char *str2 = (const unsigned char*)s2;
@@ -176,7 +176,7 @@ int RtlIsprint(int c)
 	return ((unsigned int)c - 0x20) < 0x5f;
 }
 
-char *RtlStrcat(char *dst, const char *src)
+char *RtlStrcat(char *restrict dst, const char *restrict src)
 {
     char* ptr = dst + RtlStrlen(dst);
  

@@ -1,9 +1,21 @@
+/**
+ * @file mutex.h
+ * @brief Mutual exclusion support
+ * @ingroup ke_core
+ */
+
 #ifndef KERNEL_MUTEX_H_
 #define KERNEL_MUTEX_H_
 
 #include <stdint.h>
 #include "defines.h"
 #include "hal/interrupt.h"
+
+/**
+ * @addtogroup ke_mutex Mutual exclusion support
+ * @ingroup ke_core
+ * @{
+ */
 
 EXPORT_API
 
@@ -121,7 +133,7 @@ typedef struct KeSeqCounter
  */
 static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
 {
-    __atomic_add_fetch(&seqCounter->seq, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_ADD_FETCH(&seqCounter->seq, 1, ATOMIC_SEQ_CST);
 }
 
 /**
@@ -130,7 +142,7 @@ static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
  */
 static inline void KeSeqCounterWriteEnd(KeSeqCounter *seqCounter)
 {
-    __atomic_add_fetch(&seqCounter->seq, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_ADD_FETCH(&seqCounter->seq, 1, ATOMIC_SEQ_CST);
 }
 
 /**
@@ -316,7 +328,12 @@ END_EXPORT_API
 
 /**
  * @brief Check and unblock tasks waiting for timed mutex or spinlock
+ * @kinternal
 */
 INTERNAL void KeTimedExclusionRefresh(void);
+
+/**
+ * @}
+ */
 
 #endif

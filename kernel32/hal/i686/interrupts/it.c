@@ -31,7 +31,7 @@ struct IdtEntry
 /**
  * @brief Interrupt Descriptor Table itself
 */
-static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT] ALIGN(8);
+static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT] alignas(8);
 
 /**
  * @brief Insert entry to IDT

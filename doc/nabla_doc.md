@@ -17,7 +17,7 @@ One of the main goals, as opposed to many OSes, is to provide a consistent and u
 Nabla is written purely for fun and educational purposes.
 
 ## What Nabla is not?
-Nabla, as almost all other hobby operating systems, is not meant to be a replacement for a big-scale OS, such as GNU/Linux or Windows. Nabla is not meant to be compatible with Unix/Windows.
+Nabla, as almost any other hobby operating system, is not meant to be a replacement for a big-scale OS, such as GNU/Linux or Windows. Nabla is not meant to be compatible with Unix/Windows/anything else.
 
 ## Kernel API documentation
 Kernel API is documented using Doxygen format and is available through the Doxygen-generated HTML documentation.  
@@ -26,6 +26,7 @@ If you are interested in how kernel-mode drivers interact with the kernel, keep 
 ## Kernel source code organization
 Kernel source code is divided between multiple directories, effectively representing different kernel parts.  
 The top-level directory organization is as follows:
+* `ddk` - "Driver Development Kit" - driver-type-specific structures and requests, helpers,
 * `ex` - executables and kernel-mode drivers handling,
 * `hal` - hardware abstraction layers for each supported architecture,
 * `io` - all kinds of input/output - devices, virtual file system, 
@@ -34,13 +35,14 @@ The top-level directory organization is as follows:
 * `mm` - memory managament - including heap allocation, MMIO, dynamic memory, etc.,
 * `ob` - kernel object handling,
 * `templates` - C++ templates to abstract commonly used elements,
-* `rtl` - kernel run-time library.
+* `rtl` - kernel run-time library,
+* `platform` - compiler-specific definitions and macros.
 
 Each of these directories may contain multiple subdirectories dedicated for more specific kernel parts.  
 
 ## Naming conventions
-In general, every kernel object and function name start with "module prefix", and these prefixes are, in most cases, the same as the top-level directory names. For example, functions starting with `Ke`, such as `KeAcquireSpinlock()`, are defined in some file within the `ke` directory and are core kernel routines. Some functions, such as the Multiboot handling routines, are not prefixed. The non-prefixed functions are generally excluded from API and are not used by kernel-mode drivers.  
-The architecture-specific routines and object are prefixed by the architecture-specific prefix, e.g., for i686 the prefix is `I686`. These functions might be included in API.
+In general, every kernel object and function name start with a "module prefix", and these prefixes are, in most cases, the same as the top-level directory names. For example, functions starting with `Ke`, such as `KeAcquireSpinlock()`, are defined in some file within the `ke` directory and are core kernel routines. Some functions, such as the Multiboot handling routines, are not prefixed. The non-prefixed functions are generally excluded from API and are not used by kernel-mode drivers or they constitute the native user-mode API definitions.  
+The architecture-specific routines and object are prefixed by the architecture-specific prefix, e.g., for i686 the prefix is `I686`. Some of these functions might be included in API.
 
 ## Kernel-mode API and driver linking
 The functions and objects to be exported in API are marked with `EXPORT_API` and `END_EXPORT_API` macros. A small script written in Python allows for automatic generation of kernel API headers. Then, a kernel-mode driver includes the appropriate header to use the API.  
@@ -53,7 +55,7 @@ Nabla kernel is Multiboot2-compliant and requires a Multiboot2-compliant bootloa
 * relocatable header tag (type 10) - image must be loaded between physical address 0 and `MM_KERNEL_ADDRESS`,
 * information request tag:
     * command line string (type 1),
-    * basic memory (type 4) (amount of memory),
+    * basic memory (type 4),
     * memory map (type 6),
     * modules (type 3).
 
@@ -61,7 +63,7 @@ The kernel expects the bootloader to provide *all* required tags and additionall
 * ELF-Symbols tag (type 9) with kernel symbols.
 
 ### Initial ramdisk
-Nabla kernel expects one module to be reported and loaded by the bootloader, which is the initial ramdisk, with the name `initrd.tar`. The initial ramdisk is a uncompressed tar file containing basic system configuration databases and drivers required to read and write from the system partition. This includes all drivers required to build the complete disk drive stack and the volume stack (more on device/driver/volume stacks in the later sections).
+Nabla kernel expects one module to be reported and loaded by the bootloader, which is the initial ramdisk, with the name `initrd`. The initial ramdisk is a uncompressed tar file containing basic system configuration databases and drivers required to read and write from the system partition. This includes all drivers required to build the complete disk drive stack and the volume stack (more on device/driver/volume stacks in the later sections).
 
 ## Kernel memory management
 ### Memory space layout
@@ -75,4 +77,4 @@ The exact kernel memory layout is architecture-dependent. However, the kernel me
 
 ### Physical memory allocation
 The physical memory allocation is based on a buddy allocation algorithm. The smallest allocation unit size is defined by the `MM_BUDDY_SMALLEST` macro. The number of "layers" is defined by the `MM_BUDDY_COUNT` macro. Thus, the smallest allocatable block has a size of `MM_BUDDY_SMALLEST`, while the biggest allocatable block has a size of `MM_BUDDY_SMALLEST * (1 << MM_BUDDY_COUNT)`. The available physical memory is determined by the architecture-specific HAL based on memory map passed by the bootloader. The buddy allocation algorithm will not be described here.  
-Nabla allows for multiple physical memory pools to be defined by the HAL. This might be required in some applications, e.g., in AMD64 systems, where the physical memory for PCI DMA transfer must lay below 4 GiB limit, while the actual available physical memory might be bigger. 
+Nabla allows for multiple physical memory pools to be defined by the HAL. This might be required in some applications, e.g., in AMD64 systems, where the physical memory for PCI DMA transfer must lay below the 4 GiB limit, while the actual available physical memory might be bigger. 

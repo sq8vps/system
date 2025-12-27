@@ -1,3 +1,9 @@
+/**
+ * @file event.h
+ * @brief Input event support
+ * @ingroup io_input
+ */
+
 #ifndef KERNEL_EVENT_H_
 #define KERNEL_EVENT_H_
 
@@ -5,6 +11,13 @@
 #include <stdint.h>
 #include "kbd.h"
 #include "ob/ob.h"
+
+/**
+ * @addtogroup io_input_event Input event definitions
+ * @brief Input event definitions
+ * @ingroup io_input
+ * @{
+ */
 
 EXPORT_API
 
@@ -54,5 +67,9 @@ struct IoEventHandler
 };
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

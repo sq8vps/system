@@ -1,8 +1,23 @@
+/**
+ * @file string.h
+ * @brief Kernel \c string.h implementation
+ * @ingroup rtl_string
+ */
+
 #ifndef RTL_STRING_H_
 #define RTL_STRING_H_
 
 #include "defines.h"
 #include <stdint.h>
+
+/**
+ * @addtogroup rtl_string Kernel \c string.h implementation
+ * @ingroup rtl
+ * @note To disable aliasing RTL-specific names with C-standard names, define \c DISABLE_KERNEL_STDLIB before including this header.
+ * @warning This implementation does not adhere to any C standard.
+ * @{
+ */
+
 
 EXPORT_API
 
@@ -11,7 +26,7 @@ EXPORT_API
  * @param str Input string
  * @return String length (excluding null terminator)
 */
-uint32_t RtlStrlen(const char *str);
+size_t RtlStrlen(const char *str);
 
 /**
  * @brief Copy string
@@ -19,7 +34,7 @@ uint32_t RtlStrlen(const char *str);
  * @param strFrom Source string
  * @return Destination string
 */
-char* RtlStrcpy(char *strTo, const char *strFrom);
+char* RtlStrcpy(char *restrict strTo, const char *restrict strFrom);
 
 /**
  * @brief Copy at most n bytes of a string
@@ -28,7 +43,7 @@ char* RtlStrcpy(char *strTo, const char *strFrom);
  * @param n Character limit (NULL terminator excluded)
  * @return Destination string
 */
-char* RtlStrncpy(char *strTo, const char *strFrom, uintptr_t n);
+char* RtlStrncpy(char *restrict strTo, const char *restrict strFrom, size_t n);
 
 /**
  * @brief Compare strings
@@ -45,7 +60,7 @@ int RtlStrcmp(const char *s1, const char *s2);
  * @param n Length limit
  * @return 0 if identical
 */
-int RtlStrncmp(const char *s1, const char *s2, int n);
+int RtlStrncmp(const char *s1, const char *s2, size_t n);
 
 /**
  * @brief Compare strings - case-insensitive
@@ -62,7 +77,7 @@ int RtlStrcasecmp(const char *s1, const char *s2);
  * @param n Length limit
  * @return 0 if identical
 */
-int RtlStrcasencmp(const char *s1, const char *s2, int n);
+int RtlStrcasencmp(const char *s1, const char *s2, size_t n);
 
 /**
  * @brief Copy memory
@@ -71,7 +86,7 @@ int RtlStrcasencmp(const char *s1, const char *s2, int n);
  * @param n Number of bytes to copy
  * @return Destination buffer
 */
-void* RtlMemcpy(void *to, const void *from, uintptr_t n);
+void* RtlMemcpy(void *restrict to, const void *restrict from, size_t n);
 
 /**
  * @brief Copy volatile memory
@@ -80,7 +95,7 @@ void* RtlMemcpy(void *to, const void *from, uintptr_t n);
  * @param n Number of bytes to copy
  * @return Destination buffer
 */
-volatile void* RtlMemcpyV(volatile void *to, volatile const void *from, uintptr_t n);
+volatile void* RtlMemcpyV(volatile void *restrict to, volatile const void *restrict from, size_t n);
 
 /**
  * @brief Move memory
@@ -97,7 +112,7 @@ void *RtlMemmove(void *to, const void *from, size_t n);
  * @param c Filler value
  * @param num Byte count
 */
-void* RtlMemset(void *ptr, int c, uintptr_t num);
+void* RtlMemset(void *ptr, int c, size_t num);
 
 /**
  * @brief Fill volatile memory with given value
@@ -105,7 +120,7 @@ void* RtlMemset(void *ptr, int c, uintptr_t num);
  * @param c Filler value
  * @param num Byte count
 */
-volatile void* RtlMemsetV(volatile void *ptr, int c, uintptr_t num);
+volatile void* RtlMemsetV(volatile void *ptr, int c, size_t num);
 
 /**
  * @brief Compare memory
@@ -114,7 +129,7 @@ volatile void* RtlMemsetV(volatile void *ptr, int c, uintptr_t num);
  * @param n Number of bytes to compare
  * @return 0 if equal
 */
-int RtlMemcmp(const void *s1, const void *s2, uintptr_t n);
+int RtlMemcmp(const void *s1, const void *s2, size_t n);
 
 /**
  * @brief Concatenate strings
@@ -122,7 +137,7 @@ int RtlMemcmp(const void *s1, const void *s2, uintptr_t n);
  * @param *src String to be concatenated
  * @return Destination string
 */
-char *RtlStrcat(char *dst, const char *src);
+char *RtlStrcat(char *restrict dst, const char *restrict src);
 
 /**
  * @brief Convert octal number string to uint32_t
@@ -246,5 +261,9 @@ void RtlFreeStringTable(char **table, uint32_t count);
 
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

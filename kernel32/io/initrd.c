@@ -226,7 +226,7 @@ STATUS IoInitrdGetNode(struct IoVfsNode *parent, const char *name, struct IoVfsN
     return OK;
 }
 
-uintptr_t IoInitrdRead(const struct IoVfsNode *node, void *buffer, uintptr_t size, uintptr_t offset)
+size_t IoInitrdRead(const struct IoVfsNode *node, void *buffer, size_t size, size_t offset)
 {
     const struct TarHeader *h = node->ref[0].p;
     if(IoInitrdVerifyChecksum(h))

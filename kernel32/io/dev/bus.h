@@ -1,3 +1,9 @@
+/**
+ * @file bus.h
+ * @brief I/O bus definitions
+ * @ingroup io_dev
+ */
+
 #ifndef KERNEL_DEV_BUS_H_
 #define KERNEL_DEV_BUS_H_
 
@@ -6,13 +12,23 @@
 
 EXPORT_API
 
+/**
+ * @addtogroup io_bus I/O bus definitions
+ * @brief I/O bus definitions
+ * @ingroup io_dev
+ * @{
+ */
+
+ /**
+  * @brief Bus type
+  */
 enum IoBusType
 {
-    IO_BUS_TYPE_UNKNOWN = 0,
-    IO_BUS_TYPE_ACPI,
-    IO_BUS_TYPE_PCI,
-    IO_BUS_TYPE_USB,
-    IO_BUS_TYPE_ISA,
+    IO_BUS_TYPE_UNKNOWN = 0, /**< Unknown bus */
+    IO_BUS_TYPE_ACPI = 1, /**< ACPI bus */
+    IO_BUS_TYPE_PCI = 2, /**< PCI and PCIe */
+    IO_BUS_TYPE_USB = 3, /**< USB */
+    IO_BUS_TYPE_ISA = 4, /**< ISA */
 };
 
 
@@ -154,6 +170,10 @@ struct IoPciDeviceHeader
 #define PCI_HEADER_STATUS_RECEIVED_MASTER_ABORT 0x2000
 #define PCI_HEADER_STATUS_SIGNALED_SYSTEM_ERROR 0x4000
 #define PCI_HEADER_STATUS_DETECTED_PARITY_ERROR 0x8000
+
+/**
+ * @}
+ */
 
 END_EXPORT_API
 

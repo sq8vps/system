@@ -1,3 +1,9 @@
+/**
+ * @file i686.h
+ * @brief i686-specific general definitions and types
+ * @ingroup i686
+ */
+
 #ifndef I686_H_
 #define I686_H_
 
@@ -5,6 +11,11 @@
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+
+/**
+ * @addtogroup i686 i686 HAL implementation and architecture-specific stuff
+ * @{
+ */
 
 EXPORT_API
 
@@ -64,16 +75,20 @@ enum HalPriorityLevel
 typedef uint8_t PRIO;
 
 /**
- * @brief IRQ mode
+ * @brief IRQ delivery modes
+ * 
+ * While there is no abstraction provided over IRQ delivery modes, the IRQs are very architecture-dependent.
+ * Moreover, the IRQs are used only by the drivers, and drivers are also hardware-specific and should be aware
+ * of these modes. The ones provided here are APIC IRQ modes on x86.
 */
 enum HalInterruptMode
 {
-    HAL_IT_MODE_FIXED,
-    HAL_IT_MODE_LOWEST_PRIORITY,
-    HAL_IT_MODE_SMI,
-    HAL_IT_MODE_NMI,
-    HAL_IT_MODE_INIT,
-    HAL_IT_MODE_EXTINT,
+    HAL_IT_MODE_FIXED = 0,
+    HAL_IT_MODE_LOWEST_PRIORITY = 1,
+    HAL_IT_MODE_SMI = 2,
+    HAL_IT_MODE_NMI = 3,
+    HAL_IT_MODE_INIT = 4,
+    HAL_IT_MODE_EXTINT = 5,
 };
 
 /**
@@ -113,6 +128,10 @@ enum HalInterruptMode
 
 
 #if defined(__i686__)
+
+/**
+ * @brief i686-specific task context - registers
+ */
 struct HalTaskData
 {
     uint32_t esp; //stack pointer
@@ -125,6 +144,9 @@ struct HalTaskData
     void *fpu; /**< FPU buffer */
 } PACKED;
 
+/**
+ * @brief i686-specific process data
+ */
 struct HalProcessData
 {
     uint32_t cr3; /**< Process page directory */
@@ -132,19 +154,49 @@ struct HalProcessData
 } PACKED;
 #endif
 
+/**
+ * @brief i686=specific CPU object extensions
+ */
 struct HalCpuExtensions
 {
-    uint8_t lapicId;
-    bool bootstrap;
+    uint8_t lapicId; /**< LAPIC ID */
+    bool bootstrap; /**< Is this CPU a bootstrap one? */
 };
 
+/**
+ * @brief Lower (real mode) memory size
+ */
 #define I686_LOWER_MEMORY_SIZE (uintptr_t)0x100000
+
+/**
+ * @brief Virtual memory space size
+ */
 #define HAL_VIRTUAL_SPACE_SIZE (((uint64_t)1 << 32))
 
+/**
+ * @brief Kernel image address
+ */
 #define HAL_KERNEL_IMAGE_ADDRESS (uintptr_t)0xD6000000
+
+/**
+ * @brief Kernel space base address
+ */
 #define HAL_KERNEL_SPACE_BASE (uintptr_t)0xD0000000
+
+/**
+ * @brief Kernel space size
+ */
 #define HAL_KERNEL_SPACE_SIZE (HAL_VIRTUAL_SPACE_SIZE - HAL_KERNEL_SPACE_BASE)
+
+/**
+ * @brief User space top
+ */
 #define HAL_USER_SPACE_TOP (HAL_KERNEL_SPACE_BASE - PAGE_SIZE)
+
+/**
+ * @brief Video output is assumed to be available on PCs (VGA)
+ */
+#define HAL_VIDEO_AVAILABLE 1
 
 /**
  * @brief Native register-sized type
@@ -155,10 +207,20 @@ END_EXPORT_API
 
 #if defined(__i686__)
     #if defined(PAE)
+        /**
+         * @brief Architecture name string
+         */
         #define HAL_ARCHITRECTURE_STRING "i686-pae"
     #else
+        /**
+         * @brief Architecture name string
+         */
         #define HAL_ARCHITRECTURE_STRING "i686"
     #endif
 #endif
+
+/**
+ * @}
+ */
 
 #endif

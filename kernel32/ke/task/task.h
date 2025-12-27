@@ -1,3 +1,9 @@
+/**
+ * @file task.h
+ * @brief Process and thread creation and manipulation
+ * @ingroup ke_task
+ */
+
 #ifndef KERNEL_TASK_H_
 #define KERNEL_TASK_H_
 
@@ -7,6 +13,12 @@
 #include "hal/arch.h"
 #include "config.h"
 #include "hal/cpu.h"
+
+/**
+ * @addtogroup ke_task Process and thread support
+ * @ingroup ke
+ * @{
+ */
 
 EXPORT_API
 
@@ -206,6 +218,9 @@ struct KeTaskControlBlock
 
 };
 
+/**
+ * @brief A structure storing all process (a group of at least one task) data
+ */
 struct KeProcessControlBlock
 {
     OBJECT;
@@ -369,8 +384,13 @@ END_EXPORT_API
  * @brief Set Thread-local Storage pointer for given task
  * @param *tcb Target Task Control Block pointer
  * @param *tls Thread-local Storage pointer
- * @note @ref HalUpdateTls must be used for this to take effect before a task switch
+ * @note HalUpdateTls() must be used for this to take effect before a task switch
+ * @kinternal
  */
 INTERNAL STATUS KeSetThreadLocalStorage(struct KeTaskControlBlock *tcb, void *tls);
+
+/**
+ * @}
+ */
 
 #endif

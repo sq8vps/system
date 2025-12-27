@@ -1,3 +1,9 @@
+/**
+ * @file devfs.h
+ * @brief Device file system (\c /dev) supprt
+ * @ingroup io_fs
+ */
+
 #ifndef KERNEL_DEVFS_H_
 #define KERNEL_DEVFS_H_
 
@@ -8,6 +14,13 @@
 EXPORT_API
 
 struct IoDeviceObject;
+
+/**
+ * @addtogroup io_fs_devfs Device file system (\c /dev) support
+ * @brief Device file system (\c /dev) support
+ * @ingroup io_fs
+ * @{
+ */
 
 /**
  * @brief Create device file
@@ -23,8 +36,13 @@ END_EXPORT_API
 /**
  * @brief Initialize "/dev" filesystem
  * @param *root Root filesystem node
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoInitDeviceFs(struct IoVfsNode *root);
+
+/**
+ * @}
+ */
 
 #endif

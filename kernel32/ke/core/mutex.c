@@ -29,7 +29,7 @@ static void KeInsertToLockList(struct KeTaskControlBlock *tcb, uint64_t timeout)
     if(NULL == KeLockingQueue.head)
     {
         KeLockingQueue.head = tcb;
-        __atomic_store_n(&(KeLockingQueue.earliest), timeout, __ATOMIC_RELAXED);
+        ATOMIC_STORE(&(KeLockingQueue.earliest), timeout, ATOMIC_RELAXED);
     }
     else
     {
@@ -60,7 +60,7 @@ static inline void KeRemoveFromLockList(struct KeTaskControlBlock *tcb)
     {
         KeLockingQueue.head = tcb->scheduling.block.timeout.next;
         if(NULL != KeLockingQueue.head)
-            __atomic_store_n(&(KeLockingQueue.earliest), KeLockingQueue.head->scheduling.block.timeout.until, __ATOMIC_RELAXED);
+            ATOMIC_STORE(&(KeLockingQueue.earliest), KeLockingQueue.head->scheduling.block.timeout.until, ATOMIC_RELAXED);
     }
     if(NULL != tcb->scheduling.block.timeout.previous)
         tcb->scheduling.block.timeout.previous->scheduling.block.timeout.next = tcb->scheduling.block.timeout.next;
@@ -83,7 +83,7 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
     {
         //obtain previous value and try to set atomically
         //if previous value was 0, then we've acquired the lock
-        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_ACQUIRE))
+        if(0 == ATOMIC_EXCHANGE(&(spinlock->lock), 1, ATOMIC_ACQUIRE))
             break;
 
         //else we haven't acquired the lock
@@ -111,7 +111,7 @@ PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
     {
         //obtain previous value and try to set atomically
         //if previous value was 0, then we've acquired the lock
-        if(0 == __atomic_exchange_n(&(spinlock->lock), 1, __ATOMIC_ACQUIRE))
+        if(0 == ATOMIC_EXCHANGE(&(spinlock->lock), 1, ATOMIC_ACQUIRE))
             break;
 
         //else we haven't acquired the lock
@@ -134,9 +134,9 @@ void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
     spinlock->lock = 0;
 #else
-    if(unlikely(0 == __atomic_load_n(&spinlock->lock, __ATOMIC_ACQUIRE)))
+    if(unlikely(0 == ATOMIC_LOAD(&spinlock->lock, ATOMIC_ACQUIRE)))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
-    __atomic_store_n(&spinlock->lock, 0, __ATOMIC_RELEASE);
+    ATOMIC_STORE(&spinlock->lock, 0, ATOMIC_RELEASE);
 #endif
     HalLowerPriorityLevel(previousPriority);
 }
@@ -485,7 +485,7 @@ void KeTimedExclusionRefresh(void)
     struct KeTaskControlBlock *s = NULL;
     uint64_t currentTimestamp = HalGetTimestamp();
 
-    if(currentTimestamp < __atomic_load_n(&(KeLockingQueue.earliest), __ATOMIC_RELAXED))
+    if(currentTimestamp < ATOMIC_LOAD(&(KeLockingQueue.earliest), ATOMIC_RELAXED))
         return;
 
     PRIO prio = KeAcquireSpinlock(&(KeLockingQueue.lock));

@@ -1,14 +1,22 @@
+/**
+ * @file exec.h
+ * @brief General executable file-related routines
+ * @ingroup exec
+ */
+
+
 #ifndef KERNEL_EXEC_H_
 #define KERNEL_EXEC_H
 
 /**
- * @file exec.h
- * @brief Executable file mainpulation module
- * 
- * Provides routines for file loading and execution.
- * 
- * @defgroup exec Executable and driver module
- * 
+ * @addtogroup exec Executable files- and kernel mode drivers-related definitions and routines
+ */
+
+/**
+ * @addtogroup exec_exec General executable file-related routines
+ * @ingroup exec
+ * @kinternal
+ * @{
 */
 
 #include <stdint.h>
@@ -20,7 +28,7 @@
  * @param *size Output size
  * @return Status code
 */
-INTERNAL STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size);
+INTERNAL STATUS ExGetExecutableRequiredBssSize(const char *name, size_t *size);
 
 /**
  * @brief Prepare BSS/no-bits sections and update executable header
@@ -29,5 +37,9 @@ INTERNAL STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size
  * @return Status code
 */
 INTERNAL STATUS ExPrepareExecutableBss(void *fileStart, void *bss);
+
+/**
+ * @}
+ */
 
 #endif

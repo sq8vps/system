@@ -1,3 +1,9 @@
+/**
+ * @file exceptions.h
+ * @brief Interrupt and exception handling
+ * @ingroup i686_it
+ */
+
 #ifndef I686_EXCEPTIONS_H_
 #define I686_EXCEPTIONS_H_
 
@@ -5,6 +11,11 @@
 #include "defines.h"
 
 #if defined(__i686__)
+
+/**
+ * @addtogroup i686_it
+ * @{
+ */
 
 /**
  * @brief ISR frame for interrupts and exceptions with no privilege level change
@@ -33,6 +44,9 @@ struct ItFrameMS
 
 #if defined(__i686__) || defined(__amd64__)
 
+/**
+ * @brief x86-specific kernel panic codes
+ */
 enum I686PanicCode
 {
     /**
@@ -149,10 +163,10 @@ enum I686PanicCode
      * and IPI was not delivered to the target CPU within a given time.
      * This exception always results in kernel panic.
      * Panic parameters:
-     * - Arg 0 - Panic code = \a IPI_DELIVERY_TIMEOUT
+     * - Arg 0 - Panic code = ::IPI_DELIVERY_TIMEOUT
      * - Arg 1 - source CPU ID
      * - Arg 2 - target CPU ID
-     * - Arg 3 - IPI type from \a I686IpiType
+     * - Arg 3 - IPI type, see \ref I686IpiType
      */
     IPI_DELIVERY_TIMEOUT = 32,
 
@@ -162,12 +176,16 @@ enum I686PanicCode
      * 
      * This exception always results in kernel panic.
      * Panic parameters:
-     * - Arg 0 - Panic code = \a IPI_UNKNOWN_TYPE
+     * - Arg 0 - Panic code = ::IPI_UNKNOWN_TYPE
      * - Arg 1 - source CPU ID
      * - Arg 2 - target CPU ID
      * - Arg 3 - IPI type
      */
     IPI_UNKNOWN_TYPE = 33,
+
+    /**
+     * @brief Unexpected Intel CPU kernel mode trap
+     */
     UNEXPECTED_INTEL_TRAP = 0xFFFFFFFF,
 };
 
@@ -175,6 +193,10 @@ enum I686PanicCode
  * @brief Install all exception handlers for given CPU
  */
 INTERNAL void I686InstallAllExceptionHandlers(uint16_t cpu);
+
+/**
+ * @}
+ */
 
 #endif
 

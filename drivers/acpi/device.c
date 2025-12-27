@@ -45,7 +45,7 @@ STATUS AcpiGetDeviceResources(struct IoRp *rp)
         }
         else
         {
-            uintptr_t size = devInfo->resourceCount * sizeof(devInfo->resource[0]);
+            size_t size = devInfo->resourceCount * sizeof(devInfo->resource[0]);
             rp->payload.resource.res = MmAllocateKernelHeap(size);
             if(NULL == rp->payload.resource.res)
                 return OUT_OF_RESOURCES;

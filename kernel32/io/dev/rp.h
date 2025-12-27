@@ -1,3 +1,8 @@
+/**
+ * @file rp.h
+ * @brief Request Packet definitions and routines
+ */
+
 #ifndef KERNEL_RP_H_
 #define KERNEL_RP_H_
 
@@ -15,45 +20,71 @@ struct IoVfsNode;
 struct IoDeviceResource;
 struct KeTaskControlBlock;
 
+/**
+ * @addtogroup io_dev_rp Request Packet support
+ * @brief Request Packet definitions, structures, and routines
+ * @ingroup io_dev
+ * 
+ * This module defines and provides support for Request Packets, which are the main method of communicating
+ * with device drivers.
+ * 
+ * @{
+ */
 
+/**
+ * @brief RP completion callback type
+ */
 typedef STATUS (*IoRpCompletionCallback)(struct IoRp *rp, void *context);
-typedef void (*IoProcessRpCallback)(struct IoRp *rp);
-typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
+/**
+ * @brief RP queue callback type
+ */
+typedef void (*IoProcessRpCallback)(struct IoRp *rp);
+
+/**
+ * @brief RP cancellation callback type
+ */
+typedef void (*IoRpCancelCallback)(struct IoRp *rp);
 
 typedef uint32_t IoRpFlags; /**< Request Packet flags */
 #define IO_RP_FLAG_EOF 0x1 /**< Read incomplete, end of file encountered - \a status is set to \a OK, chech \a size field */
 
-
+/**
+ * @brief Request packet types
+ */
 enum IoRpCode
 {
-    IO_RP_UNKNOWN = 0, /**< Unknown request, do not use */
+    IO_RP_UNKNOWN = 0x0, /**< Unknown request, do not use */
     //common requests
-    IO_RP_READ, /**< Read file */
-    IO_RP_WRITE, /**< Write file */
-    IO_RP_OPEN, /**< Open file */
-    IO_RP_CLOSE, /**< Close file */
-    IO_RP_IOCTL, /**< Driver-defined I/O control */
+    IO_RP_READ = 0x1, /**< Read file */
+    IO_RP_WRITE = 0x2, /**< Write file */
+    IO_RP_OPEN = 0x3, /**< Open file */
+    IO_RP_CLOSE = 0x4, /**< Close file */
+    IO_RP_IOCTL = 0x5, /**< Driver-defined I/O control */
     //PnP requests
     IO_RP_START_DEVICE = 0x1000,
     
-    IO_RP_GET_DEVICE_ID, /**< Get device ID and compatible IDs */
-    IO_RP_GET_DEVICE_TEXT, /**< Get user-friendly device name */
+    IO_RP_GET_DEVICE_ID = 0x1001, /**< Get device ID and compatible IDs */
+    IO_RP_GET_DEVICE_TEXT = 0x1002, /**< Get user-friendly device name */
     
-    IO_RP_ENUMERATE, /**< Enumerate children of the device */
-    IO_RP_GET_DEVICE_LOCATION, /**< Get device location on the bus */
-    IO_RP_GET_DEVICE_RESOURCES, /**< Get device resources: IRQs, MMIOs, ports, etc. */
-    IO_RP_GET_CONFIG_SPACE, /**< Read device configuration space */
-    IO_RP_SET_CONFIG_SPACE, /**< Write device configuration space */
+    IO_RP_ENUMERATE = 0x1003, /**< Enumerate children of the device */
+    IO_RP_GET_DEVICE_LOCATION = 0x1004, /**< Get device location on the bus */
+    IO_RP_GET_DEVICE_RESOURCES = 0x1005, /**< Get device resources: IRQs, MMIOs, ports, etc. */
+    IO_RP_GET_CONFIG_SPACE = 0x1006, /**< Read device configuration space */
+    IO_RP_SET_CONFIG_SPACE = 0x1007, /**< Write device configuration space */
 
     //device type specific control requests
     IO_RP_STORAGE_CONTROL = 0x2000,
-    IO_RP_FILESYSTEM_CONTROL,
-    IO_RP_DISK_CONTROL,
-    IO_RP_TERMINAL_CONTROL,
+    IO_RP_FILESYSTEM_CONTROL = 0x2001,
+    IO_RP_DISK_CONTROL = 0x2002,
+    IO_RP_TERMINAL_CONTROL = 0x2003,
 };
 
-
+/**
+ * @brief Request Packet
+ * 
+ * Request Packet is a fundamental structure used to communicate with device drivers.
+ */
 struct IoRp
 {
     struct ObObjectHeader objectHeader;
@@ -149,7 +180,9 @@ struct IoRp
     struct IoRpQueue *queue;
 };
 
-
+/**
+ * @brief RP queue structure
+ */
 struct IoRpQueue
 {
     IoProcessRpCallback callback;
@@ -245,5 +278,9 @@ void IoMarkRpPending(struct IoRp *rp);
 struct IoRp *IoCloneRp(struct IoRp *rp);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

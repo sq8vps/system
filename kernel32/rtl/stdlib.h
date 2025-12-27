@@ -1,11 +1,28 @@
+/**
+ * @file stdlib.h
+ * @brief Kernel \c stdlib.h implementation
+ * @ingroup rtl_stdlib
+ */
+
 #ifndef RTL_STDLIB_H_
 #define RTL_STDLIB_H_
 
 #include <stdint.h>
 #include "defines.h"
 
+/**
+ * @addtogroup rtl_stdlib Kernel \c stdlib.h implementation
+ * @ingroup rtl
+ * @note To disable aliasing RTL-specific names with C-standard names, define \c DISABLE_KERNEL_STDLIB before including this header.
+ * @warning This implementation does not adhere to any C standard.
+ * @{
+ */
+
 EXPORT_API
 
+/**
+ * @brief Maximum value returned by rand()
+ */
 #define RAND_MAX 32767
 
 /**
@@ -81,7 +98,12 @@ END_EXPORT_API
 
 /**
  * @brief Initialize kernel random number generator
+ * @kinternal
  */
 INTERNAL void RtlInitializeRandom(void);
+
+/**
+ * @}
+ */
 
 #endif

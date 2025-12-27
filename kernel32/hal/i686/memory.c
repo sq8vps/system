@@ -229,7 +229,7 @@ STATUS HalMapMemory(uintptr_t vAddress, PADDRESS pAddress, MmMemoryFlags flags)
 	return OK;	
 }
 
-STATUS HalMapMemoryEx(uintptr_t vAddress, PADDRESS pAddress, uintptr_t size, MmMemoryFlags flags)
+STATUS HalMapMemoryEx(uintptr_t vAddress, PADDRESS pAddress, size_t size, MmMemoryFlags flags)
 {
 	STATUS ret = OK;
 	size = ALIGN_UP(size, PAGE_SIZE);
@@ -285,11 +285,11 @@ STATUS HalUnmapMemory(uintptr_t vAddress)
 	return status;
 }
 
-STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
+STATUS HalUnmapMemoryEx(uintptr_t vAddress, size_t size)
 {
 	size = ALIGN_UP(size, PAGE_SIZE);
 	uintptr_t start = vAddress;
-	uintptr_t originalSize = size;
+	size_t originalSize = size;
 	PRIO prio = I686AcquireMemoryLock(vAddress);
 	while(size)
 	{
@@ -306,7 +306,7 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size)
 	while(size)
 	{
 		uintptr_t base = vAddress;
-		uintptr_t sameTypeSize = 0;
+		size_t sameTypeSize = 0;
 		if(IS_KERNEL_MEMORY(vAddress))
 		{
 			do
@@ -463,22 +463,22 @@ uintptr_t HalGetHeapSpaceBase(void)
 	return I686_HEAP_BASE;
 }
 
-uintptr_t HalGetDriverSpaceSize(void)
+size_t HalGetDriverSpaceSize(void)
 {
 	return I686_DRIVERS_SIZE;
 }
 
-uintptr_t HalGetDynamicSpaceSize(void)
+size_t HalGetDynamicSpaceSize(void)
 {
 	return I686_DYNAMIC_SIZE;
 }
 
-uintptr_t HalGetHeapSpaceSize(void)
+size_t HalGetHeapSpaceSize(void)
 {
 	return I686_HEAP_SIZE;
 }
 
-bool HalValidateUserBuffer(const void *buffer, uintptr_t size)
+bool HalValidateUserBuffer(const void *buffer, size_t size)
 {
 	if(0 == size)
 		return true;

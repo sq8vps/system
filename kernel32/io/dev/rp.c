@@ -89,7 +89,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     {
         if((NULL == rp->queue->head) || (rp->queue->head != rp))
         {
-            KePanicIPEx(KE_GET_CALLER_ADDRESS(0), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
+            KePanicIPEx(GET_CALLER_ADDRESS(0), RP_FINALIZED_OUT_OF_LINE, (uintptr_t)rp, 0, 0, 0);
             //no return
         }
         if(NULL != rp->completionCallback)

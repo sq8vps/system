@@ -1,3 +1,9 @@
+/**
+ * @file task.h
+ * @brief Low-level process and thread support
+ * @ingroup hal
+*/
+
 #ifndef HAL_TASK_H_
 #define HAL_TASK_H_
 
@@ -6,6 +12,15 @@
 
 struct KeTaskControlBlock;
 struct KeProcessControlBlock;
+
+/**
+ * @addtogroup hal_task Low-level process and thread management
+ * @ingroup hal
+ * @kinternal
+ * 
+ * This module provides abstract low-level process and thread management. The routines in this module are only used by the kernel.
+ * @{
+*/
 
 /**
  * @brief Create process
@@ -53,7 +68,11 @@ INTERNAL void HalPerformTaskSwitch(void);
  * @brief Update Thread Local Storage pointer for current CPU
  * @param *tls TLS pointer
  */
-__attribute__((fastcall))
+FASTCALL
 INTERNAL void HalUpdateTls(void *tls);
+
+/**
+ * @}
+ */
 
 #endif

@@ -88,7 +88,7 @@ STATUS ObChangeObjectOwner(void *object, struct KeProcessControlBlock *pcb)
 {
     struct ObObjectHeader *h = object;
     if(unlikely(OB_HEADER_MAGIC != h->magic))
-        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);
+        KePanicIPEx(GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);
     
     h->owner = pcb;
     return OK;
@@ -98,7 +98,7 @@ void ObDestroyObject(void *object)
 {
     struct ObObjectHeader *h = object;
     if(unlikely(OB_HEADER_MAGIC != h->magic))
-        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);   
+        KePanicIPEx(GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);   
 
     if(h->extended)
         MmFreeKernelHeap(h);
@@ -110,7 +110,7 @@ void ObLockObject(void *object)
 {
     struct ObObjectHeader *h = object;
     if(unlikely(OB_HEADER_MAGIC != h->magic))
-        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);
+        KePanicIPEx(GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 0, 0, 0);
     KeAcquireMutex(&(h->mutex));
 }
 
@@ -118,7 +118,7 @@ void ObUnlockObject(void *object)
 {
     struct ObObjectHeader *h = object;
     if(unlikely(OB_HEADER_MAGIC != h->magic))
-        KePanicIPEx(KE_GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 1, 0, 0);
+        KePanicIPEx(GET_CALLER_ADDRESS(0), OBJECT_LOCK_UNAVAILABLE, (uintptr_t)object, 1, 0, 0);
     KeReleaseMutex(&(h->mutex));
 }
 

@@ -32,7 +32,7 @@ static struct
     {
         struct KeDpcObject *head;
         KeSpinlock lock;
-    } queue[_KE_DPC_PRIORITY_LIMIT + 1];
+    } queue[KE_DPC_PRIORITY_COUNT];
     bool isPending;
 }
 #ifndef SMP
@@ -90,17 +90,17 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
 
     dpc->time = HalGetTimestamp();
 
-    __atomic_store_n(&(KeDpcState[cpu].isPending), true, __ATOMIC_SEQ_CST);
+    ATOMIC_STORE(&(KeDpcState[cpu].isPending), true, ATOMIC_SEQ_CST);
 
     return OK;
 }
 
 static void KeDpcProcess(uint16_t cpu)
 {
-    while(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
+    while(ATOMIC_LOAD(&(KeDpcState[cpu].isPending), ATOMIC_SEQ_CST))
     {
-        __atomic_store_n(&(KeDpcState[cpu].isPending), false, __ATOMIC_SEQ_CST);
-        for(uint8_t i = 0; i < (_KE_DPC_PRIORITY_LIMIT + 1); i++)
+        ATOMIC_STORE(&(KeDpcState[cpu].isPending), false, ATOMIC_SEQ_CST);
+        for(uint8_t i = 0; i < KE_DPC_PRIORITY_COUNT; i++)
         {
             PRIO prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[i].lock));
             struct KeDpcObject *t = KeDpcState[cpu].queue[i].head;
@@ -128,7 +128,7 @@ void KeProcessDpcQueue(void)
 #ifdef SMP
         cpu = HalGetCurrentCpu();
 #endif
-    if(__atomic_load_n(&(KeDpcState[cpu].isPending), __ATOMIC_SEQ_CST))
+    if(ATOMIC_LOAD(&(KeDpcState[cpu].isPending), ATOMIC_SEQ_CST))
     {
         KeDpcProcess(cpu);
         HalLowerPriorityLevel(dpcPrio);

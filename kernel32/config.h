@@ -1,8 +1,22 @@
+/**
+ * @file config.h
+ * @brief Static kernel configuration
+ * @ingroup config
+ */
+
 #ifndef KERNEL_CONFIG_H_
 #define KERNEL_CONFIG_H_
 
 #include "defines.h"
 #include "hal/arch.h"
+
+/**
+ * @addtogroup config Static kernel configuration
+ * @brief Static kernel configuration
+ * 
+ * This module defines some hardcoded values for the kernel. These values can be, in general, changed freely.
+ * @{
+ */
 
 EXPORT_API
 
@@ -38,20 +52,48 @@ EXPORT_API
 
 END_EXPORT_API
 
+/**
+ * @brief Kernel name
+ */
 #define KERNEL_NAME_STRING "Nabla"
+
+/**
+ * @brief Kernel version
+ */
 #define KERNEL_VERSION_STRING "0.1"
+
 #ifdef DEBUG
+    /**
+     * @brief Kernel compilation type name
+     */
     #define KERNEL_COMPILATION_TYPE_STRING "debug"
 #else
+    /**
+     * @brief Kernel compilation type name
+     */
     #define KERNEL_COMPILATION_TYPE_STRING "release"
 #endif
 
 #ifdef SMP
+    /**
+     * @brief Kernel processor mode name
+     */
     #define KERNEL_CPU_TYPE_STRING "multiprocessor"
 #else
+    /**
+     * @brief Kernel processor mode name
+     */
     #define KERNEL_CPU_TYPE_STRING "uniprocessor"
 #endif
 
+/**
+ * @brief Full kernel name string
+ */
 #define KERNEL_FULL_NAME_STRING (KERNEL_NAME_STRING " " KERNEL_VERSION_STRING " " HAL_ARCHITRECTURE_STRING " " KERNEL_CPU_TYPE_STRING  " " KERNEL_COMPILATION_TYPE_STRING)
+
+
+/**
+ * @}
+ */
 
 #endif

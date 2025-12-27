@@ -1,3 +1,9 @@
+/**
+ * @file res.h
+ * @brief I/O device resource abstraction layer
+ * @ingroup io_dev
+ */
+
 #ifndef DEV_RES_H_
 #define DEV_RES_H_
 
@@ -7,6 +13,15 @@
 #include "hal/interrupt.h"
 
 EXPORT_API
+
+/**
+ * @addtogroup io_dev_res I/O device resource abstraction layer
+ * @brief I/O device resource abstraction layer
+ * @ingroup io_dev
+ * 
+ * This module provides abstraction for typical device resources, such as interrupts or MMIOs.
+ * @{
+ */
 
 /**
  * @brief IRQ entry
@@ -74,5 +89,9 @@ struct IoDeviceResource
 struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

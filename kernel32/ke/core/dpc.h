@@ -1,8 +1,27 @@
+/**
+ * @file dpc.h
+ * @brief Deferred Procedure Call support
+ * @ingroup ke_core
+ */
+
 #ifndef KERNEL_DPC_H_
 #define KERNEL_DPC_H_
 
 #include "defines.h"
 #include <stdint.h>
+
+/**
+ * @addtogroup ke Core kernel module
+ * 
+ * This module is responsible for hardware-independent kernel functionalities, such as task handling, scheduling,
+ * mutual exclusion, or system calls.
+ */
+
+/**
+ * @addtogroup ke_core Fundamental kernel API
+ * @ingroup ke
+ * @{
+ */
 
 EXPORT_API
 
@@ -18,10 +37,10 @@ typedef void (*KeDpcCallback)(void *context);
 enum KeDpcPriority
 {
     KE_DPC_PRIORITY_NORMAL = 0,
-    KE_DPC_PRIORITY_LOW,
-    KE_DPC_PRIORITY_HIGH,
+    KE_DPC_PRIORITY_LOW = -1,
+    KE_DPC_PRIORITY_HIGH = 1,
 
-    _KE_DPC_PRIORITY_LIMIT = KE_DPC_PRIORITY_HIGH,
+    KE_DPC_PRIORITY_COUNT = 3,
 };
 
 
@@ -39,13 +58,19 @@ END_EXPORT_API
 
 /**
  * @brief Process all Deferred Procedure Calls if priority level is low enough
+ * @kinternal
 */
 INTERNAL void KeProcessDpcQueue(void);
 
 /**
  * @brief Initialize Deffered Procedure Call module
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS KeDpcInitialize(void);
+
+/**
+ * @}
+ */
 
 #endif

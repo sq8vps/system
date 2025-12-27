@@ -1,7 +1,21 @@
+/**
+ * @file ctype.h
+ * @brief Kernel \c ctype.h implementation
+ * @ingroup rtl_ctype
+ */
+
 #ifndef RTL_CTYPE_H_
 #define RTL_CTYPE_H_
 
 #include "defines.h"
+
+/**
+ * @addtogroup rtl_ctype Kernel \c ctype.h implementation
+ * @ingroup rtl
+ * @note To disable aliasing RTL-specific names with C-standard names, define \c DISABLE_KERNEL_STDLIB before including this header.
+ * @warning This implementation does not adhere to any C standard.
+ * @{
+ */
 
 EXPORT_API
 
@@ -84,6 +98,10 @@ int RtlToupper(int c);
 #define toupper(c) RtlToupper((c))
 
 #endif
+
+/**
+ * @}
+ */
 
 END_EXPORT_API
 

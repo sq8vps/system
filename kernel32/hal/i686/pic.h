@@ -1,3 +1,9 @@
+/**
+ * @file pic.h
+ * @brief 8259 PIC support module
+ * @ingroup i686
+ */
+
 #ifndef KERNEL_PIC_H_
 #define KERNEL_PIC_H_
 
@@ -5,6 +11,20 @@
 #include "defines.h"
 #include <stdbool.h>
 
+/**
+ * @addtogroup i686_pic 8259 PIC driver
+ * @brief 8259 PIC drivers
+ * @ingroup i686
+ * @kinternal
+ * 
+ * This module is a 8259 PIC driver. It is only for internal use. Kernel mode drivers should use
+ * routines provided by the HAL.
+ * @{
+ */
+
+ /**
+  * @brief Total number of input pins on dual 8259 PIC
+  */
 #define PIC_INPUT_COUNT 16
 
 /**
@@ -77,5 +97,9 @@ INTERNAL uint32_t PicReserveInput(uint32_t input);
  * @param input PIC input to be released
 */
 INTERNAL void PicFreeInput(uint32_t input);
+
+/**
+ * @}
+ */
 
 #endif

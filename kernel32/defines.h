@@ -1,26 +1,24 @@
-#ifndef KERNEL_DEFINES_H_
-#define KERNEL_DEFINES_H_
-
 /**
  * @file defines.h
- * @brief Common kernel definitions and macros
- * 
- * Provides a set of common kernel definitions, typedefs and macros.
- * 
- * @defgroup defines Common kernel definitions
-*/
+ * @brief Global kernel definitions and macros
+ * @ingroup defines
+ */
+
+#ifndef KERNEL_DEFINES_H_
+#define KERNEL_DEFINES_H_
 
 #include <stddef.h>
 #include <stdint.h>
 #include "status.h"
+#include "platform/platform.h"
 
 /**
- * @ingroup defines
+ * @addtogroup defines Global kernel definitions and macros
  * @{
 */
 
 /**
- * @brief Export all following lines up to the #END_EXPORT_SYSCALL mark as user-mode syscall interface
+ * @brief Mark all following lines up to the #END_EXPORT_SYSCALL as user-mode syscall interface
  */
 #define EXPORT_SYSCALL
 
@@ -36,7 +34,7 @@ EXPORT_API
  * @param ... Arguments to stringify
  * @return Stringified arguments
 */
-#define _STRINGIFY(...) #__VA_ARGS__
+#define STRINGIFY_NO_EXPAND(...) #__VA_ARGS__
 
 
 /**
@@ -44,17 +42,7 @@ EXPORT_API
  * @param ... Arguments to expand and stringify
  * @return Expanded and stringified arguments
 */
-#define STRINGIFY(...) _STRINGIFY(__VA_ARGS__)
-
-/**
- * @brief Mark branch as extremely likely for compiler optimization
- */
-#define likely(x) __builtin_expect(!!(x), 1)
-
-/**
- * @brief Mark branch as extremely unlikely for compiler optimization
- */
-#define unlikely(x) __builtin_expect(!!(x), 0)
+#define STRINGIFY(...) STRINGIFY_NO_EXPAND(__VA_ARGS__)
 
 /**
  * @brief Divide two integers and round up
@@ -76,55 +64,10 @@ typedef enum PrivilegeLevel
 */
 typedef uint64_t time_t;
 
-
-
-/**
- * @brief Attribute for never-returning functions
-*/
-#define NORETURN __attribute__((noreturn))
-
-
-/**
- * @brief Attribute for packed structures
-*/
-#define PACKED __attribute__ ((packed))
-
 /**
  * @brief Mark function parameter as unused
  */
 #define UNUSED(x) (void)(x)
-
-/**
- * @brief Mark symbol (function/variable) as internal/hidden
-*/
-#define INTERNAL __attribute__ ((visibility("hidden")))
-
-/**
- * @brief Mark symbol as weak/overridable
- */
-#define WEAK __attribute__ ((weak))
-
-/**
- * @brief Mark function as frequently called for compiler optimization
- */
-#define HOT __attribute__ ((hot))
-
-/**
- * @brief Mark function as deprecated
- */
-#define DEPRECATED __attribute__ ((deprecated))
-
-/**
- * @brief Mark case as fallthrough
- */
-#define FALLTHROUGH __attribute__ ((fallthrough))
-
-/**
- * @brief Variable alignment macro
- * @param n Alignment value in bytes
-*/
-#define ALIGN(n) __attribute__ ((aligned(n)))
-
 
 /**
  * @brief Align value up
@@ -148,17 +91,6 @@ typedef uint64_t time_t;
  * @param align Alignment value
 */
 #define ALIGN_DOWN(val, align) ((val) & ~((typeof(val))(align) - 1))
-
-
-/**
- * @brief Macro for inline assembly
-*/
-#define ASM asm volatile
-
-/**
- * @brief Memory barrier
- */
-#define barrier() ASM("" ::: "memory")
 
 /**
  * @brief Convert microseconds to nanoseconds (standard kernel time resolution)

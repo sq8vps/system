@@ -1,3 +1,10 @@
+/**
+ * @file arch.h
+ * @brief Include wrapper for architecture-specific definitions and routines
+ * @ingroup hal
+ */
+
+
 #ifndef HAL_ARCH_H_
 #define HAL_ARCH_H_
 

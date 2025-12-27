@@ -1,3 +1,8 @@
+/**
+ * @file syslog.h
+ * @brief System log support
+ */
+
 #ifndef KERNEL_SYSLOG_H_
 #define KERNEL_SYSLOG_H_
 
@@ -5,6 +10,17 @@
 #include "defines.h"
 #include <stdarg.h>
 #include "ob/ob.h"
+
+/**
+ * @addtogroup io_log System logging API
+ * @brief System logging API
+ * @ingroup io
+ * 
+ * This module provides universal system logging API which can be used by the kernel and kernel mode drivers.
+ * The logs are written to a file and/or to a debug output, such as the screen or serial port, depending on
+ * the current configuration.
+ * @{
+ */
 
 EXPORT_API
 
@@ -75,7 +91,7 @@ STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, c
  * @param ... Additional arguments
  * @return Status code
 */
-__attribute__ ((format (printf, 3, 4)))
+PRINTF_LIKE(3, 4)
 STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
 
 END_EXPORT_API
@@ -90,5 +106,9 @@ extern struct IoSyslogHandle IoKernelLog;
  * @warning This macro is for kernel code use only
  */
 #define LOG(TYPE, ...) IoWriteSyslog(&IoKernelLog, (TYPE), __VA_ARGS__)
+
+/**
+ * @}
+ */
 
 #endif

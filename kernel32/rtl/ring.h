@@ -1,8 +1,20 @@
+/**
+ * @file ring.h
+ * @brief Ring buffer library
+ * @ingroup rtl_ring
+ */
+
 #ifndef RTL_RING_H_
 #define RTL_RING_H_
 
 #include "defines.h"
 #include <stddef.h>
+
+/**
+ * @addtogroup rtl_ring Ring buffer library
+ * @ingroup rtl
+ * @{
+ */
 
 EXPORT_API
 
@@ -98,5 +110,9 @@ void RingBufferClear(struct RingBuffer *ring);
 #define RingBufferPeek(ring, buffer) buffer[RingBufferGetIndexForPeek(ring)]
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

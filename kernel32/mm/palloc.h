@@ -8,7 +8,7 @@
  * Handles everything connected with physical memory allocation, deallocation etc.
  * The physical memory allocator uses buddy allocation algorithm.
  * 
- * @ingroup mm
+ * @ingroup mm_phys
 */
 
 #include <stdint.h>
@@ -16,7 +16,7 @@
 #include "defines.h"
 
 /**
- * @defgroup pMem Physical memory management routines.
+ * @addtogroup mm_phys Physical memory management
  * @ingroup mm
  * @{
 */
@@ -131,6 +131,7 @@ struct Multiboot2InfoHeader;
  * @brief Initialize physical memory allocator
  * @param *mb2h Multiboot2 info header
  * @warning This function should be called only once
+ * @kinternal
 */
 INTERNAL void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h);
 

@@ -1,24 +1,24 @@
-#ifndef I686_MEMORY_H_
-#define I686_MEMORY_H_
-
 /**
  * @file memory.h
- * @brief Virtual memory management module
- * 
- * Handles everything connected with virtual memory management.
- * Provides page directory and page table manipulation routines,
- * handles memory mapping and unmapping.
- * 
- * @defgroup i686memory x86 virtual memory management module
+ * @brief x86 memory management module
  * @ingroup i686
+ * @note This module implements the universal HAL interface and most of its function are available using kernel API.
 */
+
+#ifndef I686_MEMORY_H_
+#define I686_MEMORY_H_
 
 #include <stdint.h>
 #include "defines.h"
 #include "mm/mm.h"
 
 /**
- * @addtogroup i686memory
+ * @addtogroup i686_mem x86 memory management
+ * @ingroup i686
+ * @kinternal
+ * 
+ * This module is responsible for the actual memory management on x86. This includes
+ * memory mapping, synchronizing mapping across CPUs, or maintaining physical memory pools.
  * @{
 */
 
@@ -33,6 +33,11 @@ enum
 
 struct KeTaskControlBlock;
 
+/**
+ * @brief Invalidate TLB for given address on current processor
+ * @param address Address to invalidate in TLB
+ * @warning This is an internal function.
+ */
 #define I686_INVALIDATE_TLB(address) ASM("invlpg [%0]" : : "r" (address) : "memory")
 
 /**

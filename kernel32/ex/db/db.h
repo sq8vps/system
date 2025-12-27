@@ -1,3 +1,9 @@
+/**
+ * @file db.h
+ * @brief Kernel database interface
+ * @ingroup db
+ */
+
 #ifndef EX_DB_H_
 #define EX_DB_H_
 
@@ -9,15 +15,24 @@ struct NablaDbHeader;
 struct NablaDbEntry;
 
 /**
+ * @addtogroup db Kernel database interface and definitions
+ * @ingroup ex
+ * @brief This module provides definitions and abstract interface to manipulate binary kernel databases.
+ * @{
+ */
+
+EXPORT_API
+
+/**
  * @brief Database handle structure
  */
 struct ExDbHandle
 {
-    int file;
-    uint64_t size;
-    struct NablaDbHeader *db;
-    struct NablaDbEntry *last;
-    struct NablaDbEntry *array;
+    int file; /**< Kernel file handle number */
+    uint64_t size; /**< Total database size */
+    struct NablaDbHeader *db; /**< Database header pointer */
+    struct NablaDbEntry *last; /**< Last entry pointer (used for sequential access) */
+    struct NablaDbEntry *array; /**< Current array pointer (used for sequential access) */
 };
 
 /**
@@ -65,5 +80,11 @@ STATUS ExDbGetNextBool(struct ExDbHandle *h, const char *name, bool *b);
  * @param *h Database handle
  */
 void ExDbRewind(struct ExDbHandle *h);
+
+END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

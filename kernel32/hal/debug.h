@@ -1,7 +1,21 @@
+/**
+ * @file debug.h
+ * @brief Hardware kernel debugger
+ * @ingroup hal
+ */
+
 #ifndef KERNEL_HAL_DEBUG_H_
 #define KERNEL_HAL_DEBUG_H_
 
 #include "defines.h"
+
+/**
+ * @addtogroup hal_debug Hardware kernel debugger
+ * @brief Hardware kernel debugger abstraction layer
+ * @kinternal
+ * @ingroup hal
+ * @{
+ */
 
 /**
  * @brief Initialize low-level debugging port
@@ -48,5 +62,10 @@ INTERNAL STATUS HalDebugClearTxBuffer(void);
  * @return True if data available, false otherwise
  */
 INTERNAL bool HalDebugIsDataAvailable(void);
+
+
+/**
+ * @}
+ */
 
 #endif

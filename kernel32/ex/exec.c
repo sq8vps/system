@@ -7,7 +7,7 @@
 #include "rtl/string.h"
 
 
-STATUS ExGetExecutableRequiredBssSize(const char *name, uintptr_t *size)
+STATUS ExGetExecutableRequiredBssSize(const char *name, size_t *size)
 {
     int f = -1;
     size_t actualSize;

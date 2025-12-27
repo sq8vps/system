@@ -113,7 +113,7 @@ static void KeInitProcess(void *context)
  * @param *mb2h Multiboot2 header pointer
  * @attention This function never returns
  */
-NORETURN void KeEntry(struct Multiboot2InfoHeader *mb2h)
+[[noreturn]] void KeEntry(struct Multiboot2InfoHeader *mb2h)
 {	
 	RtlDetectEndianness();
 

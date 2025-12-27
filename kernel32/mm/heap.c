@@ -202,7 +202,7 @@ void *MmAllocateKernelHeapAligned(size_t n, size_t align)
     if(align < MM_KERNEL_HEAP_ALIGNMENT)
         align = MM_KERNEL_HEAP_ALIGNMENT;
 
-    if(1 != __builtin_popcountll(align))
+    if(!stdc_has_single_bit(align))
         return NULL;
 
     PRIO prio = KeAcquireSpinlock(&MmHeapAllocatorLock);

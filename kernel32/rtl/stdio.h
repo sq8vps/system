@@ -1,8 +1,23 @@
+/**
+ * @file stdio.h
+ * @brief Kernel \c stdio.h implementation
+ * @ingroup rtl_stdio
+ */
+
 #ifndef KERNEL_VPRINTF_H_
 #define KERNEL_VPRITNF_H_
 
 #include "defines.h"
 #include <stdarg.h>
+
+/**
+ * @addtogroup rtl_stdio Kernel \c stdio.h implementation
+ * @ingroup rtl
+ * @note To disable aliasing RTL-specific names with C-standard names, define \c DISABLE_KERNEL_STDLIB before including this header.
+ * @warning Note that kernel does not provide any standard output/input streams.
+ * @warning This implementation does not adhere to any C standard.
+ * @{
+ */
 
 EXPORT_API
 
@@ -12,8 +27,8 @@ EXPORT_API
  * @param ... Additional arguments
  * @return Count of characters written
 */
-__attribute__ ((format (printf, 2, 3)))
-int RtlSprint(char *s, const char *format, ...);
+PRINTF_LIKE(2, 3)
+int RtlSprint(char * restrict s, const char * restrict format, ...);
 
 /**
  * @brief Compose a formatted string
@@ -21,7 +36,7 @@ int RtlSprint(char *s, const char *format, ...);
  * @param va_list Argument list
  * @return Count of characters written
 */
-int RtlSprintV(char *s, const char *format, va_list args);
+int RtlSprintV(char * restrict s, const char * restrict format, va_list args);
 
 
 /**
@@ -31,8 +46,8 @@ int RtlSprintV(char *s, const char *format, va_list args);
  * @param ... Additional arguments
  * @return Count of characters written
 */
-__attribute__ ((format (printf, 3, 4)))
-int RtlSprintN(char *s, size_t n, const char *format, ...);
+PRINTF_LIKE(3, 4)
+int RtlSprintN(char * restrict s, size_t n, const char * restrict format, ...);
 
 /**
  * @brief Perform dry composition a formatted string - only calculate resulting size
@@ -41,8 +56,8 @@ int RtlSprintN(char *s, size_t n, const char *format, ...);
  * @return Count of characters in the resulting string
  * @note There is no destination buffer. This function is used to get resulting string size
 */
-__attribute__ ((format (printf, 1, 2)))
-int RtlSprintDry(const char *format, ...);
+PRINTF_LIKE(1, 2)
+int RtlSprintDry(const char * restrict format, ...);
 
 /**
  * @brief Perform dry composition a formatted string - only calculate resulting size
@@ -51,7 +66,7 @@ int RtlSprintDry(const char *format, ...);
  * @return ount of characters in the resulting string
  * @note There is no destination buffer. This function is used to get resulting string size
 */
-int RtlSprintDryV(const char *format, va_list args);
+int RtlSprintDryV(const char * restrict format, va_list args);
 
 #ifndef DISABLE_KERNEL_STDLIB
 
@@ -75,5 +90,9 @@ int RtlSprintDryV(const char *format, va_list args);
 #endif
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

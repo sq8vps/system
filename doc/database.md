@@ -1,6 +1,7 @@
 # Nabla System Configuration Database Format
 
 All multi-byte fields, except the UUID, are stored least significant byte first.
+All fields are packed, that is, there is no specific alignment.
 
 ## Header
 * Magic word: `_NABLADB` without terminator (8 bytes)
@@ -38,8 +39,8 @@ An array consist of the following fields:
 * Array element count (32 bits)
 * Name - UTF-8 string with terminator
 * Payload - for each entry:
-	- Identifier (1 byte, dependent on data type) - must be the same for all elements, ORed with `0x80` and `0x40`
-	- Data size (32 bits) in bytes - including termiator in *UTF-8 string*
+	- Identifier (1 byte, dependent on data type) - must be the same for all elements, ORed with `0x80` (array flag) and `0x40` (array entry flag)
+	- Data size (32 bits) in bytes - including terminator in *UTF-8 string*
 	- Value (with terminator in *UTF-8 string*)
 
 ## End tag

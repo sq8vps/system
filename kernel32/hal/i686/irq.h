@@ -1,9 +1,25 @@
+/**
+ * @file irq.h
+ * @brief IRQ controller (PIC/IOAPIC) support
+ * @ingroup i686
+ * @note This module implements the universal HAL interface and most of its function are available using kernel API.
+ */
+
 #ifndef I686_IRQ_H_
 #define I686_IRQ_H_
 
 #include "defines.h"
 #include <stdbool.h>
 
+/**
+ * @addtogroup i686_irq IRQ controller support
+ * @brief IRQ controller support
+ * @ingroup i686
+ * 
+ * This module provides IRQ controller support and abstracts PIC and I/O APIC.
+ * It also acts as a legacy ISA IRQ resolver.
+ * @{
+ */
 
 EXPORT_API
 
@@ -55,5 +71,8 @@ INTERNAL STATUS I686InitInterruptController(void);
 */
 INTERNAL STATUS I686AddIsaRemapEntry(uint8_t isaIrq, uint32_t gsi, struct HalInterruptParams params);
 
+/**
+ * @}
+ */
 
 #endif

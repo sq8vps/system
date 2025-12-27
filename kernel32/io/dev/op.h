@@ -1,3 +1,9 @@
+/**
+ * @file op.h
+ * @brief I/O operation helpers
+ * @ingroup io_dev
+ */
+
 #ifndef DEV_OP_H_
 #define DEV_OP_H_
 
@@ -9,7 +15,19 @@ EXPORT_API
 struct IoDeviceObject;
 struct IoVfsNode;
 
+/**
+ * @addtogroup io_dev_op I/O operation helpers
+ * @brief I/O operation helpers
+ * @ingroup io_dev
+ * 
+ * This small module provides generic helpers for typical I/O operations on devices.
+ * @{
+ */
 
+ 
+/**
+ * @brief I/O read/write completion callback type
+ */
 typedef void (*IoReadWriteCompletionCallback)(STATUS status, size_t actualSize, void *context);
 
 
@@ -44,6 +62,10 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
  * @return Status code
 */
 STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size, void **buffer);
+
+/**
+ * @}
+ */
 
 END_EXPORT_API
 

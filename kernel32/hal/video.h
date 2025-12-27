@@ -1,13 +1,11 @@
-#ifndef HAL_VIDEO_H_
-#define HAL_VIDEO_H_
-
 /**
  * @file video.h
- * @brief Basic boot-time video routines
- * 
- * @defgroup video Basic video driver
+ * @brief Basic boot-time video output abstraction layer
  * @ingroup hal
 */
+
+#ifndef HAL_VIDEO_H_
+#define HAL_VIDEO_H_
 
 #include <stdint.h>
 #include "defines.h"
@@ -15,7 +13,11 @@
 #include <stdarg.h>
 
 /**
- * @addtogroup video
+ * @addtogroup hal_video Boot-time video output abstraction layer
+ * @brief Boot-time video output abstraction layer
+ * @kinternal
+ * 
+ * This module defines an abstraction layer for a boot-time video driver. If video output is not available, the routines are no-ops.
  * @{
 */
 
@@ -113,17 +115,20 @@ EXPORT_API
 */
 void HalVideoDeinit(void);
 
+/**
+ * @brief Type of the reset video callback provided by the driver
+ */
 typedef STATUS (*HalVideoResetRoutine)(void *context);
 
 /**
  * @brief Register video driver reset routine
+ * @param *resetRoutine Pointer to the reset routine
+ * @param *context Context pointer passed to the reset routine
  * 
  * The reset routine is used by the kernel to reset the video adapter to a known state,
  * where it can be set up and used by the kernel video driver.
  * The reset routine is invoked only on kernel panic to print the panic message without relying
  * on the external video driver.
- * @param *resetRoutine Pointer to the reset routine
- * @param *context Context pointer passed to the reset routine
  */
 void HalRegisterVideoResetRoutine(HalVideoResetRoutine resetRoutine, void *context);
 

@@ -9,26 +9,26 @@
 
 //debug interrupt handlers
 
-IT_HANDLER static void ItDebugHandler(struct ItFrame *f)
+ISR static void ItDebugHandler(struct ItFrame *f)
 {
     UNUSED(f);
 }
 
-IT_HANDLER static void ItBreakpointHandler(struct ItFrame *f)
+ISR static void ItBreakpointHandler(struct ItFrame *f)
 {
     UNUSED(f);
 }
 
 //FPU faults, easily recoverable
 
-IT_HANDLER static void ItSimdFpuHandler(struct ItFrame *f)
+ISR static void ItSimdFpuHandler(struct ItFrame *f)
 {
     UNUSED(f);
     //TODO: implement SIMD handling
     while(1);
 }
 
-IT_HANDLER static void ItFpuHandler(struct ItFrame *f)
+ISR static void ItFpuHandler(struct ItFrame *f)
 {
     UNUSED(f);
     FpuHandleException();
@@ -36,10 +36,10 @@ IT_HANDLER static void ItFpuHandler(struct ItFrame *f)
 
 //faults possibly correctable in user mode and kernel mode
 
-IT_HANDLER static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
 {
     UNUSED(f);
-    uintptr_t cr2;
+    reg_t cr2;
     //obtain failing address from CR2 register
     ASM("mov %0,cr2" : "=r" (cr2) : );
 
@@ -58,89 +58,89 @@ IT_HANDLER static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
 
 //faults correctable in user mode
 
-IT_HANDLER static void ItAlignmentCheckHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItAlignmentCheckHandler(struct ItFrame *f, uint32_t error)
 {
     //should never be called in kernel mode
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, UNEXPECTED_INTEL_TRAP, error, 0, 0);
 }
 
-IT_HANDLER static void ItGeneralProtectionHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItGeneralProtectionHandler(struct ItFrame *f, uint32_t error)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, GENERAL_PROTECTION_FAULT, error, 0, 0);
 }
 
-IT_HANDLER static void ItDivisionByZeroHandler(struct ItFrame *f)
+ISR static void ItDivisionByZeroHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, DIVIDE_ERROR, 0, 0, 0);
 }
 
-IT_HANDLER static void ItBoundExceededHandler(struct ItFrame *f)
+ISR static void ItBoundExceededHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, BOUND_RANGE_EXCEEDED, 0, 0, 0);
 }
 
-IT_HANDLER static void ItInvalidOpcodeHandler(struct ItFrame *f)
+ISR static void ItInvalidOpcodeHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, INVALID_OPCODE, 0, 0, 0);
 }
 
-IT_HANDLER static void ItOverflowHandler(struct ItFrame *f)
+ISR static void ItOverflowHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, OVERFLOW, 0, 0, 0);
 }
 
 //fatal errors
 
-IT_HANDLER static void ItNmiHandler(struct ItFrame *f)
+ISR static void ItNmiHandler(struct ItFrame *f)
 {
     UNUSED(f);
     KePanicEx(KERNEL_MODE_FAULT, NON_MASKABLE_INTERRUPT, 0, 0, 0);
 }
 
-IT_HANDLER static void ItDoubleFaultHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItDoubleFaultHandler(struct ItFrame *f, uint32_t error)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, DOUBLE_FAULT, error, 0, 0);
 }
 
-IT_HANDLER static void ItMachineCheckHandler(struct ItFrame *f)
+ISR static void ItMachineCheckHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, MACHINE_CHECK, 0, 0, 0);
 }
 
-IT_HANDLER static void ItDeviceUnavailableHandler(struct ItFrame *f)
+ISR static void ItDeviceUnavailableHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, FPU_NOT_AVAILABLE, 0, 0, 0);
 }
 
-IT_HANDLER static void ItCoprocessorOverrunHandler(struct ItFrame *f)
+ISR static void ItCoprocessorOverrunHandler(struct ItFrame *f)
 {
     //should not be called at all
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, COPROCESSOR_SEGMENT_OVERRUN, 0, 0, 0);
 }
 
-IT_HANDLER static void ItInvalidTssHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItInvalidTssHandler(struct ItFrame *f, uint32_t error)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, INVALID_TSS, error, 0, 0);
 }
 
-IT_HANDLER static void ItSegmentNotPresentHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItSegmentNotPresentHandler(struct ItFrame *f, uint32_t error)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, SEGMENT_NOT_PRESENT, error, 0, 0);
 }
 
-IT_HANDLER static void ItStackFaultHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItStackFaultHandler(struct ItFrame *f, uint32_t error)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, STACK_FAULT, error, 0, 0);
 }
 
 //dont-know-what-to-do-with-them-for-now faults
 
-IT_HANDLER static void ItVirtualizationExceptionHandler(struct ItFrame *f)
+ISR static void ItVirtualizationExceptionHandler(struct ItFrame *f)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, VIRTUALIZATION_EXCEPTION, 0, 0, 0);
 }
 
-IT_HANDLER static void ItControlPriotectionHandler(struct ItFrame *f, uint32_t error)
+ISR static void ItControlPriotectionHandler(struct ItFrame *f, uint32_t error)
 {
     KePanicIPEx(f->ip, KERNEL_MODE_FAULT, CONTROL_PROTECTION_EXCEPTION, error, 0, 0);
 }

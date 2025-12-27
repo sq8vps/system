@@ -3,11 +3,11 @@
 
 /**
  * @file dynmap.h
- * @brief Dynamically mapped kernel memory module
+ * @brief Dynamically mapped kernel memory suppoty
  * 
  * Provides routines for mapping dynamic kernel memory to IO or preallocated regions.
  * Similar to MmAllocateKernelHeap, but does not allocate physical memory.
- * @ingroup mm
+ * @ingroup mm_dynmap
 */
 
 
@@ -16,7 +16,7 @@
 #include "mm/mm.h"
 
 /**
- * @defgroup dynmap Dynamically mapped kernel memory routines
+ * @addtogroup mm_dynmap Dynamically mapped kernel memory routines
  * @ingroup mm
  * @{
 */
@@ -31,7 +31,7 @@ EXPORT_API
  * The pointer does not point to any physical memory. 
  * To reserve and map dynamic memory, use \a MmMapDynamicMemory()
 */
-void *MmReserveDynamicMemory(uintptr_t n);
+void *MmReserveDynamicMemory(size_t n);
 
 
 /**
@@ -40,7 +40,7 @@ void *MmReserveDynamicMemory(uintptr_t n);
  * @return Count of bytes previously reserved
  * @attention This function does not unmap the memory.
 */
-uintptr_t MmFreeDynamicMemoryReservation(const void *ptr);
+size_t MmFreeDynamicMemoryReservation(const void *ptr);
 
 
 /**
@@ -50,7 +50,7 @@ uintptr_t MmFreeDynamicMemoryReservation(const void *ptr);
  * @param flags Flags to apply to mapped memory (present and writable flags are always added)
  * @return Pointer to mapped virtual memory
 */
-void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
+void *MmMapDynamicMemory(PADDRESS pAddress, size_t n, MmMemoryFlags flags);
 
 
 /**
@@ -63,6 +63,7 @@ END_EXPORT_API
 
 /**
  * @brief Initialize dynamic kernel memory module
+ * @kinternal
 */
 INTERNAL void MmInitDynamicMemory();
 

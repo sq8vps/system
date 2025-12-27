@@ -30,7 +30,7 @@ struct GdtEntry
     uint8_t base3;
 } PACKED;
 
-struct GdtEntry I686Gdt[GDT_MAX_ENTRIES + 1] ALIGN(8); //table of GDTs
+struct GdtEntry I686Gdt[GDT_MAX_ENTRIES + 1] alignas(8); //table of GDTs
 
 /**
  * @brief A GDTR structure
@@ -160,7 +160,7 @@ void GdtLoadTss(uint16_t cpu)
     ASM("ltr %0" : : "r" GDT_OFFSET(GDT_TSS(cpu)));
 }
 
-__attribute__((fastcall))
+FASTCALL
 void GdtUpdateTss(uintptr_t esp0)
 {
     register uint16_t t;
@@ -171,7 +171,7 @@ void GdtUpdateTss(uintptr_t esp0)
     MsrSet(MSR_IA32_SYSENTER_ESP, esp0);
 }
 
-__attribute__((fastcall))
+FASTCALL
 void HalUpdateTls(void *tls)
 {
     register uint16_t t;

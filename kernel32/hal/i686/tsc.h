@@ -1,8 +1,25 @@
+/**
+ * @file tsc.h
+ * @brief TSC driver
+ * @ingroup i686
+ */
+
 #ifndef KERNEL_TSC_H_
 #define KERNEL_TSC_H_
 
 #include <stdint.h>
 #include "defines.h"
+
+/**
+ * @addtogroup i686_tsc TSC driver
+ * @brief TSC driver
+ * @ingroup i686
+ * @kinternal
+ * 
+ * This is a driver for the built-in TimeStamp Counter on x86.
+ * While the TSC can be used as a time source, kernel mode drivers should use HAL to obtain timestamps.
+ * @{
+ */
 
 /**
  * @brief Initialize Timestamp Counter and perfrom calibration on bootstrap CPU
@@ -42,5 +59,9 @@ INTERNAL STATUS TscCalibrate(void);
  * @note This function should be used to calculate ticks for small (delta) times
 */
 INTERNAL uint64_t TscCalculateRaw(uint32_t time);
+
+/**
+ * @}
+ */
 
 #endif

@@ -1,8 +1,22 @@
+/**
+ * @file fpu.h
+ * @brief x87 and MMX support
+ * @kinternal
+ * @ingroup i686
+ */
+
 #ifndef KERNEL_FPU_H_
 #define KERNEL_FPU_H_
 
 #include <stdint.h>
 #include "defines.h"
+
+/**
+ * @addtogroup i686_fpu x87 and MMX support
+ * @ingroup i686
+ * @kinternal
+ * @{
+ */
 
 /**
  * @brief Initialize x87 FPU
@@ -40,5 +54,9 @@ INTERNAL void FpuStore(void *buffer);
  * @warning If SSE is available, then \a SseRestore() must be used
 */
 INTERNAL void FpuRestore(void *buffer);
+
+/**
+ * @}
+ */
 
 #endif

@@ -1,6 +1,7 @@
 #include "state.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdbit.h>
 #include "op.h"
 #include "emu.h"
 #include "hal/i686/ioport.h"
@@ -636,7 +637,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
             case 0x19: //sbb r/m16,r16, sbb r/m32,r32
             case 0x39: //cmp r/m16,r16, cmp r/m32,r32
                 target = &modrmOp;
-                FALLTHROUGH;
+                [[fallthrough]];
             case 0x02: //add r8,r/m8
             case 0x12: //adc r8,r/m8
             case 0x2A: //sub r8,r/m8
@@ -676,7 +677,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 break;
             case 0x83: //add/adc/and/sub/sbb/cmp/or/xor r/m16,imm8; add/adc/and/sub/sbb/cmp/or/xor r/m32, imm8 - sign extension
                 imm = (int32_t)((int8_t)imm);
-                FALLTHROUGH;
+                [[fallthrough]];
             case 0x80: //add/adc/and/sub/sbb/cmp/or/xor r/m8,imm8
             case 0x81: //add/adc/and/sub/sbb/cmp/or/xor r/m16,imm16; add/adc/and/sub/sbb/cmp/or/xor r/m32, imm32
                 switch(variant)
@@ -783,7 +784,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
             case 0x30: //xor r/m8,r8
             case 0x31: //xor r/m16,r16; xor r/m32,r32
                 target = &modrmOp;
-                FALLTHROUGH;
+                [[fallthrough]];
             case 0x22: //and r8,r/m8
             case 0x23: //and r16,r/m16, and r32,r/m32
             case 0x0A: //or r8,r/m8
@@ -995,10 +996,10 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     skipStore = true;
                     break;
                 }
-                FALLTHROUGH;
+                [[fallthrough]];
             case 0xFE: //inc r/m8; dec r/m8
                 target = &modrmOp;
-                FALLTHROUGH;
+                [[fallthrough]];
             case 0x40 ... 0x47: //inc r16; inc r32
             case 0x48 ... 0x4F: //dec r16; dec r32
                 v1.u16 = reg->flags & FLAG_CF;
@@ -1142,7 +1143,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 
                 case 0x6B: //imul r16,r/m16,imm8; imul r32,r/m32,imm8 - sign extension
                     imm = (int32_t)((int8_t)(imm)); 
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0x69: //imul r16,r/m16,imm16; imul r32,r/m32,imm32 
                     I686EmuMul(reg, (uint32_t)modrmOp, (uint32_t)imm, NULL, (uint32_t*)&regOp, params.override.operand ? 32 : 16, true);
                     params.noModRmWrite = 1;
@@ -1151,13 +1152,13 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 //I/O ports
                 case 0xEC: //in al,dx
                     imm = reg->dx;
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xE4: //in al,imm8
                     reg->al = IoPortReadByte(imm);
                     break;
                 case 0xED: //in ax,dx; in eax,dx
                     imm = reg->dx;
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xE5: //in ax,imm8; in eax,imm8
                     if(params.override.operand)
                         reg->eax = IoPortReadDWord(imm);
@@ -1175,13 +1176,13 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
 
                 case 0xEE: //out dx,al
                     imm = reg->dx;
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xE6: //out imm8,al
                     IoPortWriteByte(imm, reg->al);
                     break;
                 case 0xEF: //out dx,ax; out dx,eax
                     imm = reg->dx;
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xE7: //out imm8,ax; out imm8,eax
                     if(params.override.operand)
                         IoPortWriteDWord(imm, reg->eax);
@@ -1205,7 +1206,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 case 0xCE: //into
                     if(!(reg->flags & FLAG_OF))
                         break;
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xCC: //int3
                 case 0xF1: //int1
                 case 0xCD: //int imm8
@@ -1287,7 +1288,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                         v1.u16 = reg->ip + 3;
                         fail |= I686EmuPush(state, &params, 2, 2, &v1);
                     }
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xE9: //jmp rel16; jmp rel32
                     if(params.override.operand)
                         reg->eip += 5 + (int32_t)coffs;
@@ -1310,7 +1311,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                         v1.u16 = reg->ip + 5;
                         fail |= I686EmuPush(state, &params, 2, 2, &v1);
                     }
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0xEA: //jmp ptr16:16; jmp ptr16:32
                     if(params.override.operand)
                     {
@@ -1525,7 +1526,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 //stack
                 case 0x8F: //pop r/m16; pop r/m32
                     target = &modrmOp;
-                    FALLTHROUGH;
+                    [[fallthrough]];
                 case 0x58 ... 0x5F: //pop r16; pop r32
                     fail |= I686EmuPop(state, &params, params.override.operand ? 4 : 2, params.override.operand ? 4 : 2, target);
                     break;
@@ -1769,20 +1770,20 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 if(0 == modrmOp)
                     reg->flags |= FLAG_ZF;
                 else
-                    regOp = __builtin_ctz((uint32_t)modrmOp);
+                    regOp = stdc_trailing_zeros((uint32_t)modrmOp);
                 break;
             case 0xBD: //bsr r16,r/m16; bsr r32,/rm32
                 if(0 == modrmOp)
                     reg->flags |= FLAG_ZF;
                 else
-                    regOp = (params.override.operand ? 31 : 15) - __builtin_clz((uint32_t)modrmOp);
+                    regOp = 31 - stdc_leading_zeros((uint32_t)modrmOp);
                 break;
 
             //double shift
             case 0xA5: //shld r/m16,r16,cl; shld r/m32,r32,cl
             case 0xAD: //shrd r/m16,r16,cl; shrd r/m32,r32,cl
                 imm = reg->cl;
-                FALLTHROUGH;
+                [[fallthrough]];
             case 0xA4: //shld r/m16,r16,imm8; shld r/m32,r32,imm8
             case 0xAC: //shrd r/m16,r16,imm8; shrd r/m32,r32,imm8
                 if(0 == imm)
@@ -1814,7 +1815,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     reg->flags |= FLAG_OF;
                 if(0 == modrmOp)
                     reg->flags |= FLAG_ZF;
-                if(!__builtin_parity(modrmOp))
+                if(0 == (stdc_count_ones(modrmOp & 0xFF) & 1))
                     reg->flags |= FLAG_PF;
                 break;
             
@@ -1874,7 +1875,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 break;
             
             case 0xC8: //bswap r32
-                regOp = __builtin_bswap32(regOp);
+                regOp = BSWAP(regOp);
                 break;
 
             case 0xB0: //cmpxchg r/m8,r8

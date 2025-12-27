@@ -1,20 +1,20 @@
-#ifndef HAL_MATH_H_
-#define HAL_MATH_H_
-
 /**
  * @file math.h
- * @brief Math coprocessor HAL module
- * 
- * @defgroup math Coprocessor HAL driver
+ * @brief Math coprocessor support
  * @ingroup hal
 */
+
+#ifndef HAL_MATH_H_
+#define HAL_MATH_H_
 
 #include "defines.h"
 
 struct KeTaskControlBlock;
 
 /**
- * @addtogroup math
+ * @addtogroup hal_math Math coprocessor support module
+ * @kinternal
+ * @ingroup hal
  * @{
 */
 

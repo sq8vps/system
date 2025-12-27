@@ -65,7 +65,7 @@ static struct MmDynamicMemoryRegion* MmDynamicInsertFreePair(const void *base, s
     return b;
 }
 
-void *MmReserveDynamicMemory(uintptr_t n)
+void *MmReserveDynamicMemory(size_t n)
 {
     n = ALIGN_UP(n, PAGE_SIZE);
     
@@ -118,7 +118,7 @@ MmMapDynamicMemoryFail:
     return NULL;
 }
 
-static uintptr_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
+static size_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
 {
     ptr = (void*)ALIGN_DOWN((uintptr_t)ptr, PAGE_SIZE);
 
@@ -172,12 +172,12 @@ static uintptr_t MmFreeDynamicMemoryReservationEx(const void *ptr, bool unmap)
     return originalSize;
 }
 
-uintptr_t MmFreeDynamicMemoryReservation(const void *ptr)
+size_t MmFreeDynamicMemoryReservation(const void *ptr)
 {
     return MmFreeDynamicMemoryReservationEx(ptr, false);
 }
 
-void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags)
+void *MmMapDynamicMemory(PADDRESS pAddress, size_t n, MmMemoryFlags flags)
 {
     n = ALIGN_UP(pAddress + n, PAGE_SIZE) - ALIGN_DOWN(pAddress, PAGE_SIZE);
 

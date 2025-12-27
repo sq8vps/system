@@ -1,14 +1,13 @@
-#ifndef KERNEL_MM_H_
-#define KERNEL_MM_H_
-
 /**
  * @file mm.h
  * @brief General memory management routines
+ * @ingroup mm_gen
  * 
  * Provides general/other memory management routines.
- * 
- * @defgroup mm Memory management module
 */
+
+#ifndef KERNEL_MM_H_
+#define KERNEL_MM_H_
 
 #include <stdint.h>
 #include "defines.h"
@@ -16,7 +15,11 @@
 #include "ob/ob.h"
 
 /**
- * @defgroup genmem General memory manipulation routines
+ * @addtogroup mm Memory management
+ */
+
+/**
+ * @addtogroup mm_gen General memory management routines
  * @ingroup mm
  * @{
 */
@@ -45,9 +48,9 @@ typedef uint16_t MmMemoryFlags;
 */
 struct MmMemoryDescriptor
 {
-    uintptr_t physical;
+    PADDRESS physical;
     void *mapped;
-    uintptr_t size;
+    size_t size;
 
     struct MmMemoryDescriptor *next;
 };
@@ -73,7 +76,7 @@ void MmFreeMemoryDescriptor(struct MmMemoryDescriptor *descriptor);
  * @return Memory Descriptor list pointer or NULL on failure
  * @warning This function returns NULL if size is zero
 */
-struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t size);
+struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, size_t size);
 
 
 /**
@@ -122,7 +125,7 @@ struct MmMemoryDescriptor *MmCloneMemoryDescriptorList(struct MmMemoryDescriptor
  * @param flags Page flags
  * @return Error code
 */
-STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags);
+STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags);
 
 /**
  * @brief Allocate, map and zero-initialize memory
@@ -131,7 +134,7 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags);
  * @param flags Page flags
  * @return Error code
 */
-STATUS MmAllocateMemoryZeroed(uintptr_t address, uintptr_t size, MmMemoryFlags flags);
+STATUS MmAllocateMemoryZeroed(uintptr_t address, size_t size, MmMemoryFlags flags);
 
 /**
  * @brief Unmap and free  memory
@@ -139,12 +142,13 @@ STATUS MmAllocateMemoryZeroed(uintptr_t address, uintptr_t size, MmMemoryFlags f
  * @param size Memory size in bytes
  * @return Error code
 */
-STATUS MmFreeMemory(uintptr_t address, uintptr_t size);
+STATUS MmFreeMemory(uintptr_t address, size_t size);
 
 END_EXPORT_API
 
 /**
  * @brief Initialize Memory Description cache allocator
+ * @kinternal
 */
 INTERNAL STATUS MmInitializeMemoryDescriptorAllocator(void);
 

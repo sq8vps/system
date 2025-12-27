@@ -12,7 +12,7 @@ struct RtlVPrintfConfig
     bool dry;
 	bool toFile;
 	struct IoFileHandle *file;
-	char *buffer;
+	char *restrict buffer;
 	bool useMax;
 	size_t max;
 };
@@ -707,8 +707,8 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
     return (int)written;
 }
 
-__attribute__ ((format (printf, 1, 2)))
-int RtlSprintDry(const char *format, ...)
+PRINTF_LIKE(1, 2)
+int RtlSprintDry(const char * restrict format, ...)
 {
 	va_list args;
 	va_start(args, format);
@@ -717,7 +717,7 @@ int RtlSprintDry(const char *format, ...)
     return ret;
 }
 
-int RtlSprintDryV(const char *format, va_list args)
+int RtlSprintDryV(const char *restrict format, va_list args)
 {
     struct RtlVPrintfConfig c;
     c.toFile = false;
@@ -727,7 +727,7 @@ int RtlSprintDryV(const char *format, va_list args)
     return ret;
 }
 
-int RtlSprintV(char *s, const char *format, va_list args)
+int RtlSprintV(char *restrict s, const char *restrict format, va_list args)
 {
     struct RtlVPrintfConfig c;
     c.dry = false;
@@ -737,8 +737,8 @@ int RtlSprintV(char *s, const char *format, va_list args)
     return RtlVprintf(c, format, args);
 }
 
-__attribute__ ((format (printf, 2, 3)))
-int RtlSprint(char *s, const char *format, ...)
+PRINTF_LIKE(2, 3)
+int RtlSprint(char *restrict s, const char * restrict format, ...)
 {
 	va_list args;
 	va_start(args, format);
@@ -747,8 +747,8 @@ int RtlSprint(char *s, const char *format, ...)
     return ret;
 }
 
-__attribute__ ((format (printf, 3, 4)))
-int RtlSprintN(char *s, size_t n, const char *format, ...)
+PRINTF_LIKE(3, 4)
+int RtlSprintN(char * restrict s, size_t n, const char * restrict format, ...)
 {
     struct RtlVPrintfConfig c;
     c.toFile = false;

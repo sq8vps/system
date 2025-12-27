@@ -1,23 +1,16 @@
-#ifndef KERNEL_KDRV_H_
-#define KERNEL_KDRV_H_
-
 /**
  * @file kdrv.h
- * @brief Kernel mode driver library
- * 
- * Provides kernel mode drivers manipulation routines
-*/
+ * @brief Kernel mode driver/device specific routines
+ * @ingroup kdrv
+ */
+
+#ifndef KERNEL_KDRV_H_
+#define KERNEL_KDRV_H_
 
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
 #include "ob/ob.h"
-
-/**
- * @defgroup kdrvLoad Kernel mode driver loading
- * @ingroup exec
- * @{
-*/
 
 EXPORT_API
 
@@ -26,8 +19,20 @@ struct IoDeviceObject;
 struct IoRp;
 struct IoVolumeNode;
 
+/**
+ * @addtogroup kdrv Kernel mode driver handling routines
+ * @ingroup exec
+ * @{
+*/
 
+/**
+ * @brief Macro to be used as a kernel mode driver entry point name
+ */
 #define DRIVER_ENTRY DriverEntry
+
+/**
+ * @brief Type definition for a kernel mode driver entry point routine
+ */
 typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 
 /**
@@ -38,7 +43,7 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 
 /**
  * @brief Driver is a filesystem driver
- * @warning This flag must be set by the driver in \a DriverEntry() routine
+ * @warning This flag must be set by the driver in #DRIVER_ENTRY routine
  */
 #define EX_DRIVER_OBJECT_FLAG_FILESYSTEM 0x00000001
 
@@ -48,23 +53,23 @@ typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
 struct ExDriverObject
 {
     OBJECT;
-    bool free;
-    uint32_t id;
-    struct IoDeviceObject *deviceObject; //linked list of devices created by the driver
-    uint32_t flags;
-    uintptr_t address;
-    uintptr_t size;
-    uint32_t referenceCount;
-    STATUS (*init)(struct ExDriverObject *driverObject);
-    STATUS (*unload)(struct ExDriverObject *driverObject);
-    STATUS (*dispatch)(struct IoRp *rp);
-    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject);
-    STATUS (*verifyFs)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk);
-    STATUS (*mount)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk);
+    bool free; /**< Descriptor is free */
+    uint32_t id; /**< Unique driver ID */
+    struct IoDeviceObject *deviceObject; /**< Linked list of devices created by the driver */
+    uint32_t flags; /**< Driver flags */
+    uintptr_t address; /**< Driver image address */
+    size_t size; /**< Driver image size */
+    uint32_t referenceCount; /**< Count of driver references */
+    STATUS (*init)(struct ExDriverObject *driverObject); /**< Driver initialization routine pointer */
+    STATUS (*unload)(struct ExDriverObject *driverObject); /**< Driver unload routine pointer */
+    STATUS (*dispatch)(struct IoRp *rp); /**< Resource Packet dispatch routine pointer */
+    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject); /**< Main Device Object creation routine pointer */
+    STATUS (*verifyFs)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk); /**< Routine to check if driver is able to mount a given file system */
+    STATUS (*mount)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk); /**< Mount filesystem routine pointer */
 
-    char *imageName;
-    struct ExDriverObject *next;
-    struct ExDriverObject *previous;
+    char *imageName; /**< Image file name */
+    struct ExDriverObject *next; /**< Next driver object */
+    struct ExDriverObject *previous; /**< Previous driver object */
 };
 
 /**
@@ -72,9 +77,9 @@ struct ExDriverObject
  */
 struct ExDriverObjectList
 {
-    struct ExDriverObject *this;
-    struct ExDriverObjectList *next;
-    bool isMain;
+    struct ExDriverObject *this; /**< Associated driver object pointer */
+    struct ExDriverObjectList *next; /**< Next driver object list entry */
+    bool isMain; /**< Is this a main driver for this device? */
 };
 
 /**
@@ -126,6 +131,7 @@ END_EXPORT_API
 /**
  * @brief Initialize driver manager
  * @return Status code
+ * @kinternal
  */
 INTERNAL STATUS ExInitializeDriverManager(void);
 
@@ -133,6 +139,7 @@ INTERNAL STATUS ExInitializeDriverManager(void);
  * @brief Update driver database path after the main file system is mounted
  * @return Status code
  * @warning This function might be called only once
+ * @kinternal
  */
 INTERNAL STATUS ExUpdateDriverDatabasePath(void);
 

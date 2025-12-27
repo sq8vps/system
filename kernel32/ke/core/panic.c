@@ -66,7 +66,7 @@ static void KePanicStopSystem(void)
     HalVideoInit();
 }
 
-NORETURN static void KePanicInternal(uintptr_t ip, uintptr_t code)
+[[noreturn]] static void KePanicInternal(uintptr_t ip, uintptr_t code)
 {
     if(KeInPanicState)
     {
@@ -80,7 +80,7 @@ NORETURN static void KePanicInternal(uintptr_t ip, uintptr_t code)
         ;
 }
 
-NORETURN static void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+[[noreturn]] static void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
     char buffer[100];
     if(KeInPanicState)
@@ -99,23 +99,23 @@ NORETURN static void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t a
 }
 
 
-NORETURN void KePanic(uintptr_t code)
+[[noreturn]] void KePanic(uintptr_t code)
 {
-    KePanicInternal((uintptr_t)__builtin_extract_return_addr(__builtin_return_address (0)), code);
+    KePanicInternal(GET_CALLER_ADDRESS(0), code);
 }
 
-NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+[[noreturn]] void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
-    KePanicExInternal((uintptr_t)__builtin_extract_return_addr(__builtin_return_address (0)), code, 
+    KePanicExInternal(GET_CALLER_ADDRESS(0), code, 
         arg1, arg2, arg3, arg4);
 }
 
-NORETURN void KePanicIP(uintptr_t ip, uintptr_t code)
+[[noreturn]] void KePanicIP(uintptr_t ip, uintptr_t code)
 {
     KePanicInternal(ip, code);
 }
 
-NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
+[[noreturn]] void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
 {
     KePanicExInternal(ip, code, arg1, arg2, arg3, arg4);
 }

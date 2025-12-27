@@ -1,3 +1,8 @@
+/**
+ * @file vol.h
+ * @brief Volume support
+ */
+
 #ifndef IO_DEV_VOL_H_
 #define IO_DEV_VOL_H_
 
@@ -6,6 +11,14 @@
 #include "ob/ob.h"
 
 EXPORT_API
+
+/**
+ * @addtogroup io_dev_vol Volume support
+ * @brief Volume support
+ * @ingroup io_dev
+ * 
+ * @{
+ */
 
 /**
  * @brief Maximum length of volume label
@@ -92,6 +105,7 @@ END_EXPORT_API
 
 /**
  * @brief Initialize volume manager
+ * @kinternal
  * @return Status code
  */
 INTERNAL STATUS IoInitializeVolumeManager(void);
@@ -100,8 +114,13 @@ INTERNAL STATUS IoInitializeVolumeManager(void);
  * @brief Wait for main file system mount
  * @param timeout Time to wait for the mount
  * @return True if file system mounted, false on timeout
+ * @kinternal
  * @warning This function might be used only once
  */
 INTERNAL bool IoWaitForMainFileSystemMount(uint64_t timeout);
+
+/**
+ * @}
+ */
 
 #endif

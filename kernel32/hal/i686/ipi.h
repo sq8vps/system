@@ -1,3 +1,10 @@
+/**
+ * @file ipi.h
+ * @brief Inter-processor interrupt module
+ * @ingroup i686
+ * @kinternal
+ */
+
 #ifndef I686_IPI_H_
 #define I686_IPI_H_
 
@@ -6,15 +13,33 @@
 #include <stdbool.h>
 #include "hal/cpu.h"
 
+/**
+ * @addtogroup i686_ipi Inter-processor interrupt module
+ * @ingroup i686
+ * @kinternal
+ * 
+ * This module handles IPIs on x86.
+ * @{
+ */
+
+/**
+ * @brief IPI types
+ */
 enum I686IpiType
 {
-    I686_IPI_TLB_SHOOTDOWN,
-    I686_IPI_CPU_SHUTDOWN,
-    I686_IPI_FUNCTION_CALL,
+    I686_IPI_TLB_SHOOTDOWN = 0, /**< TLB shootdown to invalidate page on another CPU */
+    I686_IPI_CPU_SHUTDOWN = 1, /**< CPU shutdown */
+    I686_IPI_FUNCTION_CALL = 2, /**< Remote function call */
 };
 
+/**
+ * @brief Type of the remote function called using IPI
+ */
 typedef int (*I686RemoteFunction)(void *context);
 
+/**
+ * @brief IPI-associated data
+ */
 struct I686IpiData
 {
     enum I686IpiType type; /**< IPI type, used to determine payload type */
@@ -22,18 +47,25 @@ struct I686IpiData
     volatile uint16_t * volatile remainingAcks; /**< Remaining acknowledges, must be atomically decremented by each recipient */
     union
     {
+        /**
+         * @brief TLB invalidation data
+         */
         struct
         {
-            uintptr_t address;
-            uintptr_t count;
-            bool kernel;
-            uintptr_t cr3;
+            uintptr_t address; /**< Virtual address */
+            size_t count; /**< Number of pages */
+            bool kernel; /**< Are these kernel pages? */
+            reg_t cr3; /**< Associated CR3 (page directory) address */
         } tlb;
+
+        /**
+         * @brief Remote function call data
+         */
         struct
         {
-            I686RemoteFunction function;
-            void *context;
-            int *result;
+            I686RemoteFunction function; /**< Remote function pointer */
+            void *context; /**< Context to pass to \a function */
+            int *result; /**< Return value from \a function */
         } call;
     } payload;
 };
@@ -51,14 +83,14 @@ INTERNAL STATUS I686InitializeIpi(void);
  * @param address Starting address to be invalidated
  * @param pages Count of pages to be invalidated
  */
-INTERNAL void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t address, uintptr_t pages);
+INTERNAL void I686SendInvalidateTlb(const HalCpuBitmap *targets, reg_t cr3, uintptr_t address, size_t pages);
 
 /**
  * @brief Invalidate TLB on all CPUs (kernel pages)
  * @param address Starting address to be invalidated
  * @param pages Count of pages to be invalidated
  */
-INTERNAL void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages);
+INTERNAL void I686SendInvalidateKernelTlb(uintptr_t address, size_t pages);
 
 /**
  * @brief Send shut down command to CPUs
@@ -74,5 +106,9 @@ INTERNAL void I686SendShutdownCpus(void);
  */
 INTERNAL void I686InvokeRemoteFunction(const HalCpuBitmap *targets, 
     I686RemoteFunction function, void *context, int results[MAX_CPU_COUNT]);
+
+/**
+ * @}
+ */
 
 #endif

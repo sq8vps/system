@@ -1,7 +1,18 @@
+/**
+ * @file output.h
+ * @brief Video output support layer
+ * @ingroup io_video
+ */
+
 #ifndef KERNEL_IO_VIDEO_OUTPUT_H_
 #define KERNEL_IO_VIDEO_OUTPUT_H_
 
 #include "defines.h"
+
+/**
+ * @addtogroup io_video
+ * @{
+ */
 
 EXPORT_API
 
@@ -75,5 +86,9 @@ STATUS IoRegisterFrameBuffer(const struct IoDeviceObject *dev, const struct IoFr
 void IoDrawVideo(int handle);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

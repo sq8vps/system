@@ -1,27 +1,24 @@
-#ifndef KERNEL_CPUID_H_
-#define KERNEL_CPUID_H_
-
 /**
  * @file dcpuid.h
- * @brief CPUID module
- * 
- * A system core driver providing access to CPUID information from the CPU.
- * 
- * @ingroup i686 amd64
- * @defgroup cpuid CPUID routines
-*/
+ * @brief CPUID helpers
+ * @ingroup i686
+ */
+
+#ifndef KERNEL_CPUID_H_
+#define KERNEL_CPUID_H_
 
 #include <stdbool.h>
 #include <stdint.h>
 #include "defines.h"
 
 /**
- * @addtogroup cpuid
+ * @addtogroup i686
  * @{
 */
 
 /**
  * @brief Initialize CPUID module
+ * @kinternal
  * @return True if CPUID available, false if not
 */
 INTERNAL bool CpuidInit(void);

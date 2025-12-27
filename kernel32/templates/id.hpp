@@ -1,5 +1,16 @@
+/**
+ * @file id.hpp
+ * @brief ID dispenser template
+ * @ingroup templates
+ */
+
 #ifndef TEMPLATES_ID_HPP_
 #define TEMPLATES_ID_HPP_
+
+/**
+ * @addtogroup templates General templates
+ * @{
+ */
 
 extern "C" 
 {
@@ -47,5 +58,9 @@ public:
         KeReleaseSpinlock(&lock, prio);
     }
 };
+
+/**
+ * @}
+ */
 
 #endif

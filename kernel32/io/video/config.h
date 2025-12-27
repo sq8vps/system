@@ -1,11 +1,27 @@
+/**
+ * @file config.h
+ * @brief Video adapter abstraction layer definitions
+ * @ingroup io_video
+ */
+
 #ifndef KERNEL_IO_VIDEO_CONFIG_H_
 #define KERNEL_IO_VIDEO_CONFIG_H_
 
 #include "defines.h"
 
+/**
+ * @addtogroup io_video Video adapter support layer
+ * @brief Video adapter support layer
+ * @ingroup io
+ * @{
+ */
+
 EXPORT_API
 
-enum
+/**
+ * @brief Color mask indices for \ref IoFrameBufferConfig
+ */
+enum IoColorMaskIndex
 {
     RED_INDEX = 0,
     GREEN_INDEX = 1,
@@ -28,7 +44,7 @@ struct IoFrameBufferConfig
         {
             uint8_t size; /**< Color mask size in bits */
             uint8_t position; /**< Mask position (count of left shifts) */
-        } color[4]; /**< Red, green, blue, and reserved bit masks */
+        } color[4]; /**< Bit masks for colors. Use values from \ref IoColorMaskIndex for addresing. */
     } mask; /**< Color masks */
 };
 
@@ -42,5 +58,9 @@ struct IoFrameBuffer
 };
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

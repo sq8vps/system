@@ -217,7 +217,7 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
     struct MmMemoryDescriptor *list = NULL; //Physical Memory Descriptoor list for caller buffer
     struct MmMemoryDescriptor *alignedList = NULL; //Physical Memory Descriptor list for intermediate (aligned) buffer
     bool useDirectIo = !!(dev->flags & IO_DEVICE_FLAG_DIRECT_IO); //use direct IO flag, depends on device capabilities
-    uintptr_t alignment = (dev->alignment > dev->blockSize) 
+    size_t alignment = (dev->alignment > dev->blockSize) 
                 ? dev->alignment : dev->blockSize; //required alignment: device-provided alignment requirement or block size, whichever is bigger
     size_t alignedSize = 0; //aligned buffer size
     uint64_t alignedOffset = 0; //aligned buffer offset
@@ -317,7 +317,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     struct MmMemoryDescriptor *list = NULL;
     struct IoRp *rp = NULL;
     bool useDirectIo = !!(dev->flags & IO_DEVICE_FLAG_DIRECT_IO);
-    uintptr_t alignment = (dev->alignment > dev->blockSize) ? dev->alignment : dev->blockSize;
+    size_t alignment = (dev->alignment > dev->blockSize) ? dev->alignment : dev->blockSize;
     size_t alignedSize = 0;
     uint64_t alignedOffset = 0;
     

@@ -26,11 +26,11 @@ extern void I686StartApEnd(void);
 
 static struct
 {
-    uintptr_t cpuId;
-    uintptr_t lapicId;
-    uintptr_t cr3;
-    uintptr_t esp;
-    uintptr_t eip;
+    reg_t cpuId;
+    reg_t lapicId;
+    reg_t cr3;
+    reg_t esp;
+    reg_t eip;
 } PACKED I686StartApData[MAX_CPU_COUNT];
 static volatile uint32_t I686StartedCpuCount = 1;
 static volatile uint32_t I686ReadyCpuCount = 1;
@@ -132,7 +132,7 @@ STATUS I686StartProcessors(void)
         if(cpu->extensions.bootstrap || !cpu->usable)
             continue;
         
-        uint32_t lastCpuCount = __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST);
+        uint32_t lastCpuCount = ATOMIC_LOAD(&I686StartedCpuCount, ATOMIC_SEQ_CST);
         //first wait for IPI delivery up to a given time
         //if that passes, then wait a bit and check if the AP woke up
         //if any of these failed, then repeat
@@ -141,7 +141,7 @@ STATUS I686StartProcessors(void)
         {
             KeDelay(US_TO_NS(200)); 
             //counter changed, continue with next AP
-            if(lastCpuCount != __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST))
+            if(lastCpuCount != ATOMIC_LOAD(&I686StartedCpuCount, ATOMIC_SEQ_CST))
                 continue;
         }
         ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
@@ -149,19 +149,19 @@ STATUS I686StartProcessors(void)
         {
             //this time wait much longer
             KeDelay(MS_TO_NS(1000)); 
-            if(lastCpuCount != __atomic_load_n(&I686StartedCpuCount, __ATOMIC_SEQ_CST))
+            if(lastCpuCount != ATOMIC_LOAD(&I686StartedCpuCount, ATOMIC_SEQ_CST))
                 continue;
         }
         //second attempt failed, skip AP
     }
 
-    while(__atomic_load_n(&I686ReadyCpuCount, __ATOMIC_SEQ_CST) != I686StartedCpuCount)
+    while(ATOMIC_LOAD(&I686ReadyCpuCount, ATOMIC_SEQ_CST) != I686StartedCpuCount)
         TIGHT_LOOP_HINT();
 
     if(OK != I686InitializeIpi())
         FAIL_BOOT("IPI module initialization failed");
 
-    __atomic_store_n(&I686ApCanContinue, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_STORE(&I686ApCanContinue, 1, ATOMIC_SEQ_CST);
 
     status = HalUnmapMemoryEx(I686_AP_BOOTSTRAP_ADDRESS,
         ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, PAGE_SIZE));
@@ -173,7 +173,7 @@ STATUS I686StartProcessors(void)
 
 void I686CpuBootstrap(uint32_t cpuId)
 {
-    __atomic_fetch_add(&I686StartedCpuCount, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_FETCH_ADD(&I686StartedCpuCount, 1, ATOMIC_SEQ_CST);
     GdtApply(cpuId);
     GdtAddCpu(cpuId);
     GdtLoadTss(cpuId);
@@ -182,9 +182,9 @@ void I686CpuBootstrap(uint32_t cpuId)
     ApicInitAp();
     I686InitializeSyscall();
 
-    __atomic_fetch_add(&I686ReadyCpuCount, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_FETCH_ADD(&I686ReadyCpuCount, 1, ATOMIC_SEQ_CST);
 
-    while(0 == __atomic_load_n(&I686ApCanContinue, __ATOMIC_SEQ_CST))
+    while(0 == ATOMIC_LOAD(&I686ApCanContinue, ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 
     KeJoinScheduler();

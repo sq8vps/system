@@ -1,3 +1,9 @@
+/**
+ * @file initrd.h
+ * @brief Read-only initial ramdisk driver
+ * @ingroup io
+ */
+
 #ifndef KERNEL_INITRD_H_
 #define KERNEL_INITRD_H_
 
@@ -6,6 +12,14 @@
 
 struct Multiboot2InfoHeader;
 struct IoVfsNode;
+
+/**
+ * @addtogroup io_initrd Read-only initial ramdisk driver
+ * @brief Read-only initial ramdisk driver
+ * @ingroup io
+ * @kinternal
+ * @{
+ */
 
 /**
  * @brief Initialize intial ramdisk
@@ -38,6 +52,10 @@ INTERNAL STATUS IoInitrdGetNode(struct IoVfsNode *parent, const char *name, stru
  * @param offset Offset in bytes
  * @return Count of bytes actually read
  */
-INTERNAL uintptr_t IoInitrdRead(const struct IoVfsNode *node, void *buffer, uintptr_t size, uintptr_t offset);
+INTERNAL size_t IoInitrdRead(const struct IoVfsNode *node, void *buffer, size_t size, size_t offset);
+
+/**
+ * @}
+ */
 
 #endif

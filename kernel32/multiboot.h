@@ -1,8 +1,19 @@
+/**
+ * @file multiboot.h
+ * @brief Multiboot2 definitions and helpers
+ * @ingroup multiboot
+ */
+
 #ifndef KERNEL_MULTIBOOT_H_
 #define KERNEL_MULTIBOOT_H_
 
 #include <stdint.h>
 #include "defines.h"
+
+/**
+ * @addtogroup multiboot Multiboot2 definitions and helpers
+ * @{
+ */
 
 #define MB2_TAG_ALIGNMENT 8
 
@@ -116,7 +127,7 @@ struct Multiboot2ElfSymbolsTag
     struct Multiboot2InfoTag header;
     /*
     Apparently, the Multiboot2 specification (https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html) 
-    is completely inconsistent on how this tag should look. In specification, the following fields
+    is completely inconsistent on how this tag should look. In that specification, the following fields
     should be 16-bit and there should be a 16-bit "reserved" field. In the example code, however,
     all fields are 32-bit and there is no "reserved" field. It looks like Grub2 adheres to the latter.
     */
@@ -145,5 +156,8 @@ const struct Multiboot2InfoTag *Multiboot2FindTag(const struct Multiboot2InfoHea
     const struct Multiboot2InfoTag *last, 
     enum Multiboot2InfoTagType type);
 
+/**
+ * @}
+ */
 
 #endif

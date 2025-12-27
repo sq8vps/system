@@ -87,7 +87,7 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
     STATUS status = OK;
     struct ExDriverObject *object = NULL;
     uint64_t imageSize = 0, freeSize = 0, requiredSize = 0;
-    uintptr_t bssSize = 0;
+    size_t bssSize = 0;
 
     KeAcquireMutex(&ExKernelDriverState.mutex);
     struct ExDriverObject *drv = ExKernelDriverState.list;
@@ -126,7 +126,7 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
     if(NULL != t)
     {
         struct ExDriverObject *bestFit = NULL;
-        uintptr_t bestFitSize = UINTPTR_MAX;
+        size_t bestFitSize = UINTPTR_MAX;
         while(NULL != t)
         {
             if(t->free)
@@ -149,7 +149,7 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
             object = bestFit;
             freeSize = bestFit->size;
             
-            uintptr_t remaining = freeSize - requiredSize;
+            size_t remaining = freeSize - requiredSize;
             if(remaining >= PAGE_SIZE)
             {
                 struct ExDriverObject *nextBlock = NULL;

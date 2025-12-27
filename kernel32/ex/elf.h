@@ -1,25 +1,25 @@
-#ifndef LOADER_ELF_H
-#define LOADER_ELF_H
-
 /**
  * @file elf.h
- * @brief ELF file definitions and manipulation routines
- * 
- * Provides ELF file definitions and manipulation routines
- * 
- * 
-*/
+ * @brief Execultable Linkable Format files helpers
+ * @ingroup exec
+ */
+
+#ifndef LOADER_ELF_H
+#define LOADER_ELF_H
 
 #include <stdint.h>
 #include "defines.h"
 
 /**
- * @defgroup elf ELF definitions and mainpulation routines
+ * @addtogroup elf ELF definitions and helpers
  * @ingroup exec
+ * @kinternal
  * @{
 */
 
-//ELF type
+/**
+ * @brief ELF image type
+ */
 enum Elf32_e_type
 {
 	ET_NONE = 0,
@@ -29,7 +29,9 @@ enum Elf32_e_type
 	ET_CORE = 4
 };
 
-//ELF machine
+/**
+ * @brief ELF target machine
+ */
 enum Elf32_e_machine
 {
 	EM_NONE = 0,
@@ -43,14 +45,18 @@ enum Elf32_e_machine
 	EM_MIPS_RS4_BE = 10,
 };
 
-//ELF file version
+/**
+ * @brief ELF file version
+ */
 enum Elf32_e_version
 {
 	EV_NONE = 0,
 	EV_CURRENT = 1,
 };
 
-//ELF magic numbers
+/**
+ * @brief ELF magic numbers
+ */
 enum Elf32_ei_mag
 {
 	ELFMAG0 = 0x7f,
@@ -59,7 +65,9 @@ enum Elf32_ei_mag
 	ELFMAG3 = 'F',
 };
 
-//ELF class (32/64 bits)
+/**
+ * @brief ELF class (32/64 bits)
+ */
 enum Elf32_ei_class
 {
 	ELFCLASSNONE = 0,
@@ -67,7 +75,9 @@ enum Elf32_ei_class
 	ELFCLASS64 = 2,
 };
 
-//ELF endianess
+/**
+ * @brief ELF endianess
+ */
 enum Elf32_ei_data
 {
 	ELFDATANONE = 0,
@@ -75,7 +85,9 @@ enum Elf32_ei_data
 	ELFDATA2MSB = 2,
 };
 
-//ELF file header
+/**
+ * @brief ELF file header
+ */
 struct Elf32_Ehdr
 {
         uint8_t ei_mag[4];
@@ -97,9 +109,11 @@ struct Elf32_Ehdr
         uint16_t e_shentsize;
         uint16_t e_shnum;
         uint16_t e_shstrndx;
-} __attribute__ ((packed));
+} PACKED;
 
-//ELF program header type
+/**
+ * @brief ELF program header type
+ */
 enum Elf32_p_type
 {
 	PT_NULL = 0,
@@ -117,7 +131,9 @@ enum Elf32_p_type
 #define PF_W 0x2
 #define PF_R 0x4
 
-//ELF program header
+/**
+ * @brief ELF program header
+ */
 struct Elf32_Phdr
 {
 	uint32_t p_type;
@@ -128,9 +144,11 @@ struct Elf32_Phdr
 	uint32_t p_memsz;
 	uint32_t p_flags;
 	uint32_t p_align;
-} __attribute__ ((packed));
+} PACKED;
 
-//ELF section header type
+/**
+ * @brief ELF section header type
+ */
 enum Elf32_sh_type
 {
 	SHT_NULL = 0,
@@ -151,7 +169,9 @@ enum Elf32_sh_type
 	SHT_HIUSER = 0xffffffff,
 };
 
-//ELF section header flags
+/**
+ * @brief ELF section header flags
+ */
 enum Elf32_sh_flags
 {
 	SHF_WRITE = 0x1,
@@ -160,11 +180,12 @@ enum Elf32_sh_flags
 	SHF_MASKPROC = 0xf0000000,
 };
 
-//ELF section header defines
 #define SHN_UNDEF (0)
 #define SHN_ABS (0xfff1)
 
-//ELF section header
+/**
+ * @brief ELF section header
+ */
 struct Elf32_Shdr
 {
 	uint32_t sh_name;
@@ -177,9 +198,11 @@ struct Elf32_Shdr
 	uint32_t sh_info;
 	uint32_t sh_addralign;
 	uint32_t sh_entsize;
-} __attribute__ ((packed));
+} PACKED;
 
-//ELF symbol entry
+/**
+ * @brief ELF symbol entry
+ */
 struct Elf32_Sym
 {
 	uint32_t st_name;
@@ -188,7 +211,7 @@ struct Elf32_Sym
 	uint8_t st_info;
 	uint8_t st_other;
 	uint16_t st_shndx;
-} __attribute__ ((packed));
+} PACKED;
 
 //st_info field manipulation macros
 #define ELF32_ST_BIND(i) ((i) >> 4)
@@ -216,12 +239,14 @@ struct Elf32_Sym
 #define STV_HIDDEN 2
 #define STV_PROTECTED 3
 
-//ELF relocation entry
+/**
+ * @brief ELF relocation entry
+ */
 struct Elf32_Rel
 {
 	uint32_t r_offset;
 	uint32_t r_info;
-} __attribute__ ((packed));
+} PACKED;
 
 //ELF relocation with addend entry
 struct Elf32_Rela
@@ -229,15 +254,18 @@ struct Elf32_Rela
 	uint32_t r_offset;
 	uint32_t r_info;
 	int32_t r_addend;
-} __attribute__ ((packed));
+} PACKED;
 
 //ELF relocation helper macros
 #define ELF32_R_SYM(i)	((i) >> 8)
 #define ELF32_R_TYPE(i)	((uint8_t)(i))
 #define ELF32_R_INFO(s, t) (((s) << 8) + (uint8_t)(t))
 
-//ELF relocation types
-enum Elf32_Rel_types {
+/**
+ * @brief ELF relocation type
+ */
+enum Elf32_Rel_types 
+{
 	R_386_NONE = 0, //no relocation
 	R_386_32 = 1, //symbol + addend
 	R_386_PC32 = 2,  //symbol + addend - section offset

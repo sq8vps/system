@@ -5,7 +5,7 @@
 
 static struct KeProcessControlBlock *KeIdlePCB = NULL;
 
-NORETURN static void KeIdleWorker(void *context)
+[[noreturn]] static void KeIdleWorker(void *context)
 {
     UNUSED(context);
 

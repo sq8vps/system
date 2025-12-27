@@ -1,12 +1,27 @@
+/**
+ * @file cpu.h
+ * @brief CPU support abstraction layer
+ * @ingroup hal
+ */
+
+
 #ifndef KERNEL_HAL_CPU_H_
 #define KERNEL_HAL_CPU_H_
 
 #include <stdint.h>
+#include <stdbit.h>
 #include "defines.h"
 #include "config.h"
 #include "arch.h"
 
 EXPORT_API
+
+/**
+ * @addtogroup hal_cpu CPU support
+ * @brief CPU support structures, definitions, and routines
+ * @ingroup hal
+ * @{
+ */
 
 /**
  * @brief A general bitmap CPU representation
@@ -17,44 +32,44 @@ typedef struct
 } HalCpuBitmap;
 
 /**
- * @brief A constant representing all CPUs in \a HalCpuBitmap
+ * @brief A constant representing all CPUs in \ref HalCpuBitmap
  */
 #define HAL_CPU_ALL (HalCpuBitmap){.u32[0 ... CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8) - 1] = UINT32_MAX}
 
 /**
- * @brief A constant representing no CPUs in \a HalCpuBitmap
+ * @brief A constant representing no CPUs in \ref HalCpuBitmap
  */
 #define HAL_CPU_NONE (HalCpuBitmap){.u32[0 ... CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8) - 1] = 0}
 
 /**
- * @brief Get number of bits set in \a HalCpuBitmap
+ * @brief Get number of bits set in \ref HalCpuBitmap
  * @param bitmap CPU bitmap
  * @param count Variable to store the count to
  */
 #define HAL_GET_CPU_BIT_COUNT(bitmap, count) do { \
     (count) = 0; \
     for(uint16_t HAL_GET_CPU_BIT_COUNT_i = 0; HAL_GET_CPU_BIT_COUNT_i < CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8); HAL_GET_CPU_BIT_COUNT_i++) \
-        (count) += __builtin_popcount(bitmap->u32[HAL_GET_CPU_BIT_COUNT_i]); \
+        (count) += stdc_count_ones(bitmap->u32[HAL_GET_CPU_BIT_COUNT_i]); \
     } while(0);
 
 /**
- * @brief Get CPU bit from \a HalCpuBitmap type variable
- * @param bitmap CPU bitmap of type \a HalCpuBitmap
+ * @brief Get CPU bit from \ref HalCpuBitmap type variable
+ * @param bitmap CPU bitmap of type \ref HalCpuBitmap
  * @param cpu CPU number
  * @return Bit state for given CPU
  */
 #define HAL_GET_CPU_BIT(bitmap, cpu) (!!((bitmap)->u32[(cpu) >> 5] & ((uint32_t)1 << ((cpu) & 0x1F)))) 
 
 /**
- * @brief Set CPU bit in \a HalCpuBitmap type variable
- * @param bitmap CPU bitmap of type \a HalCpuBitmap
+ * @brief Set CPU bit in \ref HalCpuBitmap type variable
+ * @param bitmap CPU bitmap of type \ref HalCpuBitmap
  * @param cpu CPU number 
  */
 #define HAL_SET_CPU_BIT(bitmap, cpu) ((bitmap)->u32[(cpu) >> 5] |= ((uint32_t)1 << ((cpu) & 0x1F))) 
 
 /**
- * @brief Clear CPU bit in \a HalCpuBitmap type variable
- * @param bitmap CPU bitmap of type \a HalCpuBitmap
+ * @brief Clear CPU bit in \ref HalCpuBitmap type variable
+ * @param bitmap CPU bitmap of type \ref HalCpuBitmap
  * @param cpu CPU number 
  */
 #define HAL_CLEAR_CPU_BIT(bitmap, cpu) ((bitmap)->u32[(cpu) >> 5] &= ~((uint32_t)1 << ((cpu) & 0x1F))) 
@@ -94,6 +109,7 @@ END_EXPORT_API
  * @brief Register new CPU in kernel
  * @param *extensions Pointer to architecture-specific CPU extensions to be copied
  * @param usable True if CPU usable, false otherwise
+ * @kinternal
  * @return Status code
  */
 INTERNAL STATUS HalRegisterCpu(struct HalCpuExtensions *extensions, bool usable);
@@ -101,7 +117,12 @@ INTERNAL STATUS HalRegisterCpu(struct HalCpuExtensions *extensions, bool usable)
 /**
  * @brief Halt all CPUs
  * @attention This routine is used only on failure in a SMP system
+ * @kinternal
  */
 INTERNAL void HalHaltAllCpus(void);
+
+/**
+ * @}
+ */
 
 #endif

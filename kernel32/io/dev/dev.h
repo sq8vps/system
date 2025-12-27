@@ -1,3 +1,9 @@
+/**
+ * @file dev.h
+ * @brief General I/O device definitions and routines 
+ * @ingroup io_dev
+ */
+
 #ifndef KERNEL_DEV_H_
 #define KERNEL_DEV_H_
 
@@ -6,8 +12,32 @@
 #include "bus.h"
 #include "ob/ob.h"
 
+/**
+ * @addtogroup io I/O subsystem
+ * @brief I/O subsystem - definitions, structures, routines
+ */
+
+/**
+ * @addtogroup io_dev Device subsystem
+ * @ingroup io
+ * @brief Device support module
+ * 
+ * This module provides generic support to different kinds of devices. This includes maintaining device trees, handling Request Packets,
+ * abstracting device resources, or handling volumes.
+ */
+
+/**
+ * @addtogroup io_dev_dev General device definitions and routines
+ * @brief General device definitions and routines
+ * @ingroup io_dev
+ * @{
+ */
+
 EXPORT_API
 
+/**
+ * @brief Maximum number of compatible IDs per device
+ */
 #define IO_MAX_COMPATIBLE_DEVICE_IDS 8
 
 /**
@@ -316,12 +346,14 @@ END_EXPORT_API
 
 /**
  * @brief Retry to build device stack and enumerate child devices after the main filesystem was mounted
+ * @kinternal
  */
 INTERNAL void IoRetryBuildDeviceStackAndEnumerate(void);
 
 /**
  * @brief Notify device enumerator thread that a new device has been created
  * @param *node Device node
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node);
@@ -329,6 +361,7 @@ INTERNAL STATUS IoNotifyDeviceEnumerator(struct IoDeviceNode *node);
 /**
  * @brief Build device stack (load drivers and add devices) for previously registered node
  * @param *node Devce node
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoBuildDeviceStack(struct IoDeviceNode *node);
@@ -336,8 +369,13 @@ INTERNAL STATUS IoBuildDeviceStack(struct IoDeviceNode *node);
 /**
  * @brief Initialize device manager and create root device
  * @param *rootDeviceId Root device ID string (to find appropriate driver)
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoInitDeviceManager(char *rootDeviceId);
+
+/**
+ * @}
+ */
 
 #endif

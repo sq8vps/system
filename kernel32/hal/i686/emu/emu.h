@@ -1,8 +1,24 @@
+/**
+ * @file emu.h
+ * @brief Real mode emulator
+ * @ingroup i686_emu
+ */
+
 #ifndef I686_EMU_H_
 #define I686_EMU_H_
 
 #include "defines.h"
 
+/**
+ * @addtogroup i686_emu Real mode emulator
+ * @brief Real mode emulator
+ * @ingroup i686
+ * 
+ * This module provides a x86 real mode emulator. The emulator can be used, e.g, by the graphic drivers
+ * to execute video BIOS interrupts. Please note, that this emulator allows only for real-mode (<1MiB) memory
+ * access and does not implement switching to protected mode.
+ * @{
+ */
 
 
 /**
@@ -84,5 +100,9 @@ enum I686EmulatorState I686EmulatorDoInterrupt(uint8_t vector, struct I686Regist
 enum I686EmulatorState I686EmulatorReadMemory(uint32_t address, uint32_t size, void *buffer);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

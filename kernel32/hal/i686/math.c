@@ -45,7 +45,7 @@ void HalDestroyMathStateBuffer(const void *math)
         return FpuDestroyStateBuffer(math);
 }
 
-__attribute__ ((fastcall))
+FASTCALL
 void HalStoreMathState(struct KeTaskControlBlock *tcb)
 {
     if(HalSseAvailable)
@@ -54,7 +54,7 @@ void HalStoreMathState(struct KeTaskControlBlock *tcb)
         FpuStore(tcb->data.fpu);
 }
 
-__attribute__ ((fastcall))
+FASTCALL
 void HalRestoreMathState(struct KeTaskControlBlock *tcb)
 {
     if(HalSseAvailable)

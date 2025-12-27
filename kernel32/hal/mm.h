@@ -1,9 +1,24 @@
+/**
+ * @file mm.h
+ * @brief Low-level memory management support module
+ * @ingroup hal
+*/
+
 #ifndef HAL_MM_H_
 #define HAL_MM_H_
 
 #include "defines.h"
 #include <stdint.h>
 #include "mm/mm.h"
+
+/**
+ * @addtogroup hal_mm Low-level memory management
+ * @ingroup hal
+ * 
+ * This module provides abstract low-level memory management routines, such as directly mapping
+ * the virtual memory or obtaining architecture-specific boundaries.
+ * @{
+*/
 
 EXPORT_API
 
@@ -44,7 +59,7 @@ STATUS HalMapMemory(uintptr_t vAddress, PADDRESS pAddress, MmMemoryFlags flags);
  * @return Error code
  * @attention This function does not allocate physical memory.
 */
-STATUS HalMapMemoryEx(uintptr_t vAddress, PADDRESS pAddress, uintptr_t size, MmMemoryFlags flags);
+STATUS HalMapMemoryEx(uintptr_t vAddress, PADDRESS pAddress, size_t size, MmMemoryFlags flags);
 
 
 /**
@@ -63,45 +78,55 @@ STATUS HalUnmapMemory(uintptr_t vAddress);
  * @return Error code
  * @attention This function does not free physical memory
 */
-STATUS HalUnmapMemoryEx(uintptr_t vAddress, uintptr_t size);
+STATUS HalUnmapMemoryEx(uintptr_t vAddress, size_t size);
 
 END_EXPORT_API
 
 /**
  * @brief Get base address of driver memory space
+ * @kinternal
  * @return Space base address
  */
 INTERNAL uintptr_t HalGetDriverSpaceBase(void);
 
 /**
  * @brief Get base address of dynamic memory space
+ * @kinternal
  * @return Space base address
  */
 INTERNAL uintptr_t HalGetDynamicSpaceBase(void);
 
 /**
  * @brief Get base address of heap memory space
+ * @kinternal
  * @return Space base address
  */
 INTERNAL uintptr_t HalGetHeapSpaceBase(void);
 
 /**
  * @brief Get size of driver memory space
+ * @kinternal
  * @return Space size
  */
-INTERNAL uintptr_t HalGetDriverSpaceSize(void);
+INTERNAL size_t HalGetDriverSpaceSize(void);
 
 /**
  * @brief Get size of dynamic memory space
+ * @kinternal
  * @return Space size
  */
-INTERNAL uintptr_t HalGetDynamicSpaceSize(void);
+INTERNAL size_t HalGetDynamicSpaceSize(void);
 
 /**
  * @brief Get size of heap memory space
+ * @kinternal
  * @return Space size
  */
-INTERNAL uintptr_t HalGetHeapSpaceSize(void);
+INTERNAL size_t HalGetHeapSpaceSize(void);
+
+/**
+ * @}
+ */
 
 #endif
 

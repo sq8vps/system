@@ -1,3 +1,8 @@
 Kernel heap allocator -> AVL(?) trees
 Scheduler -> CFS
 PCI driver -> MMIO access, MSI
+Remove __builtin and __attributes__ directly from code
+Make some RTL routines weak to allow HAL to reimplement them
+Change names of the symbols starting from underscore
+Optimize built-in VGA driver
+Replace builtin atomics with stdatomic.h

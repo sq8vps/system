@@ -1,9 +1,22 @@
+/**
+ * @file sched.h
+ * @brief Kernel scheduler
+ * @ingroup ke_sched
+ */
+
 #ifndef KERNEL_SCHED_H_
 #define KERNEL_SCHED_H_
 
 #include <stdint.h>
 #include "defines.h"
 #include "ke/task/task.h"
+
+/**
+ * @addtogroup ke_sched Kernel scheduler
+ * @brief Kernel scheduler
+ * @ingroup ke
+ * @{
+ */
 
 EXPORT_API
 
@@ -76,7 +89,7 @@ END_EXPORT_API
  * @brief Block task (remove from ready-to-run queue)
  * @param *tcb Task Control Block
  * @param reason Reason for task block
- * @warning This function is in general for kernel use only
+ * @kinternal
  */
 INTERNAL void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
 
@@ -84,7 +97,7 @@ INTERNAL void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason
  * @brief Unblock task (insert to ready-to-run queue)
  * @param *tcb Task Control Block
  * @note Task must not be in \a TASK_BLOCK_TIMED_SLEEP block state
- * @warning This function is in general for kernel use only
+ * @kinternal
 */
 INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);
 
@@ -95,17 +108,20 @@ INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);
  * @attention This function does not return
  * @details Initialize scheduler, create idle and continuation process.
  * Then enable interrupts and start scheduling.
+ * @kinternal
 */
 INTERNAL void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext);
 
 /**
  * @brief Join scheduler with a new CPU
+ * @kinternal
  */
 INTERNAL void KeJoinScheduler(void);
 
 /**
  * @brief Wait for the given number of CPUs to join scheduler
  * @param cpus Number of CPUs to wait for
+ * @kinternal
  */
 INTERNAL void KeWaitForCpusToJoinScheduler(uint32_t cpus);
 
@@ -113,8 +129,13 @@ INTERNAL void KeWaitForCpusToJoinScheduler(uint32_t cpus);
  * @brief Attach last task to appropriate queue
  * @param cpu CPU number
  * @attention This function is for context switch code use only
+ * @kinternal
  */
-__attribute__ ((fastcall))
+FASTCALL
 INTERNAL void KeAttachLastTask(uint16_t cpu);
+
+/**
+ * @}
+ */
 
 #endif

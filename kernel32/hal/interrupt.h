@@ -1,17 +1,11 @@
-#ifndef KERNEL_INTERRUPT_H_
-#define KERNEL_INTERRUPT_H_
-
 /**
  * @file interrupt.h
- * @brief HAL Interrupt module
- * 
- * A HAL module providing external and internal interrupt handling routines and structures.
- * This module supports APIC and PIC as interrupt controllers.
- * PIT is used as a timer only when APIC is not present.
- * 
+ * @brief Interrupt support abstraction layer
  * @ingroup hal
- * @defgroup halIt HAL Interrupt module
-*/
+ */
+
+#ifndef KERNEL_INTERRUPT_H_
+#define KERNEL_INTERRUPT_H_
 
 #include <stdint.h>
 #include "defines.h"
@@ -20,12 +14,19 @@
 #include "hal/arch.h"
 
 /**
- * @addtogroup halIt
+ * @addtogroup hal_it Interrupt support abstraction layer
+ * @ingroup hal
+ * 
+ * This module provides a full abstraction layer for the interrupt. Kernel mode drivers should use these
+ * routines to register and enable hardware interrupts.
  * @{
 */
 
 EXPORT_API
 
+/**
+ * @brief Constant for any interrupt input/no preference when requesting assignment
+ */
 #define HAL_INTERRUPT_INPUT_ANY UINT32_MAX
 
 /**
@@ -66,6 +67,9 @@ enum HalInterruptSharing
     HAL_IT_SHAREABLE,
 };
 
+/**
+ * @brief Interrupt parameters
+ */
 struct HalInterruptParams
 {
     enum HalInterruptMode mode;
@@ -194,6 +198,7 @@ END_EXPORT_API
 
 /**
  * @brief Set current task priority
+ * @kinternal
  * @param prio Priority to be set
  */
 INTERNAL void HalSetTaskPriority(PRIO prio);
@@ -201,21 +206,36 @@ INTERNAL void HalSetTaskPriority(PRIO prio);
 /**
  * @brief Check if generated interrupt is spurious and should not be processed
  * @param vector Generated interrupt vector
+ * @kinternal
  * @return True if spurious, false if not
 */
 INTERNAL bool HalIsInterruptSpurious(uint8_t vector);
 
 /**
  * @brief Obtain vector corresponding to given IRQ (if applicable)
+ * @kinternal
  * @return Vector corresponding to given IRQ
  */
 INTERNAL uint32_t HalIrqVectorFromIrq(uint32_t irq);
 
 /**
  * @brief Check if vector number is related to IRQ due to hardware limitations
+ * @kinternal
  * @return True if related, false otherwise
  */
 INTERNAL bool HalIrqIsVectorRelatedToIrq(void);
+
+/**
+ * @brief Disable all interrupts
+ * @kinternal
+*/
+INTERNAL void HalDisableInterrupts(void);
+
+/**
+ * @brief Enable all interrupts
+ * @kinternal
+*/
+INTERNAL void HalEnableInterrupts(void);
 
 /**
  * @}

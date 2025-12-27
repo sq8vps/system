@@ -1,3 +1,9 @@
+/**
+ * @file order.h
+ * @brief Byte-order conversion helpers
+ * @ingroup rtl_order
+ */
+
 #ifndef RTL_ORDER_H_
 #define RTL_ORDER_H_
 
@@ -5,7 +11,14 @@
 #include "defines.h"
 
 /**
+ * @addtogroup rtl_order Byte-order conversion helpers
+ * @ingroup rtl
+ * @{
+ */
+
+/**
  * @brief Initialize endianness converter
+ * @kinternal
 */
 INTERNAL void RtlDetectEndianness(void);
 
@@ -107,5 +120,9 @@ uint64_t RtlBeU64(uint64_t x);
 int64_t RtlBeS64(int64_t x);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

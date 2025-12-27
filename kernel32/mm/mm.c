@@ -30,7 +30,7 @@ void MmFreeMemoryDescriptor(struct MmMemoryDescriptor *descriptor)
     MmSlabFree(MmMemoryDescriptorSlabHandle, descriptor);
 }
 
-struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t size)
+struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, size_t size)
 {
     if(0 == size)
         return NULL;
@@ -46,8 +46,8 @@ struct MmMemoryDescriptor* MmBuildMemoryDescriptorList(void *memory, uintptr_t s
     
     while(size)
     {
-        uintptr_t physical;
-        uintptr_t bytesToBoundary;
+        PADDRESS physical;
+        size_t bytesToBoundary;
         if(OK != HalGetPhysicalAddress((uintptr_t)memory, &physical))
             goto MmBuildMemoryDescriptorListFailure;
 
@@ -203,7 +203,7 @@ void HalUnmapMemoryDescriptorList(void *memory)
     MmUnmapDynamicMemory(memory);
 }
 
-STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
+STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags)
 {
     STATUS ret = OK;
 
@@ -213,8 +213,8 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
         if(address & (PAGE_SIZE - 1)) //check if memory is aligned
             return BAD_ALIGNMENT;
         
-        uintptr_t pAddress = 0;
-        uintptr_t allocated = MmAllocatePhysicalMemory(size, &pAddress);
+        PADDRESS pAddress = 0;
+        size_t allocated = MmAllocatePhysicalMemory(size, &pAddress);
         if(0 == allocated) //no memory was allocated - this is an error condition
         {
             ret = OUT_OF_RESOURCES;
@@ -235,7 +235,7 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
 
     mmAllocateKernelMemoryFailed:
     address -= PAGE_SIZE;
-    uintptr_t pAddress = 0;
+    PADDRESS pAddress = 0;
     //unmap and free previously mapped and allocated pages
     while(address != initialAddress)
     {
@@ -247,7 +247,7 @@ STATUS MmAllocateMemory(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
     return ret;
 }
 
-STATUS MmAllocateMemoryZeroed(uintptr_t address, uintptr_t size, MmMemoryFlags flags)
+STATUS MmAllocateMemoryZeroed(uintptr_t address, size_t size, MmMemoryFlags flags)
 {
     STATUS status = MmAllocateMemory(address, size, flags);
     if(OK == status)
@@ -255,11 +255,11 @@ STATUS MmAllocateMemoryZeroed(uintptr_t address, uintptr_t size, MmMemoryFlags f
     return status;
 }
 
-STATUS MmFreeMemory(uintptr_t address, uintptr_t size)
+STATUS MmFreeMemory(uintptr_t address, size_t size)
 {
     while(size)
     {
-        uintptr_t pAddress = 0;
+        PADDRESS pAddress = 0;
         if(OK == HalGetPhysicalAddress(address, &pAddress))
         {
             HalUnmapMemory(address);

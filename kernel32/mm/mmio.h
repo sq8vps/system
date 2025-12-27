@@ -1,8 +1,19 @@
+/**
+ * @file mmio.h
+ * @brief Memory-mapped I/O support
+ * @ingroup mm_mmio
+ */
+
 #ifndef KERNEL_MMIO_H_
 #define KERNEL_MMIO_H_
 
 #include <stdint.h>
 #include "defines.h"
+
+/**
+ * @addtogroup mm_mmio Memory-mapped I/O
+ * @{
+ */
 
 EXPORT_API
 
@@ -12,7 +23,7 @@ EXPORT_API
  * @param n Space size
  * @return Pointer to mapped space or NULL on failure
 */
-void *MmMapMmIo(uintptr_t pAddress, uintptr_t n);
+void *MmMapMmIo(PADDRESS pAddress, size_t n);
 
 
 /**
@@ -22,5 +33,9 @@ void *MmMapMmIo(uintptr_t pAddress, uintptr_t n);
 void MmUnmapMmIo(const void *ptr);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

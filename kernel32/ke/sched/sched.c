@@ -60,7 +60,7 @@ static void KeSchedulerWorker(void *context)
         KeTaskSwitchPending = true;
     }
 #else
-    uint16_t cpu = (uintptr_t)context;
+    uint32_t cpu = (uint32_t)context;
     if((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu]))
     {
         KeSchedule(cpu);
@@ -75,7 +75,7 @@ STATUS KeSchedulerISR(void *context)
 #ifndef SMP
     KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, NULL);
 #else
-    uintptr_t cpu = HalGetCurrentCpu();
+    uint32_t cpu = HalGetCurrentCpu();
     KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, (void*)cpu);
 #endif
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
@@ -166,7 +166,7 @@ static void KeAttachTaskToQueue(struct KeTaskControlBlock *tcb, struct KeSchedul
     }
 }
 
-__attribute__((fastcall))
+FASTCALL
 void KeAttachLastTask(uint16_t cpu)
 {
     if(NULL != KeLastTask[cpu])
@@ -290,7 +290,7 @@ static void KeSchedule(uint16_t cpu)
     KePanicEx(NO_EXECUTABLE_TASK, cpu, 0, 0, 0);
 }
 
-NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext)
+[[noreturn]] void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext)
 {   
     STATUS ret = OK;
     //create idle task
@@ -322,7 +322,7 @@ NORETURN void KeStartScheduler(void (*continuationTask)(void*), void *continuati
         
     HalInitializeScheduler();
 
-    __atomic_add_fetch(&KeJoinedCpus, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_ADD_FETCH(&KeJoinedCpus, 1, ATOMIC_SEQ_CST);
 
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
@@ -508,7 +508,7 @@ void KeTaskYield(void)
 
 void KeJoinScheduler(void)
 {
-    while(0 == __atomic_load_n(&KeJoinedCpus, __ATOMIC_SEQ_CST))
+    while(0 == ATOMIC_LOAD(&KeJoinedCpus, ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
     if(OK != KeCreateIdleTask())
     {
@@ -523,12 +523,12 @@ void KeJoinScheduler(void)
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
     HalStartSystemTimer(KE_SCHEDULER_TIME_SLICE);
 
-    __atomic_add_fetch(&KeJoinedCpus, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_ADD_FETCH(&KeJoinedCpus, 1, ATOMIC_SEQ_CST);
 }
 
 void KeWaitForCpusToJoinScheduler(uint32_t cpus)
 {
-    while(cpus > __atomic_load_n(&KeJoinedCpus, __ATOMIC_SEQ_CST))
+    while(cpus > ATOMIC_LOAD(&KeJoinedCpus, ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 }
 

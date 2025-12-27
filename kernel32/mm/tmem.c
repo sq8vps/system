@@ -253,7 +253,7 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
             goto MmMapTaskMemoryLeave;
 
         if(flags & MM_TASK_MEMORY_WRITE_THROUGH)
-            __atomic_add_fetch(&(file->references), 1, __ATOMIC_RELAXED);
+            ATOMIC_ADD_FETCH(&(file->references), 1, ATOMIC_RELAXED);
     }
 
     entry->base = address;
@@ -341,7 +341,7 @@ STATUS MmUnmapTaskMemory(const void *const ptr, size_t length)
                     if(NULL != region->file)
                     {
                         if(region->flags & MM_TASK_MEMORY_WRITE_THROUGH)
-                            __atomic_sub_fetch(&(region->file->references), 1, __ATOMIC_RELAXED);
+                            ATOMIC_SUB_FETCH(&(region->file->references), 1, ATOMIC_RELAXED);
                     }
 
                     base = (uintptr_t)region->end;

@@ -116,7 +116,7 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
         info->partition.start = geo->firstAddressableSector;
         info->partition.size = geo->sectorCount;
         info->partition.sectorSize = geo->sectorSize;
-        info->index = atomic_fetch_add_explicit(&(DiskDriverState.diskCount), 1, __ATOMIC_RELAXED);
+        info->index = atomic_fetch_add_explicit(&(DiskDriverState.diskCount), 1, ATOMIC_RELAXED);
         MmFreeKernelHeap(geo);
 
         IoAttachDevice(device, baseDeviceObject);

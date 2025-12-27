@@ -1,9 +1,25 @@
+/**
+ * @file pit.h
+ * @brief 8254 PIT driver
+ * @ingroup i686
+ */
+
 #ifndef KERNEL_PIT_H_
 #define KERNEL_PIT_H_
 
 #include <stdint.h>
 #include "defines.h"
 
+/**
+ * @addtogroup i686_pit 8254 PIT driver
+ * @brief 8254 PIT driver
+ * @ingroup i686
+ * @kinternal
+ * 
+ * PIT is not used in Nabla kernel as a time source. Here it is used in single-shot mode for calibration of 
+ * other timers.
+ * @{
+ */
 
 /**
  * @brief Initialize Programmable Interval Timer
@@ -32,5 +48,9 @@ typedef void (*PitCallback)(bool finished, void *context);
  * @return ::OK on success, ::BAD_PARAMETER when time is out of valid range
  */
 INTERNAL STATUS PitDoSingleShot(uint32_t time, PitCallback start, PitCallback stop, void *context);
+
+/**
+ * @}
+ */
 
 #endif

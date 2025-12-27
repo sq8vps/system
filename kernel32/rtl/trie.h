@@ -1,8 +1,20 @@
+/**
+ * @file trie.h
+ * @brief Trie implementation
+ * @ingroup rtl_trie
+ */
+
 #ifndef RTL_TRIE_H_
 #define RTL_TRIE_H_
 
 #include <stddef.h>
 #include "tree.h"
+
+/**
+ * @addtogroup rtl_trie Trie implementation
+ * @ingroup rtl_tree
+ * @{
+ */
 
 EXPORT_API
 
@@ -43,5 +55,9 @@ struct TrieNode* TrieInsert(struct TrieNode *root, struct TrieNode *node, tree_k
 struct TrieNode *TrieFind(struct TrieNode *start, const tree_key_t *keys, size_t keyCount);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

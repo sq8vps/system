@@ -1,18 +1,23 @@
+/**
+ * @file font.h
+ * @brief Boot-time video driver built-in font
+ * @ingroup i686
+ */
+
 #ifndef I686_FONT_H_
 #define I686_FONT_H_
 
 #include <stdint.h>
 
 /**
- * @file font.h
- * @brief Boot-time video driver driver built-in font
- * 
- * A built-in 8x8 ASCII font for boot-time video driver.
-*/
+ * @addtogroup i686
+ * @{
+ */
 
-#define HAL_VIDEO_FONT_WIDTH 8
-#define HAL_VIDEO_FONT_HEIGHT 8
-#define HAL_VIDEO_FONT_LINE_SPACING 1
+#define HAL_VIDEO_FONT_LINE_SPACING 1 /**< Built-in font line spacing */
+
+#define HAL_VIDEO_FONT_WIDTH 8 /**< Built-in font width */
+#define HAL_VIDEO_FONT_HEIGHT 8 /**< Built-in font height */
 
 /**
  * @brief Boot-time video driver 8x8 ASCII font
@@ -277,6 +282,9 @@ static const uint8_t HalVideoFont8x8[2048] =
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+/**
+ * @}
+ */
 
 
 #endif

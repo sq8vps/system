@@ -1,8 +1,21 @@
+/**
+ * @file kbd.h
+ * @brief Keyboard support
+ * @ingroup io_input
+ */
+
 #ifndef KERNEL_KBD_H_
 #define KERNEL_KBD_H_
 
 #include "defines.h"
 #include <stdint.h>
+
+/**
+ * @addtogroup io_input_kbd Keyboard support
+ * @brief Keyboard support definition and routines
+ * @ingroup io_input
+ * @{
+ */
 
 EXPORT_API
 
@@ -178,5 +191,9 @@ struct IoKeyboardEventData
 STATUS IoKeyboardReportKey(int handle, IoKeyCode code, bool pressed);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

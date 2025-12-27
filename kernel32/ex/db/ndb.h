@@ -1,9 +1,24 @@
+/**
+ * @file ndb.h
+ * @brief Low-level kernel database handling structures and routines
+ * @ingroup db
+ */
+
 #ifndef EX_NDB_H_
 #define EX_NDB_H_
 
 #include <stdint.h>
 #include <stdbool.h>
 #include "defines.h"
+
+/**
+ * @addtogroup db_ll Low-level kernel database interface
+ * @ingroup db
+ * @brief This module provides low-level structures and routines for manipulating kernel databases.
+ * @attention These structures and functions are not meant to be used by kernel modules and drivers.
+ * @note See db.h for abstract kernel database interface.
+ * @{
+ */
 
 struct NablaDbHeader
 {
@@ -109,5 +124,8 @@ struct NablaDbEntry* NablaDbFind(const struct NablaDbHeader *h, const char *name
  */
 struct NablaDbEntry* NablaDbGetEntry(const struct NablaDbHeader *h, const struct NablaDbEntry *last);
 
+/**
+ * @}
+ */
 
 #endif

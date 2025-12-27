@@ -9,20 +9,20 @@
  * @brief Bootloader information tags returned by the bootloader
  * @attention This buffer must be filled by the bootstrap code 
  */
-uint8_t Multiboot2InfoBuffer[MULTIBOOT2_BUFFER_SIZE] ALIGN(8);
+uint8_t Multiboot2InfoBuffer[MULTIBOOT2_BUFFER_SIZE] alignas(8);
 
 
 #define MULTIBOOT2_REQUEST_COUNT 4
 
-static volatile const ALIGN(16)
+static volatile const alignas(16)
 struct
 {
     struct Multiboot2Header header;
-    ALIGN(MB2_TAG_ALIGNMENT) struct Multiboot2RelocatableTag relocatable;
-    ALIGN(MB2_TAG_ALIGNMENT) struct Multiboot2Tag request;
+    alignas(MB2_TAG_ALIGNMENT) struct Multiboot2RelocatableTag relocatable;
+    alignas(MB2_TAG_ALIGNMENT) struct Multiboot2Tag request;
     uint32_t requests[MULTIBOOT2_REQUEST_COUNT];
 } 
-Multiboot2Data __attribute__ ((section(".multiboot"))) =
+SECTION(".multiboot") =
 {
     .header = 
     {

@@ -1,3 +1,9 @@
+/**
+ * @file fs.h
+ * @brief File support
+ * @ingroup io_fs
+ */
+
 #ifndef KERNEL_FS_H_
 #define KERNEL_FS_H_
 
@@ -7,6 +13,22 @@
 #include "ob/ob.h"
 #include "io/dev/op.h"
 #include "taskfs.h"
+
+/**
+ * @addtogroup io_fs File system layer
+ * @ingroup io
+ * 
+ * This module is a file system layer. It provides a Virtual File System (VFS) layer to abstract the actual file systems.
+ * Also, it handles special file systems such as \a \dev or \a \task. This module also provides high-level 
+ * file abstraction - handles and operations. 
+ */
+
+/**
+ * @addtogroup io_fs_fs High-level file support
+ * @brief High-level file support - handles and operations
+ * @ingroup io_fs
+ * @{
+ */
 
 EXPORT_API
 
@@ -172,6 +194,7 @@ END_EXPORT_API
  * @param mode File open mode
  * @param flags File flags
  * @param *handleNumber Output file handle or -1 on failure
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoOpenFileForProcess(struct KeProcessControlBlock *pcb, const char *file, struct IoVfsNode *fileNode, struct IoTaskFsContext *taskfs, IoFileOpenMode mode, IoFileFlags flags, int *handleNumber);
@@ -180,6 +203,7 @@ INTERNAL STATUS IoOpenFileForProcess(struct KeProcessControlBlock *pcb, const ch
  * @brief Close file for given process
  * @param *pcb Process Control Block
  * @param handleNumber File handle
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoCloseFileForProcess(struct KeProcessControlBlock *pcb, int handleNumber);
@@ -189,6 +213,7 @@ INTERNAL STATUS IoCloseFileForProcess(struct KeProcessControlBlock *pcb, int han
  * @param *pcb Target Process Control Block
  * @param targetHandle Handle number in target process
  * @param sourceHandle Handle number in calling process
+ * @kinternal
  * @return Status code
  */
 INTERNAL STATUS IoCloneFileToNewProcess(struct KeProcessControlBlock *pcb, int targetHandle, int sourceHandle);
@@ -197,14 +222,20 @@ INTERNAL STATUS IoCloneFileToNewProcess(struct KeProcessControlBlock *pcb, int t
  * @brief Get VFS node associated with given file handle from given process
  * @param *pcb Owner Process Control Block
  * @param handle File handle number
+ * @kinternal
  * @return Associated VFS node or NULL on failure
  */
 INTERNAL struct IoVfsNode* IoGetVfsNodeForFile(struct KeProcessControlBlock *pcb, int handle);
 
 /**
  * @brief Initialize I/O File Manager subsystem
+ * @kinternal
  * @return Status code
 */
 INTERNAL STATUS IoFsInit(void);
+
+/**
+ * @}
+ */
 
 #endif

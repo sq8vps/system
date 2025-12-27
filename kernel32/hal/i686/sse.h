@@ -1,7 +1,21 @@
+/**
+ * @file sse.h
+ * @brief SSE support
+ * @ingroup i686
+ */
+
 #ifndef KERNEL_SSE_H_
 #define KERNEL_SSE_H_
 
 #include "defines.h"
+
+/**
+ * @addtogroup i686_sse SSE support
+ * @brief SSE support
+ * @ingroup i686
+ * @kinternal
+ * @{
+ */
 
 /**
  * @brief Initialize SSE
@@ -34,5 +48,9 @@ INTERNAL void SseStore(void *buffer);
  * @param *buffer Buffer to restore the SSE state from
 */
 INTERNAL void SseRestore(void *buffer);
+
+/**
+ * @}
+ */
 
 #endif

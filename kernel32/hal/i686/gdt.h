@@ -1,22 +1,25 @@
+/**
+ * @file gdt.h
+ * @brief Global Descriptor Table and Task State Segment support
+ * @ingroup i686
+ * @kinternal
+ * @note This
+ */
+
 #ifndef I686_GDT_H_
 #define I686_GDT_H_
 
-/**
- * @file gdt.h
- * @brief Global Descriptor Table and Task State Segment module
- * 
- * Provides a basic handling of GDT and TSS.
- * Only flat memory model is supported.
- * 
- * @defgroup gdt GDT and TSS module
- * @ingroup i686
-*/
 
 #include <stdint.h>
 #include "defines.h"
 
 /**
- * @addtogroup gdt
+ * @addtogroup i686_gdt GDT and TSS support
+ * @ingroup i686
+ * @kinternal
+ * 
+ * This module provides support for GDT, TSS, and TLS (low-level). 
+ * For GDT, only flat memory model is supported.
  * @{
 */
 
@@ -86,6 +89,8 @@ INTERNAL void GdtApply(uint16_t cpu);
 
 /**
  * @brief Create TSS for CPU and add to GDT
+ * @param cpu CPU number
+ * @return Status code
  */
 INTERNAL STATUS GdtAddCpu(uint16_t cpu);
 
@@ -100,7 +105,7 @@ INTERNAL void GdtLoadTss(uint16_t cpu);
  * @brief Update kernel stack pointer for current CPU
  * @param esp0 New kernel stack pointer
  */
-__attribute__((fastcall))
+FASTCALL
 INTERNAL void GdtUpdateTss(uintptr_t esp0);
 
 /**

@@ -1,9 +1,27 @@
+/**
+ * @file lapic.h
+ * @brief Local APIC support module
+ * @ingroup i686
+ * @note This driver implements the universal HAL interface and most of its function are available using kernel API.
+ */
+
 #ifndef KERNEL_LAPIC_H_
 #define KERNEL_LAPIC_H_
 
 #include <stdint.h>
 #include "defines.h"
 #include <stdbool.h>
+
+/**
+ * @addtogroup i686_lapic Local APIC support module
+ * @brief Local APIC support module
+ * @kinternal
+ * 
+ * This module provides support for LAPIC. This includes handling processor priorities, system timer, IPIs (low-level),
+ * and sending EOIs.
+ * While the LAPIC timer can be used as a time source, kernel mode drivers should use HAL to obtain timestamps.
+ * @{
+ */
 
 /**
  * @brief APIC IPI modes
@@ -116,5 +134,9 @@ INTERNAL uint8_t ApicGetProcessorPriority(void);
  * @return LAPIC ID
  */
 INTERNAL uint8_t ApicGetCurrentId(void);
+
+/**
+ * @}
+ */
 
 #endif

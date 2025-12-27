@@ -1,3 +1,9 @@
+/**
+ * @file taskfs.h
+ * @brief Task file system (\c /task) supprt
+ * @ingroup io_fs
+ */
+
 #ifndef KERNEL_TASKFS_H_
 #define KERNEL_TASKFS_H_
 
@@ -9,6 +15,14 @@ struct IoVfsNode;
 EXPORT_API
 
 /**
+ * @addtogroup io_fs_taskfs Task file system (\c /task) support
+ * @brief Device file system (\c /task) support
+ * @kinternal
+ * @ingroup io_fs
+ * @{
+ */
+
+/**
  * @brief Task file system context used for accessing /taskfs
  */
 struct IoTaskFsContext
@@ -17,6 +31,9 @@ struct IoTaskFsContext
     int fd;
 };
 
+/**
+ * @brief Macro used to initialize \ref IoTaskFsContext
+ */
 #define IO_TASK_FS_CONTEXT_INITIALIZER {.tid = -1, .fd = -1}
 
 END_EXPORT_API
@@ -46,5 +63,9 @@ INTERNAL struct IoVfsNode* IoTaskFsResolveLink(struct IoVfsNode *link, struct Io
  * @return Status code
  */
 INTERNAL STATUS IoInitTaskFs(struct IoVfsNode *root);
+
+/**
+ * @}
+ */
 
 #endif

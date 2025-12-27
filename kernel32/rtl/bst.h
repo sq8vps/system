@@ -1,8 +1,22 @@
+
+/**
+ * @file bst.h
+ * @brief Binary search tree library
+ * @ingroup rtl_bst
+ */
 #ifndef RTL_BST_H_
 #define RTL_BST_H_
 
 #include <stddef.h>
 #include "tree.h"
+
+/**
+ * @addtogroup rtl_bst General binary search tree
+ * @note In order to provide tree "abstraction" locally, that is, to alias all \c Bst... symbols as \c Tree... symbols,
+ * define \c BST_PROVIDE_ABSTRACTION before including this header.
+ * @ingroup rtl_tree
+ * @{
+ */
 
 EXPORT_API
 
@@ -69,5 +83,9 @@ struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key);
 struct BstNode *BstRemove(struct BstNode *root, struct BstNode *node);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

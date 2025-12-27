@@ -11,8 +11,8 @@ struct MmSlabEntry
 
 struct MmSlab
 {
-    uintptr_t chunkSize;
-    uintptr_t chunkCount;
+    size_t chunkSize;
+    size_t chunkCount;
     struct MmSlab *nextSlab;
     struct MmSlabEntry *freeStack;
     KeSpinlock lock;
@@ -25,7 +25,7 @@ static STATUS MmSlabAllocateBlock(struct MmSlab *slab)
         return OUT_OF_RESOURCES;
 
     struct MmSlabEntry *t = s;
-    for(uintptr_t i = 0; i < (slab->chunkCount - 1); i++)
+    for(size_t i = 0; i < (slab->chunkCount - 1); i++)
     {
         t->next = (struct MmSlabEntry*)((uintptr_t)t + slab->chunkSize + sizeof(*t));
         t->free = 1;
@@ -46,7 +46,7 @@ static STATUS MmSlabAllocateBlock(struct MmSlab *slab)
     return OK;
 }
 
-void *MmSlabCreate(uintptr_t chunkSize, uintptr_t chunkCount)
+void *MmSlabCreate(size_t chunkSize, size_t chunkCount)
 {
     if((0 == chunkCount) || (0 == chunkSize))
         return NULL;

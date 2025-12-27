@@ -1,8 +1,22 @@
+/**
+ * @file slab.h
+ * @brief Slab memory allocator
+ * @ingroup mm_slab
+ */
+
 #ifndef MM_SLAB_H_
 #define MM_SLAB_H_
 
 #include "defines.h"
 #include <stdint.h>
+
+/**
+ * @addtogroup mm_slab Slab memory allocator
+ * @ingroup mm
+ * 
+ * This module aims to provide very fast kernel memory allocation.
+ * @{ 
+ */
 
 EXPORT_API
 
@@ -13,7 +27,7 @@ EXPORT_API
  * @return Slab handle or NULL on failure
  * @attention This function fails when either parameter is zero
 */
-void *MmSlabCreate(uintptr_t chunkSize, uintptr_t chunkCount);
+void *MmSlabCreate(size_t chunkSize, size_t chunkCount);
 
 
 /**
@@ -39,5 +53,9 @@ void MmSlabFree(void *slabHandle, void *memory);
 void MmSlabDestroy(void *slabHandle);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

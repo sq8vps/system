@@ -1,8 +1,19 @@
+/**
+ * @file sleep.h
+ * @brief Blocking and unblocking sleep support
+ * @ingroup ke_sched
+ */
+
 #ifndef KERNEL_SLEEP_H_
 #define KERNEL_SLEEP_H_
 
 #include <stdint.h>
 #include "defines.h"
+
+/**
+ * @addtogroup ke_sched
+ * @{
+ */
 
 EXPORT_API
 
@@ -39,7 +50,12 @@ END_EXPORT_API
 /**
  * @brief Refresh sleeping task list - check and wake appropriate tasks
  * @return Status code
+ * @kinternal
 */
 INTERNAL STATUS KeRefreshSleepingTasks(void);
+
+/**
+ * @}
+ */
 
 #endif

@@ -64,7 +64,7 @@ STATUS IdeInitializePrdTables(struct IdeControllerData *info)
 
     for(uint16_t t = 0; t < 2; t++)
     {
-        uintptr_t size;
+        size_t size;
         if((IDE_MAX_PRD_ENTRIES * sizeof(struct IdePrdEntry))
             > (size = MmAllocateContiguousPhysicalMemory(
                 IDE_MAX_PRD_ENTRIES * sizeof(struct IdePrdEntry), 

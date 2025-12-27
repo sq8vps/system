@@ -288,7 +288,7 @@ STATUS IoCloseFileForProcess(struct KeProcessControlBlock *pcb, int handleNumber
 
     KeReleaseMutex(&pcb->files.table[handleNumber].mutex);
 
-    if(0 == __atomic_sub_fetch(&(handle->references), 1, __ATOMIC_RELAXED))
+    if(0 == ATOMIC_SUB_FETCH(&(handle->references), 1, ATOMIC_RELAXED))
     {
         status = IoVfsClose(handle->node);
 
@@ -311,7 +311,7 @@ static STATUS IoCloseFileRaw(struct IoFileHandle *handle)
     if(NULL == handle)
         return NOT_FOUND;
     
-    if(0 == __atomic_sub_fetch(&(handle->references), 1, __ATOMIC_RELAXED))
+    if(0 == ATOMIC_SUB_FETCH(&(handle->references), 1, ATOMIC_RELAXED))
     {
         status = IoVfsClose(handle->node);
 

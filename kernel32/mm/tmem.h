@@ -1,9 +1,23 @@
+/**
+ * @file tmem.h
+ * @brief Process memory management
+ * @ingroup mm_tmem
+ */
+
 #ifndef KERNEL_TMEM_H_
 #define KERNEL_TMEM_H_
 
 #include "defines.h"
 #include <stdint.h>
 #include "ob/ob.h"
+
+/**
+ * @addtogroup mm_tmem Process memory management
+ * @ingroup mm
+ * 
+ * This module provides routines and data structures for per-process memory management.
+ * @{
+ */
 
 EXPORT_API
 
@@ -91,5 +105,9 @@ STATUS MmUnmapTaskMemory(const void *const ptr, size_t length);
 struct MmTaskMemory *MmGetTaskMemoryDescriptor(const void *const ptr);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

@@ -1,9 +1,24 @@
+/**
+ * @file ob.h
+ * @brief Kernel object management
+ * @ingroup ob
+ */
+
 #ifndef KERNEL_OB_H_
 #define KERNEL_OB_H_
 
 #include <stdint.h>
 #include "ke/core/mutex.h"
 #include "defines.h"
+
+/**
+ * @addtogroup ob Kernel object management
+ * 
+ * This module provides support for kernel objects. Basically all "things" created in the kernel, 
+ * such as tasks, devices, or files, are kernel objects. The main aim is to provide an abstraction layer for all objects
+ * to provide type-agnostic interface.
+ * @{
+ */
 
 EXPORT_API
 
@@ -49,7 +64,7 @@ struct ObObjectHeader
 /**
  * @brief Object definition to be put at the very beginning of a structure
  */
-#define OBJECT struct ObObjectHeader _object
+#define OBJECT struct ObObjectHeader kernelobject
 
 /**
  * @brief Create unassociated kernel object with additional bytes allocated
@@ -115,7 +130,12 @@ END_EXPORT_API
 
 /**
  * @brief Initialize object manager
+ * @kinternal
  */
 INTERNAL void ObInitialize(void);
+
+/**
+ * @}
+ */
 
 #endif

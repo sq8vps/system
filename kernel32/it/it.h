@@ -1,14 +1,11 @@
-#ifndef KERNEL_IT_H_
-#define KERNEL_IT_H_
-
 /**
  * @file it.h
- * @brief Kernel interrupt module
- * 
- * Handles exceptions and interrupts.
- * 
- * @defgroup it Interrupt module
+ * @brief Low-level interrupt and exception handling layer
+ * @ingroup it
 */
+
+#ifndef KERNEL_IT_H_
+#define KERNEL_IT_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -16,8 +13,7 @@
 
 
 /**
- * @defgroup itConfig Interrupt module configuration routines and structures
- * @ingroup it
+ * @addtogroup it Low-level interrupt and exception abstraction and support layer
  * @{
 */
 
@@ -28,17 +24,10 @@ EXPORT_API
  */
 #define IT_VECTOR_ANY 0
 
-
-
 /**
  * @brief Maximum number of shared IRQ consumers
 */
 #define IT_MAX_SHARED_IRQ_CONSUMERS 8
-
-/**
- * @brief Attribute to be used with interrupt handler wrappers
-*/
-#define IT_HANDLER __attribute__ ((interrupt, target("general-regs-only")))
 
 
 /**
@@ -98,30 +87,8 @@ STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable);
 END_EXPORT_API
 
 /**
- * @brief Check if exeception/interrupt was caused by kernel mode code
- * @param cs Code segment of failing code (from interrupt frame)
- * @return True if caused by kernel mode
-*/
-INTERNAL bool ItIsCausedByKernelMode(uint32_t cs);
-
-/**
- * @brief Perform a hard CPU reset
- * @warning DO NOT USE. Use KePanic() and KePanicEx() instead.
-*/
-INTERNAL NORETURN void ItHardReset(void);
-
-/**
- * @brief Disable all interrupts
-*/
-INTERNAL void HalDisableInterrupts(void);
-
-/**
- * @brief Enable all interrupts
-*/
-INTERNAL void HalEnableInterrupts(void);
-
-/**
  * @brief Set up interrupts and assign default handlers to them
+ * @kinternal
  * @return Error code
 */
 INTERNAL STATUS ItInit(void);

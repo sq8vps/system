@@ -1,19 +1,16 @@
-#ifndef KERNEL_IOPORT_H_
-#define KERNEL_IOPORT_H_
-
 /**
  * @file ioport.h
- * @brief IO port manipulation routines
- * 
- * @defgroup ioport IO port manipulation routines
- * @ingroup i686 amd64
-*/
+ * @brief x86 I/O port manipulation routines
+ */
+
+#ifndef KERNEL_IOPORT_H_
+#define KERNEL_IOPORT_H_
 
 #include <stdint.h>
 #include "defines.h"
 
 /**
- * @addtogroup ioport
+ * @addtogroup i686
  * @{
 */
 

@@ -1,3 +1,11 @@
+/**
+ * @file ioapic.h
+ * @brief I/O APIC support for IRQ handling
+ * @ingroup i686
+ * @kinternal
+ * @note This driver implements the universal HAL interface and most of its function are available using kernel API.
+ */
+
 #ifndef KERNEL_IOAPIC_H_
 #define KERNEL_IOAPIC_H_
 
@@ -5,6 +13,19 @@
 #include "defines.h"
 #include "hal/interrupt.h"
 
+/**
+ * @addtogroup i686_ioapic I/O APIC driver
+ * @ingroup i686
+ * @kinternal
+ * 
+ * This module is an I/O APIC driver. It is only for internal use. Kernel mode drivers should use
+ * routines provided by the HAL.
+ * @{
+ */
+
+ /**
+  * @brief Maximum number of I/O APIC IRQ inputs
+  */
 #define IOAPIC_MAX_INPUTS 240
 
 /**
@@ -73,5 +94,9 @@ INTERNAL uint32_t ApicIoReserveInput(uint32_t input);
  * @param input IO APIC input to be released
 */
 INTERNAL void ApicIoFreeInput(uint32_t input);
+
+/**
+ * @}
+ */
 
 #endif

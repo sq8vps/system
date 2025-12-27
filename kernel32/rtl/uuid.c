@@ -7,7 +7,7 @@ void RtlUuidConvertEndianess(void *uuid)
     uint8_t *u = uuid;
     uint64_t t16 = 0;
     uint64_t t64 = *((uint64_t*)(u + 8));
-    t64 = __builtin_bswap64(t64);
+    t64 = BSWAP(t64);
     t16 = t64 & 0xFFFF;
     t64 >>= 16;
     t64 |= (t16 << 48);

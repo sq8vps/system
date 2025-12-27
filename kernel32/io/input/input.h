@@ -1,8 +1,27 @@
+/**
+ * @file input.h
+ * @brief Input device support
+ * @ingroup io_input
+ */
+
 #ifndef KERNEL_INPUT_H_
 #define KERNEL_INPUT_H_
 
 #include "defines.h"
 #include <stdint.h>
+
+/**
+ * @addtogroup io_input Input handling
+ * @brief Input handling
+ * @ingroup io
+ */
+
+/**
+ * @addtogroup io_input_input Input device abstraction layer
+ * @brief Input device abstraction layer
+ * @ingroup io_input
+ * @{
+ */
 
 EXPORT_API
 
@@ -45,5 +64,9 @@ STATUS IoUnregisterEventHandler(const struct IoEventHandler *handler);
 STATUS IoReportEvent(int handle, const union IoEventData *data);
 
 END_EXPORT_API
+
+/**
+ * @}
+ */
 
 #endif

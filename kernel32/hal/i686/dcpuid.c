@@ -76,8 +76,8 @@ static uint32_t CpuidReadEdx(uint32_t page)
 {
     if(!cpuidAvailable)
         return 0;
-    uintptr_t dummy;
-    uintptr_t reg;
+    reg_t dummy;
+    reg_t reg;
     __cpuid(page, dummy, dummy, dummy, reg);
     return reg;
 }
@@ -86,8 +86,8 @@ static uint32_t CpuidReadEcx(uint32_t page)
 {
     if(!cpuidAvailable)
         return 0;
-    uintptr_t dummy;
-    uintptr_t reg;
+    reg_t dummy;
+    reg_t reg;
     __cpuid(page, dummy, dummy, reg, dummy);
     return reg;
 }
@@ -124,7 +124,7 @@ void CpuidGetVendorString(char *dst)
 {
     if(!cpuidAvailable)
         return;
-    uintptr_t dummy;
+    reg_t dummy;
     __cpuid(0, dummy, dst[0], dst[8], dst[4]);
     dst[12] = '\0'; //null terminator
 }

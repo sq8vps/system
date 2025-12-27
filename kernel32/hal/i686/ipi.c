@@ -29,7 +29,7 @@ static STATUS I686HandleIpi(void *context)
     uint16_t cpu = HalGetCurrentCpu();
 
     uint32_t slots;
-    while(0 != (slots = __atomic_load_n(&(I686IpiState[cpu].slotsFilled), __ATOMIC_SEQ_CST)))
+    while(0 != (slots = ATOMIC_LOAD(&(I686IpiState[cpu].slotsFilled), ATOMIC_SEQ_CST)))
     {
         for(uint8_t i = 0; i < I686_IPI_SLOT_COUNT; i++)
         {
@@ -51,7 +51,7 @@ static STATUS I686HandleIpi(void *context)
                         }
                         break;
                     case I686_IPI_CPU_SHUTDOWN:
-                        __atomic_fetch_sub(I686IpiState[cpu].data[i].remainingAcks, 1, __ATOMIC_SEQ_CST);
+                        ATOMIC_FETCH_SUB(I686IpiState[cpu].data[i].remainingAcks, 1, ATOMIC_SEQ_CST);
                         ASM("cli");
                         ASM("hlt");
                         while(1)
@@ -68,9 +68,9 @@ static STATUS I686HandleIpi(void *context)
                             cpu, I686IpiState[cpu].data[i].type);
                         break;
                 }
-                __atomic_fetch_sub(I686IpiState[cpu].data[i].remainingAcks, 1, __ATOMIC_SEQ_CST);
-                __atomic_fetch_and(&(I686IpiState[cpu].slotsFilled), ~((uint32_t)1 << i), __ATOMIC_SEQ_CST);
-                __atomic_fetch_and(&(I686IpiState[cpu].slotsReserved), ~((uint32_t)1 << i), __ATOMIC_SEQ_CST);
+                ATOMIC_FETCH_SUB(I686IpiState[cpu].data[i].remainingAcks, 1, ATOMIC_SEQ_CST);
+                ATOMIC_FETCH_AND(&(I686IpiState[cpu].slotsFilled), ~((uint32_t)1 << i), ATOMIC_SEQ_CST);
+                ATOMIC_FETCH_AND(&(I686IpiState[cpu].slotsReserved), ~((uint32_t)1 << i), ATOMIC_SEQ_CST);
             }
         }
     }
@@ -97,7 +97,7 @@ static inline uint16_t I686ReserveIpiSlot(uint16_t cpu)
     uint16_t mask = 1;
     //loop until a free slot is found, that is, the previous
     //bit state was 0 and we set the bit to 1
-    while(__atomic_fetch_or(&(I686IpiState[cpu].slotsReserved), mask, __ATOMIC_SEQ_CST) & mask)
+    while(ATOMIC_FETCH_OR(&(I686IpiState[cpu].slotsReserved), mask, ATOMIC_SEQ_CST) & mask)
     {
         if(slot == (I686_IPI_SLOT_COUNT - 1))
         {
@@ -149,7 +149,7 @@ void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t
             I686IpiState[i].data[slot].remainingAcks = &(I686IpiState[cpu].remainingAcks);
             I686IpiState[i].data[slot].payload.tlb.kernel = false;
 
-            __atomic_fetch_or(&(I686IpiState[i].slotsFilled), 1 << slot, __ATOMIC_SEQ_CST);
+            ATOMIC_FETCH_OR(&(I686IpiState[i].slotsFilled), 1 << slot, ATOMIC_SEQ_CST);
 
             ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, HalGetCpuEntry(i)->extensions.lapicId, 
                 APIC_IPI_FIXED, I686_IPI_INTERRUPT_VECTOR, true);
@@ -161,7 +161,7 @@ void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t
 
     HalLowerPriorityLevel(prio);
 
-    while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
+    while(0 != ATOMIC_LOAD(&(I686IpiState[cpu].remainingAcks), ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 }
 
@@ -187,7 +187,7 @@ void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages)
         I686IpiState[i].data[slot].remainingAcks = &(I686IpiState[cpu].remainingAcks);
         I686IpiState[i].data[slot].payload.tlb.kernel = true;
 
-        __atomic_fetch_or(&(I686IpiState[i].slotsFilled), 1 << slot, __ATOMIC_SEQ_CST);
+        ATOMIC_FETCH_OR(&(I686IpiState[i].slotsFilled), 1 << slot, ATOMIC_SEQ_CST);
     }
 
     ApicSendIpi(APIC_IPI_DESTINATION_ALL_BUT_SELF, 0, 
@@ -197,7 +197,7 @@ void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages)
 
     HalLowerPriorityLevel(prio);
 
-    while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
+    while(0 != ATOMIC_LOAD(&(I686IpiState[cpu].remainingAcks), ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 }
 
@@ -220,7 +220,7 @@ void I686SendShutdownCpus(void)
         I686IpiState[i].data[slot].source = cpu;
         I686IpiState[i].data[slot].remainingAcks = &(I686IpiState[cpu].remainingAcks);
         
-        __atomic_fetch_or(&(I686IpiState[i].slotsFilled), 1 << slot, __ATOMIC_SEQ_CST);
+        ATOMIC_FETCH_OR(&(I686IpiState[i].slotsFilled), 1 << slot, ATOMIC_SEQ_CST);
     }
 
     ApicSendIpi(APIC_IPI_DESTINATION_ALL_BUT_SELF, 0, 
@@ -230,7 +230,7 @@ void I686SendShutdownCpus(void)
 
     HalLowerPriorityLevel(prio);
 
-    while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
+    while(0 != ATOMIC_LOAD(&(I686IpiState[cpu].remainingAcks), ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 }
 
@@ -269,7 +269,7 @@ void I686InvokeRemoteFunction(const HalCpuBitmap *targets, I686RemoteFunction fu
             I686IpiState[i].data[slot].payload.call.result = results + i;
             I686IpiState[i].data[slot].remainingAcks = &(I686IpiState[cpu].remainingAcks);
 
-            __atomic_fetch_or(&(I686IpiState[i].slotsFilled), 1 << slot, __ATOMIC_SEQ_CST);
+            ATOMIC_FETCH_OR(&(I686IpiState[i].slotsFilled), 1 << slot, ATOMIC_SEQ_CST);
 
             ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, HalGetCpuEntry(i)->extensions.lapicId, 
                 APIC_IPI_FIXED, I686_IPI_INTERRUPT_VECTOR, true);
@@ -281,6 +281,6 @@ void I686InvokeRemoteFunction(const HalCpuBitmap *targets, I686RemoteFunction fu
 
     HalLowerPriorityLevel(prio);
 
-    while(0 != __atomic_load_n(&(I686IpiState[cpu].remainingAcks), __ATOMIC_SEQ_CST))
+    while(0 != ATOMIC_LOAD(&(I686IpiState[cpu].remainingAcks), ATOMIC_SEQ_CST))
         TIGHT_LOOP_HINT();
 }

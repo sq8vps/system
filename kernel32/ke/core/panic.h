@@ -1,34 +1,23 @@
-#ifndef KERNEL_PANIC_H_
-#define KERNEL_PANIC_H_
-
 /**
  * @file panic.h
- * @brief Kernel panic/emergency shutdown kernel routines
- * 
- * Provides routines for shutting down system in a controlled manner
- * when there is an unrecoverable failure.
- * 
- * @defgroup ke Kernel core routines
-*/
+ * @brief Kernel panic routines
+ */
+
+#ifndef KERNEL_PANIC_H_
+#define KERNEL_PANIC_H_
 
 #include <stdint.h>
 #include "defines.h"
 #include "io/log/syslog.h"
 
 /**
- * @defgroup panic Kernel panic routines
- * @ingroup ke
+ * @addtogroup ke_core
  * @{
 */
 
 EXPORT_API
 
-/**
- * @brief Get nth caller address
- * @param n Caller level: 0 - the caller of the given function
- * @warning This macro is GCC-specific and is unsafe for n>0
-*/
-#define KE_GET_CALLER_ADDRESS(n) (uintptr_t)__builtin_extract_return_addr(__builtin_return_address(n))
+
 
 
 /**
@@ -118,7 +107,7 @@ enum KernelPanicCode
  * @param code Error code
  * @attention This function never returns
 */
-NORETURN void KePanic(uintptr_t code);
+[[noreturn]] void KePanic(uintptr_t code);
 
 
 /**
@@ -130,7 +119,7 @@ NORETURN void KePanic(uintptr_t code);
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+[[noreturn]] void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 
 /**
@@ -139,7 +128,7 @@ NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_
  * @param code Error code
  * @attention This function never returns
 */
-NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
+[[noreturn]] void KePanicIP(uintptr_t ip, uintptr_t code);
 
 
 /**
@@ -152,13 +141,14 @@ NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+[[noreturn]] void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 END_EXPORT_API
 
 /**
  * @brief Print message and halt on boot failure
  * @param str Message to be printed
+ * @kinternal
  */
 #define FAIL_BOOT(str) do{LOG(SYSLOG_ERROR, "Boot failed: %s", str); while(1) {HALT();};} while(0);
 

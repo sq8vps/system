@@ -1,3 +1,9 @@
+/**
+ * @file ksym.h
+ * @brief Kernel symbol handling
+ * @ingroup exec
+ */
+
 #ifndef KERNEL_KSYM_H_
 #define KERNEL_KSYM_H_
 
@@ -5,7 +11,7 @@
 #include "defines.h"
 
 /**
- * @defgroup kernelSymbols Kernel symbols manipulation routines
+ * @addtogroup kernel_symbols Kernel symbols handling routines
  * @ingroup exec
  * @{
 */
@@ -15,6 +21,7 @@ struct Multiboot2InfoHeader;
 /**
  * @brief Load and store kernel symbols
  * @param *mb2h Multiboot2 header pointer
+ * @kinternal
  * @return Error code
 */
 INTERNAL STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h);

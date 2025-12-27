@@ -274,13 +274,13 @@ void ApicStartSystemTimer(uint64_t time)
     }
     else
     {
-        __atomic_add_fetch(
+        ATOMIC_ADD_FETCH(
 #ifndef SMP
             &ApicCounter,
 #else
             &ApicCounter[HalGetCurrentCpu()], 
 #endif
-            (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET), __ATOMIC_ACQ_REL);
+            (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET), ATOMIC_ACQ_REL);
         LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = (time * ApicClockSource.frequency) / (uint64_t)1000000;
     }
     LAPIC(LAPIC_LVT_TIMER_OFFSET) &= ~LAPIC_LOCAL_MASK;
