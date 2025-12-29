@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['excreatekernelworker_0',['ExCreateKernelWorker',['../group__ex__worker.html#ga2d752595aaae84db977870b14a239e56',1,'worker.h']]],
+  ['exdbclose_1',['ExDbClose',['../group__db.html#ga026d22af8bb656893393f80537f45a5f',1,'db.h']]],
+  ['exdbgetnextbool_2',['ExDbGetNextBool',['../group__db.html#gac56996ec34526dfb0ceee4b442186df9',1,'db.h']]],
+  ['exdbgetnextstring_3',['ExDbGetNextString',['../group__db.html#ga2602093b046372f478c838b3aa227c4f',1,'db.h']]],
+  ['exdbopen_4',['ExDbOpen',['../group__db.html#gade777d0368fda1a7dfc53d186bbd7eb7',1,'db.h']]],
+  ['exdbrewind_5',['ExDbRewind',['../group__db.html#gabd73a5b3a656b5b118cee5cbac5ab9f0',1,'db.h']]],
+  ['exfinddriverbyaddress_6',['ExFindDriverByAddress',['../group__kdrv.html#gaa2416a53dbc4b584233c4904fdca9372',1,'kdrv.h']]],
+  ['exgetelf32sectionheader_7',['ExGetElf32SectionHeader',['../group__elf.html#ga6024d93d968cc2f344d5f5dc995cc4ad',1,'elf.h']]],
+  ['exgetelf32symbolvalue_8',['ExGetElf32SymbolValue',['../group__elf.html#ga3418dffed1317ae5fe56be4ccf83b8c6',1,'elf.h']]],
+  ['exgetelf32symbolvaluebyname_9',['ExGetElf32SymbolValueByName',['../group__elf.html#ga712d96e6e977984d650e2670ed074a14',1,'elf.h']]],
+  ['exgetexecutablerequiredbsssize_10',['ExGetExecutableRequiredBssSize',['../group__exec__exec.html#ga7d61a945caa9a3466224a4de349d2a82',1,'exec.h']]],
+  ['exgetkernelsymbol_11',['ExGetKernelSymbol',['../group__kernel__symbols.html#ga775dafd208e93428d00ec77ec4e5f26a',1,'ksym.h']]],
+  ['exinitializedrivermanager_12',['ExInitializeDriverManager',['../group__kdrv.html#gad70095d0d809aaad9a8785203691f3a6',1,'kdrv.h']]],
+  ['exloadkerneldriversbyname_13',['ExLoadKernelDriversByName',['../group__kdrv.html#ga2a9d763e12d14df841ce26c3e32830f0',1,'kdrv.h']]],
+  ['exloadkerneldriversfordevice_14',['ExLoadKernelDriversForDevice',['../group__kdrv.html#ga428d2fc8fe0257d1025a2c6ebb1bee61',1,'kdrv.h']]],
+  ['exloadkerneldriversforfilesystem_15',['ExLoadKernelDriversForFilesystem',['../group__kdrv.html#gaeb00691e3be4668a557e7f14dc2cdff8',1,'kdrv.h']]],
+  ['exloadkernelsymbols_16',['ExLoadKernelSymbols',['../group__kernel__symbols.html#gab1ba892d9c98ac96d13c18a715ab46ac',1,'ksym.h']]],
+  ['exloadprocessimage_17',['ExLoadProcessImage',['../group__ex__load.html#gaf5693e901e8b512cc4ebdaf9c768558e',1,'load.h']]],
+  ['exmountvolume_18',['ExMountVolume',['../group__kdrv.html#ga121260660912585c93c6934716bc2d4f',1,'fsdrv.h']]],
+  ['experformelf32relocation_19',['ExPerformElf32Relocation',['../group__elf.html#ga0d8c47e582e599b905df5cbb517bd3eb',1,'elf.h']]],
+  ['exprepareexecutablebss_20',['ExPrepareExecutableBss',['../group__exec__exec.html#ga444724918158844e8bf46d21df8c93ac',1,'exec.h']]],
+  ['exrelocateelf32symbol_21',['ExRelocateElf32Symbol',['../group__elf.html#ga239ddc09034338e21c4d7db3fb732849',1,'elf.h']]],
+  ['exupdatedriverdatabasepath_22',['ExUpdateDriverDatabasePath',['../group__kdrv.html#gabbec8ca000b728e3d0cc332421e99a20',1,'kdrv.h']]],
+  ['exverifyelf32header_23',['ExVerifyElf32Header',['../group__elf.html#ga36248a3fe4d83f579e85bbf2531e2004',1,'elf.h']]]
+];

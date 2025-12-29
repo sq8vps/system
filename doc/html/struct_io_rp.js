@@ -1,0 +1,26 @@
+var struct_io_rp =
+[
+    [ "code", "struct_io_rp.html#a5cc8c47e0a7faedf96151ea3af45503c", null ],
+    [ "configSpace", "struct_io_rp.html#a5322dd5be8537570145264117ff5d1fd", null ],
+    [ "count", "struct_io_rp.html#a86988a65e0d3ece7990c032c159786d6", null ],
+    [ "device", "struct_io_rp.html#a7a5fc6a04d5385be9284fa98ebfa85a2", null ],
+    [ "deviceControl", "struct_io_rp.html#aaa30a2e0166c6379f5bb6f118cbf6ce6", null ],
+    [ "deviceId", "struct_io_rp.html#a540bb94cc1aae55d31054aa7fc4468ef", null ],
+    [ "flags", "struct_io_rp.html#a725eeaa51dcc989483650e502702784b", null ],
+    [ "ioctl", "struct_io_rp.html#acd28ed01f7085643d922d63c2e9c66c7", null ],
+    [ "location", "struct_io_rp.html#a3b8a9a943791844a8cea8b58c5f50f5f", null ],
+    [ "memory", "struct_io_rp.html#a91f24e959cd03ea56805d11fe3e371b3", null ],
+    [ "offset", "struct_io_rp.html#a612bb2807d848cca89ea1437cceea886", null ],
+    [ "pending", "struct_io_rp.html#a39f16d585c4531d2bf2562631a775d73", null ],
+    [ "read", "struct_io_rp.html#a477ab667f8f752265e5cc51102452702", null ],
+    [ "res", "struct_io_rp.html#ad3ef261810d5e3c8df777006fb71b0dd", null ],
+    [ "resource", "struct_io_rp.html#a0b60bf3f1cd0e6fbc830b5a6ca188709", null ],
+    [ "size", "struct_io_rp.html#af931a8871310b4dad23f0f0b0f623560", null ],
+    [ "status", "struct_io_rp.html#a1025e6cbbd3179d2d91b9b4afb8f8efc", null ],
+    [ "sync", "struct_io_rp.html#af5bad216eac9aefc703a450d3163e542", null ],
+    [ "systemBuffer", "struct_io_rp.html#a6f0ed1c228cf74762fcc88883c364373", null ],
+    [ "task", "struct_io_rp.html#a602fe5b83b16d7d441e53dc65de11eec", null ],
+    [ "text", "struct_io_rp.html#a5633b1433389cec21ade3811bbe9ca5b", null ],
+    [ "userBuffer", "struct_io_rp.html#adf0ef1fdb24eef01245edb3371fae355", null ],
+    [ "vfsNode", "struct_io_rp.html#ada1386fccb5991175c821fdb4e428254", null ]
+];

@@ -1,0 +1,19 @@
+var searchData=
+[
+  ['r_0',['r',['../struct_rtl_r_g_b.html#a4c5c6ceb8ed33456261fa907136e0c3a',1,'RtlRGB']]],
+  ['rating_1',['rating',['../struct_hal_clock_source.html#a38051bd678d3c5aa67753b9d13dea91b',1,'HalClockSource']]],
+  ['read_2',['read',['../struct_hal_clock_source.html#a6a26ec01378f1cf2a3ade44b6fcd785c',1,'HalClockSource::read()'],['../struct_io_rp.html#a477ab667f8f752265e5cc51102452702',1,'IoRp::read()']]],
+  ['readers_3',['readers',['../struct_io_vfs_node.html#ad1dbcbab200ca0c57263a9ba956ba112',1,'IoVfsNode::readers()'],['../struct_ke_rw_lock.html#ad1dbcbab200ca0c57263a9ba956ba112',1,'KeRwLock::readers()']]],
+  ['reason_4',['reason',['../struct_ke_task_control_block.html#affdda3c417d0032ceb738c03d209892b',1,'KeTaskControlBlock']]],
+  ['ref_5',['ref',['../struct_io_vfs_node.html#a8d654696b272964a6ced93c8ed47e062',1,'IoVfsNode']]],
+  ['referencecount_6',['referenceCount',['../struct_ex_driver_object.html#ad83c3d5d3f46e6278a77cb80eb2a0705',1,'ExDriverObject::referenceCount()'],['../struct_io_device_object.html#ad83c3d5d3f46e6278a77cb80eb2a0705',1,'IoDeviceObject::referenceCount()']]],
+  ['references_7',['references',['../struct_io_file_handle.html#a7cffa771d981afb9c93deb9eefaa9d6a',1,'IoFileHandle']]],
+  ['registers_8',['registers',['../struct_i686_emu_state.html#a0869d586e88b411d875fd474906dcb5b',1,'I686EmuState']]],
+  ['remainingacks_9',['remainingAcks',['../struct_i686_ipi_data.html#a83da5cc95ccde48077ac4290246c72c0',1,'I686IpiData']]],
+  ['rep_10',['rep',['../struct_i686_instruction_params.html#ac582830d55575c172cc4c33d0c84d732',1,'I686InstructionParams']]],
+  ['repne_11',['repne',['../struct_i686_instruction_params.html#a0161a5d3f7a7ab6ac38c32de25add322',1,'I686InstructionParams']]],
+  ['request_12',['request',['../struct_tty_parameters.html#a99e829e539dd8c1b399443873f204300',1,'TtyParameters']]],
+  ['res_13',['res',['../struct_io_rp.html#ad3ef261810d5e3c8df777006fb71b0dd',1,'IoRp']]],
+  ['resource_14',['resource',['../struct_io_rp.html#a0b60bf3f1cd0e6fbc830b5a6ca188709',1,'IoRp']]],
+  ['rwlock_15',['rwLock',['../struct_ke_task_control_block.html#aea6d5310df7140987527303ab35e8296',1,'KeTaskControlBlock']]]
+];
