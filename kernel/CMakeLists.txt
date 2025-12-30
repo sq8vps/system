@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31.6)
-project(nabla_kernel LANGUAGES C CXX ASM_NASM)
+project(Nabla_kernel LANGUAGES C CXX ASM_NASM)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 23)
 
@@ -17,7 +17,7 @@ add_subdirectory(templates)
 add_subdirectory(multiboot)
 
 add_library(kernel_config INTERFACE)
-if(${SMP} EQUAL 1)
+if(SMP EQUAL 1)
     target_compile_definitions(kernel_config INTERFACE SMP=1)
 endif()
 
