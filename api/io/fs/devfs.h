@@ -14,6 +14,13 @@ extern "C"
 struct IoDeviceObject;
 
 /**
+ * @addtogroup io_fs_devfs Device file system (\c /dev) support
+ * @brief Device file system (\c /dev) support
+ * @ingroup io_fs
+ * @{
+ */
+
+/**
  * @brief Create device file
  * @param *dev Device object
  * @param flags VFS flags

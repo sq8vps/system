@@ -17,7 +17,7 @@ extern "C"
  * @return Slab handle or NULL on failure
  * @attention This function fails when either parameter is zero
 */
-void *MmSlabCreate(uintptr_t chunkSize, uintptr_t chunkCount);
+void *MmSlabCreate(size_t chunkSize, size_t chunkCount);
 
 
 /**

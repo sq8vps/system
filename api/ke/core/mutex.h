@@ -125,7 +125,7 @@ typedef struct KeSeqCounter
  */
 static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
 {
-    __atomic_add_fetch(&seqCounter->seq, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_ADD_FETCH(&seqCounter->seq, 1, ATOMIC_SEQ_CST);
 }
 
 /**
@@ -134,7 +134,7 @@ static inline void KeSeqCounterWriteBegin(KeSeqCounter *seqCounter)
  */
 static inline void KeSeqCounterWriteEnd(KeSeqCounter *seqCounter)
 {
-    __atomic_add_fetch(&seqCounter->seq, 1, __ATOMIC_SEQ_CST);
+    ATOMIC_ADD_FETCH(&seqCounter->seq, 1, ATOMIC_SEQ_CST);
 }
 
 /**

@@ -1,7 +1,6 @@
 #include "state.h"
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdbit.h>
 #include "op.h"
 #include "emu.h"
 #include "hal/i686/ioport.h"
@@ -1815,7 +1814,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                     reg->flags |= FLAG_OF;
                 if(0 == modrmOp)
                     reg->flags |= FLAG_ZF;
-                if(0 == (stdc_count_ones(modrmOp & 0xFF) & 1))
+                if(0 == (stdc_count_ones((uint8_t)(modrmOp & 0xFF)) & 1))
                     reg->flags |= FLAG_PF;
                 break;
             

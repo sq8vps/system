@@ -10,8 +10,14 @@ extern "C"
 #include "defines.h"
 #include <stdint.h>
 
+/**
+ * @brief Clock source name length limit (excluding terminator)
+ */
 #define HAL_CLOCK_SOURCE_NAME_LENGTH 15
 
+/**
+ * @brief Clock source description structure
+ */
 struct HalClockSource
 {
     char name[HAL_CLOCK_SOURCE_NAME_LENGTH + 1]; /**< Clock source name, up to 15 characters */
@@ -19,7 +25,6 @@ struct HalClockSource
     uint32_t rating; /**< Clock source rating - higher = better */
     uint64_t (*read)(void *context); /**< Get tick/cycles function */
     void *context; /**< Context for get tick/cycles function */
-
     void *control; /**< Internal associated clock source control structure */
 };
 

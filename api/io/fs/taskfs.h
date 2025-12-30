@@ -11,6 +11,14 @@ extern "C"
 #include "ke/task/task.h"
 
 /**
+ * @addtogroup io_fs_taskfs Task file system (\c /task) support
+ * @brief Device file system (\c /task) support
+ * @kinternal
+ * @ingroup io_fs
+ * @{
+ */
+
+/**
  * @brief Task file system context used for accessing /taskfs
  */
 struct IoTaskFsContext
@@ -19,6 +27,9 @@ struct IoTaskFsContext
     int fd;
 };
 
+/**
+ * @brief Macro used to initialize \ref IoTaskFsContext
+ */
 #define IO_TASK_FS_CONTEXT_INITIALIZER {.tid = -1, .fd = -1}
 
 

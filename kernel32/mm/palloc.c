@@ -3,7 +3,7 @@
 #include "hal/arch.h"
 #include "hal/mm.h"
 #include "ke/core/mutex.h"
-#include "multiboot.h"
+#include "multiboot/multiboot.h"
 #include "ex/elf.h"
 
 #define MM_BUDDY_SMALLEST PAGE_SIZE //smallest MmBuddy block size

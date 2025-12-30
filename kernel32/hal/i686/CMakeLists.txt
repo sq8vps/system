@@ -1,7 +1,7 @@
 add_subdirectory(emu)
 add_subdirectory(interrupts)
 
-add_library(i686_hal STATIC
+add_library(i686_hal OBJECT
     acpi.c
     cpu.c
     dcpuid.c
@@ -34,12 +34,9 @@ add_library(i686_hal STATIC
     switch.asm
 )
 
-target_include_directories(i686_hal PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
+target_include_directories(i686_hal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
 target_link_libraries(i686_hal PUBLIC
-    i686_emu
-    i686_it
-    hal
-    )
+    i686_emu $<TARGET_OBJECTS:i686_emu>
+    i686_it $<TARGET_OBJECTS:i686_it>
+)
+target_link_libraries(i686_hal PRIVATE kernel_config)

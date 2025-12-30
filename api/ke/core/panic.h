@@ -11,12 +11,7 @@ extern "C"
 #include "defines.h"
 #include "io/log/syslog.h"
 
-/**
- * @brief Get nth caller address
- * @param n Caller level: 0 - the caller of the given function
- * @warning This macro is GCC-specific and is unsafe for n>0
-*/
-#define KE_GET_CALLER_ADDRESS(n) (uintptr_t)__builtin_extract_return_addr(__builtin_return_address(n))
+
 
 
 /**
@@ -106,7 +101,7 @@ enum KernelPanicCode
  * @param code Error code
  * @attention This function never returns
 */
-NORETURN void KePanic(uintptr_t code);
+[[noreturn]] void KePanic(uintptr_t code);
 
 
 /**
@@ -118,7 +113,7 @@ NORETURN void KePanic(uintptr_t code);
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+[[noreturn]] void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 
 /**
@@ -127,7 +122,7 @@ NORETURN void KePanicEx(uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_
  * @param code Error code
  * @attention This function never returns
 */
-NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
+[[noreturn]] void KePanicIP(uintptr_t ip, uintptr_t code);
 
 
 /**
@@ -140,7 +135,7 @@ NORETURN void KePanicIP(uintptr_t ip, uintptr_t code);
  * @param arg4 Argument 4
  * @attention This function never returns
 */
-NORETURN void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
+[[noreturn]] void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
 
 #ifdef __cplusplus

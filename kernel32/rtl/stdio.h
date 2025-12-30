@@ -4,8 +4,8 @@
  * @ingroup rtl_stdio
  */
 
-#ifndef KERNEL_VPRINTF_H_
-#define KERNEL_VPRITNF_H_
+#ifndef KERNEL_STDIO_H_
+#define KERNEL_STDIO_H_
 
 #include "defines.h"
 #include <stdarg.h>

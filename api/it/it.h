@@ -16,17 +16,10 @@ extern "C"
  */
 #define IT_VECTOR_ANY 0
 
-
-
 /**
  * @brief Maximum number of shared IRQ consumers
 */
 #define IT_MAX_SHARED_IRQ_CONSUMERS 8
-
-/**
- * @brief Attribute to be used with interrupt handler wrappers
-*/
-#define IT_HANDLER __attribute__ ((interrupt, target("general-regs-only")))
 
 
 /**

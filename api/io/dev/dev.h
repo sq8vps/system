@@ -12,6 +12,9 @@ extern "C"
 #include "bus.h"
 #include "ob/ob.h"
 
+/**
+ * @brief Maximum number of compatible IDs per device
+ */
 #define IO_MAX_COMPATIBLE_DEVICE_IDS 8
 
 /**

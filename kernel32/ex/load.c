@@ -6,7 +6,7 @@
 #include "ke/sched/sched.h"
 #include "rtl/string.h"
 
-STATUS ExLoadProcessImage(const char *path, void (**entry)())
+STATUS ExLoadProcessImage(const char *path, void (**entry)(void*))
 {
 	STATUS status = OK;
 	int f = -1;
@@ -95,7 +95,7 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)())
 		}
 	}
 
-	*entry = (void(*)())(ehdr->e_entry);
+	*entry = (void(*)(void*))(ehdr->e_entry);
 
 ExProcessLoadWorkerFailed:
 	if(f >= 0)

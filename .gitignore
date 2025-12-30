@@ -46,3 +46,4 @@ __pycache__/
 *.vmdk
 symbols/
 initrd/drivers/*
+*/build/

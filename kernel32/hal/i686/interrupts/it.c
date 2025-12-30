@@ -31,7 +31,7 @@ struct IdtEntry
 /**
  * @brief Interrupt Descriptor Table itself
 */
-static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT] alignas(8);
+alignas(8) static struct IdtEntry idt[MAX_CPU_COUNT][IDT_ENTRY_COUNT];
 
 /**
  * @brief Insert entry to IDT
@@ -90,6 +90,16 @@ STATUS I686InitIdt(void)
 	return OK;
 }
 
+void HalDisableInterrupts(void)
+{
+	ASM("cli");
+}
+
+void HalEnableInterrupts(void)
+{
+	ASM("sti");
+}
+
 void I686InstallIdt(uint16_t cpu)
 {
     struct
@@ -105,16 +115,6 @@ void I686InstallIdt(uint16_t cpu)
 	ASM("lidt %0" : : "m" (idtr));
 	//enable interrupts
 	HalEnableInterrupts();
-}
-
-void HalDisableInterrupts(void)
-{
-	ASM("cli");
-}
-
-void HalEnableInterrupts(void)
-{
-	ASM("sti");
 }
 
 //interrupt wrappers (functions)

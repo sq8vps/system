@@ -1,7 +1,7 @@
 add_subdirectory(db)
 add_subdirectory(kdrv)
 
-add_library(ex STATIC
+add_library(ex OBJECT
     elf.c
     exec.c
     ksym.c
@@ -9,9 +9,9 @@ add_library(ex STATIC
     worker.c
     )
 
-target_include_directories(ex PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
+target_include_directories(ex PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
 target_link_libraries(ex PUBLIC
-    ex_db
-    ex_kdrv
-    )
+    ex_db $<TARGET_OBJECTS:ex_db>
+    ex_kdrv $<TARGET_OBJECTS:ex_kdrv>
+)
+target_link_libraries(ex PRIVATE kernel_config)

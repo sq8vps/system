@@ -210,6 +210,9 @@ struct KeTaskControlBlock
 
 };
 
+/**
+ * @brief A structure storing all process (a group of at least one task) data
+ */
 struct KeProcessControlBlock
 {
     OBJECT;

@@ -29,9 +29,9 @@
 #define I686_EFLAGS_RESERVED (1 << 1) //reserved EFLAGS bits
 #define I686_EFLAGS_IOPL_USER (3 << 12) //user mode EFLAGS bits
 
-[[noreturn]] void I686StartUserTask(uint16_t ss, reg_t esp, uint16_t cs, void (*entry)());
+[[noreturn]] void I686StartUserTask(uint16_t ss, reg_t esp, uint16_t cs, void (*entry)(void*));
 
-static [[noreturn]] void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack);
+[[noreturn]] static void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack);
 
 STATUS HalCreateThread(struct KeProcessControlBlock *pcb, uint32_t flags,
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb)
@@ -165,7 +165,7 @@ void HalInitializeScheduler(void)
     
 }
 
-static [[noreturn]] void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack)
+[[noreturn]] static void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack)
 {
     STATUS status = OK;
     //this is the very first starting point when the task is scheduled for the first time

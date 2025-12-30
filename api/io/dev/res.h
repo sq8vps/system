@@ -13,6 +13,15 @@ extern "C"
 #include "hal/interrupt.h"
 
 /**
+ * @addtogroup io_dev_res I/O device resource abstraction layer
+ * @brief I/O device resource abstraction layer
+ * @ingroup io_dev
+ * 
+ * This module provides abstraction for typical device resources, such as interrupts or MMIOs.
+ * @{
+ */
+
+/**
  * @brief IRQ entry
 */
 struct IoIrqEntry

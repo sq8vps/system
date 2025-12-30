@@ -41,6 +41,8 @@ void I686CpuBootstrap(uint32_t cpuId);
 #define I686_AP_BOOTSTRAP_ADDRESS 0x1000
 #define I686_AP_BOOTSTRAP_DATA_ADDRESS 0x2000
 
+#endif
+
 void HalHaltAllCpus(void)
 {
 #ifdef SMP
@@ -71,8 +73,8 @@ STATUS I686ConfigureBootstrapCpu(void)
 
 STATUS I686StartProcessors(void)
 {
+#ifdef SMP
     STATUS status = OK;
-
     uint32_t CpuCount = HalGetCpuCount();
     if(CpuCount <= 1)
         return OK;
@@ -167,10 +169,12 @@ STATUS I686StartProcessors(void)
         ALIGN_UP(I686_AP_BOOTSTRAP_DATA_ADDRESS + sizeof(I686StartApData) - I686_AP_BOOTSTRAP_ADDRESS, PAGE_SIZE));
     if(OK != status)
         FAIL_BOOT("cannot unmap memory after CPU bootstrap")
+#endif //SMP
 
     return OK;
 }
 
+#ifdef SMP
 void I686CpuBootstrap(uint32_t cpuId)
 {
     ATOMIC_FETCH_ADD(&I686StartedCpuCount, 1, ATOMIC_SEQ_CST);
@@ -194,11 +198,14 @@ void I686CpuBootstrap(uint32_t cpuId)
         KeTaskYield();
     }
 }
+#endif //SMP
 
 void HalInitPhase4(void)
 {
+#ifdef SMP
     KeWaitForCpusToJoinScheduler(I686ReadyCpuCount);
     ApicSynchronizeTimers();
+#endif //SMP
 }
 
 uint32_t HalGetCurrentCpu(void)
@@ -208,5 +215,3 @@ uint32_t HalGetCurrentCpu(void)
     ASM("str %0" : "=r" (t) :);
     return GDT_CPU(GDT_ENTRY(t));
 }
-
-#endif

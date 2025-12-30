@@ -30,7 +30,7 @@ struct GdtEntry
     uint8_t base3;
 } PACKED;
 
-struct GdtEntry I686Gdt[GDT_MAX_ENTRIES + 1] alignas(8); //table of GDTs
+alignas(8) struct GdtEntry I686Gdt[GDT_MAX_ENTRIES + 1]; //table of GDTs
 
 /**
  * @brief A GDTR structure

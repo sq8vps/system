@@ -54,6 +54,7 @@ static void KeTaskCleanupWorker(void *context);
 static void KeSchedulerWorker(void *context)
 {
 #ifndef SMP
+    UNUSED(context);
     if((false == KeTaskSwitchPending) && (false == KeTaskSwitchInProgress))
     {
         KeSchedule(0);

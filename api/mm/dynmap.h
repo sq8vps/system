@@ -19,7 +19,7 @@ extern "C"
  * The pointer does not point to any physical memory. 
  * To reserve and map dynamic memory, use \a MmMapDynamicMemory()
 */
-void *MmReserveDynamicMemory(uintptr_t n);
+void *MmReserveDynamicMemory(size_t n);
 
 
 /**
@@ -28,7 +28,7 @@ void *MmReserveDynamicMemory(uintptr_t n);
  * @return Count of bytes previously reserved
  * @attention This function does not unmap the memory.
 */
-uintptr_t MmFreeDynamicMemoryReservation(const void *ptr);
+size_t MmFreeDynamicMemoryReservation(const void *ptr);
 
 
 /**
@@ -38,7 +38,7 @@ uintptr_t MmFreeDynamicMemoryReservation(const void *ptr);
  * @param flags Flags to apply to mapped memory (present and writable flags are always added)
  * @return Pointer to mapped virtual memory
 */
-void *MmMapDynamicMemory(uintptr_t pAddress, uintptr_t n, MmMemoryFlags flags);
+void *MmMapDynamicMemory(PADDRESS pAddress, size_t n, MmMemoryFlags flags);
 
 
 /**

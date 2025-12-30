@@ -1,4 +1,4 @@
-add_library(rtl STATIC
+add_library(rtl OBJECT
     bst.c
     crc.c
     order.c
@@ -10,4 +10,5 @@ add_library(rtl STATIC
     uuid.c
 )
 
-target_include_directories(rtl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(rtl PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
+target_link_libraries(rtl PRIVATE kernel_config)

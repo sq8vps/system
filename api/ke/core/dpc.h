@@ -22,10 +22,10 @@ typedef void (*KeDpcCallback)(void *context);
 enum KeDpcPriority
 {
     KE_DPC_PRIORITY_NORMAL = 0,
-    KE_DPC_PRIORITY_LOW,
-    KE_DPC_PRIORITY_HIGH,
+    KE_DPC_PRIORITY_LOW = -1,
+    KE_DPC_PRIORITY_HIGH = 1,
 
-    _KE_DPC_PRIORITY_LIMIT = KE_DPC_PRIORITY_HIGH,
+    KE_DPC_PRIORITY_COUNT = 3,
 };
 
 

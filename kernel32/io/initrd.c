@@ -1,5 +1,5 @@
 #include "initrd.h"
-#include "multiboot.h"
+#include "multiboot/multiboot.h"
 #include "mm/dynmap.h"
 #include "io/fs/vfs.h"
 #include "assert.h"

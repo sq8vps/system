@@ -23,7 +23,7 @@
  * @return Status code
  * @kinternal
  */
-INTERNAL STATUS ExLoadProcessImage(const char *path, void (**entry)());
+INTERNAL STATUS ExLoadProcessImage(const char *path, void (**entry)(void*));
 
 /**
  * @}

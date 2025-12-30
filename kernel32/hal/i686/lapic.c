@@ -296,16 +296,24 @@ static uint64_t ApicTimerGetRaw(void *context)
     if(ApicState.useTsc)
         return TscGetRaw(NULL);
     else
+#ifdef SMP
         return ApicCounter[HalGetCurrentCpu()] 
+#else
+        return ApicCounter
+#endif
             + (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
 }
 
 static int ApicSynchronize(void *context)
 {
-    uint32_t cpu = HalGetCurrentCpu();
     const int64_t delta = *((uint64_t*)context) - ApicTimerGetRaw(NULL);
 
+#ifdef SMP
+    uint32_t cpu = HalGetCurrentCpu();
     ApicCounter[cpu] += delta;
+#else
+    ApicCounter += delta;
+#endif
 
     return 0;
 }

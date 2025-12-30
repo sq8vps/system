@@ -29,7 +29,7 @@ void MmFreeKernelHeap(const void *ptr);
  * @param align Alignment in bytes, must be a power of 2
  * @return Pointer to allocated memory or NULL on failure
 */
-__attribute__((malloc, malloc(MmFreeKernelHeap)))
+MALLOC_LIKE(MmFreeKernelHeap)
 void *MmAllocateKernelHeapAligned(size_t n, size_t align);
 
 
@@ -39,7 +39,7 @@ void *MmAllocateKernelHeapAligned(size_t n, size_t align);
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-__attribute__((malloc, malloc(MmFreeKernelHeap)))
+MALLOC_LIKE(MmFreeKernelHeap)
 void *MmAllocateKernelHeap(size_t n);
 
 
@@ -49,7 +49,7 @@ void *MmAllocateKernelHeap(size_t n);
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-__attribute__((malloc, malloc(MmFreeKernelHeap)))
+MALLOC_LIKE(MmFreeKernelHeap)
 void *MmAllocateKernelHeapZeroed(size_t n);
 
 /**
@@ -58,7 +58,7 @@ void *MmAllocateKernelHeapZeroed(size_t n);
  * @return Pointer to allocated memory or NULL on failure
  * @note The address returned is aligned to a non-zero multiple of 16 bytes
 */
-__attribute__((malloc, malloc(MmFreeKernelHeap)))
+MALLOC_LIKE(MmFreeKernelHeap)
 void *MmReallocateKernelHeap(void *ptr, size_t n);
 
 /**

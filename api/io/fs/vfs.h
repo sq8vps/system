@@ -16,6 +16,19 @@ extern "C"
 #include "fs.h"
 #include "taskfs.h"
 
+/**
+ * @addtogroup io_fs_vfs Virtual File System layer
+ * @brief Virtual File System layer
+ * @ingroup io_fs
+ * 
+ * This module is an intermediate layer between the actual file system drivers (such as ext4) and the high-level file support layer,
+ * which is used by kernel-mode drivers and user-mode programs to access files.
+ * @{
+ */
+
+/**
+ * @brief VFS node flags
+ */
 enum IoVfsFlags
 {
     IO_VFS_FLAG_READ_ONLY = 0x1, /**< File is read only */

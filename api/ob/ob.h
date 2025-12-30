@@ -53,7 +53,7 @@ struct ObObjectHeader
 /**
  * @brief Object definition to be put at the very beginning of a structure
  */
-#define OBJECT struct ObObjectHeader _object
+#define OBJECT struct ObObjectHeader kernelobject
 
 /**
  * @brief Create unassociated kernel object with additional bytes allocated

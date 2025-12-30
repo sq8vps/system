@@ -1,6 +1,6 @@
 #include "ksym.h"
 #include "elf.h"
-#include "multiboot.h"
+#include "multiboot/multiboot.h"
 #include "mm/dynmap.h"
 #include "mm/heap.h"
 #include "ke/core/panic.h"

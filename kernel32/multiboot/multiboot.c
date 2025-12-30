@@ -1,4 +1,4 @@
-#include "multiboot.h"
+#include "multiboot/multiboot.h"
 
 /**
  * @brief Maximum size of information tags returned by the bootloader
@@ -9,12 +9,12 @@
  * @brief Bootloader information tags returned by the bootloader
  * @attention This buffer must be filled by the bootstrap code 
  */
-uint8_t Multiboot2InfoBuffer[MULTIBOOT2_BUFFER_SIZE] alignas(8);
+alignas(8) uint8_t Multiboot2InfoBuffer[MULTIBOOT2_BUFFER_SIZE];
 
 
 #define MULTIBOOT2_REQUEST_COUNT 4
 
-static volatile const alignas(16)
+SECTION(".multiboot") static volatile const alignas(16) 
 struct
 {
     struct Multiboot2Header header;
@@ -22,7 +22,7 @@ struct
     alignas(MB2_TAG_ALIGNMENT) struct Multiboot2Tag request;
     uint32_t requests[MULTIBOOT2_REQUEST_COUNT];
 } 
-SECTION(".multiboot") =
+Multiboot2Data =
 {
     .header = 
     {

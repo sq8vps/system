@@ -63,7 +63,7 @@ struct exmmap_params
  * @param length Length of mapping
  * @param flags Mapping flags
  * @param fd File descriptor to map. Don't care if MMAP_FILE flag is not set.
- * @param *params Extended mmap parameters (see @struct exmmap_params). Setting to NULL implies default alignment, zero offset and no size limit.
+ * @param *params Extended mmap parameters (see @ref exmmap_params). Setting to NULL implies default alignment, zero offset and no size limit.
  * @return Mapped address on success, MAP_FAILED on failure
  */
 void *exmmap(void *addr, size_t length, int flags, int fd, const struct exmmap_params *const params);

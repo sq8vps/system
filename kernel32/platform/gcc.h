@@ -95,7 +95,7 @@ EXPORT_API
  * @param section Target section name string
  * @note Implementation of this attribute is mandatory
  */
-#define SECTION(section) __attribute__ ((section(section)))
+#define SECTION(sect) __attribute__ ((section(sect)))
 
 /**
  * @brief Mark function as interrupt service routine
@@ -241,6 +241,44 @@ EXPORT_API
  * @note Implementation of this macro is mandatory
  */
 #define ATOMIC_EXCHANGE(ptr, val, order) __atomic_exchange_n(ptr, val, order)
+
+/**
+ * @brief Count 1-bits in \a x
+ * @param x Input number
+ * @return Number of 1-bits in \a x
+ * @note Implementation of this macro is mandatory
+ * @note This should be removed and replaced by \c stdbit.h, but it seems to be not available in freestanding environment
+ */
+#define stdc_count_ones(x) __builtin_stdc_count_ones(x)
+
+/**
+ * @brief Count trailing 0-bits in \a x starting from LSBit
+ * @param x Input number
+ * @return Number of trailing 0-bits in \a x
+ * @warning If \a x is 0, the results is undefined
+ * @note Implementation of this macro is mandatory
+ * @note This should be removed and replaced by \c stdbit.h, but it seems to be not available in freestanding environment
+ */
+#define stdc_trailing_zeros(x) __builtin_stdc_trailing_zeros(x)
+
+/**
+ * @brief Count leading 0-bits in \a x starting from MSBit
+ * @param x Input number
+ * @return Number of leading 0-bits in \a x
+ * @warning If \a x is 0, the results is undefined
+ * @note Implementation of this macro is mandatory
+ * @note This should be removed and replaced by \c stdbit.h, but it seems to be not available in freestanding environment
+ */
+#define stdc_leading_zeros(x) __builtin_stdc_leading_zeros(x)
+
+/**
+ * @brief Check whether \a x has exactly one 1-bit
+ * @param x Input number
+ * @return True if \a x has exactly one 1-bit
+ * @note Implementation of this macro is mandatory
+ * @note This should be removed and replaced by \c stdbit.h, but it seems to be not available in freestanding environment
+ */
+#define stdc_has_single_bit(x) __builtin_stdc_has_single_bit(x)
 
 /**
  * @}

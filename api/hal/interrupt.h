@@ -13,6 +13,9 @@ extern "C"
 #include "it/it.h"
 #include "hal/arch.h"
 
+/**
+ * @brief Constant for any interrupt input/no preference when requesting assignment
+ */
 #define HAL_INTERRUPT_INPUT_ANY UINT32_MAX
 
 /**
@@ -53,6 +56,9 @@ enum HalInterruptSharing
     HAL_IT_SHAREABLE,
 };
 
+/**
+ * @brief Interrupt parameters
+ */
 struct HalInterruptParams
 {
     enum HalInterruptMode mode;

@@ -79,7 +79,7 @@ STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, c
  * @param ... Additional arguments
  * @return Status code
 */
-__attribute__ ((format (printf, 3, 4)))
+PRINTF_LIKE(3, 4)
 STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
 
 

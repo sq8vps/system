@@ -9,7 +9,6 @@
 #define KERNEL_HAL_CPU_H_
 
 #include <stdint.h>
-#include <stdbit.h>
 #include "defines.h"
 #include "config.h"
 #include "arch.h"

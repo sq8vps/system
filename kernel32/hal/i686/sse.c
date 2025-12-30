@@ -6,7 +6,7 @@
 
 #define SSE_STATE_BUFFER_SIZE 512
 #define SSE_STATE_BUFFER_ALIGNMENT 16
-static char SseDefaultState[SSE_STATE_BUFFER_SIZE] alignas(SSE_STATE_BUFFER_ALIGNMENT);
+alignas(SSE_STATE_BUFFER_ALIGNMENT) static char SseDefaultState[SSE_STATE_BUFFER_SIZE];
 
 void SseInit(void)
 {

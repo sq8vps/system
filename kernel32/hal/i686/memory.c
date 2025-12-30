@@ -46,7 +46,9 @@ volatile MmPageTableEntry *const pageTable = (MmPageTableEntry*)MM_FIRST_PAGE_TA
 #define IS_KERNEL_MEMORY(address) ((((address) >= HAL_KERNEL_SPACE_BASE) && ((address) < MM_FIRST_PAGE_TABLE_ADDRESS)) \
 		|| ((address) >= (uintptr_t)&pageTable[HAL_KERNEL_SPACE_BASE >> 12]))
 
+#ifdef SMP
 static KeSpinlock I686KernelMemoryLock = KeSpinlockInitializer;
+#endif
 
 /**
  * @brief Allocate memory for page directory
@@ -83,6 +85,7 @@ static PADDRESS I686AllocatePageTable(void)
 static inline PRIO I686AcquireMemoryLock(uintptr_t address)
 {
 #ifndef SMP
+	UNUSED(address);
 	return HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_EXCLUSIVE);
 #else
 	if(IS_KERNEL_MEMORY(address) || (NULL == KeGetCurrentTask()))
@@ -99,6 +102,7 @@ static inline PRIO I686AcquireMemoryLock(uintptr_t address)
 static inline void I686ReleaseMemoryLock(uintptr_t address, PRIO lastPriority)
 {
 #ifndef SMP
+	UNUSED(address);
 	HalLowerPriorityLevel(lastPriority);
 #else
 	if(IS_KERNEL_MEMORY(address) || (NULL == KeGetCurrentTask()))
@@ -289,7 +293,6 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, size_t size)
 {
 	size = ALIGN_UP(size, PAGE_SIZE);
 	uintptr_t start = vAddress;
-	size_t originalSize = size;
 	PRIO prio = I686AcquireMemoryLock(vAddress);
 	while(size)
 	{
@@ -297,7 +300,9 @@ STATUS HalUnmapMemoryEx(uintptr_t vAddress, size_t size)
 		vAddress += PAGE_SIZE;
 		size -= PAGE_SIZE;
 	}
+
 #ifdef SMP
+	size_t originalSize = size;
 	vAddress = start;
 	size = originalSize;
 

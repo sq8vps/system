@@ -1,6 +1,5 @@
 #include "op.h"
 #include <stddef.h>
-#include <stdbit.h>
 #include "state.h"
 
 void I686EmuMul(struct I686Registers *regs, uint32_t a, uint32_t b, uint32_t *upper, uint32_t *lower, uint8_t bits, bool sign)

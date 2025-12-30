@@ -1,0 +1,26 @@
+{
+    "version": 10,
+    "configurePresets": [
+        {
+            "name": "i686-gcc-general",
+            "toolchainFile": "gcc-i686.cmake",
+            "generator": "Unix Makefiles"
+        },
+        {
+            "name": "i686-gcc-debug",
+            "displayName": "i686 debug for GCC",
+            "inherits": "i686-gcc-general",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "i686-gcc-release",
+            "displayName": "i686 release for GCC",
+            "inherits": "i686-gcc-general",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ]
+}

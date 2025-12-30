@@ -1,4 +1,4 @@
-add_library(mm STATIC
+add_library(mm OBJECT
     dynmap.c
     heap.c
     mm.c
@@ -8,4 +8,5 @@ add_library(mm STATIC
     tmem.c
 )
 
-target_include_directories(mm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(mm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
+target_link_libraries(mm PRIVATE kernel_config)

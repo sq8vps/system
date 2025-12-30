@@ -26,7 +26,7 @@
 #include "io/dev/vol.h"
 #include "ddk/fs.h"
 #include "hal/arch.h"
-#include "multiboot.h"
+#include "multiboot/multiboot.h"
 #include "rtl/stdlib.h"
 #include "ddk/tty.h"
 #include "hal/debug.h"

@@ -17,7 +17,7 @@ extern "C"
  * @param size Buffer size
  * @return True if valid, false if invalid
  */
-bool HalValidateUserBuffer(const void *buffer, uintptr_t size);
+bool HalValidateUserBuffer(const void *buffer, size_t size);
 
 
 #ifdef __cplusplus

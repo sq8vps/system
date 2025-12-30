@@ -12,6 +12,14 @@ extern "C"
 #include "ob/ob.h"
 
 /**
+ * @addtogroup io_dev_vol Volume support
+ * @brief Volume support
+ * @ingroup io_dev
+ * 
+ * @{
+ */
+
+/**
  * @brief Maximum length of volume label
 */
 #define IO_VOLUME_MAX_LABEL_LENGTH 32

@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 3.20)
-project(nabla_kernel)
+cmake_minimum_required(VERSION 3.31.6)
+project(nabla_kernel LANGUAGES C CXX ASM_NASM)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_C_STANDARD 23)
 
 add_subdirectory(ddk)
 add_subdirectory(ex)
@@ -12,31 +14,32 @@ add_subdirectory(ob)
 add_subdirectory(platform)
 add_subdirectory(rtl)
 add_subdirectory(templates)
+add_subdirectory(multiboot)
 
-# Architecture-independent kernel part
-add_library(kernel_common STATIC
+add_library(kernel_config INTERFACE)
+if(${SMP} EQUAL 1)
+    target_compile_definitions(kernel_config INTERFACE SMP=1)
+endif()
+
+add_executable(kernel
     main.c
-    multiboot.c
-)
-target_include_directories(kernel_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(kernel_common PUBLIC
+    )
+target_include_directories(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kernel PRIVATE
+    platform
+    templates
     ddk
     ex
+    hal
     io
     it
     ke
     mm
     ob
-    platform
     rtl
-    templates
+    "${CMAKE_SYSTEM_PROCESSOR}_hal"
+    ${CONFIG_LIBRARIES}
 )
+target_link_libraries(kernel PRIVATE kernel_config)
 
-# Architecture-specific complete targets
-
-# i686
-add_executable(i686 EXCLUDE_FROM_ALL)
-target_link_libraries(i686 PRIVATE
-    kernel_common
-    hal_i686
-)
+include("target-helpers.cmake")

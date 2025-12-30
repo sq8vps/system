@@ -6,7 +6,7 @@
 
 
 #ifndef KERNEL_EXEC_H_
-#define KERNEL_EXEC_H
+#define KERNEL_EXEC_H_
 
 /**
  * @addtogroup exec Executable files- and kernel mode drivers-related definitions and routines
