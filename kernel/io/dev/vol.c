@@ -35,8 +35,9 @@ static struct KeTaskControlBlock *IoAutoMountThread = NULL;
 static void IoAutoMountWorker(void *unused);
 static STATUS IoNotifyAutoMount(struct IoVolumeNode *node);
 
-STATUS IoInitializeVolumeManager(void)
+STATUS IoInitializeVolumeManager(void *bootArgs)
 {
+    UNUSED(bootArgs);
     STATUS status = OK;
     struct ExDbHandle *h = NULL;
     

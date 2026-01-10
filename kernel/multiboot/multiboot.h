@@ -15,6 +15,8 @@
  * @{
  */
 
+#ifdef MULTIBOOT2
+
 #define MB2_TAG_ALIGNMENT 8
 
 #define MB2_ATTR
@@ -122,6 +124,12 @@ struct Multiboot2ModuleTag
     char str[];
 } MB2_ATTR;
 
+struct Multiboot2CommandLineTag
+{
+    struct Multiboot2InfoTag header;
+    char str[];
+} MB2_ATTR;
+
 struct Multiboot2ElfSymbolsTag
 {
     struct Multiboot2InfoTag header;
@@ -155,6 +163,8 @@ const struct Multiboot2InfoTag *Multiboot2GetTag(const struct Multiboot2InfoHead
 const struct Multiboot2InfoTag *Multiboot2FindTag(const struct Multiboot2InfoHeader *header, 
     const struct Multiboot2InfoTag *last, 
     enum Multiboot2InfoTagType type);
+
+#endif
 
 /**
  * @}

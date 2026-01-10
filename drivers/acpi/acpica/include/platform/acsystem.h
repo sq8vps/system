@@ -37,7 +37,7 @@
 #define ACPI_MACHINE_WIDTH          64
 #define COMPILER_DEPENDENT_INT64    int64_t
 #define COMPILER_DEPENDENT_UINT64   uint64_t
-#elif defined(__i386__)
+#elif defined(__i686__)
 #define ACPI_MACHINE_WIDTH          32
 #define COMPILER_DEPENDENT_INT64    int64_t
 #define COMPILER_DEPENDENT_UINT64   uint64_t

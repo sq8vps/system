@@ -21,6 +21,8 @@
 
 EXPORT_API
 
+#define RTL_UNICODE_ZWJ (uint32_t)0x200D /**< Unicode Zero-width joiner value */
+
 /**
  * @brief Get string length
  * @param str Input string
@@ -162,6 +164,51 @@ char** RtlAllocateStringTable(uint32_t countInTable, uint32_t countToAllocate, u
  * @param count Number of strings in table
 */
 void RtlFreeStringTable(char **table, uint32_t count);
+
+/**
+ * @brief Get UTF-8 byte count based on the first byte value
+ * @param c First UTF-8/ASCII character
+ * @return Number of bytes in UTF-8 character
+ * @return Always 1 if ASCII character
+ */
+size_t RtlUtf8ByteCount(char c);
+
+/**
+ * @brief Check whether an Unicode codepoint is combining
+ * @param code Codepoint to be checked
+ * @return True if \a code is combining, false otherwise
+ */
+bool RtlUnicodeIsCombining(uint32_t code);
+
+/**
+ * @brief Check whether an Unicode codepoint is a variation selector
+ * @param code Codepoint to be checked
+ * @return True if \a code is a variation selector, false otherwise
+ */
+bool RtlUnicodeIsVariationSelector(uint32_t code);
+
+/**
+ * @brief Check whether an Unicode codepoint is extending
+ * @param code Codepoint to be checked
+ * @return True if \a code is extending, false otherwise
+ */
+bool RtlUnicodeIsExtending(uint32_t code);
+
+/**
+ * @brief Check whether an Unicode character starts a new grapheme cluster
+ * @param previous Last Unicode codepoint
+ * @param current Current Unicode codepoint
+ * @return True if \a current starts a new grapheme cluster, and \a previous is a part of a previous grapheme cluster.
+ */
+bool RtlUnicodeIsGraphemeClusterStart(uint32_t previous, uint32_t current);
+
+/**
+ * @brief Get length of a Unicode grapheme cluster
+ * @param *code Pointer to a codepoint array
+ * @param size Length of \a *code array (number of elements)
+ * @return Number of elements in the grapheme cluster
+ */
+size_t RtlUnicodeGraphemeClusterLength(const uint32_t *code, size_t size);
 
 #ifndef DISABLE_KERNEL_STDLIB
 

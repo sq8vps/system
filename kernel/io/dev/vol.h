@@ -105,10 +105,11 @@ END_EXPORT_API
 
 /**
  * @brief Initialize volume manager
+ * @param *bootArgs Bootloader data
  * @kinternal
  * @return Status code
  */
-INTERNAL STATUS IoInitializeVolumeManager(void);
+INTERNAL STATUS IoInitializeVolumeManager(void *bootArgs);
 
 /**
  * @brief Wait for main file system mount

@@ -256,13 +256,13 @@ static STATUS HalUnmapMemoryNoLock(uintptr_t vAddress)
 	if((pageDir[vAddress >> 22] & PAGE_FLAG_PRESENT) == 0) //page table not present?
 	{
 		//this is not mapped
-		KePanicEx(MEMORY_ACCESS_VIOLATION, 1, vAddress, 0, 0);
+		KePanicEx(MEMORY_ACCESS_VIOLATION, 1, vAddress, 0x2, 0);
 	}
 
 	if(0 == (PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) & PAGE_FLAG_PRESENT))
 	{
 		//this memory is already unmapped
-		KePanicEx(MEMORY_ACCESS_VIOLATION, 1, vAddress, 0, 0);
+		KePanicEx(MEMORY_ACCESS_VIOLATION, 1, vAddress, 0x1, 0);
 	}
 
 	PAGETABLE(vAddress >> 22, (vAddress >> 12) & 0x3FF) = (MmPageTableEntry)0; //clear entry

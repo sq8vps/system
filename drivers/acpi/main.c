@@ -5,6 +5,7 @@
 #include "io/dev/dev.h"
 #include "io/dev/rp.h"
 #include "ex/kdrv/kdrv.h"
+#include "defines.h"
 
 
 static struct IoRpQueue *rpQueue = NULL;
@@ -42,6 +43,7 @@ static STATUS AcpiDispatch(struct IoRp *rp)
 
 static STATUS AcpiInit(struct ExDriverObject *driverObject)
 {
+    UNUSED(driverObject);
     STATUS ret = OK;
     if(OK != (ret = IoCreateRpQueue(AcpiProcessRp, &rpQueue)))
         return ret;
@@ -54,6 +56,8 @@ static STATUS AcpiInit(struct ExDriverObject *driverObject)
 
 static STATUS AcpiAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
+    UNUSED(driverObject);
+    UNUSED(baseDeviceObject);
     //should never be called, there are no MDOs for ACPI
     return OK;
 }

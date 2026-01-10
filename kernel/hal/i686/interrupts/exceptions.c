@@ -53,7 +53,28 @@ ISR static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
     if(ok)
         I686_INVALIDATE_TLB(cr2);
     else
-        KePanicIPEx(f->ip, KERNEL_MODE_FAULT, PAGE_FAULT, cr2, error, 0);
+    {
+        reg_t arg1 = 0, arg2 = 0;
+        if(!(error & 1)) //P-flag not set
+            arg1 = 0x1;
+        else if(error & 0x20) //PK-flag
+            arg1 = 0x8;
+        else if(error & 0x8) //R-flag
+            arg1 = 0x9;
+        else if(0x2 == (error & 0x10FA)) //exclude P and U/S, if W/R is set, then page is read only
+            arg1 = 0x2;
+        else if(0x10 == (error & 0x10FA)) //exclude P and U/S, if I/D is set, then page is no-execute
+            arg1 = 0x3;
+        else
+            arg1 = 0x1000;
+
+        if(error & 2) //W/R-flag
+            arg2 = 0x1;
+        else if(error & 0x10) //I/D-flag
+            arg2 = 0x2;
+        
+        KePanicIPEx(f->ip, PAGE_FAULT, cr2, arg1, arg2, (reg_t)flags);
+    }
 }
 
 //faults correctable in user mode

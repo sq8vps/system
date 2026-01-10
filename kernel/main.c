@@ -26,10 +26,10 @@
 #include "io/dev/vol.h"
 #include "ddk/fs.h"
 #include "hal/arch.h"
-#include "multiboot/multiboot.h"
 #include "rtl/stdlib.h"
 #include "ddk/tty.h"
 #include "hal/debug.h"
+#include "hal/arch.h"
 
 static void KeInitProcess(void *context)
 {
@@ -49,7 +49,7 @@ static void KeInitProcess(void *context)
 	if(OK != (ret = ExInitializeDriverManager()))
 		FAIL_BOOT("unable to initialize driver manager\n");
 
-	if(OK != IoInitDeviceManager("ACPI"))
+	if(OK != IoInitDeviceManager(context, HAL_ROOT_DEVICE_ID))
 		FAIL_BOOT("unable to initialize ACPI subsystem\n");
 
 	LOG(SYSLOG_INFO, "Waiting for the main file system to be mounted...\n");
@@ -104,22 +104,21 @@ static void KeInitProcess(void *context)
 
 /**
  * @brief Kernel entry point
+ * @param *arg Bootloader-specific data pointer
+ * @attention This function never returns
  * 
  * This function is called by the architecture-specific bootstrap code.
- * It is required to provide a Multiboot2 information structures to start the kernel.
- * The Multiboot2 info structures should be copied to kernel memory space anyway,
- * so the \a *mb2h pointer is just for convenience.
- * 
- * @param *mb2h Multiboot2 header pointer
- * @attention This function never returns
+ * Some bootloaders, such as Multiboot2, provide data to the kernel.
+ * The passed parameter \a arg points to this data. \a arg must point
+ * to a mapped kernel memory space, that is, all data must reside in kernel memory.
  */
-[[noreturn]] void KeEntry(struct Multiboot2InfoHeader *mb2h)
+[[noreturn]] void KeEntry(void *arg)
 {	
 	RtlDetectEndianness();
 
 	//initialize core kernel modules
 	//these function do not return any values, but will panic on any failure
-	MmInitPhysicalAllocator(mb2h);
+	MmInitPhysicalAllocator(arg);
 
 	HalCallConstructors();
 
@@ -134,6 +133,8 @@ static void KeInitProcess(void *context)
 
 	HalInitPhase3();
 
+	ConfigParseKernelArguments(arg);
+
 	HalDebugPortInit();
 
 	LOG(SYSLOG_INFO, KERNEL_FULL_NAME_STRING);
@@ -146,7 +147,7 @@ static void KeInitProcess(void *context)
 	IoFsInit();
 	KeDpcInitialize();
 
-	KeStartScheduler(KeInitProcess, mb2h);
+	KeStartScheduler(KeInitProcess, arg);
 
 	//never reached
 	while(1)

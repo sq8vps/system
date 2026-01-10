@@ -16,15 +16,13 @@
  * @{
 */
 
-struct Multiboot2InfoHeader;
-
 /**
  * @brief Load and store kernel symbols
- * @param *mb2h Multiboot2 header pointer
+ * @param *bootArgs Bootloader data
  * @kinternal
  * @return Error code
 */
-INTERNAL STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h);
+INTERNAL STATUS ExLoadKernelSymbols(const void *bootArgs);
 
 EXPORT_API
 

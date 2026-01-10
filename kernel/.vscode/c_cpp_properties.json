@@ -8,7 +8,8 @@
             "defines": [
                 "${default}",
                 "__i686__",
-                "SMP"
+                "SMP",
+                "MULTIBOOT2"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,

@@ -15,6 +15,16 @@
  * @{
 */
 
+EXPORT_API
+
+/**
+ * @brief Get ACPI Root Pointer
+ * @return ACPI Physical Root Pointer
+ */
+PADDRESS I686AcpiGetRsdp(void);
+
+END_EXPORT_API
+
 /**
  * @brief Initialize ACPI subsystem and return LAPIC address for the bootstrap CPU
  * @param *lapicAddress Pointer where to return the LAPIC address

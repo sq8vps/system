@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.31.6)
 project(Nabla_kernel LANGUAGES C CXX ASM_NASM)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 23)
+set(CMAKE_EXECUTABLE_SUFFIX "")
 
 add_subdirectory(ddk)
 add_subdirectory(ex)
@@ -20,9 +21,13 @@ add_library(kernel_config INTERFACE)
 if(SMP EQUAL 1)
     target_compile_definitions(kernel_config INTERFACE SMP=1)
 endif()
+if(CONFIG_USE_MULTIBOOT2)
+    target_compile_definitions(kernel_config INTERFACE MULTIBOOT2=1)
+endif()
 
 add_executable(kernel
     main.c
+    config.c
     )
 target_include_directories(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(kernel PRIVATE
@@ -41,5 +46,9 @@ target_link_libraries(kernel PRIVATE
     ${CONFIG_LIBRARIES}
 )
 target_link_libraries(kernel PRIVATE kernel_config)
+
+add_custom_command(TARGET kernel POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kernel> ${OS_IMAGE_DIR}/$<TARGET_FILE_NAME:kernel>
+)
 
 include("target-helpers.cmake")

@@ -1,5 +1,4 @@
 #include "initrd.h"
-#include "multiboot/multiboot.h"
 #include "mm/dynmap.h"
 #include "io/fs/vfs.h"
 #include "assert.h"
@@ -7,6 +6,11 @@
 #include "rtl/order.h"
 #include "rtl/stdlib.h"
 #include "rtl/string.h"
+#include "config.h"
+
+#ifdef MULTIBOOT2
+#include "multiboot/multiboot.h"
+#endif
 
 #define MB2_INITRD_STRING "initrd"
 
@@ -123,13 +127,18 @@ static struct TarHeader* IoInitrdFindFile(const char *path)
     }
 }
 
-STATUS IoInitrdInit(const struct Multiboot2InfoHeader *mb2h)
+STATUS IoInitrdInit(void *bootArgs)
 {
+#ifdef MULTIBOOT2
+    const char *name = NULL;
+    if(!ConfigGetKernelParam("initrd", &name) || (NULL == name))
+        name = MB2_INITRD_STRING;
+    const struct Multiboot2InfoHeader *mb2h = bootArgs;
     const struct Multiboot2InfoTag *tag = Multiboot2FindTag(mb2h, NULL, MB2_MODULE);
     while(NULL != tag)
     {
         const struct Multiboot2ModuleTag *mod = (const struct Multiboot2ModuleTag*)tag;
-        if(0 == RtlStrcmp(mod->str, MB2_INITRD_STRING))
+        if(0 == RtlStrcmp(mod->str, name))
         {
             IoInitrdHandle = MmMapDynamicMemory(mod->mod_start, mod->mod_end - mod->mod_start, MM_FLAG_READ_ONLY);
             if(NULL == IoInitrdHandle)
@@ -139,7 +148,9 @@ STATUS IoInitrdInit(const struct Multiboot2InfoHeader *mb2h)
         }
         tag = Multiboot2FindTag(mb2h, tag, MB2_MODULE);
     } 
-    
+#else
+#error Unknown bootloader - provide bootloader data parser or bootloader-independent initrd detector
+#endif
     return NOT_FOUND;
 }
 

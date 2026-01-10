@@ -129,11 +129,11 @@ struct Multiboot2InfoHeader;
 
 /**
  * @brief Initialize physical memory allocator
- * @param *mb2h Multiboot2 info header
+ * @param *bootArgs Bootloader data
  * @warning This function should be called only once
  * @kinternal
 */
-INTERNAL void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h);
+INTERNAL void MmInitPhysicalAllocator(const void *bootArgs);
 
 /**
  * @}

@@ -1,5 +1,7 @@
 #include "multiboot/multiboot.h"
 
+#ifdef MULTIBOOT2
+
 /**
  * @brief Maximum size of information tags returned by the bootloader
  */
@@ -11,8 +13,7 @@
  */
 alignas(8) uint8_t Multiboot2InfoBuffer[MULTIBOOT2_BUFFER_SIZE];
 
-
-#define MULTIBOOT2_REQUEST_COUNT 4
+#define MULTIBOOT2_REQUEST_COUNT 5
 
 SECTION(".multiboot") static volatile const alignas(16) 
 struct
@@ -56,6 +57,7 @@ Multiboot2Data =
         MB2_BASIC_MEMORY, //amount of memory
         MB2_MEMORY_MAP, //memory map
         MB2_MODULE, //modules
+        MB2_COMMAND_LINE, //command line
     },
 };
 
@@ -98,3 +100,5 @@ const struct Multiboot2InfoTag *Multiboot2GetTag(const struct Multiboot2InfoHead
     else
         return NULL;
 }
+
+#endif

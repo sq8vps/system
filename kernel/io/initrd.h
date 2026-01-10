@@ -10,7 +10,6 @@
 #include "defines.h"
 #include <stdint.h>
 
-struct Multiboot2InfoHeader;
 struct IoVfsNode;
 
 /**
@@ -23,10 +22,10 @@ struct IoVfsNode;
 
 /**
  * @brief Initialize intial ramdisk
- * @param *mb2h Multiboot2 info table
+ * @param *bootArgs Bootloader data
  * @return Status code
  */
-INTERNAL STATUS IoInitrdInit(const struct Multiboot2InfoHeader *mb2h);
+INTERNAL STATUS IoInitrdInit(void *bootArgs);
 
 /**
  * @brief Mount initial ramdisk

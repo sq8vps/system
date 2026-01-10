@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.31.6)
+project(Nabla_drivers LANGUAGES C CXX ASM_NASM)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_EXECUTABLE_SUFFIX .drv)
+
+add_subdirectory(acpi)
+add_subdirectory(disk)
+add_subdirectory(fat)
+add_subdirectory(i8042)
+add_subdirectory(ide)
+add_subdirectory(null)
+add_subdirectory(pci)
+add_subdirectory(tty)
+add_subdirectory(vga)
+
+add_custom_target(i686_drivers)
+add_dependencies(i686_drivers acpi disk fat i8042 ide null pci tty vga)

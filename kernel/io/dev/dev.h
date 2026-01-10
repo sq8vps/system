@@ -368,11 +368,12 @@ INTERNAL STATUS IoBuildDeviceStack(struct IoDeviceNode *node);
 
 /**
  * @brief Initialize device manager and create root device
+ * @param *bootArgs Bootloader data
  * @param *rootDeviceId Root device ID string (to find appropriate driver)
  * @kinternal
  * @return Status code
 */
-INTERNAL STATUS IoInitDeviceManager(char *rootDeviceId);
+INTERNAL STATUS IoInitDeviceManager(void *bootArgs, const char *rootDeviceId);
 
 /**
  * @}

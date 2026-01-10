@@ -113,6 +113,10 @@ enum HalInterruptMode
  */
 #define IT_SYSTEM_TIMER_VECTOR IT_FIRST_INTERRUPT_VECTOR
 
+/**
+ * @brief Root device ID
+ */
+#define HAL_ROOT_DEVICE_ID "ACPI"
 
 /**
  * @brief Tight loop CPU "hint"

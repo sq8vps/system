@@ -138,16 +138,6 @@ enum I686PanicCode
      */
     GENERAL_PROTECTION_FAULT = 13,
     /**
-     * @brief A memory access was not possible
-     * 
-     * This exception is caused by multiple conditions, such
-     * as missing memory page, paged-out memory, writing to read-only
-     * page, etc.
-     * It is usually caused by a programming error,
-     * such as accessing null or dangling pointers.
-     */
-    PAGE_FAULT = 14,
-    /**
      * @brief An internal machine error or a bus error occured
      * 
      * This exception always results in kernel panic.

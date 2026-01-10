@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include "mm/heap.h"
 #include "ctype.h"
+#include "string.h"
 
 size_t RtlStrlen(const char *str)
 {
@@ -360,4 +361,72 @@ int RtlAtoi(const char *str)
     }
 
     return sign ? number : -number;
+}
+
+size_t RtlUtf8ByteCount(char c)
+{
+    if(((c) & 0xE0) == 0xC0)
+        return 2;
+    else if(((c) & 0xF0) == 0xE0)
+        return 3;
+    else if(((c) & 0xF8) == 0xF0)
+        return 4;
+    else
+        return 1;
+}
+
+bool RtlUnicodeIsCombining(uint32_t code) 
+{
+    return (code >= 0x0300 && code <= 0x036F)
+        || (code >= 0x1AB0 && code <= 0x1AFF)
+        || (code >= 0x1DC0 && code <= 0x1DFF)
+        || (code >= 0x20D0 && code <= 0x20FF)
+        || (code >= 0xFE20 && code <= 0xFE2F);
+}
+
+bool RtlUnicodeIsVariationSelector(uint32_t code) 
+{
+    return (code >= 0xFE00 && code <= 0xFE0F)
+        || (code >= 0xE0100 && code <= 0xE01EF);
+}
+
+bool RtlUnicodeIsExtending(uint32_t code) 
+{
+    return RtlUnicodeIsCombining(code) || RtlUnicodeIsVariationSelector(code);
+}
+
+bool RtlUnicodeIsGraphemeClusterStart(uint32_t previous, uint32_t current)
+{
+    if(RtlUnicodeIsExtending(current))
+        return false;
+
+    if(RTL_UNICODE_ZWJ == previous)
+        return false;
+
+    return true;
+}
+
+size_t RtlUnicodeGraphemeClusterLength(const uint32_t *code, size_t size) 
+{
+    if(0 == size)
+        return 0;
+
+    size_t i = 1;
+    while (i < size) 
+    {
+        if (RtlUnicodeIsExtending(code[i])) 
+        {
+            i++;
+        } 
+        else if (RTL_UNICODE_ZWJ == code[i - 1]) 
+        {
+            i++;
+        } 
+        else 
+        {
+            break;
+        }
+    }
+
+    return i;
 }

@@ -3,6 +3,7 @@
 
 ACPI_STATUS AcpiGetPciMmioConfig(struct IoRp *rp)
 {
+    UNUSED(rp);
     // AcpiGetTable()
     return AE_OK;
 }

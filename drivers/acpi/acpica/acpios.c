@@ -1,0 +1,468 @@
+#define DISABLE_KERNEL_STDLIB
+
+#include "acpi.h"
+#include "logging.h"
+#include "mm/mm.h"
+#include "mm/heap.h"
+#include "ke/core/mutex.h"
+#include "mm/dynmap.h"
+#include "hal/mm.h"
+#include "ke/sched/sched.h"
+#include "ex/worker.h"
+#include "ke/sched/sleep.h"
+#include "mm/mmio.h"
+#include "hal/i686/ioport.h"
+#include "hal/i686/acpi.h"
+#include "io/dev/res.h"
+#include "ke/core/panic.h"
+#include "hal/time.h"
+#include "rtl/string.h"
+
+ACPI_STATUS AcpiOsInitialize(void)
+{
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsTerminate(void)
+{
+    return AE_OK;
+}
+
+ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer(void)
+{
+#ifdef __i686__
+    return I686AcpiGetRsdp();
+#else
+#error AcpiOsGetRootPointer() must be implemented
+#endif
+}
+
+ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *PredefinedObject, ACPI_STRING *NewValue)
+{
+    UNUSED(PredefinedObject);
+    *NewValue = NULL;
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_TABLE_HEADER **NewTable)
+{
+    UNUSED(ExistingTable);
+    *NewTable = NULL;
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_PHYSICAL_ADDRESS *NewAddress, UINT32 *NewTableLength)
+{
+    UNUSED(ExistingTable);
+    *NewAddress = 0;
+    *NewTableLength = 0;
+    return AE_OK;
+}
+
+void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length)
+{
+    return MmMapDynamicMemory(PhysicalAddress, Length, MM_FLAG_WRITABLE);
+}
+
+void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
+{
+    MmUnmapDynamicMemory(where);
+}
+
+ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
+{
+    uintptr_t p = 0;
+    STATUS status = HalGetPhysicalAddress((uintptr_t)LogicalAddress, &p);
+    *PhysicalAddress = p;
+    if(OK != status)
+        return AE_ERROR;
+    
+    return AE_OK;
+}
+
+void *AcpiOsAllocate(ACPI_SIZE Size)
+{
+    return MmAllocateKernelHeap(Size);
+}
+
+void AcpiOsFree(void *Memory)
+{
+    MmFreeKernelHeap(Memory);
+}
+
+BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length)
+{
+    ACPI_SIZE k = 0;
+    while(k < Length)
+    {
+        MmMemoryFlags flags;
+        if(OK != HalGetPageFlags((uintptr_t)Memory + k, &flags))
+            return false;
+        
+        if((flags & MM_FLAG_PRESENT) == 0)
+            return false;
+        
+        k += PAGE_SIZE;
+    }
+    return true;
+}
+
+BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length)
+{
+    ACPI_SIZE k = 0;
+    while(k < Length)
+    {
+        MmMemoryFlags flags;
+        if(OK != HalGetPageFlags((uintptr_t)Memory + k, &flags))
+            return false;
+        
+        if(((flags & MM_FLAG_PRESENT) == 0) || ((flags & MM_FLAG_WRITABLE) == 0))
+            return false;
+        
+        k += PAGE_SIZE;
+    }
+    return true;
+}
+
+ACPI_THREAD_ID AcpiOsGetThreadId(void)
+{
+    return KeGetCurrentTask()->tid;
+}
+
+ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context)
+{
+    struct KeTaskControlBlock *tcb;
+    if(OK != ExCreateKernelWorker(Function, Context, &tcb))
+        return AE_ERROR;
+    
+    KeEnableTask(tcb);
+    return AE_OK;
+}
+
+void AcpiOsSleep(UINT64 Milliseconds)
+{
+    KeSleep(MS_TO_NS(Milliseconds));
+}
+
+void AcpiOsStall(UINT32 Microseconds)
+{
+    KeDelay(US_TO_NS(Microseconds));
+}
+
+void AcpiOsWaitEventsComplete(void)
+{
+
+}
+
+ACPI_STATUS AcpiOsCreateMutex(ACPI_MUTEX *OutHandle)
+{
+    *OutHandle = KeCreateMutex();
+    if(NULL == *OutHandle)
+        return AE_NO_MEMORY;
+    return AE_OK;
+}
+
+void AcpiOsDeleteMutex(ACPI_MUTEX Handle)
+{
+    KeDestroyMutex(Handle);
+}
+
+ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout)
+{
+    if(NULL == Handle)
+        return AE_BAD_PARAMETER;
+    
+    uint64_t time;
+    if(0 == Timeout)
+        time = KE_MUTEX_NO_WAIT;
+    else if(0xFFFF == Timeout)
+        time = KE_MUTEX_NO_TIMEOUT;
+    else
+        time = MS_TO_NS(Timeout);
+
+    if(KeAcquireMutexEx(Handle, time))
+        return AE_OK;
+    else
+        return AE_TIME;
+}
+
+void AcpiOsReleaseMutex(ACPI_MUTEX Handle)
+{
+    KeReleaseMutex(Handle);
+}
+
+ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle)
+{
+    *OutHandle = KeCreateSemaphore(InitialUnits, MaxUnits);
+    if(NULL == *OutHandle)
+        return AE_NO_MEMORY;
+
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle)
+{
+    KeDestroySempahore(Handle);
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Timeout)
+{
+    if(NULL == Handle)
+        return AE_BAD_PARAMETER;
+    
+    uint64_t time;
+    if(0 == Timeout)
+        time = KE_MUTEX_NO_WAIT;
+    else if(0xFFFF == Timeout)
+        time = KE_MUTEX_NO_TIMEOUT;
+    else
+        time = MS_TO_NS(Timeout);
+
+    return KeAcquireSemaphoreEx(Handle, Units, time) ? AE_OK : AE_TIME;
+}
+
+ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
+{
+    if(NULL == Handle)
+        return AE_BAD_PARAMETER;
+
+    KeReleaseSemaphore(Handle, Units);
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
+{
+    *OutHandle = KeCreateSpinlock();
+    if(NULL == *OutHandle)
+        return AE_NO_MEMORY;
+
+    return AE_OK;
+}
+
+void AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
+{
+    KeDestroySpinlock(Handle);
+}
+
+ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle)
+{
+    return KeAcquireSpinlock(Handle);
+}
+
+void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags)
+{
+    KeReleaseSpinlock(Handle, Flags);
+}
+
+ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context)
+{   
+    STATUS ret = HalRegisterIrq(InterruptLevel, Handler, Context, 
+        (struct HalInterruptParams){.mode = HAL_IT_MODE_FIXED, .polarity = HAL_IT_POLARITY_ACTIVE_LOW, .trigger = HAL_IT_TRIGGER_LEVEL, 
+            .wake = HAL_IT_WAKE_CAPABLE, .shared = HAL_IT_NOT_SHAREABLE});
+    
+    if(OK == ret)
+        HalEnableIrq(InterruptLevel, Handler);
+
+    if(ALREADY_EXISTS == ret)
+        return AE_ALREADY_EXISTS;
+    else if(OK != ret)
+        return AE_BAD_PARAMETER;
+    else 
+        return AE_OK;
+}
+
+ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER Handler)
+{
+    HalDisableIrq(InterruptNumber, Handler);
+    STATUS ret = HalUnregisterIrq(InterruptNumber, Handler);
+
+    if(BAD_PARAMETER == ret)
+        return AE_NOT_EXIST;
+    else if(OK != ret)
+        return AE_BAD_PARAMETER;
+    else 
+        return AE_OK;
+}
+
+/* 
+Are these functions even needed? No real implementation
+in ACPICA examples.
+*/
+
+ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width)
+{
+    uint64_t *mem = MmMapMmIo(Address, PAGE_SIZE);
+    if(NULL == mem)
+    {
+        return AE_NO_MEMORY;
+    }
+    
+    switch(Width)
+    {
+        case 8:
+            *Value = *((uint8_t*)mem);
+            break;
+        case 16:
+            *Value = *((uint16_t*)mem);
+            break;
+        case 32:
+            *Value = *((uint32_t*)mem);
+            break;
+        case 64:
+            *Value = *((uint64_t*)mem);
+            break;
+        default:
+            MmUnmapMmIo(mem);
+            return AE_BAD_PARAMETER;
+            break;
+    }
+    MmUnmapMmIo(mem);
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT32 Width)
+{
+    uint64_t *mem = MmMapMmIo(Address, PAGE_SIZE);
+    if(NULL == mem)
+    {
+        return AE_NO_MEMORY;
+    }
+    
+    switch(Width)
+    {
+        case 8:
+            *((uint8_t*)mem) = (uint8_t)Value; 
+            break;
+        case 16:
+            *((uint16_t*)mem) = (uint16_t)Value; 
+            break;
+        case 32:
+            *((uint32_t*)mem) = (uint32_t)Value; 
+            break;
+        case 64:
+            *((uint64_t*)mem) = (uint64_t)Value; 
+            break;
+        default:
+            MmUnmapMmIo(mem);
+            return AE_BAD_PARAMETER;
+            break;
+    }
+    MmUnmapMmIo(mem);
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32 *Value, UINT32 Width)
+{
+    switch(Width)
+    {
+        case 8:
+            *Value = IoPortReadByte(Address); 
+            break;
+        case 16:
+            *Value = IoPortReadWord(Address); 
+            break;
+        case 32:
+            *Value = IoPortReadDWord(Address); 
+            break;
+        default:
+            return AE_BAD_PARAMETER;
+            break;
+    }
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsWritePort(ACPI_IO_ADDRESS Address, UINT32 Value, UINT32 Width)
+{
+    switch(Width)
+    {
+        case 8:
+            IoPortWriteByte(Address, Value); 
+            break;
+        case 16:
+            IoPortWriteWord(Address, Value); 
+            break;
+        case 32:
+            IoPortWriteDWord(Address, Value); 
+            break;
+        default:
+            return AE_BAD_PARAMETER;
+            break;
+    }
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsSignal(UINT32 Function, void *Info)
+{
+    switch(Function)
+    {
+        case ACPI_SIGNAL_FATAL:
+            ACPI_SIGNAL_FATAL_INFO *s = (ACPI_SIGNAL_FATAL_INFO*)Info;
+            KePanicEx(DRIVER_FATAL_ERROR, s->Type, s->Code, s->Argument, 0);
+        default:
+            break;
+    }
+    return AE_OK;
+}
+
+UINT64 AcpiOsGetTimer(void)
+{
+    return HalGetTimestamp() / 10;
+}
+
+ACPI_STATUS AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
+{
+    UNUSED(Buffer);
+    UNUSED(BufferLength);
+    *BytesRead = 0;
+    return AE_OK;
+}
+
+ACPI_PRINTF_LIKE(1)
+void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char *Format, ...)
+{
+    va_list Args;
+    va_start(Args, Format);
+    // if(NULL != AcpiLogHandle)
+    //     IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
+    va_end(Args);
+}
+
+void AcpiOsVprintf(const char *Format, va_list Args)
+{
+    UNUSED(Format);
+    UNUSED(Args);
+    // if(NULL != AcpiLogHandle)
+    //     IoWriteSyslogV(AcpiLogHandle, SYSLOG_INFO, Format, Args);
+}
+
+void AcpiOsRedirectOutput(void *Destination)
+{
+    UNUSED(Destination);
+}
+
+ACPI_STATUS AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value, UINT32 Width)
+{
+    UNUSED(PciId);
+    UNUSED(Register);
+    UNUSED(Width);
+    *Value = 0;
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 Value, UINT32 Width)
+{
+    UNUSED(PciId);
+    UNUSED(Register);
+    UNUSED(Value);
+    UNUSED(Width);
+    return AE_OK;
+}
+
+ACPI_STATUS AcpiOsEnterSleep(UINT8 SleepState, UINT32 RegaValue, UINT32 RegbValue)
+{
+    UNUSED(SleepState);
+    UNUSED(RegaValue);
+    UNUSED(RegbValue);
+    return AE_OK;
+}

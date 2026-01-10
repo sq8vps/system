@@ -6,7 +6,6 @@
 #include "mm/heap.h"
 #include "rtl/string.h"
 #include "keymap.h"
-#include "unicode/unicode.h"
 #include "font.h"
 #include "logging.h"
 
@@ -173,7 +172,7 @@ void TtyPutVtString(struct TtyVtData *info, const char *str, size_t len)
     size_t i = 0;
     while(i < len)
     {
-        if((0 != i) && (UnicodeIsGraphemeClusterStart(code[codeCount - 1], str[i])))
+        if((0 != i) && (RtlUnicodeIsGraphemeClusterStart(code[codeCount - 1], str[i])))
         {
 TtyPutVtStringLast:
 
@@ -222,7 +221,7 @@ TtyPutVtStringLast:
             codeCount = 0;
         }
 
-        size_t byteCount = Utf8ByteCount(str[i]);
+        size_t byteCount = RtlUtf8ByteCount(str[i]);
         if((i + byteCount) > len)
             goto TtyPutVtStringEnd;
 

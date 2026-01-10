@@ -21,13 +21,13 @@ static char *name = NULL; /**< Pointer to entry name argument */
 static char *value = NULL; /**< Pointer to value argument */
 static char *typeName = NULL; /**< Pointer to type argument */
 static char *newName = NULL; /**< Pointer to new name argument */
-static char *index = NULL; /**< Pointer to index argument */
+static char *indexa = NULL; /**< Pointer to index argument */
 static FILE *f = NULL; /**< Database file handle */
 static struct NablaDbHeader *h = NULL; /**< Database header and body handle */
 
-static char helpPage[] =
+static const char helpPage[] =
 "Usage: ndbedit [-f file] [-n name] [-t type] [-v value] [-i index] [-x new_name] [-r] [-h] [command]\n"
-"\t-f file - database path to be read or created\n"
+"\t-f file - database path\n"
 "\t-n name - entry or array name\n"
 "\t-t type - entry type (required when creating entries or arrays):\n"
 "\t\tAllowed types are: byte, word, dword, qword, bool, utf8, timestamp, uuid, float, double, multi\n"
@@ -38,7 +38,7 @@ static char helpPage[] =
 "\t-h - show help page and exit\n"
 "\t-v - show version info and exit\n"
 "\tcommand - command to execute:\n"
-"\t\tnew - create new database (required: [-f file], optional: [-r])"
+"\t\tnew - create new database (required: [-f file], optional: [-r])\n"
 "\t\tadd - add new entry (required: [-f file], [-n name], [-t type], [-d value], [-i index] (when adding to an array))\n"
 "\t\tvalue - change value (required: [-f file], [-n name], [-d value], [-i index] (when entry is a part of an array))\n"
 "\t\tname - change name (required: [-f file], [-n name], [-x new_name]\n"
@@ -66,7 +66,8 @@ static void writeDb(void)
 static void NdbEditExit(int code)
 {
     free(h);
-    fclose(f);
+    if(NULL != f)
+        fclose(f);
     if(0 == code)
         printf("Operation successful\n");
     else
@@ -544,7 +545,7 @@ int main(int argc, char **argv)
                 value = optarg;
                 break;
             case 'i': //index
-                index = optarg;
+                indexa = optarg;
                 break;
             case 'x': //new name
                 newName = optarg;
@@ -903,7 +904,7 @@ int main(int argc, char **argv)
                 if(interactive)
                     printf("%*s is an array. Do you want to remove the whole array (y/N)? ", e->nameLength, e->name);
 
-                if((interactive && !GetYesNo(false)) || (!interactive && (NULL != index)))
+                if((interactive && !GetYesNo(false)) || (!interactive && (NULL != indexa)))
                 {
                     if(0 == e->elementCount)
                     {
@@ -912,7 +913,7 @@ int main(int argc, char **argv)
                         continue;
                     }
 
-                    struct NablaDbArrayElement *ae = getArrayEntry(interactive, index, h, e);
+                    struct NablaDbArrayElement *ae = getArrayEntry(interactive, indexa, h, e);
                     if(NULL == ae)
                     {
                         printf("No such entry\n");
@@ -1030,7 +1031,7 @@ int main(int argc, char **argv)
                     continue;
                 }
 
-                e = (struct NablaDbEntry*)getArrayEntry(interactive, index, h, e);
+                e = (struct NablaDbEntry*)getArrayEntry(interactive, indexa, h, e);
                 if(NULL == e)
                 {
                     printf("No such entry\n");

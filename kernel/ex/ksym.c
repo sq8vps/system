@@ -1,10 +1,13 @@
 #include "ksym.h"
 #include "elf.h"
-#include "multiboot/multiboot.h"
 #include "mm/dynmap.h"
 #include "mm/heap.h"
 #include "ke/core/panic.h"
 #include "rtl/string.h"
+
+#ifdef MULTIBOOT2
+#include "multiboot/multiboot.h"
+#endif
 
 static struct
 {
@@ -14,8 +17,10 @@ static struct
 *ExKernelSymbolTable;
 static uint32_t ExKernelSymbolCount = 0;
 
-STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h)
+STATUS ExLoadKernelSymbols(const void *bootArgs)
 {
+#ifdef MULTIBOOT2
+    const struct Multiboot2InfoHeader *mb2h = bootArgs;
     const struct Multiboot2InfoTag *tag = Multiboot2FindTag(mb2h, NULL, MB2_ELF_SYMBOLS);
     if(NULL != tag)
     {
@@ -83,6 +88,10 @@ STATUS ExLoadKernelSymbols(struct Multiboot2InfoHeader *mb2h)
     }
 
     FAIL_BOOT("kernel symbol table missing");
+#else
+#error Unknown bootloader - provide bootloader data parser or bootloader-independent kernel symbol parsing
+#endif
+
 
     return CORRUPTED;
 }

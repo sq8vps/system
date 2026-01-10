@@ -5,4 +5,4 @@ Remove __builtin and __attributes__ directly from code
 Make some RTL routines weak to allow HAL to reimplement them
 Change names of the symbols starting from underscore
 Optimize built-in VGA driver
-Replace builtin atomics with stdatomic.h
+Add main partition mount point as a kernel parameter

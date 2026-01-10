@@ -113,6 +113,13 @@ struct AcpiIrqOverrideEntry
     uint16_t flags;
 } PACKED;
 
+static PADDRESS AcpiRootPointer = 0;
+
+PADDRESS I686AcpiGetRsdp(void)
+{
+    return AcpiRootPointer;
+}
+
 static bool AcpiVerifyChecksum(const void *data, uint32_t size)
 {
     uint8_t *pdata = (uint8_t*)data;
@@ -167,6 +174,8 @@ static uintptr_t AcpiGetRxsdtAddress(void)
         MmUnmapDynamicMemory(t);
         return 0;
     }
+
+    AcpiRootPointer = (PADDRESS)((uintptr_t)rsdp - (uintptr_t)t);
 
     uintptr_t ret = 0;
 

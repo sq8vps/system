@@ -197,9 +197,8 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     return OK;
 }
 
-STATUS IoInitDeviceManager(char *rootDeviceId)
+STATUS IoInitDeviceManager(void *bootArgs, const char *rootDeviceId)
 {
-    ASSERT(rootDeviceId);
     STATUS ret = OK;
 
     struct ExDriverObjectList *drivers = NULL;
@@ -209,7 +208,7 @@ STATUS IoInitDeviceManager(char *rootDeviceId)
     if(OK != ret)
         return ret;
 
-    ret = IoInitializeVolumeManager();
+    ret = IoInitializeVolumeManager(bootArgs);
     if(OK != ret)
         return ret;
     

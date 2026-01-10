@@ -1,6 +1,6 @@
 /**
  * @file config.h
- * @brief Static kernel configuration
+ * @brief Kernel configuration - static and command line parsing
  * @ingroup config
  */
 
@@ -11,10 +11,11 @@
 #include "hal/arch.h"
 
 /**
- * @addtogroup config Static kernel configuration
- * @brief Static kernel configuration
+ * @addtogroup config Kernel configuration
+ * @brief Kernel configuration
  * 
- * This module defines some hardcoded values for the kernel. These values can be, in general, changed freely.
+ * This module defines some default values for the kernel. These values can be, in general, changed freely.
+ * This module also parses kernel command line arguments.
  * @{
  */
 
@@ -49,6 +50,15 @@ EXPORT_API
  * @brief Main configuration database path
  */
 #define CONFIG_DATABASE (MAIN_MOUNT_POINT "/system/config/" CONFIG_DATABASE_NAME)
+
+/**
+ * @brief Get kernel command line parameter by name
+ * @param *name Parameter name
+ * @param **value Output value for parameter @a name (null-safe)
+ * @return True if parameter found, false otherwise
+ * @note If there is no value for the given parameter, @a *value is set to NULL
+ */
+bool ConfigGetKernelParam(const char *name, const char **value);
 
 END_EXPORT_API
 
@@ -91,6 +101,11 @@ END_EXPORT_API
  */
 #define KERNEL_FULL_NAME_STRING (KERNEL_NAME_STRING " " KERNEL_VERSION_STRING " " HAL_ARCHITRECTURE_STRING " " KERNEL_CPU_TYPE_STRING  " " KERNEL_COMPILATION_TYPE_STRING)
 
+/**
+ * @brief Get and parse kernel command line arguments
+ * @param *bootData Bootloader data
+ */
+INTERNAL void ConfigParseKernelArguments(void *bootData);
 
 /**
  * @}

@@ -3,8 +3,11 @@
 #include "hal/arch.h"
 #include "hal/mm.h"
 #include "ke/core/mutex.h"
-#include "multiboot/multiboot.h"
 #include "ex/elf.h"
+
+#ifdef MULTIBOOT2
+#include "multiboot/multiboot.h"
+#endif
 
 #define MM_BUDDY_SMALLEST PAGE_SIZE //smallest MmBuddy block size
 #define MM_BUDDY_COUNT 8 //numer of buddies, MM_BUDDY_SMALLEST<<(N-1) will be the biggest block size
@@ -345,7 +348,7 @@ void MmFreePhysicalMemory(PADDRESS address, PSIZE n)
 //linker-defined symbols for kernel image memory boundaries
 extern char _kstart, _kend;
 
-void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
+void MmInitPhysicalAllocator(const void *bootArgs)
 {
     //clear buddies
     RtlMemset(MmBuddy, 0, sizeof(MmBuddy));
@@ -363,6 +366,8 @@ void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
         }
     }
 
+#ifdef MULTIBOOT2
+    const struct Multiboot2InfoHeader *mb2h = bootArgs;
     const struct Multiboot2InfoTag *tag = Multiboot2GetTag(mb2h, NULL);
     while(NULL != tag)
     {
@@ -429,6 +434,9 @@ void MmInitPhysicalAllocator(struct Multiboot2InfoHeader *mb2h)
         }
         tag = Multiboot2GetTag(mb2h, tag);
     }
+#else
+#error Unknown bootloader - provide bootloader data parser or bootloader-independent memory map parsing
+#endif
 }
 
 #if HAL_PHYSICAL_MEMORY_POOLS < 1

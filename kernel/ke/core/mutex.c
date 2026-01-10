@@ -76,7 +76,7 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_SPINLOCK);
 #ifndef SMP
     if(unlikely(0 != spinlock->lock))
-        KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
+        KePanicEx(BUSY_MUTEX_ACQUIRED, 0, (uintptr_t)spinlock, 0, 0);
     spinlock->lock = 1;
 #else
     while(1)
@@ -104,7 +104,7 @@ PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
 #ifndef SMP
     if(unlikely(0 != spinlock->lock))
-        KePanicEx(BUSY_MUTEX_ACQUIRED, (uintptr_t)spinlock, 0, 0, 0);
+        KePanicEx(BUSY_MUTEX_ACQUIRED, 0, (uintptr_t)spinlock, 0, 0);
     spinlock->lock = 1;
 #else
     while(1)
@@ -131,11 +131,11 @@ void KeReleaseSpinlock(KeSpinlock *spinlock, PRIO previousPriority)
 {
 #ifndef SMP
     if(unlikely(0 == spinlock->lock))
-        KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
+        KePanicEx(UNACQUIRED_MUTEX_RELEASED, 0, (uintptr_t)spinlock, 0, 0);
     spinlock->lock = 0;
 #else
     if(unlikely(0 == ATOMIC_LOAD(&spinlock->lock, ATOMIC_ACQUIRE)))
-        KePanicEx(UNACQUIRED_MUTEX_RELEASED, (uintptr_t)spinlock, 0, 0, 0);
+        KePanicEx(UNACQUIRED_MUTEX_RELEASED, 0, (uintptr_t)spinlock, 0, 0);
     ATOMIC_STORE(&spinlock->lock, 0, ATOMIC_RELEASE);
 #endif
     HalLowerPriorityLevel(previousPriority);

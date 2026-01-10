@@ -7,7 +7,6 @@
 #include "rtl/order.h"
 #include "rtl/string.h"
 #include "vt.h"
-#include "unicode/unicode.h"
 
 static STATUS TtyBuildTrieFromPsf1(const void *table, size_t tableSize, struct TtyFont *font)
 {
@@ -97,7 +96,7 @@ static STATUS TtyBuildTrieFromPsf2(const void *table, size_t tableSize, struct T
                 break;
             }
             uint32_t code = 0;
-            size_t byteCount = Utf8ByteCount(symbol[i]);
+            size_t byteCount = RtlUtf8ByteCount(symbol[i]);
             if((i + byteCount) > tableSize)
                 return CORRUPTED;
             
@@ -149,7 +148,7 @@ static STATUS TtyBuildTrieFromPsf2(const void *table, size_t tableSize, struct T
                     }
                 }
                 uint32_t code = 0;
-                size_t byteCount = Utf8ByteCount(symbol[i]);
+                size_t byteCount = RtlUtf8ByteCount(symbol[i]);
                 if((i + byteCount) > tableSize)
                     return CORRUPTED;
                 
