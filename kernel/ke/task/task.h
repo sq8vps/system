@@ -7,7 +7,6 @@
 #ifndef KERNEL_TASK_H_
 #define KERNEL_TASK_H_
 
-#include <stdint.h>
 #include "defines.h"
 #include "ob/ob.h"
 #include "hal/arch.h"
@@ -20,7 +19,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct ObObjectHeader;
 struct KeSemaphore;
@@ -378,7 +377,26 @@ STATUS KeCreateUserThread(uint32_t flags,
  */
 struct KeTaskArguments* KeBuildTaskArguments(const char *argv[], const char *envp[]);
 
-END_EXPORT_API
+END_DRIVER_API
+
+NABLA_API
+
+/**
+ * @brief Set and apply Thread Local Storage for current thread
+ * @param *tls TLS to be set and applied
+ * @return Always OK
+ * @note No checks are performed for \a *tls, the kernel does not use it
+ */
+STATUS ApiSetThreadLocalStorage(void *tls);
+
+/**
+ * @brief Exit (finish) calling task
+ * @param result Return code - execution result
+ * @note This function does not return to the caller
+ */
+[[noreturn]] void ApiExitTask(int result);
+
+END_NABLA_API
 
 /**
  * @brief Set Thread-local Storage pointer for given task

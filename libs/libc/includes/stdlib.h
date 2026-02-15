@@ -35,6 +35,9 @@ typedef volatile int once_flag;
 
 void call_once(once_flag *flag, void (*func)(void));
 
+int atoi(const char *nptr);
+long int atol(const char *nptr);
+long long int atoll(const char *nptr);
 double atof(const char *nptr);
 long int atol(const char *nptr);
 long long int atoll(const char *nptr);
@@ -44,8 +47,10 @@ int strfroml(char *restrict s, size_t n, const char *restrict format, long doubl
 double strtod(const char *restrict nptr, char **restrict endptr);
 float strtof(const char *restrict nptr, char **restrict endptr);
 long double strtold(const char *restrict nptr, char **restrict endptr);
+int strtoi(const char *restrict nptr, char **restrict endptr, int base);
 long int strtol(const char *restrict nptr, char **restrict endptr, int base);
 long long int strtoll(const char *restrict nptr, char **restrict endptr, int base);
+unsigned int strtoui(const char *restrict nptr, char **restrict endptr, int base);
 unsigned long int strtoul(const char *restrict nptr, char **restrict endptr, int base);
 unsigned long long int strtoull(const char *restrict nptr, char **restrict endptr, int base);
 

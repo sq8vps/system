@@ -19,7 +19,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct IoEventHandler;
 
@@ -66,7 +66,7 @@ struct IoEventHandler
     struct IoEventHandler *next; /**< Linked list of event handlers */
 };
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

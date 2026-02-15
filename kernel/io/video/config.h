@@ -16,7 +16,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Color mask indices for \ref IoFrameBufferConfig
@@ -57,7 +57,7 @@ struct IoFrameBuffer
     void *fb; /**< Frame buffer pointer */
 };
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

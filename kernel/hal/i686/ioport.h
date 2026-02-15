@@ -14,7 +14,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 
 /**
@@ -64,7 +64,7 @@ uint32_t IoPortReadDWord(uint16_t port);
 */
 void IoPortWriteDWord(uint16_t port, uint32_t d);
 
-END_EXPORT_API
+END_DRIVER_API
 
 
 // 

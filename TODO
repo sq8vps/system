@@ -6,3 +6,4 @@ Make some RTL routines weak to allow HAL to reimplement them
 Change names of the symbols starting from underscore
 Optimize built-in VGA driver
 Add main partition mount point as a kernel parameter
+NULL to nullptr, #define to constexpr

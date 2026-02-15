@@ -18,7 +18,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Change task major priority/scheduling policy
@@ -83,7 +83,7 @@ struct KeTaskControlBlock* KeGetCurrentTask(void);
 */
 struct KeProcessControlBlock* KeGetCurrentTaskParent(void);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Block task (remove from ready-to-run queue)
@@ -111,6 +111,13 @@ INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);
  * @kinternal
 */
 INTERNAL void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext);
+
+/**
+ * @brief Exit calling task
+ * @param result Execution result (return code)
+ * @note This function does not return to the caller
+ */
+[[noreturn]] INTERNAL void KeFinishCurrentTask(int result);
 
 /**
  * @brief Join scheduler with a new CPU

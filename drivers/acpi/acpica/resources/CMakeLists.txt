@@ -14,4 +14,4 @@ add_library(resources OBJECT
     rsxface.c
     )
 
-target_include_directories(resources PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../include ${CMAKE_SOURCE_DIR}/../api)
+target_include_directories(resources PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../include ${DRIVER_API})

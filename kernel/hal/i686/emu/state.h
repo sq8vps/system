@@ -30,6 +30,8 @@ struct KeTaskControlBlock;
  */
 #define I686_EMU_REAL_MODE_SPACE_SIZE 0x110000
 
+DRIVER_API
+
 /**
  * @brief x86 registers
  */
@@ -137,6 +139,8 @@ enum
     FLAG_DF = 0x400,
     FLAG_OF = 0x800,
 };
+
+END_DRIVER_API
 
 /**
  * @brief Emulator state

@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include "ob/ob.h"
 
-EXPORT_API
+DRIVER_API
 
 struct ExDriverObject;
 struct IoDeviceObject;
@@ -126,7 +126,7 @@ STATUS ExLoadKernelDriversByName(const char *name, struct ExDriverObjectList **d
 */
 struct ExDriverObject *ExFindDriverByAddress(uintptr_t *address);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize driver manager

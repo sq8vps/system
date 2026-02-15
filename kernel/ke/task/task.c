@@ -8,6 +8,8 @@
 #include "io/fs/fs.h"
 #include "hal/arch.h"
 #include "hal/task.h"
+#include "ke/sys/llsyscall.h"
+#include "mm/tmem.h"
 
 KE_TASK_ID KeAssignTid(void);
 void KeFreeTid(KE_TASK_ID tid);
@@ -246,4 +248,18 @@ STATUS KeSetThreadLocalStorage(struct KeTaskControlBlock *tcb, void *tls)
 {
     tcb->tls = tls;
     return OK;
+}
+
+DEFINE_SYSCALL(STATUS, ApiSetThreadLocalStorage, void*)
+STATUS ApiSetThreadLocalStorage(void *tls)
+{
+    KeSetThreadLocalStorage(KeGetCurrentTask(), tls);
+    HalUpdateTls(tls);
+    return OK;
+}
+
+DEFINE_SYSCALL(void, ApiExitTask, int);
+[[noreturn]] void ApiExitTask(int result)
+{
+    KeFinishCurrentTask(result);
 }

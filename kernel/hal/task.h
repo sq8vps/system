@@ -68,7 +68,6 @@ INTERNAL void HalPerformTaskSwitch(void);
  * @brief Update Thread Local Storage pointer for current CPU
  * @param *tls TLS pointer
  */
-FASTCALL
 INTERNAL void HalUpdateTls(void *tls);
 
 /**

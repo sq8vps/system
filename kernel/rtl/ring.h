@@ -16,7 +16,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief General ring buffer structure
@@ -109,7 +109,7 @@ void RingBufferClear(struct RingBuffer *ring);
  */
 #define RingBufferPeek(ring, buffer) buffer[RingBufferGetIndexForPeek(ring)]
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

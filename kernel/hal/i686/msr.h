@@ -32,7 +32,7 @@
 */
 INTERNAL bool MsrInit(void);
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Get Model Specific Register value
@@ -48,7 +48,7 @@ uint64_t MsrGet(uint32_t msr);
 */
 void MsrSet(uint32_t msr, uint64_t val);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

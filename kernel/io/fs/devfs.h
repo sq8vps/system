@@ -11,7 +11,7 @@
 #include "defines.h"
 #include "io/fs/vfs.h"
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 
@@ -31,7 +31,7 @@ struct IoDeviceObject;
 */
 STATUS IoCreateDeviceFile(struct IoDeviceObject *dev, enum IoVfsFlags flags, char *name);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize "/dev" filesystem

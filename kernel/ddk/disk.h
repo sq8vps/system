@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include "defines.h"
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 
@@ -54,6 +54,6 @@ STATUS DiskGetSignature(struct IoDeviceObject *target, char **signature);
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

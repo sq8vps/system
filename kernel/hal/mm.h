@@ -20,7 +20,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Get page table entry flags
@@ -80,7 +80,7 @@ STATUS HalUnmapMemory(uintptr_t vAddress);
 */
 STATUS HalUnmapMemoryEx(uintptr_t vAddress, size_t size);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Get base address of driver memory space

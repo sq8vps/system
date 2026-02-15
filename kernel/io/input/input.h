@@ -23,7 +23,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 struct IoEventHandler;
@@ -63,7 +63,7 @@ STATUS IoUnregisterEventHandler(const struct IoEventHandler *handler);
  */
 STATUS IoReportEvent(int handle, const union IoEventData *data);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

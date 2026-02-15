@@ -380,11 +380,16 @@ STATUS KeEnableTask(struct KeTaskControlBlock *tcb)
     return OK;
 }
 
-void KeFinishCurrentTask(void)
+[[noreturn]] void KeFinishCurrentTask(int result)
 {
+    UNUSED(result);
+    //TODO: handle return code
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
     tcb->scheduling.requestedState = TASK_FINISHED;
     KeTaskYield();
+
+    while(1)
+        ;
 }
 
 void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason)
@@ -492,7 +497,7 @@ void KeTaskYield(void)
     KeTaskSwitchPending = true;
 #else
     uint16_t cpu = HalGetCurrentCpu();
-    if((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu]))
+    if(likely((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu])))
     {
         KeSchedule(cpu);
         KeTaskSwitchPending[cpu] = true;
@@ -538,71 +543,22 @@ static void KeTaskCleanupWorker(void *context)
     UNUSED(context);
     while(1)
     {
-        // PRIO prio = KeAcquireSpinlock(&(KeFinished.lock));
-        // struct KeTaskControlBlock *t = KeFinished.head;
-        // struct KeTaskControlBlock *parent = NULL;
+        PRIO prio = KeAcquireSpinlock(&(KeFinished.lock));
+        struct KeTaskControlBlock *t = KeFinished.head;
 
-        // if(NULL != t)
-        // {
-        //     KeDetachTaskFromQueue(t, true);
-        //     barrier();
-        //     KeReleaseSpinlock(&(KeFinished.lock), prio);
+        if(NULL != t)
+        {
+            KeDetachTaskFromQueue(t, true);
+            barrier();
+            KeReleaseSpinlock(&(KeFinished.lock), prio);
 
-        //     HalFreeTaskStructures(t);
-
-        //     prio = ObLockObject(t);
-
-        //     if(KE_TASK_TYPE_THREAD == t->type)
-        //     {
-        //         ObUnlockObject(t, prio);
-
-        //         parent = t->parent;
-        //         prio = ObLockObject(parent);
-        //         parent->taskCount--;
-        //         parent->freeTaskIds[MAX_KERNEL_MODE_THREADS - parent->taskCount - 1] = t->threadId;
-
-        //         struct KeTaskControlBlock *s = parent->child;
-        //         if(s == t)
-        //             parent->child = NULL;
-        //         else
-        //         {
-        //             while(t != s->sibling)
-        //             {
-        //                 s = s->sibling;
-        //             }
-                    
-        //             s->sibling = t->sibling;
-        //         }
-
-        //         ObUnlockObject(parent, prio);
-
-        //         KeDestroyTCB(t);
-        //     }
-        //     else
-        //         ObUnlockObject(t, prio);
             
-        //     //if "parent" is non-NULL, then "t" was a thread and "parent" is a process
-        //     //otherwise "t" must be non-NULL and in this case it's also a process
-        //     if(NULL != parent)
-        //         t = parent;
-        //     //replace t with parent
-
-        //     prio = ObLockObject(t);
-        //     if(1 == t->taskCount) //process has no more children
-        //     {
-        //         ObUnlockObject(t, prio);
-
-        //         KeDestroyTCB(t);
-        //     }
-        //     else
-        //         ObUnlockObject(t, prio);
-
-        // }
-        // else
-        // {
-        //     KeReleaseSpinlock(&(KeFinished.lock), prio);
-        //     KeWaitForWakeUp();
-        // }
+            
+        }
+        else
+        {
+            KeReleaseSpinlock(&(KeFinished.lock), prio);
+        }
         KeWaitForWakeUp();
     }
 }

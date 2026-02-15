@@ -6,9 +6,9 @@
 #ifndef KERNEL_PLATFORM_GCC_H_
 #define KERNEL_PLATFORM_GCC_H_
 
-#include "defines.h"
+#include "export.h"
 
-EXPORT_API
+DRIVER_API
 
 #ifdef __GNUC__
 
@@ -286,6 +286,6 @@ EXPORT_API
 
 #endif
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

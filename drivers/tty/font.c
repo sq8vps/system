@@ -141,7 +141,7 @@ static STATUS TtyBuildTrieFromPsf2(const void *table, size_t tableSize, struct T
                 if((PSF2_ENTRY_END == symbol[i]) || (PSF2_SEQ_START == symbol[i]))
                 {
                     parent->aux = &font->data[glyph * font->pitch];
-                    if(PSF1_ENTRY_END == symbol[i])
+                    if(PSF2_ENTRY_END == symbol[i])
                     {
                         ++i;
                         break;

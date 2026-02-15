@@ -31,6 +31,37 @@
 #include "hal/debug.h"
 #include "hal/arch.h"
 
+
+
+[[noreturn]] static void KeStartInit(void)
+{
+	STATUS status = OK;
+	struct KeTaskControlBlock *tcb = nullptr;
+	const char *path = nullptr;
+	const char **argv = nullptr;
+
+	if(!ConfigGetKernelParam("init", &path) || (nullptr == path))
+	{
+		path = DEFAULT_INIT_PATH;
+	}
+
+	const char *envp[] = {nullptr};
+
+	ConfigGetUserParams(&argv);
+	argv[0] = path;
+
+	status = KeCreateUserProcess(path, KE_TASK_FLAG_CRITICAL, argv, envp, NULL, &tcb);
+	if(OK != status)
+		KePanic(NO_WORKING_INIT);
+
+	status = KeEnableTask(tcb);
+	if(OK != status)
+		KePanic(NO_WORKING_INIT);
+
+	while(1)
+		;
+}
+
 static void KeInitProcess(void *context)
 {
 	STATUS ret = OK;
@@ -66,40 +97,10 @@ static void KeInitProcess(void *context)
 	if(OK != ExLoadKernelDriversByName("tty.ndb", NULL, NULL))
 		FAIL_BOOT("unable to load TTY device driver");
 
-	struct TtyParameters params = {
-		.request.createVt.inputEvent = 0,
-		.request.createVt.outputDisplay = 0,
-	};
-
-	int ttyHandle = -1;
-	struct IoDeviceObject *ttyDev = NULL;
-	IoOpenFile("/dev/ttyM0", IO_FILE_READ, IO_FILE_FLAG_SHARED, &ttyHandle);
-	IoGetDeviceForFile(IoGetVfsNodeForFile(KeGetCurrentTaskParent(), ttyHandle), &ttyDev);
-	TtyCreateVt(ttyDev, &params);
-	IoCloseFile(ttyHandle);
-	
-	int fd[3] = {0, 1, 2};
-	IoOpenFile("/dev/tty0", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[0]);
-	IoOpenFile("/dev/tty0", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[1]);
-	IoOpenFile("/dev/tty0", IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[2]);
-
-	IoVfsCreateLink("/dev/stdin", "/task/self/fd/0", 0);
-	IoVfsCreateLink("/dev/stdout", "/task/self/fd/1", 0);
-	IoVfsCreateLink("/dev/stderr", "/task/self/fd/2", 0);
-
-	struct KeTaskControlBlock *tcb;
-	const char *argv[] = {"test.elf", "-a", "12345", NULL};
-	const char *envp[] = {"PATH=/", "NABLA", NULL};
-	struct KeTaskFileMapping map[4] = {{.mapFrom = 0, .mapTo = 0}, {.mapFrom = 1, .mapTo = 1}, {.mapFrom = 2, .mapTo = 2}, KE_TASK_FILE_MAPPING_END};
-
-	STATUS status = KeCreateUserProcess("/main/system/test", 0, argv, envp, map, &tcb);
-	LOG(SYSLOG_INFO, "Process creation status %X", status);
-	KeEnableTask(tcb);
+	KeStartInit();
 
 	while(1)
-	{
-		KeTaskYield();
-	}
+		;
 }
 
 /**

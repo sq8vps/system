@@ -5,6 +5,7 @@
 #include "mm/heap.h"
 #include "ke/sched/sched.h"
 #include "rtl/string.h"
+#include "rtl/stdlib.h"
 
 STATUS ExLoadProcessImage(const char *path, void (**entry)(void*))
 {
@@ -13,6 +14,8 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)(void*))
 	struct Elf32_Ehdr *ehdr = NULL;
 	struct Elf32_Phdr *phdr = NULL;
 	size_t actualSize = 0;
+	struct KeTaskControlBlock *tcb = KeGetCurrentTask();
+	uintptr_t imageTop = 0;
 
     if(!IoCheckIfFileExists(path))
 	{
@@ -78,7 +81,9 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)(void*))
 			}
 
 			uintptr_t base = ALIGN_DOWN(phdr[i].p_vaddr, PAGE_SIZE);
-			uintptr_t top = ALIGN_UP(phdr[i].p_vaddr + phdr[i].p_memsz, PAGE_SIZE);
+			uintptr_t top = (0 != phdr[i].p_filesz) ?
+				ALIGN_UP(phdr[i].p_vaddr + phdr[i].p_filesz, PAGE_SIZE)
+				: ALIGN_UP(phdr[i].p_vaddr + phdr[i].p_memsz, PAGE_SIZE);
 			enum MmTaskMemoryFlags flags = MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_LOCKED;
 			if(phdr[i].p_flags & PF_R)
 				flags |= MM_TASK_MEMORY_READABLE;
@@ -86,14 +91,38 @@ STATUS ExLoadProcessImage(const char *path, void (**entry)(void*))
 				flags |= MM_TASK_MEMORY_WRITABLE;
 			if(phdr[i].p_flags & PF_X)
 				flags |= MM_TASK_MEMORY_EXECUTABLE;
-			
-			status = MmMapTaskMemory((void*)base, top - base, flags, f, 0, ALIGN_DOWN(phdr[i].p_offset, PAGE_SIZE), 0, NULL);
-			if(OK != status)
+
+			if(0 != phdr[i].p_filesz)
 			{
-				goto ExProcessLoadWorkerFailed;
+				status = MmMapTaskMemory((void*)base, top - base, flags, f, 0, ALIGN_DOWN(phdr[i].p_offset, PAGE_SIZE), 0, NULL);
+				if(OK != status)
+				{
+					goto ExProcessLoadWorkerFailed;
+				}
+				base = top;
+				top = ALIGN_UP(phdr[i].p_vaddr + phdr[i].p_memsz, PAGE_SIZE);
 			}
+
+			if(top != base)
+			{
+				status = MmMapTaskMemory((void*)base, top - base, flags, -1, 0, 0, 0, NULL);
+				if(OK != status)
+				{
+					goto ExProcessLoadWorkerFailed;
+				}
+			}
+
+			if(top > imageTop)
+				imageTop = top;
 		}
 	}
+
+	//randomize dynamic memory base (9 bits giving 512 positions)
+	int32_t location = RtlRandom(0, 1 << 9);
+	KeAcquireMutex(&(tcb->parent->memory.mutex));
+	//calculate dynamic memory base with page granularity
+	tcb->parent->memory.base = (void*)(ALIGN_UP(imageTop, PAGE_SIZE) + location * PAGE_SIZE);
+	KeReleaseMutex(&(tcb->parent->memory.mutex));
 
 	*entry = (void(*)(void*))(ehdr->e_entry);
 

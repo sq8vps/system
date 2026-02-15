@@ -108,7 +108,7 @@ INTERNAL void HalVideoDisplayBitmap(uint16_t x, uint16_t y, const RtlRGB *bitmap
  */
 INTERNAL bool HalVideoIsAvailable(void);
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Deinitialize boot-time video driver - gain ownership of the video adapter
@@ -132,7 +132,7 @@ typedef STATUS (*HalVideoResetRoutine)(void *context);
  */
 void HalRegisterVideoResetRoutine(HalVideoResetRoutine resetRoutine, void *context);
 
-END_EXPORT_API
+END_DRIVER_API
 
 
 /**

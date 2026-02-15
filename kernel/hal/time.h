@@ -20,7 +20,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Clock source name length limit (excluding terminator)
@@ -73,7 +73,7 @@ STATUS HalRegisterClockSource(struct HalClockSource *cs);
  */
 void HalUpdateClockSource(struct HalClockSource *cs);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize system (scheduler) timer

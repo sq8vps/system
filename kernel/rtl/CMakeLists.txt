@@ -7,6 +7,7 @@ add_library(rtl OBJECT
     rtl.c
     stdio.c
     trie.c
+    user.c
     uuid.c
 )
 

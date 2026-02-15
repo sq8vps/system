@@ -14,16 +14,13 @@ void *memset(void *s, int c, size_t n)
 
 void *memset_explicit(void *s, int c, size_t n)
 {
-    #pragma GCC push_options
-    #pragma GCC optimize ("O0")
-    unsigned char *sc = s;
+    volatile unsigned char *volatile sc = s;
     while(n--)
     {
         *sc = (unsigned char)c;
         ++sc;
     }
     return s;
-    #pragma GCC pop_options
 }
 
 char *strerror(int errnum)
@@ -37,5 +34,5 @@ size_t strlen(const char *s)
     while('\0' != *s++)
         ;
 
-    return s - first;
+    return s - first - 1;
 }

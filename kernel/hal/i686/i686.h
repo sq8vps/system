@@ -17,7 +17,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct KeSpinlock;
 
@@ -28,30 +28,20 @@ struct KeSpinlock;
  */
 #define PAGE_SIZE 4096
 
-#if defined(__i686__) && defined(PAE)
-    /**
-     * @brief Physical address data type
-     */
-    typedef uint64_t PADDRESS;
-    /**
-     * @brief Physical memory size data type
-     */
-    typedef uint64_t PSIZE;
-#else
-    /**
-     * @brief Physical address data type
-     */
-    typedef uintptr_t PADDRESS;
-    /**
-     * @brief Physical memory size data type
-     */
-    typedef uintptr_t PSIZE;
-#endif
+
+/**
+ * @brief Physical address data type
+ */
+typedef uint64_t PADDRESS;
+/**
+ * @brief Physical memory size data type
+ */
+typedef uint64_t PSIZE;
 
 /**
  * @brief Number of defined physical memory pools
  */
-#define HAL_PHYSICAL_MEMORY_POOLS 2
+#define HAL_PHYSICAL_MEMORY_POOLS 3
 
 /**
  * @brief Processor priority levels
@@ -207,7 +197,7 @@ struct HalCpuExtensions
  */
 typedef uint32_t reg_t;
 
-END_EXPORT_API
+END_DRIVER_API
 
 #if defined(__i686__)
     #if defined(PAE)

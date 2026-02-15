@@ -15,7 +15,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct KeTaskControlBlock;
 
@@ -45,7 +45,7 @@ STATUS KeSleep(uint64_t time);
 */
 void KeDelay(uint64_t time);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Refresh sleeping task list - check and wake appropriate tasks

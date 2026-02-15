@@ -15,7 +15,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Compute the CRC32 checksum of the given data
@@ -27,7 +27,7 @@ EXPORT_API
  */
 uint32_t RtlCrc32(uint32_t initial, uint32_t polynomial, const void *data, size_t size);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

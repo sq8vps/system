@@ -1,6 +1,6 @@
 #include "stdio.h"
-#include "nabla/nabla.h"
-#include "sys/file.h"
+#include "nabla/utils.h"
+#include "io/fs/fs.h"
 #include "errno.h"
 #include "nabla/defs.h"
 #include "stdlib.h"
@@ -8,30 +8,30 @@
 
 static size_t __read_write(void * restrict ptr, size_t size, FILE * restrict stream, bool _write)
 {
+    STATUS status = OK;
+    size_t actual = 0;
     if(0 == size)
         return 0;
 
     if(NULL == ptr)
-    {
-        *__errno() = -EINVAL;
-        return -1;
-    }
+        __LIBC_RETURN_ERRNO(-EINVAL, (size_t)(-1));
     
     if(__VALIDATE_STREAM(stream) < 0)
-        return -1; 
+        return (size_t)(-1);
 
     if(__WRITE == _write)
     {
-        return write(stream->handle, ptr, size, 
-            (sizeof(stream->pos) == sizeof(size_t)) ? stream->pos : (stream->pos & ((1ULL << (8 * sizeof(size_t)))) - 1ULL),
-            (sizeof(stream->pos) == sizeof(size_t)) ? 0 : (stream->pos >> (8 * sizeof(size_t))));
+        status = ApiWriteFileSync(stream->handle, ptr, size, stream->pos, &actual);
     }
     else
     {
-        return read(stream->handle, ptr, size, 
-            (sizeof(stream->pos) == sizeof(size_t)) ? stream->pos : (stream->pos & ((1ULL << (8 * sizeof(size_t)))) - 1ULL),
-            (sizeof(stream->pos) == sizeof(size_t)) ? 0 : (stream->pos >> (8 * sizeof(size_t))));
+        status = ApiReadFileSync(stream->handle, ptr, size, stream->pos, &actual);
     }
+
+    if(OK != status)
+        __LIBC_RETURN_STATUS(status, -1);
+    else
+        return actual;
 }
 
 int fgetc(FILE *stream)
@@ -138,12 +138,9 @@ char *fgets(char * restrict s, int n, FILE * restrict stream)
                 if(('\n' == s[written - 1]) || (written == (n - 1)))
                 {
                     s[written] = '\0';
-                    stream->buffer_ptr += written;
                     return s;
                 }
             }
-            stream->buffer_ptr += count;
-            stream->pos += count;
         }
         
         if(written != n)
@@ -166,16 +163,17 @@ char *fgets(char * restrict s, int n, FILE * restrict stream)
                     return s;
                 }
 
+                stream->buffer_end += count;
+
                 if(count > (size_t)(n - written))
                     count = (size_t)(n - written);
 
-                for(int i = 0; i < count; i++)
+                for(size_t i = 0; i < count; i++)
                 {
                     s[written++] = *(stream->buffer_ptr++);
                     if(('\n' == s[written - 1]) || (written == (n - 1)))
                     {
                         s[written] = '\0';
-                        stream->buffer_ptr += written;
                         return s;
                     }
                 }
@@ -187,10 +185,7 @@ char *fgets(char * restrict s, int n, FILE * restrict stream)
         char *buf = malloc(n);
         char *end = NULL;
         if(NULL == buf)
-        {
-            *__errno() = -ENOMEM;
-            return NULL;
-        }
+            __LIBC_RETURN_ERRNO(-ENOMEM, NULL);
 
         size_t count = __read_write(buf, n - 1, stream, __READ);
         if((size_t)(-1) == count)
@@ -262,10 +257,7 @@ int fputs(const char * restrict s, FILE * restrict stream)
         return EOF;
 
     if(NULL == s)
-    {
-        *__errno() = -EINVAL;
-        return EOF;
-    }
+        __LIBC_RETURN_ERRNO(-EINVAL, EOF);
 
     len = strlen(s);
     if(0 == len)
@@ -279,10 +271,10 @@ int fputs(const char * restrict s, FILE * restrict stream)
             *(stream->buffer_ptr++) = s[i];
             ++stream->buffer_end;
             if((('\n' == s[i]) && (_IOLBF == stream->buffer_mode)) 
-                || (stream->buffer_end < (stream->buffer_base + stream->buffer_size)))
+                || (stream->buffer_end == (stream->buffer_base + stream->buffer_size)))
             {
                 size_t count = __read_write(stream->buffer_base, stream->buffer_end - stream->buffer_base, stream, __WRITE);
-                if(count != (stream->buffer_end - stream->buffer_base))
+                if(count != (size_t)(stream->buffer_end - stream->buffer_base))
                 {
                     return EOF;
                 }
@@ -297,7 +289,7 @@ int fputs(const char * restrict s, FILE * restrict stream)
     }
     else //no buffering
     {
-        size_t count = __read_write(s, len, stream, __WRITE);
+        size_t count = __read_write((char*)s, len, stream, __WRITE);
         if(count != len)
         {
             return EOF;
@@ -353,7 +345,7 @@ size_t fread(void * restrict ptr, size_t size, size_t nmemb, FILE * restrict str
     size_t read = 0;
 
     if(__VALIDATE_STREAM(stream) < 0)
-        return NULL;
+        return 0;
 
     if(total == 0)
         return 0;
@@ -365,8 +357,8 @@ size_t fread(void * restrict ptr, size_t size, size_t nmemb, FILE * restrict str
     {
         if(stream->buffer_ptr != stream->buffer_end)
         {
-            size_t count = ((stream->buffer_end - stream->buffer_ptr) < total) ? 
-                (stream->buffer_end - stream->buffer_ptr) : total;
+            size_t count = ((size_t)(stream->buffer_end - stream->buffer_ptr) < total) ? 
+                (size_t)(stream->buffer_end - stream->buffer_ptr) : total;
 
             memcpy(ptr, stream->buffer_ptr, count);
             read += count;
@@ -449,8 +441,7 @@ size_t fwrite(const void * restrict ptr, size_t size, size_t nmemb, FILE * restr
         {
             *(stream->buffer_ptr++) = s[written++];
             ++stream->buffer_end;
-            if((('\n' == s[written - 1]) && (_IOLBF == stream->buffer_mode)) 
-                || (stream->buffer_end < (stream->buffer_base + stream->buffer_size)))
+            if(('\n' == s[written - 1]) || (stream->buffer_end == (stream->buffer_base + stream->buffer_size)))
             {
                 size_t count = __read_write(stream->buffer_base, stream->buffer_end - stream->buffer_base, stream, __WRITE);
                 if((size_t)(-1) == count)
@@ -460,7 +451,7 @@ size_t fwrite(const void * restrict ptr, size_t size, size_t nmemb, FILE * restr
                     return written / size;
                 }
                 stream->pos += count;
-                if(count < (stream->buffer_end - stream->buffer_base))
+                if(count < (size_t)(stream->buffer_end - stream->buffer_base))
                 {
                     stream->buffer_ptr = stream->buffer_base;
                     stream->buffer_end = stream->buffer_base;
@@ -469,49 +460,58 @@ size_t fwrite(const void * restrict ptr, size_t size, size_t nmemb, FILE * restr
                 stream->buffer_ptr = stream->buffer_base;
                 stream->buffer_end = stream->buffer_base;
             }
+            if(written == total)
+                break;
         }
+        return nmemb;
     }
     else if(_IOFBF == stream->buffer_mode)
     {
-        if(stream->buffer_ptr != stream->buffer_end)
+        //flush data from buffer if new data won't fit
+        size_t current = stream->buffer_end - stream->buffer_base;
+        if((total + current) >= stream->buffer_size)
         {
-            size_t count = ((stream->buffer_end - stream->buffer_ptr) < total) ? 
-                (stream->buffer_end - stream->buffer_ptr) : total;
-
-            __read_write(stream->buffer_ptr)
-            
-            memcpy(ptr, stream->buffer_ptr, count);
-            read += count;
-            stream->buffer_ptr += count;
+            size_t count = __read_write(stream->buffer_base, current, stream, __WRITE);
+            if((size_t)(-1) == count)
+                return 0;
+            stream->pos += count;
+            stream->buffer_end = stream->buffer_base;
+            stream->buffer_ptr = stream->buffer_base;
+            if(count < current)
+                return 0;
         }
-
+        //write data directly
         size_t blocks = total / stream->buffer_size;
         if(0 != blocks)
         {
-            stream->pos += (stream->buffer_end - stream->buffer_base);
-            stream->buffer_ptr = stream->buffer_base;
-            stream->buffer_end = stream->buffer_base;
-            size_t count = __read_write((char*)ptr + read , blocks * stream->buffer_size, stream, __READ);
+            size_t count = __read_write((char*)ptr, blocks * stream->buffer_size, stream, __WRITE);
             if((size_t)(-1) == count)
-                return read / size;
+                return written / size;
 
             stream->pos += count;
-            read += count;
+            written += count;
             if(count < (blocks * stream->buffer_size))
-            {
-                stream->flags |= __NABLA_LIBC_FILE_FLAG_EOF;
-                return read / size;
-            }
+                return written / size;
         }
+        //fill buffer with the remainder
+        if(written != total)
+        {
+            memcpy(stream->buffer_end, (char*)ptr + written, total - written);
+            stream->buffer_end += (total - written);
+            stream->buffer_ptr = stream->buffer_end;
+        }
+        return nmemb;
     }
     else //no buffering
     {
-        size_t count = __read_write(s, total, stream, __WRITE);
+        size_t count = __read_write((char*)s, total, stream, __WRITE);
+        if((size_t)(-1) == count)
+            return 0;
         if(count != total)
         {
-            return EOF;
+            return count / size;
         }
         stream->pos += count;
-        return 0;
+        return nmemb;
     }
 }

@@ -1,6 +1,4 @@
 add_library(ke_sys OBJECT
-    file.c
-    mmap.c
     syscall.c
     )
 

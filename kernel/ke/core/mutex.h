@@ -17,7 +17,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct KeTaskControlBlock;
 
@@ -324,7 +324,7 @@ void KeDestroySempahore(KeSemaphore *semaphore);
  */
 void KeDestroyRwLock(KeRwLock *rwLock);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Check and unblock tasks waiting for timed mutex or spinlock

@@ -13,7 +13,7 @@
 #include "config.h"
 #include "arch.h"
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup hal_cpu CPU support
@@ -102,7 +102,7 @@ uint32_t HalGetCpuCount(void);
  */
 uint32_t HalGetCurrentCpu(void);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Register new CPU in kernel

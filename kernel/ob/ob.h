@@ -20,7 +20,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct KeProcessControlBlock;
 
@@ -126,7 +126,7 @@ void ObLockObject(void *object);
  */
 void ObUnlockObject(void *object);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize object manager

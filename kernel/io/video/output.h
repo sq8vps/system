@@ -14,7 +14,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 #include "config.h"
 
@@ -85,7 +85,7 @@ STATUS IoRegisterFrameBuffer(const struct IoDeviceObject *dev, const struct IoFr
  */
 void IoDrawVideo(int handle);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

@@ -27,6 +27,7 @@ static const char *KePanicStrings[] =
     PANIC_STRING(MEMORY_ACCESS_VIOLATION),
     PANIC_STRING(INVALID_TASK_ATTACHMENT_ATTEMPT),
     PANIC_STRING(PAGE_FAULT),
+    PANIC_STRING(NO_WORKING_INIT)
 };
 
 static bool KeInPanicState = false; /**< Remember whether the kernel is already panicking to avoid panic during panic */

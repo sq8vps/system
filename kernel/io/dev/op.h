@@ -10,7 +10,7 @@
 #include "defines.h"
 #include <stdbool.h>
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 struct IoVfsNode;
@@ -67,6 +67,6 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

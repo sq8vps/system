@@ -30,7 +30,7 @@ struct MmMemoryPool
     uint64_t size; /**< Size in bytes */
 };
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Physical memory pool types
@@ -123,7 +123,7 @@ bool MmCheckIfPhysicalMemoryUsable(PADDRESS address, PSIZE size);
 */
 bool MmCheckIfPhysicalMemoryInPool(PADDRESS address, PSIZE size, uint32_t pool);
 
-END_EXPORT_API
+END_DRIVER_API
 
 struct Multiboot2InfoHeader;
 

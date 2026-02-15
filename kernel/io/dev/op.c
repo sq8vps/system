@@ -136,6 +136,10 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
 {
     STATUS status = rp->status;
     struct IoReadWriteCallbackContext *ctx = context;
+    size_t actualSize = ctx->size;
+
+    if(!ctx->write && (rp->size < ctx->size)) //EOF - less data than requested when reading
+        actualSize = rp->size;
 
     if(!ctx->firstWriteStep)
     {
@@ -148,7 +152,7 @@ static STATUS IoReadWriteCallback(struct IoRp *rp, void *context)
                 void *buffer = HalMapMemoryDescriptorList(ctx->list);
                 if(NULL != buffer)
                 {
-                    RtlMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), ctx->size);
+                    RtlMemcpy(buffer, &(ctx->alignedBuffer[ctx->offset - ctx->alignedOffset]), actualSize);
                     HalUnmapMemoryDescriptorList(buffer);
                 }
                 else
@@ -203,7 +207,7 @@ IoReadWriteCallbackExit:
 
     MmFreeMemoryDescriptorList(ctx->list);
 
-    ctx->callback(status, ctx->size, ctx->context);
+    ctx->callback(status, actualSize, ctx->context);
 
     MmFreeKernelHeap(ctx);
     return OK;

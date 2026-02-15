@@ -23,7 +23,7 @@
 */
 INTERNAL bool CpuidInit(void);
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Check if CPUID instruction is available
@@ -92,7 +92,7 @@ bool CpuidCheckIfSseAvailable(void);
  */
 uint8_t CpuidGetApicId(void);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

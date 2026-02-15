@@ -194,7 +194,7 @@ void *MmMapDynamicMemory(PADDRESS pAddress, size_t n, MmMemoryFlags flags)
         MmFreeDynamicMemoryReservation(ptr);
         return NULL;
     }
-    return (void*)((uintptr_t)ptr + (pAddress % PAGE_SIZE));
+    return (void*)((uintptr_t)ptr + (uintptr_t)(pAddress % PAGE_SIZE));
 }
 
 void MmUnmapDynamicMemory(const void *ptr)

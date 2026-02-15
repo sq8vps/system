@@ -22,14 +22,19 @@
  * @{
 */
 
+DRIVER_API
+
 /**
  * @brief i686-specific additional physical memory pools
  */
 enum
 {
-    I686_PHYSICAL_POOL_LOWER = 1, /**< Lower-memory pool */
+    I686_PHYSICAL_POOL_PCI_DMA = 1, /**< Bottom 4-GiB PCI DMA pool */
+    I686_PHYSICAL_POOL_LOWER = 2, /**< Lower-memory (real mode) pool */
     I686_PHYSICAL_POOL_ISA = I686_PHYSICAL_POOL_LOWER, /**< Pool for ISA DMA memory */
 };
+
+END_DRIVER_API
 
 struct KeTaskControlBlock;
 

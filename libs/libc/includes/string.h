@@ -25,7 +25,7 @@ size_t strxfrm(char * restrict s1, const char * restrict s2, size_t n);
 void *memchr(void *s, int c, size_t n);
 char *strchr(char *s, int c);
 size_t strcspn(const char *s1, const char *s2);
-char *strpbrk(char *s1, const char *s2);
+char *strpbrk(const char *s1, const char *s2);
 char *strrchr(char *s, int c);
 size_t strspn(const char *s1, const char *s2);
 char *strstr(char *s1, const char *s2);

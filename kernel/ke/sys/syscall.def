@@ -1,0 +1,17 @@
+NABLA_API
+
+SYSCALL(ApiNoOperation, 0x0)
+SYSCALL(ApiExitTask, 0x1)
+SYSCALL(ApiOpenFile, 0x2)
+SYSCALL(ApiCloseFile, 0x3)
+SYSCALL(ApiReadFileSync, 0x4)
+SYSCALL(ApiWriteFileSync, 0x5)
+SYSCALL(ApiSetThreadLocalStorage, 0x8)
+SYSCALL(ApiMapTaskMemory, 0x9)
+SYSCALL(ApiMapTaskMemoryA, 0xA)
+SYSCALL(ApiUnmapTaskMemory, 0xB)
+SYSCALL(ApiGetSystemConfig, 0xC)
+SYSCALL(ApiCreateVt, 0xD)
+SYSCALL(ApiSymlink, 0xE)
+
+END_NABLA_API

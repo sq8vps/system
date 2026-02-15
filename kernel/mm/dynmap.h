@@ -21,7 +21,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Reserve dynamic memory pool without mapping
@@ -59,7 +59,7 @@ void *MmMapDynamicMemory(PADDRESS pAddress, size_t n, MmMemoryFlags flags);
 */
 void MmUnmapDynamicMemory(const void *ptr);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize dynamic kernel memory module

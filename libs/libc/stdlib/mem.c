@@ -4,9 +4,10 @@
 #include "nabla/utils.h"
 #include <stdint.h>
 #include "errno.h"
-#include "sys/mmap.h"
+#include "mm/tmem.h"
+#include "ke/sys/syscall.h"
 
-#define _NABLA_LIBC_MALLOC_INITIAL_POOL_SIZE 4096
+#define _NABLA_LIBC_MALLOC_INITIAL_POOL_SIZE 4 //number of native pages
 
 struct _nabla_libc_malloc_meta
 {
@@ -17,7 +18,7 @@ struct _nabla_libc_malloc_meta
     struct _nabla_libc_malloc_meta *next;
 };
 #define MIN_ALLOCATION_ALIGNMENT 64
-#define META_SIZE _ALIGN_UP(sizeof(struct _nabla_libc_malloc_meta), MIN_ALLOCATION_ALIGNMENT)
+#define META_SIZE ALIGN_UP(sizeof(struct _nabla_libc_malloc_meta), MIN_ALLOCATION_ALIGNMENT)
 
 struct _nabla_libc_malloc_state
 {
@@ -27,7 +28,9 @@ struct _nabla_libc_malloc_state
 
 static struct _nabla_libc_malloc_meta *__allocate_block(size_t n, size_t alignment)
 {
-    struct _nabla_libc_malloc_state *state = _nabla_get_tls()->heap_state;
+    STATUS status = OK;
+    struct _nabla_libc_thread_state *tls = _nabla_get_tls();
+    struct _nabla_libc_malloc_state *state = tls->heap_state;
     struct _nabla_libc_malloc_meta *block = NULL;
     size_t shift = 0;
 
@@ -35,14 +38,18 @@ static struct _nabla_libc_malloc_meta *__allocate_block(size_t n, size_t alignme
         alignment = 1;
 
     if(0 != (META_SIZE & (alignment - 1)))
-        shift = (_ALIGN_UP(META_SIZE, alignment) - META_SIZE);
+        shift = (ALIGN_UP(META_SIZE, alignment) - META_SIZE);
     
-    n = _ALIGN_UP(n + META_SIZE + shift, MIN_ALLOCATION_ALIGNMENT);
+    n = ALIGN_UP(n + META_SIZE + shift, MIN_ALLOCATION_ALIGNMENT);
+    n = ALIGN_UP(n, tls->config.page_size);
     
-    struct exmmap_params params = {.alignment = alignment, .limit = 0, .offset = 0};
-    block = exmmap(NULL, n, MMAP_READABLE | MMAP_WRITABLE, -1, &params);
-    if(NULL == block)
-        return NULL;
+    if(1 == alignment)
+        status = ApiMapTaskMemoryA(NULL, n, MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, (void**)&block);
+    else
+        status = ApiMapTaskMemory(NULL, n, MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, -1, alignment, 0, 0, (void**)&block);
+    
+    if(OK != status)
+        __LIBC_RETURN_STATUS(status, NULL);
 
     if(0 != shift)
     {
@@ -100,7 +107,7 @@ static struct _nabla_libc_malloc_meta *__split_block(struct _nabla_libc_malloc_m
         }
     }
 
-    uintptr_t alignedStart = _ALIGN_UP((uintptr_t)block + META_SIZE, align);
+    uintptr_t alignedStart = ALIGN_UP((uintptr_t)block + META_SIZE, align);
     size_t padding = alignedStart - ((uintptr_t)block + META_SIZE);
     size_t remaining = block->size - padding;
 
@@ -150,12 +157,16 @@ static struct _nabla_libc_malloc_meta *__split_block(struct _nabla_libc_malloc_m
 
 static bool __extend_last(size_t n)
 {
-    struct _nabla_libc_malloc_state *state = _nabla_get_tls()->heap_state;
+    void *block;
+    STATUS status = OK;
+    struct _nabla_libc_thread_state *tls = _nabla_get_tls();
+    struct _nabla_libc_malloc_state *state = tls->heap_state;
     uintptr_t heapTop = (uintptr_t)state->tail + state->tail->size + META_SIZE;
-    size_t bytesToAllocate = n - state->tail->size;
+    size_t bytesToAllocate = ALIGN_UP(n - state->tail->size, tls->config.page_size);
 
-    if(NULL == mmap((void*)heapTop, bytesToAllocate, MMAP_READABLE | MMAP_WRITABLE | MMAP_FIXED, -1, 0))
-        return false;
+    status = ApiMapTaskMemoryA((void*)heapTop, bytesToAllocate, MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE | MM_TASK_MEMORY_FIXED, &block);
+    if(OK != status)
+        return NULL;
 
     state->tail->size += bytesToAllocate;
 
@@ -170,15 +181,14 @@ void *aligned_alloc(size_t alignment, size_t size)
 
     struct _nabla_libc_malloc_meta *ret;
 
-    size = _ALIGN_UP(size, MIN_ALLOCATION_ALIGNMENT);
+    size = ALIGN_UP(size, MIN_ALLOCATION_ALIGNMENT);
 
     if(alignment < MIN_ALLOCATION_ALIGNMENT)
         alignment = MIN_ALLOCATION_ALIGNMENT;
 
     if(1 != __builtin_popcountll(alignment))
     {
-        *__errno() = -EALIGN;
-        return NULL;
+        __LIBC_RETURN_ERRNO(-EALIGN, NULL);
     }
 
     if(NULL != state->head)
@@ -204,7 +214,7 @@ void *aligned_alloc(size_t alignment, size_t size)
         //no block of proper size found
         if(state->tail->free)
         {
-            size_t padding = _ALIGN_UP((uintptr_t)state->tail + META_SIZE, alignment) - ((uintptr_t)state->tail + META_SIZE);
+            size_t padding = ALIGN_UP((uintptr_t)state->tail + META_SIZE, alignment) - ((uintptr_t)state->tail + META_SIZE);
 
             if(__extend_last(size + padding))
             {
@@ -226,8 +236,7 @@ void *aligned_alloc(size_t alignment, size_t size)
     }
     else
     {
-        *__errno() = -ENOMEM;
-        return NULL;
+        __LIBC_RETURN_ERRNO(-ENOMEM, NULL);
     }
 
 }
@@ -298,6 +307,7 @@ void *realloc(void *ptr, size_t size)
 }
 void free_sized(void *ptr, size_t size)
 {
+    (void)size;
     if(NULL == ptr)
         return;
 
@@ -306,6 +316,8 @@ void free_sized(void *ptr, size_t size)
 
 void free_aligned_sized(void *ptr, size_t alignment, size_t size)
 {
+    (void)alignment;
+    (void)size;
     if(NULL == ptr)
         return;
 
@@ -318,22 +330,30 @@ void *_nabla_create_tls(void)
     struct _nabla_libc_malloc_state *state = NULL;
     struct _nabla_libc_thread_state *tls = NULL;
 
-    struct _nabla_libc_malloc_meta *stateBlock = mmap(NULL, _NABLA_LIBC_MALLOC_INITIAL_POOL_SIZE, MMAP_READABLE | MMAP_WRITABLE, -1, 0);
-    if(NULL == stateBlock)
+    union
+    {
+        uint64_t u64;
+        size_t s;
+    } page_size;
+
+    if(OK != ApiGetSystemConfig(API_SYSTEM_CONFIG_PAGE_SIZE, &(page_size.u64)))
+        return NULL;
+
+    if(OK != ApiMapTaskMemoryA(NULL, page_size.s * _NABLA_LIBC_MALLOC_INITIAL_POOL_SIZE, MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, (void**)&stateBlock))
         return NULL;
     
     state = (struct _nabla_libc_malloc_state*)((uintptr_t)stateBlock + META_SIZE);
     stateBlock->free = false;
-    stateBlock->size = _ALIGN_UP(sizeof(struct _nabla_libc_malloc_state), MIN_ALLOCATION_ALIGNMENT);
+    stateBlock->size = ALIGN_UP(sizeof(struct _nabla_libc_malloc_state), MIN_ALLOCATION_ALIGNMENT);
 
     tlsBlock = (struct _nabla_libc_malloc_meta*)((uintptr_t)stateBlock + META_SIZE + stateBlock->size);
     tls = (struct _nabla_libc_thread_state*)((uintptr_t)tlsBlock + META_SIZE);
     tlsBlock->free = false;
-    tlsBlock->size = _ALIGN_UP(sizeof(struct _nabla_libc_thread_state), MIN_ALLOCATION_ALIGNMENT);
+    tlsBlock->size = ALIGN_UP(sizeof(struct _nabla_libc_thread_state), MIN_ALLOCATION_ALIGNMENT);
 
     nextBlock = (struct _nabla_libc_malloc_meta*)((uintptr_t)tlsBlock + META_SIZE + tlsBlock->size);
     nextBlock->free = true;
-    nextBlock->size = _NABLA_LIBC_MALLOC_INITIAL_POOL_SIZE - ((uintptr_t)nextBlock - (uintptr_t)stateBlock - META_SIZE);
+    nextBlock->size = (page_size.s * _NABLA_LIBC_MALLOC_INITIAL_POOL_SIZE) - ((uintptr_t)nextBlock - (uintptr_t)stateBlock - META_SIZE);
 
     stateBlock->previous = NULL;
     stateBlock->next = tlsBlock;
@@ -347,6 +367,7 @@ void *_nabla_create_tls(void)
 
     memset(tls, 0, sizeof(*tls));
     tls->heap_state = state;
+    tls->self = tls;
 
     return tls;
 }

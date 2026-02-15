@@ -16,7 +16,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Generic trie node
@@ -54,7 +54,7 @@ struct TrieNode* TrieInsert(struct TrieNode *root, struct TrieNode *node, tree_k
  */
 struct TrieNode *TrieFind(struct TrieNode *start, const tree_key_t *keys, size_t keyCount);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

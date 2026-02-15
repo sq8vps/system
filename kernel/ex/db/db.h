@@ -21,7 +21,7 @@ struct NablaDbEntry;
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Database handle structure
@@ -81,7 +81,7 @@ STATUS ExDbGetNextBool(struct ExDbHandle *h, const char *name, bool *b);
  */
 void ExDbRewind(struct ExDbHandle *h);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

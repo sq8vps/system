@@ -17,14 +17,18 @@ arch = None
 params = []
 profile = None
 toolchain = None
+clean = False
+purge = False
+
 
 all_targets = ("tools", "kernel", "export", "drivers", "libs", "base", "initrd")
-target_vals = all_targets + ("all", "doc", "configure", "clean")
-clean_targets = ("tools", "kernel", "drivers", "libs", "base")
+target_vals = all_targets + ("all", "doc", "configure")
 arch_vals = ("i686", )
 params_vals = {"i686": ("smp", "pae")}
 profile_vals = ("debug", "release")
 toolchain_vals = ("gcc", )
+clean_allowed = ("tools", "kernel", "drivers", "libs", "base")
+purge_allowed = clean_allowed
 
 kernel_params = {"smp": "-DSMP=1", "pae": "-DPAE=1"}
 
@@ -39,7 +43,7 @@ target_desc = {"tools": "Build host-side tools",
                "all": "Build all - " + str(all_targets) + " in this order"
 }
 target_requires_arch = {"tools": False, "kernel": True, "export": False, "drivers": True, 
-    "libs": True, "base": True, "initrd": False, "doc": False, "all": True, "configure": True, "clean": False}
+    "libs": True, "base": True, "initrd": False, "doc": False, "all": True, "configure": True}
 build_path = {"tools": "tools/build", "kernel": "kernel/build", "drivers": "drivers/build", 
     "libs": "libs/build", "base": "base/build", "initrd": "initrd"}
 cmake_generator = {"gcc": "Unix Makefiles"}
@@ -49,42 +53,51 @@ def execute(cmd):
     result = subprocess.run(cmd)
     if result.returncode != 0:
         sys.exit("Command " + subprocess.list2cmdline(cmd) + " failed with status code " + str(result.returncode))
-        
+
+def generate(target, is_cross = True, param_table = None):
+    cwd = os.getcwd()
+    path = cwd + "/" + build_path[target]
+    Path(path).mkdir(parents = False, exist_ok = True)
+    os.chdir(path)
+    if is_cross == True:
+        cmd = ["cmake", "..", "-G", cmake_generator[toolchain], "--toolchain=../{0}-{1}.cmake".format(toolchain, arch)]
+    else:
+        cmd = ["cmake", ".."]
+    if profile == "debug":
+        cmd.append("-DCMAKE_BUILD_TYPE=Debug")
+    else:
+        cmd.append("-DCMAKE_BUILD_TYPE=Release")
+    if params != None and param_table != None:
+        for param in params:
+            cmd.append(param_table[param])
+    execute(cmd)
+    os.chdir(cwd)
 
 def make_target(target):
-    print("Starting target " + target)
+    if purge:
+        print("Purging target " + target)
+    elif clean:
+        print("Cleaning target " + target)
+    else:
+        print("Starting target " + target)
     cwd = os.getcwd()
+
+    if clean and target in clean_allowed:
+        os.chdir(cwd + "/" + build_path[target])
+        execute(["cmake", "--build", ".", "--target=clean"])
+        os.chdir(cwd)
+        return
+    elif purge and target in purge_allowed:
+        if(os.path.isdir(cwd + "/" + build_path[target])):
+            shutil.rmtree(cwd + "/" + build_path[target])
+        return
+
     if target == "configure":
-        path = cwd + "/" + build_path["tools"]
-        Path(path).mkdir(parents = False, exist_ok = True)
-        os.chdir(path)
-        execute(["cmake", ".."])
-
-        path = cwd + "/" + build_path["kernel"]
-        Path(path).mkdir(parents = False, exist_ok = True)
-        os.chdir(path)
-        cmd = ["cmake", "..", "-G", cmake_generator[toolchain], "--toolchain=../{0}-{1}.cmake".format(toolchain, arch)]
-        if profile == "debug":
-            cmd.append("-DCMAKE_BUILD_TYPE=Debug")
-        else:
-            cmd.append("-DCMAKE_BUILD_TYPE=Release")
-        for param in params:
-            cmd.append(kernel_params[param])
-        execute(cmd)
-
-        path = cwd + "/" + build_path["drivers"]
-        Path(path).mkdir(parents = False, exist_ok = True)
-        os.chdir(path)
-        cmd = ["cmake", "..", "-G", cmake_generator[toolchain], "--toolchain=../{0}-{1}.cmake".format(toolchain, arch)]
-        if profile == "debug":
-            cmd.append("-DCMAKE_BUILD_TYPE=Debug")
-        else:
-            cmd.append("-DCMAKE_BUILD_TYPE=Release")
-        execute(cmd)
-    elif target == "clean":
-        for t in clean_targets:
-            if(os.path.isdir(cwd + "/" + build_path[t])):
-                shutil.rmtree(cwd + "/" + build_path[t])
+        generate("tools", is_cross = False)
+        generate("kernel", param_table = kernel_params)
+        generate("drivers")
+        generate("libs")
+        generate("base")
     elif target == "kernel" or target == "tools":
         os.chdir(cwd + "/" + build_path[target])
         execute(["cmake", "--build", ".", "-j" + str(multiprocessing.cpu_count())])
@@ -97,9 +110,11 @@ def make_target(target):
         os.chdir(cwd + "/" + build_path["drivers"])
         execute(["cmake", "--build", ".", "--target=" + arch + "_drivers", "-j" + str(multiprocessing.cpu_count())])
     elif target == "libs":
-        pass
+        os.chdir(cwd + "/" + build_path["libs"])
+        execute(["cmake", "--build", ".", "-j" + str(multiprocessing.cpu_count())])
     elif target == "base":
-        pass
+        os.chdir(cwd + "/" + build_path["base"])
+        execute(["cmake", "--build", ".", "-j" + str(multiprocessing.cpu_count())])
     elif target == "doc":
         execute(["doxygen", "doc/Doxyfile"])
     elif target == "all":
@@ -145,6 +160,14 @@ for arg in sys.argv[1:]:
             sys.exit("Error: toolchain already set to " + toolchain)
         else:
             toolchain = arg
+    elif arg == "clean":
+        if purge:
+            sys.exit("Error: cannot purge and clean")
+        clean = True
+    elif arg == "purge":
+        if clean:
+            sys.exit("Error: cannot purge and clean")
+        purge = True
     else:
         params.append(arg)
 
@@ -162,7 +185,6 @@ if arch == None:
 for param in params:
     if param not in params_vals[arch]:
         sys.exit("Error: parameter " + param + " unknown for " + arch)
-
 
 print("Proceeding with " + str(len(targets)) + " " + profile + " targets " + str(targets) 
     + " for " + (arch, "n/a")[arch == None] + "-" + toolchain)

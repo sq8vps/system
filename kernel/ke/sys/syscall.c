@@ -1,41 +1,56 @@
+#include "llsyscall.h"
+#include "mm/tmem.h"
+
+#include "ke/core/panic.h"
+
+#define __KERNEL_INTERNAL 1
 #include "syscall.h"
-#include "io/fs/fs.h"
-#include "ke/sched/sched.h"
 
-#include "mmap.h"
-#include "file.h"
-
-#define SYSCALL_NONE 0 /**< No operation syscall */
-
-static reg_t KeSyscallNone(reg_t arg1, reg_t arg2, reg_t arg3, reg_t arg4, reg_t arg5)
+void KeValidateUserReturnAddress(reg_t ret)
 {
-    UNUSED(arg1);
-    UNUSED(arg2);
-    UNUSED(arg3);
-    UNUSED(arg4);
-    UNUSED(arg5);
-    return -OK;
+    if(!MmProbeUserMemory((const void*)ret, sizeof(void*), MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_EXECUTABLE))
+    {
+        //TODO: handle task termination
+        KePanic(UNEXPECTED_FAULT);
+    }
 }
 
-static const KeSyscallHandler KeSyscallTable[] = 
+const struct KeSyscallDescriptor* KeGetSyscallDescriptor(size_t code)
 {
-    [SYSCALL_NONE] = KeSyscallNone,
-    [SYSCALL_OPEN] = KeSyscallOpen,
-    [SYSCALL_CLOSE] = KeSyscallClose,
-    [SYSCALL_READ] = KeSyscallRead,
-    [SYSCALL_WRITE] = KeSyscallWrite,
-    [SYSCALL_MMAP] = KeSyscallMmap,
-    [SYSCALL_EXMMAP] = KeSyscallExMmap,
-    [SYSCALL_SET_TLS] = KeSyscallSetTls,
-};
-
-reg_t KePerformSyscall(reg_t code, reg_t arg1, reg_t arg2, reg_t arg3, reg_t arg4, reg_t arg5)
-{
-    if(
-        (code >= (sizeof(KeSyscallTable) / sizeof(KeSyscallTable[0])))
-        || (NULL == KeSyscallTable[code])
-    )
-        return -NOT_IMPLEMENTED;
+    if(code >= (sizeof(KeSyscallDescriptorTable) / sizeof(KeSyscallDescriptorTable[0])))
+        return nullptr;
     
-    return KeSyscallTable[code](arg1, arg2, arg3, arg4, arg5);
+    if(NULL == KeSyscallDescriptorTable[code])
+        return nullptr;
+
+    return KeSyscallDescriptorTable[code];
+}
+
+DEFINE_SYSCALL(STATUS, ApiNoOperation, uint32_t, uint16_t, uint8_t, void*, uint64_t);
+STATUS ApiNoOperation(uint32_t unused1, uint16_t unused2, uint8_t unused3, void *unused4, uint64_t unused5)
+{
+    UNUSED(unused1);
+    UNUSED(unused2);
+    UNUSED(unused3);
+    UNUSED(unused4);
+    UNUSED(unused5);
+    return OK;
+}
+
+DEFINE_SYSCALL(STATUS, ApiGetSystemConfig, enum ApiSystemConfigParam, uint64_t*);
+STATUS ApiGetSystemConfig(enum ApiSystemConfigParam param, uint64_t *output)
+{
+    if(!MmProbeUserMemory(output, sizeof(*output), MM_TASK_MEMORY_READABLE))
+        return BAD_PARAMETER;
+    
+    switch(param)
+    {
+        case API_SYSTEM_CONFIG_PAGE_SIZE:
+            *output = PAGE_SIZE;
+            break;
+        default:
+            return NOT_IMPLEMENTED;
+    }
+
+    return OK;
 }

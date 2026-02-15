@@ -22,7 +22,7 @@
 */
 INTERNAL void RtlDetectEndianness(void);
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Convert CPU <-> LE endiannes of uint16_t
@@ -119,7 +119,7 @@ uint64_t RtlBeU64(uint64_t x);
 */
 int64_t RtlBeS64(int64_t x);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

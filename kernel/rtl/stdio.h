@@ -19,7 +19,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Compose a formatted string
@@ -89,7 +89,7 @@ int RtlSprintDryV(const char * restrict format, va_list args);
 
 #endif
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

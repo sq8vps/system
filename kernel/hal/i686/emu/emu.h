@@ -27,7 +27,7 @@
  */
 INTERNAL STATUS I686InitializeEmulator(void);
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Obtain linear address from segment:offset pair
@@ -99,7 +99,7 @@ enum I686EmulatorState I686EmulatorDoInterrupt(uint8_t vector, struct I686Regist
  */
 enum I686EmulatorState I686EmulatorReadMemory(uint32_t address, uint32_t size, void *buffer);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

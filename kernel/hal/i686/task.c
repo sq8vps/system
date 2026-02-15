@@ -193,13 +193,6 @@ void HalInitializeScheduler(void)
                 status = ExLoadProcessImage(tcb->parent->path, &entry);
                 if(OK == status)
                 {
-                    //randomize dynamic memory base (9 bits giving 512 positions)
-                    location = RtlRandom(0, 1 << 9);
-                    KeAcquireMutex(&(tcb->parent->memory.mutex));
-                    //calculate dynamic memory base with page granularity
-                    tcb->parent->memory.base = (void*)(ALIGN_UP((uintptr_t)tcb->parent->memory.tail->end, PAGE_SIZE) + location * PAGE_SIZE);
-                    KeReleaseMutex(&(tcb->parent->memory.mutex));
-
                     //in user mode, the main thread context (passed as an argument) should be a KeTaskArguments structure
                     struct KeTaskArguments *args = context;
                     void *argsBuffer = NULL;
@@ -209,8 +202,8 @@ void HalInitializeScheduler(void)
                     {
                         RtlMemcpy(&((char**)argsBuffer)[args->argc + 1 + args->envc + 1], args->data, args->size);
 
-                        char *start = args->data;
-                        char *end = args->data;
+                        char *start = (char*)&((char**)argsBuffer)[args->argc + 1 + args->envc + 1];
+                        char *end = start;
                         for(int i = 0; i < args->argc; i++)
                         {
                             while('\0' != *end)
@@ -233,7 +226,8 @@ void HalInitializeScheduler(void)
                         stack[-1] = (uintptr_t)(&(((char**)argsBuffer)[args->argc + 1])); //store envp pointer
                         stack[-2] = (uintptr_t)argsBuffer; //store argv pointer
                         stack[-3] = args->argc;
-                        stack -= 3;
+                        stack[-4] = 0; //push false return address
+                        stack -= 4;
 
                         MmFreeKernelHeap(args);
                     }
@@ -250,12 +244,13 @@ void HalInitializeScheduler(void)
         {
             //since we are in kernel mode, we need to check if the entry point and user stack is within user space page
             //in user mode the protection mechanism will take care of illegal accesses to kernel space
-            if(IS_USER_MEMORY(ALIGN_DOWN((uintptr_t)entry, PAGE_SIZE), PAGE_SIZE)
-                && IS_USER_MEMORY(ALIGN_UP((uintptr_t)userStack, PAGE_SIZE) - PAGE_SIZE, PAGE_SIZE))
+            if(MmProbeUserMemory(entry, 1, MM_TASK_MEMORY_EXECUTABLE) 
+                && MmProbeUserMemory((void*)((uintptr_t)userStack - sizeof(*stack)), sizeof(*stack), MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE))
             {
                 stack = userStack;
                 stack[-1] = (uintptr_t)context;
-                stack -= 1;
+                stack[-2] = 0;
+                stack -= 2;
             }
             else
                 status = BAD_PARAMETER;
@@ -275,13 +270,13 @@ void HalInitializeScheduler(void)
             //since we do a jump to the user stack using iret, we can't return to the kernel code (here)
             //the only way to enter the kernel from user mode is through int or syscall/sysenter
             I686StartUserTask(USER_SELECTOR(GDT_USER_DS), (uintptr_t)stack, USER_SELECTOR(GDT_USER_CS), entry);   
-        } //TODO: else terminate
+        }
     }
     else
         entry(context);
     
     //if we are here, then this is a kernel thread and it exited
-    
+    KeFinishCurrentTask(0);
     
     while(1)
         ;

@@ -17,7 +17,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 struct IoEventHandler;
@@ -190,7 +190,7 @@ struct IoKeyboardEventData
  */
 STATUS IoKeyboardReportKey(int handle, IoKeyCode code, bool pressed);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

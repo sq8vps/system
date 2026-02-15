@@ -49,6 +49,8 @@ ISR static void ItPageFaultHandler(struct ItFrame *f, uint32_t error)
     ok |= (flags & MM_FLAG_PRESENT) && !(error & 1); //P-flag is 0 - page not present in TLB
     ok |= (flags & MM_FLAG_WRITABLE) && (error & 2); //W/R-flag is 1 - write was attempted, but page is read-only in TLB
     ok |= (flags & MM_FLAG_USER_MODE) && (error & 4); //U/S-flag is 1 - access was in user mode, but page is kernel-only in TLB
+    if(!(flags & MM_FLAG_USER_MODE) && (error & 4))
+        ok = false;
 
     if(ok)
         I686_INVALIDATE_TLB(cr2);

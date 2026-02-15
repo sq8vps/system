@@ -50,26 +50,26 @@
     return NULL;
 }
 
- struct BstNode *BstFindLess(struct BstNode *root, tree_key_t key)
+struct BstNode *BstFindLess(struct BstNode *root, tree_key_t key)
 {
     struct BstNode *best = NULL;
     while(NULL != root)
     {   
-    if(root->key < key)
-    {
-        if((NULL == best) || 
-        (best && (root->key > best->key)))
-            best = root; //store it as new best fit
-    }
-    
-    if(root->key > key)
-    {
-        root = root->left;
-    }
-    else //if(root->key <= key)
-    {
-        root = root->right;
-    }
+        if(root->key < key)
+        {
+            if((NULL == best) || 
+            (best && (root->key > best->key)))
+                best = root; //store it as new best fit
+        }
+        
+        if(root->key > key)
+        {
+            root = root->left;
+        }
+        else //if(root->key <= key)
+        {
+            root = root->right;
+        }
     }
 
     if(NULL != best)
@@ -80,7 +80,68 @@
     return NULL;
 }
 
- struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key)
+struct BstNode *BstFindLessOrEqual(struct BstNode *root, tree_key_t key)
+{
+    struct BstNode *best = NULL;
+    while(NULL != root)
+    {   
+        if(root->key <= key)
+        {
+            if((NULL == best) || 
+            (best && (root->key > best->key)))
+                best = root; //store it as new best fit
+        }
+        
+        if(root->key > key)
+        {
+            root = root->left;
+        }
+        else //if(root->key <= key)
+        {
+            root = root->right;
+        }
+    }
+
+    if(NULL != best)
+    {
+        return best;
+    }
+    
+    return NULL;
+}
+
+struct BstNode *BstFindGreater(struct BstNode *root, tree_key_t key)
+{
+    struct BstNode *best = NULL;
+
+    while(NULL != root)
+    {   
+        if(root->key > key)
+        {
+            if((NULL == best) || 
+            (best && (root->key < best->key))) //smaller that the previous best fit, but still fitting
+                best = root;
+        }
+        
+        if(root->key > key)
+        {
+            root = root->left;
+        }
+        else //if(root->key <= key)
+        {
+            root = root->right;
+        }
+    }
+
+    if(NULL != best)
+    {
+        return best;
+    }
+
+    return NULL;
+}
+
+struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key)
 {
     struct BstNode *best = NULL;
 

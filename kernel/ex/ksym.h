@@ -24,7 +24,7 @@
 */
 INTERNAL STATUS ExLoadKernelSymbols(const void *bootArgs);
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Resolve kernel symbol
@@ -34,7 +34,7 @@ EXPORT_API
 */
 uintptr_t ExGetKernelSymbol(const char *name);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

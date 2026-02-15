@@ -5,6 +5,7 @@
 #include "io/fs/fs.h"
 #include "mm/mm.h"
 #include "rtl/string.h"
+#include "ke/sys/llsyscall.h"
 
 #if 1
 #define BST_PROVIDE_ABSTRACTION
@@ -37,6 +38,7 @@ static uintptr_t MmGetRegionBase(const struct MmTaskMemory *m)
 
 STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags, int fd, size_t alignment, uint64_t offset, size_t limit, void **mapped)
 {
+    //TODO: implement proper file mapping
     STATUS status = OK;
     struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
     size_t alignedSize = ALIGN_UP(size, PAGE_SIZE);
@@ -75,20 +77,6 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
                 return BAD_PARAMETER;
             
             address = (void*)((uintptr_t)address - alignedSize);
-
-            if(!IS_USER_MEMORY(address, alignedSize))
-                return BAD_PARAMETER;
-
-            if((uintptr_t)address < (uintptr_t)pcb->memory.base)
-                return BAD_PARAMETER;
-        }
-        else
-        {
-            if(!IS_USER_MEMORY(address, alignedSize))
-                return BAD_PARAMETER;
-
-            if((uintptr_t)address < (uintptr_t)pcb->memory.base)
-                return BAD_PARAMETER;
         }
     }
     else
@@ -97,6 +85,12 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
             address = (void*)ALIGN_UP((uintptr_t)address, alignment);
         address = (void*)ALIGN_UP((uintptr_t)address, PAGE_SIZE);
     }
+
+    if(!IS_USER_MEMORY(address, alignedSize))
+        return BAD_PARAMETER;
+
+    if((NULL != address) && ((uintptr_t)address < (uintptr_t)pcb->memory.base))
+        return BAD_PARAMETER;
 
     if(fd >= 0)
     {
@@ -137,10 +131,10 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
               previousTop = (uintptr_t)pcb->memory.base;
 
     KeAcquireMutex(&(pcb->memory.mutex));
-    if(NULL == pcb->memory.head)
+    if(unlikely((NULL == pcb->memory.head) && !(flags & MM_TASK_MEMORY_FIXED)))
     {
-        if(NULL == address)
-            address = pcb->memory.base;
+        status = NOT_SUPPORTED;
+        goto MmMapTaskMemoryLeave;
     }
     else
     {
@@ -182,8 +176,9 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
         }
         else //not MM_TASK_MEMORY_FIXED
         {
-            //TODO: take hint from provided address?
-            previousTop = (uintptr_t)pcb->memory.base;
+            bool takeHint = !!(NULL != address);
+MmMapTaskMemoryRetryWithoutHint:
+            previousTop = (uintptr_t)(takeHint ? address : pcb->memory.base);
             if(0 != alignment)
                 previousTop = ALIGN_UP(previousTop, alignment);
             struct MmTaskMemory *t = pcb->memory.head;
@@ -209,13 +204,18 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
             //we end up here either because the gap is found (found = true) or because the end of the list was reached (found = false)
             if(!found)
             {
-                if((HAL_KERNEL_SPACE_BASE - previousTop) >= alignedSize)
+                if((previousTop < HAL_KERNEL_SPACE_BASE) && ((HAL_KERNEL_SPACE_BASE - previousTop) >= alignedSize))
                 {
                     address = (void*)previousTop;
                     found = true;
                 }
                 else
                 {
+                    if(takeHint)
+                    {
+                        takeHint = false;
+                        goto MmMapTaskMemoryRetryWithoutHint;
+                    }
                     status = OUT_OF_RESOURCES;
                     goto MmMapTaskMemoryLeave;
                 }
@@ -322,6 +322,11 @@ STATUS MmUnmapTaskMemory(const void *const ptr, size_t length)
                 if((base >= (uintptr_t)REGION(t)->base) && (base < (uintptr_t)REGION(t)->end))
                 {
                     struct MmTaskMemory *region = REGION(t);
+                    if(region->flags & MM_TASK_MEMORY_LOCKED)
+                    {
+                        base = (uintptr_t)region->end;
+                        continue;
+                    }
                     //remove from tree
                     pcb->memory.tree = TreeRemove(pcb->memory.tree, (struct TreeNode*)region->treeData);
                     //remove from list
@@ -372,7 +377,7 @@ struct MmTaskMemory *MmGetTaskMemoryDescriptor(const void *const ptr)
     KeAcquireMutex(&(pcb->memory.mutex));
     if(NULL != pcb->memory.tree)
     {
-        struct TreeNode *t = TreeFindGreaterOrEqual(pcb->memory.tree, (uintptr_t)ptr);
+        struct TreeNode *t = TreeFindLessOrEqual(pcb->memory.tree, (uintptr_t)ptr);
         if(NULL != t)
         {
             if(((uintptr_t)ptr >= (uintptr_t)REGION(t)->base) && ((uintptr_t)ptr < (uintptr_t)REGION(t)->end))
@@ -383,4 +388,51 @@ struct MmTaskMemory *MmGetTaskMemoryDescriptor(const void *const ptr)
     }
     KeReleaseMutex(&(pcb->memory.mutex));
     return ret;
+}
+
+bool MmProbeUserMemory(const void *ptr, size_t size, enum MmTaskMemoryFlags flags)
+{
+    while(1)
+    {
+        uintptr_t end = (uintptr_t)ptr + size;
+        struct MmTaskMemory *m = MmGetTaskMemoryDescriptor(ptr);
+        if(nullptr == m)
+            return false;
+
+        if((m->flags & flags) != flags)
+            return false;
+        
+        if((uintptr_t)m->end >= end)
+            return true;
+
+        size -= ((uintptr_t)m->end - (uintptr_t)ptr);
+        ptr = m->end;
+    }
+
+}
+
+DEFINE_SYSCALL(STATUS, ApiMapTaskMemory, void*, size_t, enum MmTaskMemoryFlags, int, size_t, uint64_t, size_t, void**)
+STATUS ApiMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags, int fd, size_t alignment, uint64_t offset, size_t limit, void **mapped)
+{
+    if((nullptr != mapped) && !MmProbeUserMemory(mapped, sizeof(*mapped), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+    if(flags & MM_TASK_MEMORY_LOCKED)
+        return BAD_PARAMETER;
+    return MmMapTaskMemory(address, size, flags, fd, alignment, offset, limit, mapped);
+}
+
+DEFINE_SYSCALL(STATUS, ApiMapTaskMemoryA, void*, size_t, enum MmTaskMemoryFlags, void**)
+STATUS ApiMapTaskMemoryA(void *address, size_t size, enum MmTaskMemoryFlags flags, void **mapped)
+{
+    if((nullptr != mapped) && !MmProbeUserMemory(mapped, sizeof(*mapped), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+    if(flags & MM_TASK_MEMORY_LOCKED)
+        return BAD_PARAMETER;
+    return MmMapTaskMemory(address, size, flags, -1, 0, 0, 0, mapped);
+}
+
+DEFINE_SYSCALL(STATUS, ApiUnmapTaskMemory, const void *const, size_t)
+STATUS ApiUnmapTaskMemory(const void *const ptr, size_t size)
+{
+    return MmUnmapTaskMemory(ptr, size);
 }

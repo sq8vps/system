@@ -19,7 +19,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Max CPU number handled by the kernel
@@ -52,6 +52,16 @@ EXPORT_API
 #define CONFIG_DATABASE (MAIN_MOUNT_POINT "/system/config/" CONFIG_DATABASE_NAME)
 
 /**
+ * @brief Default init program path
+ */
+#define DEFAULT_INIT_PATH (MAIN_MOUNT_POINT "/system/init")
+
+/**
+ * @brief Maximum number of user (init) arguments
+ */
+#define MAX_INIT_ARGS (256 - 1)
+
+/**
  * @brief Get kernel command line parameter by name
  * @param *name Parameter name
  * @param **value Output value for parameter @a name (null-safe)
@@ -60,7 +70,14 @@ EXPORT_API
  */
 bool ConfigGetKernelParam(const char *name, const char **value);
 
-END_EXPORT_API
+/**
+ * @brief Get user (init) command line parameters
+ * @param ***args Pointer to where the argument list pointer should be stored
+ * @return Number of arguments
+ */
+size_t ConfigGetUserParams(const char*** args);
+
+END_DRIVER_API
 
 /**
  * @brief Kernel name

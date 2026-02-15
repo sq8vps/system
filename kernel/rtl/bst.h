@@ -18,7 +18,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Generic binary search tree node
@@ -33,9 +33,11 @@ struct BstNode
 #ifdef BST_PROVIDE_ABSTRACTION
 
 #define TreeInsert BstInsert
+#define TreeFindGreater BstFindGreater
 #define TreeFindGreaterOrEqual BstFindGreaterOrEqual
 #define TreeFindExact BstFindExact
 #define TreeFindLess BstFindLess
+#define TreeFindLessOrEqual BstFindLessOrEqual
 #define TreeRemove BstRemove
 #define TreeNode BstNode
 #define TREENODE BSTNODE
@@ -67,6 +69,23 @@ struct BstNode *BstFindExact(struct BstNode *root, tree_key_t key);
 struct BstNode *BstFindLess(struct BstNode *root, tree_key_t key);
 
 /**
+ * @brief Find the largest node with a key less than or equal to the given key
+ * @param root Root of the tree
+ * @param key Key to search for
+ * @return Node with the largest key less than or equal to the given key or NULL if not found
+ */
+struct BstNode *BstFindLessOrEqual(struct BstNode *root, tree_key_t key);
+
+
+/**
+ * @brief Find the smallest node with a key greater than to the given key
+ * @param root Root of the tree
+ * @param key Key to search for
+ * @return Node with the smallest key greater than the given key or NULL if not found
+ */
+struct BstNode *BstFindGreater(struct BstNode *root, tree_key_t key);
+
+/**
  * @brief Find the smallest node with a key greater than or equal to the given key
  * @param root Root of the tree
  * @param key Key to search for
@@ -82,7 +101,7 @@ struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key);
  */
 struct BstNode *BstRemove(struct BstNode *root, struct BstNode *node);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

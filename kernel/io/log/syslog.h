@@ -22,7 +22,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct IoSyslogHandle;
 
@@ -94,7 +94,7 @@ STATUS IoWriteSyslogV(struct IoSyslogHandle *h, enum IoSyslogMessageType type, c
 PRINTF_LIKE(3, 4)
 STATUS IoWriteSyslog(struct IoSyslogHandle *h, enum IoSyslogMessageType type, const char *format, ...);
 
-END_EXPORT_API
+END_DRIVER_API
 
 extern struct IoSyslogHandle IoKernelLog;
 

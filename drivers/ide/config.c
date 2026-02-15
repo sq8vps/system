@@ -8,6 +8,7 @@
 #include "hal/i686/irq.h"
 #include "hal/i686/ioport.h"
 #include "rtl/stdio.h"
+#include "hal/i686/memory.h"
 
 #define IDE_BUFFER_BLOCK_SIZE 65536
 
@@ -64,12 +65,15 @@ STATUS IdeInitializePrdTables(struct IdeControllerData *info)
 
     for(uint16_t t = 0; t < 2; t++)
     {
-        size_t size;
-        if((IDE_MAX_PRD_ENTRIES * sizeof(struct IdePrdEntry))
-            > (size = MmAllocateContiguousPhysicalMemory(
+        PADDRESS pAddress = 0;
+        size_t size = MmAllocateContiguousPhysicalMemoryFromPool(
                 IDE_MAX_PRD_ENTRIES * sizeof(struct IdePrdEntry), 
-                &(info->channel[t].prdt.physical), 
-                IDE_PRD_TABLE_ALIGNMENT)))
+                &pAddress, 
+                IDE_PRD_TABLE_ALIGNMENT,
+                I686_PHYSICAL_POOL_PCI_DMA); 
+
+        info->channel[t].prdt.physical = (uint32_t)pAddress;
+        if((IDE_MAX_PRD_ENTRIES * sizeof(struct IdePrdEntry)) > size)
         {
             if(0 != info->channel[t].prdt.physical)
                 MmFreePhysicalMemory(info->channel[t].prdt.physical, size);

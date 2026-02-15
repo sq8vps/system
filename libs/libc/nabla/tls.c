@@ -1,6 +1,6 @@
 #include "state.h"
 #include "utils.h"
-#include "sys/mmap.h"
+#include "ke/task/task.h"
 
 struct _nabla_libc_thread_state *_nabla_get_tls(void)
 {
@@ -9,7 +9,7 @@ struct _nabla_libc_thread_state *_nabla_get_tls(void)
 
 void _nabla_set_tls(struct _nabla_libc_thread_state *tls)
 {
-    __nabla_do_syscall(SYSCALL_SET_TLS, (reg_t)tls, 0, 0, 0, 0);
+    ApiSetThreadLocalStorage(tls);
 }
 
 int *__errno(void)

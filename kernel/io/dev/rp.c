@@ -87,7 +87,7 @@ STATUS IoFinalizeRp(struct IoRp *rp)
     ASSERT(NULL != rp);
     if(NULL != rp->queue)
     {
-        if((NULL == rp->queue->head) || (rp->queue->head != rp))
+        if(unlikely((NULL == rp->queue->head) || (rp->queue->head != rp)))
         {
             KePanicIPEx(GET_CALLER_ADDRESS(0), RP_FINALIZED_OUT_OF_ORDER, (uintptr_t)rp, (uintptr_t)rp->queue, 0, 0);
             //no return

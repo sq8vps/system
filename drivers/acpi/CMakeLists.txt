@@ -4,6 +4,7 @@ add_subdirectory(acpica)
 add_library(acpi_config INTERFACE)
 target_compile_definitions(acpi_config INTERFACE DRIVER_NAME="${DRIVER}")
 
+
 add_executable(${DRIVER} EXCLUDE_FROM_ALL
     main.c
     device.c
@@ -16,7 +17,7 @@ add_executable(${DRIVER} EXCLUDE_FROM_ALL
 target_include_directories(${DRIVER} PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR} 
     ${CMAKE_CURRENT_SOURCE_DIR}/acpica/include
-    ${CMAKE_SOURCE_DIR}/../api)
+    ${DRIVER_API})
 target_link_libraries(${DRIVER} PRIVATE
     acpi_config
     acpica

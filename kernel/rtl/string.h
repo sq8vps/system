@@ -19,7 +19,7 @@
  */
 
 
-EXPORT_API
+DRIVER_API
 
 #define RTL_UNICODE_ZWJ (uint32_t)0x200D /**< Unicode Zero-width joiner value */
 
@@ -29,6 +29,13 @@ EXPORT_API
  * @return String length (excluding null terminator)
 */
 size_t RtlStrlen(const char *str);
+
+/**
+ * @brief Get user string length
+ * @param str Input string
+ * @return String length (excluding null terminator) or -1 if memory is inaccessible
+*/
+size_t RtlStrlenUser(const char *str);
 
 /**
  * @brief Copy string
@@ -307,7 +314,7 @@ size_t RtlUnicodeGraphemeClusterLength(const uint32_t *code, size_t size);
 #endif
 
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

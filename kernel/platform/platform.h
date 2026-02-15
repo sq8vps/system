@@ -6,9 +6,9 @@
 #ifndef KERNEL_PLATFORM_PLATFORM_H_
 #define KERNEL_PLATFORM_PLATFORM_H_
 
-#include "defines.h"
+#include "export.h"
 
-EXPORT_API
+DRIVER_API
 
 #ifdef __GNUC__
 
@@ -75,6 +75,6 @@ EXPORT_API
 #define MALLOC_LIKE(dealloc)
 #endif
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

@@ -71,7 +71,7 @@ void AcpiOsUnmapMemory(void *where, ACPI_SIZE length)
 
 ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
 {
-    uintptr_t p = 0;
+    PADDRESS p = 0;
     STATUS status = HalGetPhysicalAddress((uintptr_t)LogicalAddress, &p);
     *PhysicalAddress = p;
     if(OK != status)

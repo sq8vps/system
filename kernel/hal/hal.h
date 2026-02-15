@@ -24,7 +24,7 @@
   * @{
   */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Check if buffer is accessible in user mode
@@ -34,7 +34,7 @@ EXPORT_API
  */
 bool HalValidateUserBuffer(const void *buffer, size_t size);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Get root device ID

@@ -16,7 +16,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Length of an UUID string (constant)
@@ -37,7 +37,7 @@ void RtlUuidConvertEndianess(void *uuid);
  */
 void RtlUuidToString(const void *uuid, char *str, bool upperCase);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

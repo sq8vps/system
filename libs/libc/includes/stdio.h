@@ -3,10 +3,11 @@
 
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #define __STDC_VERSION_STDIO_H__ 202311L
 
-typedef unsigned long long int fpos_t;
+typedef uint64_t fpos_t;
 
 typedef struct
 {
@@ -44,9 +45,13 @@ typedef struct
 
 #define _ATTRIBUTE_PRINTF_LIKE(fmt, ellipsis) __attribute__((format(printf, fmt, ellipsis)))
 
-extern FILE *const stderr;
-extern FILE *const stdin;
-extern FILE *const stdout;
+extern FILE *stderr;
+extern FILE *stdin;
+extern FILE *stdout;
+
+#define __STDIN_HANDLE 0
+#define __STDOUT_HANDLE 1
+#define __STDERR_HANDLE 2
 
 int remove(const char *filename);
 int rename(const char *old_filename, const char *new_filename);

@@ -5,6 +5,8 @@
 #include "assert.h"
 #include "rtl/string.h"
 #include "mm/heap.h"
+#include "ke/sys/llsyscall.h"
+#include "mm/tmem.h"
 
 #define IO_FS_DEFAULT_FILE_HANDLE_LIMIT 1024
 
@@ -299,6 +301,7 @@ STATUS IoCloseFileForProcess(struct KeProcessControlBlock *pcb, int handleNumber
     return status;
 }
 
+
 STATUS IoCloseFile(int handleNumber)
 {
     return IoCloseFileForProcess(KeGetCurrentTaskParent(), handleNumber);
@@ -492,6 +495,45 @@ STATUS IoWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, s
     return IoReadWriteFileSync(KeGetCurrentTask(), handle, buffer, size, offset, actualSize, true);
 }
 
+DEFINE_SYSCALL(STATUS, ApiOpenFile, const char*, IoFileOpenMode, IoFileFlags, int*);
+STATUS ApiOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, int *handleNumber)
+{
+    if(!MmProbeUserMemory(handleNumber, sizeof(*handleNumber), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+    if((size_t)(-1) == RtlStrlenUser(file))
+        return BAD_PARAMETER;
+    
+    return IoOpenFile(file, mode, flags, handleNumber);
+}
+
+DEFINE_SYSCALL(STATUS, ApiCloseFile, int);
+STATUS ApiCloseFile(int handleNumber)
+{
+    return IoCloseFile(handleNumber);
+}
+
+DEFINE_SYSCALL(STATUS, ApiReadFileSync, int, void*, size_t, uint64_t, size_t*);
+STATUS ApiReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
+{
+    if(!MmProbeUserMemory(buffer, size, MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+    if((nullptr != actualSize) && !MmProbeUserMemory(actualSize, sizeof(*actualSize), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+
+    return IoReadFileSync(handle, buffer, size, offset, actualSize);
+}
+
+DEFINE_SYSCALL(STATUS, ApiWriteFileSync, int, void*, size_t, uint64_t, size_t*);
+STATUS ApiWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
+{
+    if(!MmProbeUserMemory(buffer, size, MM_TASK_MEMORY_READABLE))
+        return BAD_PARAMETER;
+    if((nullptr != actualSize) && !MmProbeUserMemory(actualSize, sizeof(*actualSize), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+        
+    return IoWriteFileSync(handle, buffer, size, offset, actualSize);
+}
+
 STATUS IoFsInit(void)
 {
     return OK;
@@ -564,4 +606,12 @@ struct IoVfsNode* IoGetVfsNodeForFile(struct KeProcessControlBlock *pcb, int han
     
     KeReleaseMutex(&(pcb->files.table[handle].mutex));
     return n;
+}
+
+DEFINE_SYSCALL(STATUS, ApiSymlink, const char*, const char*);
+STATUS ApiSymlink(const char *from, const char *to)
+{
+    if(((size_t)(-1) == RtlStrlenUser(from)) || ((size_t)(-1) == RtlStrlenUser(to)))
+        return BAD_PARAMETER;
+    return IoVfsCreateLink(from, to, 0);
 }

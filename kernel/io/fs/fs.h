@@ -7,8 +7,6 @@
 #ifndef KERNEL_FS_H_
 #define KERNEL_FS_H_
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "defines.h"
 #include "ob/ob.h"
 #include "io/dev/op.h"
@@ -30,10 +28,12 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 struct KeTaskControlBlock;
 struct IoVfsNode;
+
+NABLA_API
 
 /**
  * @brief File handle/object flags
@@ -73,6 +73,7 @@ typedef enum
     IO_FILE_REPLACE = 0x20, /**< Replace file content on writing (destroy old content) */
 } IoFileOpenMode;
 
+END_NABLA_API
 
 /**
  * @brief Kernel file handle
@@ -149,7 +150,7 @@ STATUS IoWriteFile(int handle, void *buffer, size_t size, uint64_t offset,
  * @param *buffer Source buffer
  * @param size Count of bytes to write
  * @param offset Offset into the file in bytes
- * @param *actualSize Count of bytes actually read
+ * @param *actualSize Count of bytes actually read (set to nullptr if not needed)
  * @return Status code
 */
 STATUS IoReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
@@ -161,11 +162,62 @@ STATUS IoReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, si
  * @param *buffer Source buffer
  * @param size Count of bytes to write
  * @param offset Offset into the file in bytes
- * @param *actualSize Count of bytes actually written
+ * @param *actualSize Count of bytes actually written (set to nullptr if not needed)
  * @return Status code
 */
 STATUS IoWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
 
+NABLA_API
+
+/**
+ * @brief Open file
+ * @param *file File path string
+ * @param mode File open mode
+ * @param flags File flags
+ * @param *handleNumber Output file handle or -1 on failure
+ * @return Status code
+*/
+STATUS ApiOpenFile(const char *file, IoFileOpenMode mode, IoFileFlags flags, int *handleNumber);
+
+/**
+ * @brief Close file
+ * @param handleNumber File handle
+ * @return Status code
+*/
+STATUS ApiCloseFile(int handleNumber);
+
+/**
+ * @brief Read file synchronously
+ * @param handle File handle
+ * @param *buffer Source buffer
+ * @param size Count of bytes to write
+ * @param offset Offset into the file in bytes
+ * @param *actualSize Count of bytes actually read
+ * @return Status code
+*/
+STATUS ApiReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
+
+
+/**
+ * @brief Write file synchronously
+ * @param handle File handle
+ * @param *buffer Source buffer
+ * @param size Count of bytes to write
+ * @param offset Offset into the file in bytes
+ * @param *actualSize Count of bytes actually written
+ * @return Status code
+*/
+STATUS ApiWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize);
+
+/**
+ * @brief Create a symbolic link
+ * @param *from Path where the link should be placed
+ * @param *to Path to where the link should point to
+ * @return Status code
+ */
+STATUS ApiSymlink(const char *from, const char *to);
+
+END_NABLA_API
 
 /**
  * @brief Check if file exists
@@ -183,7 +235,7 @@ bool IoCheckIfFileExists(const char *file);
 */
 STATUS IoGetFileSize(const char *file, uint64_t *size);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Open file for given process

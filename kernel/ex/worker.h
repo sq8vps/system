@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include "defines.h"
 
-EXPORT_API
+DRIVER_API
 
 struct KeTaskControlBlock;
 
@@ -34,6 +34,6 @@ STATUS ExCreateKernelWorker(void(*entry)(void *), void *entryContext, struct KeT
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

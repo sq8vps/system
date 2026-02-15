@@ -1,8 +1,9 @@
 #include "gdt.h"
 #include "msr.h"
+#include "ke/sys/llsyscall.h"
+#include "mm/tmem.h"
+
 #include "ke/core/panic.h"
-#include "hal/mm.h"
-#include "ke/sys/syscall.h"
 
 extern void I686Sysenter(void);
 
@@ -12,21 +13,37 @@ void I686InitializeSyscall(void)
     MsrSet(MSR_IA32_SYSENTER_EIP, (uintptr_t)I686Sysenter);
 }
 
-void I686VerifySyscall(uintptr_t ret, uintptr_t stack)
+STATUS I686ValidateSyscall(reg_t stack, reg_t code, size_t *argSize)
 {
-    STATUS status = OK;
-    MmMemoryFlags mflags = 0;
+    if(!MmProbeUserMemory((const void*)stack, sizeof(void*), MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE))
+    {
+        //TODO: handle task termination
+        KePanic(UNEXPECTED_FAULT);
+    }
 
-    status = HalGetPageFlags(ret, &mflags);
-    if((OK != status) || (mflags & MM_FLAG_NON_EXECUTABLE) || !(mflags & MM_FLAG_USER_MODE) || !(mflags & MM_FLAG_PRESENT))
+    const struct KeSyscallDescriptor *d = KeGetSyscallDescriptor(code);
+    if(nullptr == d)
+        return NOT_IMPLEMENTED;
+    
+    size_t total = 0;
+    for(size_t i = 0; i < (sizeof(d->arg) / sizeof(d->arg[0])); i++)
     {
-        //TODO: return address invalid, terminate task
-        KePanic(UNEXPECTED_FAULT);
+        if(0 == d->arg[i])
+            break;
+        total += ALIGN_UP(d->arg[i], sizeof(reg_t));
     }
-    status = HalGetPageFlags(stack, &mflags);
-    if((OK != status) || !(mflags & MM_FLAG_USER_MODE) || !(mflags & MM_FLAG_PRESENT) || !(mflags & MM_FLAG_WRITABLE) || (mflags & MM_FLAG_READ_ONLY))
+
+    //By syscall convention, 5 registers (20 bytes) are used for arguments and the remaining ones must be on the stack
+    //Also, the latest push is the return address
+    if(total > 20)
     {
-        //TODO: stack address invalid, terminate task
-        KePanic(UNEXPECTED_FAULT);
+        if(!MmProbeUserMemory((const void*)(stack + sizeof(void*)), total - 20, MM_TASK_MEMORY_READABLE))
+        {
+            //TODO: handle task termination
+            KePanic(UNEXPECTED_FAULT); 
+        }
     }
+
+    *argSize = total;
+    return OK;
 }

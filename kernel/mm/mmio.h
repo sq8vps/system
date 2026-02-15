@@ -15,7 +15,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Map Memory-Mapped I/O space
@@ -32,7 +32,7 @@ void *MmMapMmIo(PADDRESS pAddress, size_t n);
 */
 void MmUnmapMmIo(const void *ptr);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

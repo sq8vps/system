@@ -17,7 +17,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Check if character is printable
@@ -103,6 +103,6 @@ int RtlToupper(int c);
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

@@ -35,7 +35,7 @@ STATUS ExDbOpen(const char *path, struct ExDbHandle **h)
 
     size_t actual = 0;
     status = IoReadFileSync(f, db, size, 0, &actual);
-    if(actual != size)
+    if(actual < size)
     {
         status = OPERATION_INCOMPLETE;
         goto ExDbOpenFailed;

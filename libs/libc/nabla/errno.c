@@ -1,5 +1,5 @@
 #include "errno.h"
-#include "sys/status.h"
+#include "defines.h"
 
 static char *__nabla_error_strings[] = 
 {
@@ -8,7 +8,6 @@ static char *__nabla_error_strings[] =
 
 int __nabla_kernel_status_to_errno(STATUS status)
 {
-    status = -status;
     switch(status)
     {
         case OK:
@@ -58,5 +57,6 @@ int __nabla_kernel_status_to_errno(STATUS status)
 
 char *__nabla_libc_strerror(int errno)
 {
+    (void)errno;
     return __nabla_error_strings[0];
 }

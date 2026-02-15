@@ -24,6 +24,8 @@ struct MmMemoryPool HalPhysicalPool[HAL_PHYSICAL_MEMORY_POOLS] =
 {
     //standard pool - non-real-mode memory (>=1 MiB)
     [MM_PHYSICAL_POOL_STANDARD] = {.base = 0x100000, .size = 0x100000000 - 0x100000},
+    //PCI DMA pool - bottom 4 GiB
+    [I686_PHYSICAL_POOL_PCI_DMA] = {.base = 0x100000, .size = 0x100000000 - 0x100000},
     //real mode memory pool - (>=4 KiB to keep real mode IVT and <1 MiB) - ISA DMA, CPU bootstrap
     [I686_PHYSICAL_POOL_LOWER] = {.base = 0x1000, .size = 0x100000 - 0x1000},
 };

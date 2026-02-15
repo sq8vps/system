@@ -171,7 +171,6 @@ void GdtUpdateTss(uintptr_t esp0)
     MsrSet(MSR_IA32_SYSENTER_ESP, esp0);
 }
 
-FASTCALL
 void HalUpdateTls(void *tls)
 {
     register uint16_t t;
@@ -183,4 +182,6 @@ void HalUpdateTls(void *tls)
     I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
     I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;  
     I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base3 = ((uintptr_t)tls >> 24) & 0xFF;
+    t = USER_SELECTOR(GDT_TLS(GDT_CPU(GDT_ENTRY(t))));
+    ASM("mov gs,%0" : : "r" (t) );
 }

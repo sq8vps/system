@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include "defines.h"
 
-EXPORT_API
+DRIVER_API
 
 struct IoVfsNode;
 struct IoDeviceObject;
@@ -69,7 +69,7 @@ union FsGetRequest
     } getChildren;
 };
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Get VFS node with given name and parent from the filesystem

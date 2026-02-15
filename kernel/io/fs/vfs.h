@@ -16,7 +16,7 @@
 #include "fs.h"
 #include "taskfs.h"
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup io_fs_vfs Virtual File System layer
@@ -330,7 +330,7 @@ void IoVfsLockTreeForWriting(void);
  */
 void IoVfsUnlockTree(void);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

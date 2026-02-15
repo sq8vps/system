@@ -1,4 +1,4 @@
-add_subdirectory(i686)
+add_subdirectory(${CMAKE_SYSTEM_PROCESSOR})
 
 add_library(hal OBJECT
     cpu.c

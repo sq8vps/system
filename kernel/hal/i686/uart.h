@@ -15,7 +15,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Deinitialize built-in 16550-compatible UART driver
@@ -26,6 +26,6 @@ void I686DeinitIsaUart(void);
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

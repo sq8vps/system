@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include "defines.h"
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 
@@ -22,10 +22,14 @@ struct IoDeviceObject;
  * @{
  */
 
+NABLA_API
+
 /**
  * @brief TTY device name length limit
  */
 #define TTY_DEVICE_NAME_SIZE 64
+
+END_NABLA_API
 
 /**
  * @brief TTY-driver specific operations
@@ -47,7 +51,7 @@ struct TtyParameters
     union
     {
         /**
-         * @brief Data for the #TTY_CREATE_VT request
+         * @brief Data for the @ref TTY_CREATE_VT request
          */
         struct
         {
@@ -58,7 +62,23 @@ struct TtyParameters
     } request;
 };
 
-END_EXPORT_API
+END_DRIVER_API
+
+NABLA_API
+
+/**
+ * @brief Create a new virtual terminal
+ * @param masterHandle Handle of the master TTY (VT-capable) device file
+ * @param inputEvent Input event handle (-1 to disable input)
+ * @param outputEvent Output even handle (-1 to disable output)
+ * @param *name Array to store the new VT name to. Must be able to hold at least @ref TTY_DEVICE_NAME_SIZE + 1 characters. 
+ * Might be set to NULL if not needed.
+ * @return Status code
+ * @note @a name contains only the name of the device and is not a full path (e.g., does not include \a \dev\...)
+ */
+STATUS ApiCreateVt(int masterHandle, int inputEvent, int outputEvent, char *name);
+
+END_NABLA_API
 
 /**
  * @brief Create new virtual terminal

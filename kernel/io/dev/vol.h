@@ -10,7 +10,7 @@
 #include "io/dev/dev.h"
 #include "ob/ob.h"
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup io_dev_vol Volume support
@@ -101,7 +101,7 @@ STATUS IoSetVolumeLabel(struct IoDeviceObject *dev, char *label);
 STATUS IoRegisterFilesystem(struct IoDeviceObject *disk, struct IoDeviceObject *fs);
 
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize volume manager

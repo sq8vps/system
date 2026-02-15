@@ -12,7 +12,7 @@
 #include "bus.h"
 #include "hal/interrupt.h"
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup io_dev_res I/O device resource abstraction layer
@@ -88,7 +88,7 @@ struct IoDeviceResource
 */
 struct IoIrqMap* IoCopyIrqMap(struct IoIrqMap *map);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

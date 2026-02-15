@@ -21,7 +21,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Get I/O APIC usage state
@@ -43,7 +43,7 @@ uint32_t I686ResolveIsaIrqMapping(uint32_t irq);
 */
 struct HalInterruptParams I686ResolveIsaIrqParams(uint32_t irq);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Set default (1:1) ISA IRQ mapping

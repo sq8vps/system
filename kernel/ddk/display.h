@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include "defines.h"
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup ddk_display Display requests and helpers
@@ -28,6 +28,6 @@ EXPORT_API
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

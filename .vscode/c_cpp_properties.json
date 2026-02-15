@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "kernel32",
+                "kernel",
                 ".",
                 ".."
             ],

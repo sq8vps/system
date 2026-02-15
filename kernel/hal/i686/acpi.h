@@ -15,7 +15,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Get ACPI Root Pointer
@@ -23,7 +23,7 @@ EXPORT_API
  */
 PADDRESS I686AcpiGetRsdp(void);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize ACPI subsystem and return LAPIC address for the bootstrap CPU

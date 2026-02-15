@@ -14,7 +14,7 @@ add_library(acpica STATIC
 target_include_directories(acpica PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR} 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/../api
+    ${DRIVER_API}
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     )
 target_link_libraries(acpica PUBLIC

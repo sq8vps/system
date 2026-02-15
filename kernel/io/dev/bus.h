@@ -10,7 +10,7 @@
 #include "defines.h"
 #include <stdint.h>
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup io_bus I/O bus definitions
@@ -175,6 +175,6 @@ struct IoPciDeviceHeader
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

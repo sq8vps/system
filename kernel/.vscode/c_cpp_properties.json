@@ -19,7 +19,7 @@
                 ]
             },
             "intelliSenseMode": "linux-gcc-x64",
-            "cStandard": "${default}",
+            "cStandard": "c23",
             "cppStandard": "${default}",
             "compilerPath": "${default}"
         }

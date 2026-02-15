@@ -18,7 +18,7 @@
  * @{ 
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Create slab cache
@@ -52,7 +52,7 @@ void MmSlabFree(void *slabHandle, void *memory);
  */
 void MmSlabDestroy(void *slabHandle);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

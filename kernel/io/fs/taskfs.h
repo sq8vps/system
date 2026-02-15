@@ -12,7 +12,7 @@
 
 struct IoVfsNode;
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @addtogroup io_fs_taskfs Task file system (\c /task) support
@@ -36,7 +36,7 @@ struct IoTaskFsContext
  */
 #define IO_TASK_FS_CONTEXT_INITIALIZER {.tid = -1, .fd = -1}
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Get VFS node from task file system

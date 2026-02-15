@@ -41,7 +41,7 @@ size_t strcspn(const char *s1, const char *s2)
     return (size_t)(s1 - initial);
 }
 
-char *strpbrk(char *s1, const char *s2)
+char *strpbrk(const char *s1, const char *s2)
 {
     while('\0' != *s1)
     {
@@ -49,7 +49,7 @@ char *strpbrk(char *s1, const char *s2)
         while('\0' != *c)
         {
             if(*s1 == *c)
-                return s1;
+                return (char*)s1;
             ++c;
         }
         ++s1;

@@ -15,7 +15,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Main kernel panic error codes
@@ -195,6 +195,11 @@ enum KernelPanicCode
      * - Arg 3: Actual page flags for failing address (see @ref MmMemoryFlags)
      */
     PAGE_FAULT = 0x10,
+
+    /**
+     * @brief No workin init program was found
+     */
+    NO_WORKING_INIT = 0x11,
 };
 
 
@@ -239,7 +244,7 @@ enum KernelPanicCode
 */
 [[noreturn]] void KePanicIPEx(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Print message and halt on boot failure

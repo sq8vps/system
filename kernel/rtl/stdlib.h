@@ -18,7 +18,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Maximum value returned by rand()
@@ -94,7 +94,7 @@ int RtlAtoi(const char *str);
 
 #endif
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize kernel random number generator

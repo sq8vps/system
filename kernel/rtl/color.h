@@ -15,7 +15,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief 24-bit color representation structure
@@ -33,7 +33,7 @@ typedef struct
 #define RTL_RGB_GREEN (RtlRGB){.r = 0, .g = 255, .b = 0} /**< Predefined green color */
 #define RTL_RGB_BLUE (RtlRGB){.r = 0, .g = 0, .b = 255} /**< Predefined blue color */
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

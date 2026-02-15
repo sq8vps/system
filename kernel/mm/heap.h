@@ -20,7 +20,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Free memory allocated on kernel heap
@@ -99,7 +99,7 @@ void *MmReallocateKernelHeap(void *ptr, size_t n);
 #define realloc(ptr, n) MmReallocateKernelHeap(ptr, n);
 
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

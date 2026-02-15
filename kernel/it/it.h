@@ -17,7 +17,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Magic value to be used when requesting random vector number
@@ -84,7 +84,7 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr);
 */
 STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Set up interrupts and assign default handlers to them

@@ -16,7 +16,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 typedef size_t tree_key_t;
 
@@ -31,7 +31,7 @@ typedef size_t tree_key_t;
   tree_key_t key; \
   void *aux; 
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

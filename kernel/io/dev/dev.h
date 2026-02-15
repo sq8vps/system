@@ -33,7 +33,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Maximum number of compatible IDs per device
@@ -342,7 +342,7 @@ struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev);
  */
 STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Retry to build device stack and enumerate child devices after the main filesystem was mounted

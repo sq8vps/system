@@ -9,6 +9,7 @@ int isalpha(int c)
 {
     if(isupper(c) || islower(c))
         return 1;
+    return 0;
 }
 
 int isblank(int c)
@@ -48,7 +49,7 @@ int ispunct(int c)
 
 int isspace(int c)
 {
-    return ((' ' == c) || (' \f' == c) || ('\n' == c) || ('\r' == c) || ('\t' == c) || ('\v' == c));
+    return ((' ' == c) || ('\f' == c) || ('\n' == c) || ('\r' == c) || ('\t' == c) || ('\v' == c));
 }
 
 int isupper(int c)

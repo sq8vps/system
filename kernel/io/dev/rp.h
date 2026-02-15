@@ -11,7 +11,7 @@
 #include "bus.h"
 #include "ob/ob.h"
 
-EXPORT_API
+DRIVER_API
 
 struct IoRp;
 struct IoRpQueue;
@@ -277,7 +277,7 @@ void IoMarkRpPending(struct IoRp *rp);
  */
 struct IoRp *IoCloneRp(struct IoRp *rp);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @}

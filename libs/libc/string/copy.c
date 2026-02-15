@@ -3,7 +3,8 @@
 
 void *memcpy(void * restrict s1, const void * restrict s2, size_t n)
 {
-    unsigned char *b1 = s1, *b2 = s2;
+    unsigned char *b1 = s1;
+    unsigned const char *b2 = s2;
     while(n--)
     {
         *b1++ = *b2++;
@@ -13,7 +14,8 @@ void *memcpy(void * restrict s1, const void * restrict s2, size_t n)
 
 void *memccpy(void * restrict s1, const void * restrict s2, int c, size_t n)
 {
-    unsigned char *b1 = s1, *b2 = s2;
+    unsigned char *b1 = s1;
+    unsigned const char *b2 = s2;
     while(n--)
     {
         *b1++ = *b2++;
@@ -48,7 +50,7 @@ char *strcpy(char * restrict s1, const char * restrict s2)
     char *ret = s1;
     while(0 != (*s1++ = *s2++))
         ;
-    return s1;
+    return ret;
 }
 
 char *strncpy(char * restrict s1, const char * restrict s2, size_t n)

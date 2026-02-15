@@ -14,8 +14,7 @@ static const char *KnownParams[] = {
 };
 
 #define KERNEL_PARAM_COUNT (sizeof(KnownParams) / sizeof(KnownParams[0])) /**< Maximum number of stored kernel params */
-#define MAX_INIT_ENVP (64 - 1) /**< Maximum number of stored init environment variables */
-#define MAX_INIT_ARGV (256 - 1) /**< Maximum number of stored init arguments */
+
 
 static struct
 {
@@ -24,9 +23,7 @@ static struct
 }
 KernelParam[KERNEL_PARAM_COUNT]; /**< Kernel parameters: name - value pairs */
 
-static const char *InitEnvp[MAX_INIT_ENVP + 1] = {NULL}; /**< Init environment variables - NAME=VALUE entries */
-static size_t InitEnvpCount = 0; /**< Number of entries in @ref InitEnvp */
-static const char *InitArgv[MAX_INIT_ARGV + 1] = {NULL}; /**< Init arguments */
+static const char *InitArgv[MAX_INIT_ARGS + 1] = {NULL}; /**< Init arguments */
 static size_t InitArgvCount = 1; /**< Number of entries in @ref InitArgvCount. 1st argument is reserved for program name. */
 
 /**
@@ -38,7 +35,7 @@ static void AddWithoutValue(const char *name, bool initArg)
 {
     if(initArg)
     {
-        if(InitArgvCount < MAX_INIT_ARGV)
+        if(InitArgvCount < MAX_INIT_ARGS)
         {
             InitArgv[InitArgvCount++] = name;
             InitArgv[InitArgvCount] = NULL;
@@ -58,10 +55,10 @@ static void AddWithoutValue(const char *name, bool initArg)
 }
 
 /**
- * @brief Store parameter with value as kernel parameter or user environment variable
+ * @brief Store parameter with value as kernel parameter or user parameter
  * @param *name Parameter name
  * @param *value Parameter value
- * @return True if stored as kernel parameter, false if stored as user environment variable
+ * @return True if stored as kernel parameter, false if stored as user parameter
  */
 static bool AddWithValue(const char *name, const char *value)
 {
@@ -78,10 +75,10 @@ static bool AddWithValue(const char *name, const char *value)
         }
     }
 
-    if(InitEnvpCount < MAX_INIT_ENVP)
+    if(InitArgvCount < MAX_INIT_ARGS)
     {
-        InitEnvp[InitEnvpCount++] = name;
-        InitEnvp[InitEnvpCount] = NULL;
+        InitArgv[InitArgvCount++] = name;
+        InitArgv[InitArgvCount] = NULL;
     }
     return false;
 }
@@ -207,4 +204,11 @@ bool ConfigGetKernelParam(const char *name, const char **value)
         }
     }
     return false;
+}
+
+size_t ConfigGetUserParams(const char*** args)
+{
+    if(nullptr != args)
+        *args = InitArgv;
+    return InitArgvCount;
 }

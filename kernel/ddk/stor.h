@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include "defines.h"
 
-EXPORT_API
+DRIVER_API
 
 struct IoDeviceObject;
 
@@ -74,6 +74,6 @@ STATUS StorGetGeometry(struct IoDeviceObject *target, struct StorGeometry **geom
  * @}
  */
 
-END_EXPORT_API
+END_DRIVER_API
 
 #endif

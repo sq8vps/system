@@ -22,7 +22,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief Constant for any interrupt input/no preference when requesting assignment
@@ -194,7 +194,7 @@ PRIO HalGetProcessorPriority(void);
 */
 void HalCheckPriorityLevel(PRIO lower, PRIO upper);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Set current task priority

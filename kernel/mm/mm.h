@@ -24,7 +24,7 @@
  * @{
 */
 
-EXPORT_API
+DRIVER_API
 
 struct IoFileHandle;
 
@@ -144,7 +144,7 @@ STATUS MmAllocateMemoryZeroed(uintptr_t address, size_t size, MmMemoryFlags flag
 */
 STATUS MmFreeMemory(uintptr_t address, size_t size);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Initialize Memory Description cache allocator

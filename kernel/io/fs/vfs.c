@@ -209,6 +209,8 @@ STATUS IoVfsClose(struct IoVfsNode *node)
     {
         if(!(node->flags & IO_FILE_FLAG_SHARED))
             KeReleaseRwLock(&(node->lock));
+        
+        ObUnlockObject(node);
         return OK;
     }
 
@@ -266,6 +268,8 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node, struct IoTaskFsContex
         if(IO_VFS_FS_TASKFS == node->fsType)
         {
             node = IoTaskFsResolveLink(node, taskfs);
+            if(NULL == node)
+                return NULL;
             if(IO_VFS_LINK != node->type)
                 return node;
         }

@@ -23,7 +23,7 @@
  * @{
  */
 
-EXPORT_API
+DRIVER_API
 
 /**
  * @brief A callback function type for DPC worker
@@ -54,7 +54,7 @@ enum KeDpcPriority
 */
 STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context);
 
-END_EXPORT_API
+END_DRIVER_API
 
 /**
  * @brief Process all Deferred Procedure Calls if priority level is low enough
