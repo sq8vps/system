@@ -17,6 +17,7 @@
 #include "hal/math.h"
 #include "hal/arch.h"
 #include "mm/tmem.h"
+#include "hal/mm.h"
 
 #define I686_KERNEL_STACK_SIZE 0x2000 //8 KiB
 
@@ -154,10 +155,26 @@ STATUS HalCreateProcess(const char *path, PrivilegeLevel pl, uint32_t flags,
 HalCreateProcessExit:
     if(NULL != pcb->data.userMemoryLock)
         KeDestroySpinlock(pcb->data.userMemoryLock);
+    HalDestroyMemorySpace(pcb);
     KeDestroyPCB(pcb);
-    I686DestroyMemorySpace(cr3);
 
     return status;
+}
+
+STATUS HalDestroyTask(struct KeTaskControlBlock *tcb)
+{
+    MmFreeKernelHeap((void*)((uintptr_t)tcb->stack.kernel.top - tcb->stack.kernel.size));
+    HalDestroyMathStateBuffer(tcb->data.fpu);
+    KeDestroyTCB(tcb);
+    return OK;
+}
+
+STATUS HalDestroyProcess(struct KeProcessControlBlock *pcb)
+{
+    KeDestroySpinlock(pcb->data.userMemoryLock);
+    HalDestroyMemorySpace(pcb);
+    KeDestroyPCB(pcb);
+    return OK;
 }
 
 void HalInitializeScheduler(void)
@@ -276,7 +293,7 @@ void HalInitializeScheduler(void)
         entry(context);
     
     //if we are here, then this is a kernel thread and it exited
-    KeFinishCurrentTask(0);
+    KeFinishCurrentTask((OK == status) ? 0 : -1);
     
     while(1)
         ;

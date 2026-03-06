@@ -301,6 +301,30 @@ STATUS IoCloseFileForProcess(struct KeProcessControlBlock *pcb, int handleNumber
     return status;
 }
 
+STATUS IoCloseAllFilesOnExit(struct KeProcessControlBlock *pcb)
+{
+    STATUS status = OK;
+    struct IoFileHandle *handle = NULL;
+
+    for(size_t i = 0; i < pcb->files.count; ++i)
+    {
+        handle = pcb->files.table[i].handle;
+
+        if(NULL == handle)
+            continue;
+        
+        pcb->files.table[i].handle = NULL;
+        pcb->files.count--;
+
+        IoVfsClose(handle->node);
+
+        ObDestroyObject(handle);
+        //TODO: flags
+    }
+
+    return status;
+}
+
 
 STATUS IoCloseFile(int handleNumber)
 {

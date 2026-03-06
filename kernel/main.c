@@ -33,7 +33,7 @@
 
 
 
-[[noreturn]] static void KeStartInit(void)
+static void KeStartInit(void)
 {
 	STATUS status = OK;
 	struct KeTaskControlBlock *tcb = nullptr;
@@ -57,9 +57,6 @@
 	status = KeEnableTask(tcb);
 	if(OK != status)
 		KePanic(NO_WORKING_INIT);
-
-	while(1)
-		;
 }
 
 static void KeInitProcess(void *context)
@@ -98,9 +95,6 @@ static void KeInitProcess(void *context)
 		FAIL_BOOT("unable to load TTY device driver");
 
 	KeStartInit();
-
-	while(1)
-		;
 }
 
 /**

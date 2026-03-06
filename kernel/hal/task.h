@@ -53,6 +53,26 @@ INTERNAL STATUS HalCreateThread(struct KeProcessControlBlock *pcb, uint32_t flag
     void (*entry)(void*), void *entryContext, void *userStack, struct KeTaskControlBlock **tcb);
 
 /**
+ * @brief Destroy task
+ * 
+ * This function performs low level task destruction. The \a tcb pointer is invalid after this function returns.
+ * @param *tcb Target Task Control Block
+ * @return Always \a OK
+ * @kinternal
+*/
+INTERNAL STATUS HalDestroyTask(struct KeTaskControlBlock *tcb);
+
+/**
+ * @brief Destroy process
+ * 
+ * This function performs low level process destruction. The \a pcb pointer is invalid after this function returns.
+ * @param *pcb Target Process Control Block
+ * @return Always \a OK
+ * @kinternal
+*/
+INTERNAL STATUS HalDestroyProcess(struct KeProcessControlBlock *pcb);
+
+/**
  * @brief Initialize architecture-dependent scheduler part
  * @note This function panics on failure
  */

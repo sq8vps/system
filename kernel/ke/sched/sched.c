@@ -552,8 +552,7 @@ static void KeTaskCleanupWorker(void *context)
             barrier();
             KeReleaseSpinlock(&(KeFinished.lock), prio);
 
-            
-            
+            KeDestroyTask(t);
         }
         else
         {

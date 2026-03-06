@@ -62,12 +62,6 @@ INTERNAL MmMemoryFlags I686GetPageFlagsFromPageFault(uintptr_t address);
 INTERNAL PADDRESS I686CreateNewMemorySpace(void);
 
 /**
- * @brief Destroy memory space
- * @param pdAddress Page directory physical address
- */
-INTERNAL void I686DestroyMemorySpace(PADDRESS pdAddress);
-
-/**
  * @brief Get current page directory physical address
  * @return Page directory physical address
 */

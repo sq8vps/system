@@ -6,6 +6,7 @@
 #include "mm/mm.h"
 #include "rtl/string.h"
 #include "ke/sys/llsyscall.h"
+#include "hal/mm.h"
 
 #if 1
 #define BST_PROVIDE_ABSTRACTION
@@ -367,6 +368,24 @@ STATUS MmUnmapTaskMemory(const void *const ptr, size_t length)
     }
     while(base < end);
     KeReleaseMutex(&(pcb->memory.mutex));
+    return status;
+}
+
+STATUS MmFreeAllProcessMemoryOnExit(struct KeProcessControlBlock *pcb)
+{
+    STATUS status = OK;
+    
+    struct MmTaskMemory *m = pcb->memory.head;
+    while(nullptr != m)
+    {
+        if(nullptr != m->file)
+        {
+            //TODO: implement proper file flushing
+        }
+        HalFreeMemoryP(pcb, (uintptr_t)m->base, (uintptr_t)m->end - (uintptr_t)m->base);
+        m = m->next;
+    }
+
     return status;
 }
 

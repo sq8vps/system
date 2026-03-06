@@ -10,6 +10,13 @@ reg_t __ApiDoSyscall(reg_t argSize, reg_t code, ...);
 
 SYSCALL_WRAPPER(STATUS, ApiNoOperation, uint32_t, uint16_t, uint8_t, void*, uint64_t);
 
+[[noreturn]] void ApiExitTask(int status)
+{
+    __ApiDoSyscall(sizeof(int), SysApiExitTask, status);
+    while(1)
+        ;
+}
+
 SYSCALL_WRAPPER(STATUS, ApiSetThreadLocalStorage, void*);
 
 SYSCALL_WRAPPER(STATUS, ApiOpenFile, const char*, IoFileOpenMode, IoFileFlags, int*);

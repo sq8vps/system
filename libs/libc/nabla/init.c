@@ -1,6 +1,7 @@
 #include "nabla.h"
 #include "state.h"
 #include "ke/sys/syscall.h"
+#include "ke/task/task.h"
 
 void __nabla_libc_initialize_stdio(void);
 
@@ -33,7 +34,7 @@ int main(int argc, char **argv, char **envp);
     __nabla_libc_initialize();
     int code = main(argc, argv, envp);
     (void)code;
-    //TODO: exit program
+    ApiExitTask(code);
 
     while(1)
         ;

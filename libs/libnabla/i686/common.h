@@ -58,5 +58,4 @@ typedef uint32_t reg_t;
 #define _SYSCALL_WRAPPER(returnType, name, argCount, ...) __SYSCALL_WRAPPER(returnType, name, argCount, __VA_ARGS__)
 
 #define SYSCALL_WRAPPER(returnType, name, ...) _SYSCALL_WRAPPER(returnType, name, ARG_COUNT(__VA_ARGS__), __VA_ARGS__);
-
 #endif

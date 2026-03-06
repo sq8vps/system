@@ -238,6 +238,15 @@ STATUS IoGetFileSize(const char *file, uint64_t *size);
 END_DRIVER_API
 
 /**
+ * @brief Close all files on process exit
+ * @param *pcb Target Process Control Block
+ * @return Status code
+ * @kinternal
+ * @attention This function is called only on process termination
+ */
+INTERNAL STATUS IoCloseAllFilesOnExit(struct KeProcessControlBlock *pcb);
+
+/**
  * @brief Open file for given process
  * @param *pcb Process Control Block
  * @param *file File path string, used if \a fileNode is NULL

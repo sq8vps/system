@@ -380,39 +380,74 @@ uintptr_t I686GetPageDirectoryAddress(void)
 	return pageDir;
 }
 
-// static STATUS I686FreeTaskMemory(struct KeTaskControlBlock *tcb, MmPageDirectoryEntry *pd, uintptr_t base, uintptr_t size)
-// {
-// 	base = ALIGN_DOWN(base, PAGE_SIZE);
-// 	size = ALIGN_UP(size, PAGE_SIZE);
+STATUS HalFreeMemoryP(struct KeProcessControlBlock *pcb, uintptr_t base, size_t size)
+{
+	base = ALIGN_DOWN(base, PAGE_SIZE);
+	size = ALIGN_UP(size, PAGE_SIZE);
 
-// 	while(size > 0)
-// 	{
-// 		MmPageTableEntry *pt = MmMapDynamicMemory(pd[base >> 22] & 0xFFFFF000, MM_PAGE_TABLE_SIZE, MM_FLAG_WRITABLE);
-// 		if(NULL == pt)
-// 		{
-// 			return OUT_OF_RESOURCES;
-// 		}
+	if(unlikely((HAL_VIRTUAL_SPACE_SIZE - base) < size))
+		return BAD_PARAMETER;
+	
+	if(base >= HAL_KERNEL_SPACE_BASE)
+		return BAD_PARAMETER;
 
-// 		PRIO prio = KeAcquireSpinlock(tcb->parent->data.userMemoryLock);
-// 		uintptr_t initialBase = base;
-// 		uint16_t pages = 0;
-// 		for(uint16_t i = (MM_PAGE_TABLE_ENTRY_COUNT - ((base >> 12) & 0x3FF)); i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
-// 		{
-// 			pt[(base >> 12) & 0x3FF] = 0;
-// 			I686_INVALIDATE_TLB(base);
-// 			size -= PAGE_SIZE;
-// 			size += PAGE_SIZE;
-// 			++pages;
-// 			if(0 == size)
-// 				break;
-// 		}
-// 		I686SendInvalidateTlb(&(tcb->affinity), tcb->data.cr3, initialBase, pages);
-// 		KeReleaseSpinlock(tcb->parent->data.userMemoryLock, prio);
-// 		MmUnmapDynamicMemory(pt);
-// 	}
+	if((base + size) > HAL_KERNEL_SPACE_BASE)
+		size = HAL_KERNEL_SPACE_BASE - (base + size);
 
-// 	return OK;
-// }
+	PRIO prio = KeAcquireSpinlock(pcb->data.userMemoryLock);
+
+	MmPageDirectoryEntry *pd = MmMapDynamicMemory(pcb->data.cr3, MM_PAGE_DIRECTORY_SIZE, 0);
+	if(NULL == pd)
+	{
+		KeReleaseSpinlock(pcb->data.userMemoryLock, prio);
+		return OUT_OF_RESOURCES;
+	}
+
+	while(size > 0)
+	{
+		PADDRESS ptAddress = pd[base >> 22] & 0xFFFFF000;
+		MmPageTableEntry *pt = MmMapDynamicMemory(ptAddress, MM_PAGE_TABLE_SIZE, MM_FLAG_WRITABLE);
+		if(NULL == pt)
+		{
+			KeReleaseSpinlock(pcb->data.userMemoryLock, prio);
+			return OUT_OF_RESOURCES;
+		}
+
+		uintptr_t initialBase = base;
+		size_t pages = 0;
+		for(size_t i = (MM_PAGE_TABLE_ENTRY_COUNT - ((base >> 12) & 0x3FF)); i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
+		{
+			pt[(base >> 12) & 0x3FF] = 0;
+			I686_INVALIDATE_TLB(base);
+			size -= PAGE_SIZE;
+			base += PAGE_SIZE;
+			++pages;
+			if(0 == size)
+				break;
+		}
+
+		I686SendInvalidateTlb(&(pcb->totalAffinity), pcb->data.cr3, initialBase, pages);
+
+		bool ptEmpty = true;
+		for(size_t i = 0; i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)
+		{
+			if(pt[i] & PAGE_FLAG_PRESENT)
+			{
+				ptEmpty = false;
+				break;
+			}
+		}
+
+		MmUnmapDynamicMemory(pt);
+
+		if(ptEmpty)
+			MmFreePhysicalMemory(ptAddress, MM_PAGE_TABLE_SIZE);
+
+		KeReleaseSpinlock(pcb->data.userMemoryLock, prio);
+	}
+
+	return OK;
+}
 
 PADDRESS I686CreateNewMemorySpace(void)
 {
@@ -447,10 +482,9 @@ I686CreateNewMemorySpaceFailure:
 	return 0;
 }
 
-void I686DestroyMemorySpace(PADDRESS pdAddress)
+void HalDestroyMemorySpace(const struct KeProcessControlBlock *pcb)
 {
-	if(0 != pdAddress)
-		MmFreePhysicalMemory(pdAddress, MM_PAGE_DIRECTORY_SIZE);
+	MmFreePhysicalMemory(pcb->data.cr3, MM_PAGE_DIRECTORY_SIZE);
 }
 
 uintptr_t HalGetDriverSpaceBase(void)

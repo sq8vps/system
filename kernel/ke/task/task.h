@@ -226,6 +226,7 @@ struct KeProcessControlBlock
     
     uint32_t flags; /**< Process flags - currently unused */
     PrivilegeLevel pl; /**< Task privilege level */
+    HalCpuBitmap totalAffinity; /**< CPU affinity summed over all tasks */
 
     struct HalProcessData data; /**< Architecture-specific process data */
 
@@ -406,6 +407,17 @@ END_NABLA_API
  * @kinternal
  */
 INTERNAL STATUS KeSetThreadLocalStorage(struct KeTaskControlBlock *tcb, void *tls);
+
+/**
+ * @brief Destroy task (and possibly process) that was already terminated
+ * 
+ * This function is called by the cleanup worker after the task was terminated and detached from the scheduler.
+ * It flushes files, frees task memory, and destroys all task-associated structures.
+ * @param *tcb Target Task Control Block
+ * @return Status code
+ * @kinternal
+ */
+INTERNAL STATUS KeDestroyTask(struct KeTaskControlBlock *tcb);
 
 /**
  * @}

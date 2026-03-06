@@ -9,7 +9,8 @@
                 "${default}",
                 "__i686__",
                 "SMP",
-                "MULTIBOOT2"
+                "MULTIBOOT2",
+                "nullptr=NULL"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
@@ -21,7 +22,7 @@
             "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "c23",
             "cppStandard": "${default}",
-            "compilerPath": "${default}"
+            "compilerPath": "/usr/bin/gcc"
         }
     ],
     "version": 4

@@ -174,6 +174,15 @@ END_NABLA_API
 END_DRIVER_API
 
 /**
+ * @brief Free all process memory, including flushing memory-mapped files
+ * @param *pcb Target Process Control Block
+ * @return Status code
+ * @kinternal
+ * @attention This function is used only on process termination
+ */
+INTERNAL STATUS MmFreeAllProcessMemoryOnExit(struct KeProcessControlBlock *pcb);
+
+/**
  * @}
  */
 

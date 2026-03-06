@@ -80,6 +80,8 @@ STATUS HalUnmapMemory(uintptr_t vAddress);
 */
 STATUS HalUnmapMemoryEx(uintptr_t vAddress, size_t size);
 
+
+
 END_DRIVER_API
 
 /**
@@ -123,6 +125,24 @@ INTERNAL size_t HalGetDynamicSpaceSize(void);
  * @return Space size
  */
 INTERNAL size_t HalGetHeapSpaceSize(void);
+
+/**
+ * @brief Destroy process memory space
+ * @param *pcb Target Process Control Block
+ * @kinternal
+ */
+INTERNAL void HalDestroyMemorySpace(const struct KeProcessControlBlock *pcb);
+
+/**
+ * @brief Free memory of a process
+ * @param *pcb Target Process Control Block
+ * @param base Memory base - internally aligned down to page boundary
+ * @param size Memory size - internally aligned up to page size
+ * @return Status code
+ * @note Corresponding page tables are freed when empty
+ * @kinternal
+ */
+INTERNAL STATUS HalFreeMemoryP(struct KeProcessControlBlock *pcb, uintptr_t base, size_t size);
 
 /**
  * @}

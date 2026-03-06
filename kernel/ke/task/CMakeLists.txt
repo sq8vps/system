@@ -1,4 +1,5 @@
 add_library(ke_task OBJECT
+    cleanup.c
     task.c
 
     tid.cpp
