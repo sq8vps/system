@@ -35,7 +35,7 @@ static STATUS TtyBuildTrieFromPsf1(const void *table, size_t tableSize, struct T
                 font->unicodeRoot = TrieInsert(font->unicodeRoot, node, NULL, 0);
             }
             node->key = code;
-            node->aux = &font->data[glyph * font->pitch];
+            node->aux.v = &font->data[glyph * font->pitch];
         }
 
         if(PSF1_SEQ_START == symbol[i])
@@ -45,7 +45,7 @@ static STATUS TtyBuildTrieFromPsf1(const void *table, size_t tableSize, struct T
             {
                 if((PSF1_ENTRY_END == symbol[i]) || (PSF1_SEQ_START == symbol[i]))
                 {
-                    parent->aux = &font->data[glyph * font->pitch];
+                    parent->aux.v = &font->data[glyph * font->pitch];
                     if(PSF1_ENTRY_END == symbol[i])
                     {
                         ++i;
@@ -130,7 +130,7 @@ static STATUS TtyBuildTrieFromPsf2(const void *table, size_t tableSize, struct T
 
                 font->unicodeRoot = TrieInsert(font->unicodeRoot, node, NULL, 0);
             }
-            node->aux = &font->data[glyph * font->pitch];
+            node->aux.v = &font->data[glyph * font->pitch];
         }
 
         if(PSF2_SEQ_START == symbol[i])
@@ -140,7 +140,7 @@ static STATUS TtyBuildTrieFromPsf2(const void *table, size_t tableSize, struct T
             {
                 if((PSF2_ENTRY_END == symbol[i]) || (PSF2_SEQ_START == symbol[i]))
                 {
-                    parent->aux = &font->data[glyph * font->pitch];
+                    parent->aux.v = &font->data[glyph * font->pitch];
                     if(PSF2_ENTRY_END == symbol[i])
                     {
                         ++i;
@@ -305,7 +305,7 @@ STATUS TtyLoadFont(struct TtyVtData *info, const char *path)
                 status = OUT_OF_RESOURCES;
                 goto TtyLoadFontFail;
             }
-            node->aux = &font->data[i * font->pitch];
+            node->aux.v = &font->data[i * font->pitch];
             font->unicodeRoot = TrieInsert(font->unicodeRoot, node, NULL, 0);
         }
         if(NULL == font->unicodeRoot)
@@ -341,7 +341,7 @@ HOT inline void* TtyGetGlyph(const struct TtyFont *font, const uint32_t *code, s
     if(NULL == node)
         return NULL;
 
-    return node->aux;
+    return node->aux.v;
 }
 
 

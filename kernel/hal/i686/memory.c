@@ -426,7 +426,8 @@ STATUS HalFreeMemoryP(struct KeProcessControlBlock *pcb, uintptr_t base, size_t 
 				break;
 		}
 
-		I686SendInvalidateTlb(&(pcb->totalAffinity), pcb->data.cr3, initialBase, pages);
+		HalCpuBitmap targets = HAL_CPU_ALL;
+		I686SendInvalidateTlb(&targets, pcb->data.cr3, initialBase, pages);
 
 		bool ptEmpty = true;
 		for(size_t i = 0; i < MM_PAGE_DIRECTORY_ENTRY_COUNT; ++i)

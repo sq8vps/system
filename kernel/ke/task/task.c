@@ -38,8 +38,8 @@ struct KeTaskControlBlock* KePrepareTCB(uint32_t flags)
     tcb->flags = flags;
     tcb->affinity = HAL_CPU_ALL;
     tcb->scheduling.state = TASK_UNINITIALIZED;
-    tcb->scheduling.majorPriority = TCB_DEFAULT_MAJOR_PRIORITY;
-    tcb->scheduling.minorPriority = TCB_DEFAULT_MINOR_PRIORITY;
+    tcb->scheduling.policy = KE_SCHED_DEFAULT;
+    tcb->scheduling.priority = 0;
 
     tcb->tid = KeAssignTid();
     if(0 == tcb->tid)

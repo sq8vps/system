@@ -8,9 +8,6 @@ extern KeNextTask
 ;void *KeNextCpuState[]
 extern KeNextCpuState
 
-;struct KeTaskControlBlock *KeLastTask[]
-extern KeLastTask
-
 ;__attribute__((fastcall))
 ;void GdtUpdateTss(uintptr_t esp0)
 ;This is the function that updates the TSS for current CPU
@@ -23,10 +20,6 @@ extern HalStoreMathState
 ;__attribute__((fastcall))
 ;void HalRestoreMathState(struct KeTaskControlBlock *tcb)
 extern HalRestoreMathState
-
-;__attribute__((fastcall))
-;void KeAttachLastTask(uint16_t cpu)
-extern KeAttachLastTask
 
 ;volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] - SMP systems
 ;volatile bool KeTaskSwitchPending - UP systems
@@ -188,14 +181,6 @@ HalPerformTaskSwitch:
     ;CPU number is in EAX
     call KeStoreTaskContext
 
-    push eax
-
-    cld
-    mov ecx,eax ;fastcall
-    call KeAttachLastTask
-
-    pop eax
-
     ;new task pointer is in nextTask
     ;switch to the new task
     ;pass CPU number in EAX
@@ -233,6 +218,7 @@ I686StartUserTask:
 
     jmp $
 
+;keep this in sync with struct HalTaskData
 struc CPUState
     .esp resd 1
     .esp0 resd 1
@@ -243,6 +229,4 @@ struc CPUState
     .es resw 1
     .fs resw 1
     .gs resw 1
-
-    .prio resb 1
 endstruc

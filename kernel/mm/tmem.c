@@ -13,7 +13,7 @@
 #include "rtl/bst.h"
 #endif
 
-#define REGION(node) ((struct MmTaskMemory*)(node)->aux)
+#define REGION(node) ((struct MmTaskMemory*)(node)->aux.v)
 
 static uintptr_t MmGetRegionTop(const struct MmTaskMemory *m)
 {
@@ -264,7 +264,7 @@ MmMapTaskMemoryRetryWithoutHint:
     entry->offset = offset;
     entry->limit = limit;
     ((struct TreeNode*)entry->treeData)->key = (uintptr_t)address;
-    ((struct TreeNode*)entry->treeData)->aux = entry;
+    ((struct TreeNode*)entry->treeData)->aux.v = entry;
     if(NULL != previous)
     {
         entry->next = previous->next;

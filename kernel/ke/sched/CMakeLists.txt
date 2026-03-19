@@ -1,5 +1,6 @@
 add_library(ke_sched OBJECT
     idle.c
+    rr.c
     sched.c
     sleep.c
     )

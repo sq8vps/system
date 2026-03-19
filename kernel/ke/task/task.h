@@ -39,19 +39,16 @@ enum KeTaskState
     TASK_FINISHED, //task finished and should be removed
 };
 
-
 /**
- * @brief Task major priority/scheduling policy
-*/
-enum KeTaskMajorPriority
+ * @brief Scheduling policies
+ */
+enum KeSchedulingPolicy
 {
-    PRIORITY_HIGHEST = 0,
-    PRIORITY_INTERACTIVE = 1,
-    PRIORITY_NORMAL = 2,
-    PRIORITY_BACKGROUND = 3,
-    PRIORITY_LOWEST = 4,
+    KE_SCHED_CFS = 0, /**< Completely Fair Scheduling-alike */
+    KE_SCHED_RR = 1, /**< Prioritized round-robin */
+    KE_SCHED_FCFS = 2, /** First come - first served */
+    KE_SCHED_IDLE = 3, /**< Idle task scheduling */
 };
-
 
 /**
  * @brief Reason for task block (task state = TASK_BLOCKED)
@@ -59,10 +56,10 @@ enum KeTaskMajorPriority
 enum KeTaskBlockReason
 {
     TASK_BLOCK_NOT_BLOCKED = 0, /**< Task is not blocked */
-    TASK_BLOCK_IO, /**< Task is waiting for an I/O operation to complete */
-    TASK_BLOCK_SLEEP, /**< Task is sleeping indefinetely until woken up externally */
-    TASK_BLOCK_MUTEX, /**< Task is waiting for a semaphore-like structure to be available */
-    TASK_BLOCK_TIMED_SLEEP, /**< Task requested sleep for given time and is sleeping */
+    TASK_BLOCK_IO = 1, /**< Task is waiting for an I/O operation to complete */
+    TASK_BLOCK_SLEEP = 2, /**< Task is sleeping indefinetely until woken up externally */
+    TASK_BLOCK_MUTEX = 3, /**< Task is waiting for a semaphore-like structure to be available */
+    TASK_BLOCK_TIMED_SLEEP = 4, /**< Task requested sleep for given time and is sleeping */
 };
 
 /**
@@ -163,16 +160,20 @@ struct KeTaskControlBlock
      */
     struct
     {
-        enum KeTaskMajorPriority majorPriority; //task major scheduling priority/policy
-        uint8_t minorPriority; //task minor priority
+        enum KeSchedulingPolicy policy; /**< Scheduling policy */
+        int32_t priority; /**< Static scheduling priority (interpretation is policy-dependent) */
         enum KeTaskState state; //current task state
-        enum KeTaskState requestedState; //next requested state
         
         bool notified; //task was notified to wake up
         
         struct KeTaskControlBlock *next; //next task in queue
         struct KeTaskControlBlock *previous; //previous task in queue
-        struct KeSchedulerQueue *queue; //queue this task belongs to
+
+        uint64_t shadow[16]; /**< Shadowed scheduler data */
+        
+        uint64_t lastScheduled; /**< Timestamp of the last schedule */
+        uint64_t lastRuntime; /**< Last task runtime in ns */
+
 
         /**
          * @brief Task block parameters
@@ -226,7 +227,6 @@ struct KeProcessControlBlock
     
     uint32_t flags; /**< Process flags - currently unused */
     PrivilegeLevel pl; /**< Task privilege level */
-    HalCpuBitmap totalAffinity; /**< CPU affinity summed over all tasks */
 
     struct HalProcessData data; /**< Architecture-specific process data */
 

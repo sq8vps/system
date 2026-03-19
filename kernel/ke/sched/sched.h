@@ -20,23 +20,6 @@
 
 DRIVER_API
 
-/**
- * @brief Change task major priority/scheduling policy
- * @param *tcb Task Control Block pointer
- * @param priority New priority level
- * @return Status code
-*/
-STATUS KeChangeTaskMajorPriority(struct KeTaskControlBlock *tcb, enum KeTaskMajorPriority priority);
-
-
-/**
- * @brief Change task minor priority/scheduling policy
- * @param *tcb Task Control Block pointer
- * @param priority New priority level
- * @return Status code
-*/
-STATUS KeChangeTaskMinorPriority(struct KeTaskControlBlock *tcb, uint8_t priority);
-
 
 /**
  * @brief Enable task for scheduling
@@ -131,15 +114,6 @@ INTERNAL void KeJoinScheduler(void);
  * @kinternal
  */
 INTERNAL void KeWaitForCpusToJoinScheduler(uint32_t cpus);
-
-/**
- * @brief Attach last task to appropriate queue
- * @param cpu CPU number
- * @attention This function is for context switch code use only
- * @kinternal
- */
-FASTCALL
-INTERNAL void KeAttachLastTask(uint16_t cpu);
 
 /**
  * @}

@@ -79,7 +79,7 @@ static void KePanicStopSystem(void)
     KePanicStopSystem();
     KePrintMainPanic(ip, code);
     while(1)
-        ;
+        HALT();
 }
 
 [[noreturn]] static void KePanicExInternal(uintptr_t ip, uintptr_t code, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4)
@@ -97,7 +97,7 @@ static void KePanicStopSystem(void)
     HalVideoPrint(buffer);
     HalDebugPutString(buffer);
     while(1)
-        ;
+        HALT();
 }
 
 

@@ -124,7 +124,7 @@ void KeProcessDpcQueue(void)
     if(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE)
         return;
     PRIO dpcPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
-    uint16_t cpu = 0;
+    uint32_t cpu = 0;
 #ifdef SMP
         cpu = HalGetCurrentCpu();
 #endif

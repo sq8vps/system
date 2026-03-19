@@ -26,8 +26,6 @@ STATUS ExCreateKernelWorker(void(*entry)(void *), void *entryContext, struct KeT
 
     if(NULL != *tcb)
     {
-        KeChangeTaskMajorPriority(*tcb, TCB_DEFAULT_MAJOR_PRIORITY);
-        KeChangeTaskMinorPriority(*tcb, TCB_DEFAULT_MINOR_PRIORITY);
         KeEnableTask(*tcb);
     }
     return status;

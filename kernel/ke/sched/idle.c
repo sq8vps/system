@@ -34,12 +34,7 @@ STATUS KeCreateIdleTask(void)
             return ret;
     }
     
-    //set lowest possible priority for this task
-    if(OK != (ret = KeChangeTaskMajorPriority(tcb, PRIORITY_LOWEST)))
-        return ret;
-
-    if(OK != (ret = KeChangeTaskMinorPriority(tcb, TCB_MINOR_PRIORITY_LIMIT)))
-        return ret;
+    
 
     return KeEnableTask(tcb);
 }

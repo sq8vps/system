@@ -123,10 +123,17 @@ void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t
 
     HAL_GET_CPU_BIT_COUNT(targets, I686IpiState[cpu].remainingAcks);
 
+    if(0 == I686IpiState[cpu].remainingAcks)
+    {
+        HalLowerPriorityLevel(prio);
+        return;
+    }
+
     if(HalGetCpuCount() < I686IpiState[cpu].remainingAcks)
         I686IpiState[cpu].remainingAcks = HalGetCpuCount();
 
-    --I686IpiState[cpu].remainingAcks;
+    if(HAL_GET_CPU_BIT(targets, cpu))
+        --I686IpiState[cpu].remainingAcks;
 
     if(unlikely(0 == I686IpiState[cpu].remainingAcks))
     {

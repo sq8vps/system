@@ -33,16 +33,26 @@ struct BstNode
 #ifdef BST_PROVIDE_ABSTRACTION
 
 #define TreeInsert BstInsert
+#define TreeInsertEx BstInsertEx
 #define TreeFindGreater BstFindGreater
 #define TreeFindGreaterOrEqual BstFindGreaterOrEqual
 #define TreeFindExact BstFindExact
 #define TreeFindLess BstFindLess
 #define TreeFindLessOrEqual BstFindLessOrEqual
 #define TreeRemove BstRemove
+#define TreeRemoveEx BstRemoveEx
 #define TreeNode BstNode
 #define TREENODE BSTNODE
 
 #endif
+
+/**
+ * @brief External comparison function prototype
+ * @param *A Node A
+ * @param *B Node B
+ * @return -1 if node A key < node B key, 0 if node A key = node B key, 1 if node A key < node B key
+ */
+typedef int (*BstCompareFunction)(struct BstNode *A, struct BstNode *B);
 
 /**
  * @brief Insert a node into the binary search tree
@@ -51,6 +61,18 @@ struct BstNode
  * @return New root of the tree
  */
 struct BstNode* BstInsert(struct BstNode *root, struct BstNode *node);
+
+/**
+ * @brief Insert a node into the binary search tree using the provided comparison function
+ * @param **root (New) Root of the tree
+ * @param *node Node to insert
+ * @param cmp Comparison function
+ * @return -1 when \a node is the new leftmost element
+ * @return 1 when \a node is the new rightmost element
+ * @return 0 when \a node is not the leftmost nor the rightmost element
+ * @note By convention, when tree is empty, -1 is returned
+ */
+int BstInsertEx(struct BstNode **root, struct BstNode *node, BstCompareFunction cmp);
 
 /**
  * @brief Find a node with an exact key in the binary search tree
@@ -100,6 +122,15 @@ struct BstNode *BstFindGreaterOrEqual(struct BstNode *root, tree_key_t key);
  * @return New root of the tree
  */
 struct BstNode *BstRemove(struct BstNode *root, struct BstNode *node);
+
+/**
+ * @brief Remove a node from the binary search tree using the provided comparison function
+ * @param root Root of the tree
+ * @param node Node to remove
+ * @param cmp Comparison function
+ * @return New root of the tree
+ */
+struct BstNode *BstRemoveEx(struct BstNode *root, struct BstNode *node, BstCompareFunction cmp);
 
 END_DRIVER_API
 
