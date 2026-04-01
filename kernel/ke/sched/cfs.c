@@ -48,11 +48,17 @@ struct
     struct TreeNode *tree;
     struct KeTaskControlBlock *leftmost;
     uint64_t totalWeight;
+
+    struct TreeNode *idleTree;
+    struct KeTaskControlBlock *idleLeftmost;
+    size_t idleCount;
     KeSpinlock lock;
 
     uint64_t baseSlice;
 }
-static KeCfs = {.tree = {nullptr}, .leftmost = nullptr, .totalWeight = 1, .lock = KeSpinlockInitializer,
+static KeCfs = {.tree = nullptr, .leftmost = nullptr, .totalWeight = 1, 
+    .idleTree = nullptr, .idleLeftmost = nullptr, .idleCount = 0,
+    .lock = KeSpinlockInitializer,
     .baseSlice = KE_CFS_BASE_TIMESLICE};
 
 static int KeCfsCompareNodes(struct TreeNode *A, struct TreeNode *B)
@@ -90,36 +96,50 @@ void KeCfsQueueTask(struct KeTaskControlBlock *tcb)
     PRIO tcbPrio = KeAcquireDpcLevelSpinlock(&tcb->scheduling.lock);
 
     struct KeCfsData *d = (struct KeCfsData*)tcb->scheduling.shadow;
-    int32_t priority = tcb->scheduling.priority;
-    if(unlikely(priority < KE_CFS_PRIORITY_MIN))
-        tcb->scheduling.priority = KE_CFS_PRIORITY_MIN;
-    else if(unlikely(priority > KE_CFS_PRIORITY_MAX))
-        tcb->scheduling.priority = KE_CFS_PRIORITY_MAX;
 
-    d->weight = KeCfsPrioToWeight[priority];
-    KeCfsSetNewVruntime(tcb);
+    if(KE_SCHED_CFS == tcb->scheduling.policy)
+    {
+        int32_t priority = tcb->scheduling.priority;
+        if(unlikely(priority < KE_CFS_PRIORITY_MIN))
+            tcb->scheduling.priority = KE_CFS_PRIORITY_MIN;
+        else if(unlikely(priority > KE_CFS_PRIORITY_MAX))
+            tcb->scheduling.priority = KE_CFS_PRIORITY_MAX;
+        d->weight = KeCfsPrioToWeight[priority];
+        KeCfsSetNewVruntime(tcb);
 
-    d->tree.aux.v = d;
-    d->tcb = tcb;
-    if(-1 == TreeInsertEx(&KeCfs.tree, &d->tree, KeCfsCompareNodes))
-        KeCfs.leftmost = tcb;
+        d->tree.aux.v = d;
+        d->tcb = tcb;
+        if(-1 == TreeInsertEx(&KeCfs.tree, &d->tree, KeCfsCompareNodes))
+            KeCfs.leftmost = tcb;
 
-    KeCfs.totalWeight += d->weight;
+        KeCfs.totalWeight += d->weight;
+    }
+    else if(KE_SCHED_IDLE == tcb->scheduling.policy)
+    {
+        if(ckd_add(&d->vruntime, d->vruntime, tcb->scheduling.lastRuntime))
+            d->vruntime = UINT64_MAX;
+
+        d->tree.aux.v = d;
+        d->tcb = tcb;
+        if(-1 == TreeInsertEx(&KeCfs.idleTree, &d->tree, KeCfsCompareNodes))
+            KeCfs.idleLeftmost = tcb;
+
+        ++KeCfs.idleCount;
+    }
     
     tcb->scheduling.state = TASK_READY_TO_RUN;
     KeReleaseSpinlock(&tcb->scheduling.lock, tcbPrio);
     KeReleaseSpinlock(&KeCfs.lock, treePrio);
 }
 
-static void KeCfsSetNewLeftmost(void)
+static void KeCfsSetNewLeftmost(struct TreeNode *tree)
 {
-    struct TreeNode *t = KeCfs.tree;
-    if(nullptr != t)
+    if(nullptr != tree)
     {
-        while(nullptr != t->left)
-            t = t->left;
+        while(nullptr != tree->left)
+            tree = tree->left;
 
-        KeCfs.leftmost = ((struct KeCfsData*)t->left->aux.v)->tcb;
+        KeCfs.leftmost = ((struct KeCfsData*)tree->left->aux.v)->tcb;
     }
     else
        KeCfs.leftmost = nullptr; 
@@ -131,17 +151,33 @@ struct KeTaskControlBlock* KeCfsGetNextTask(uint32_t cpu, uint64_t *slice)
 
     PRIO prio = KeAcquireDpcLevelSpinlock(&KeCfs.lock);
 
-    tcb = KeCfs.leftmost;
-    struct KeCfsData *d = (struct KeCfsData*)tcb->scheduling.shadow;
-    KeCfs.tree = TreeRemoveEx(KeCfs.tree, tcb, KeCfsCompareNodes);
-    KeCfsSetNewLeftmost();
+    if(nullptr != KeCfs.leftmost)
+    {
+        tcb = KeCfs.leftmost;
+        struct KeCfsData *d = (struct KeCfsData*)tcb->scheduling.shadow;
+        KeCfs.tree = TreeRemoveEx(KeCfs.tree, tcb, KeCfsCompareNodes);
+        KeCfsSetNewLeftmost(KeCfs.tree);
 
-    *slice = KeCfs.baseSlice * d->weight / KeCfs.totalWeight;
-    if(*slice < KE_CFS_MINIMUM_TIMESLICE)
-        *slice = KE_CFS_MINIMUM_TIMESLICE;
+        *slice = KeCfs.baseSlice * d->weight / KeCfs.totalWeight;
+        if(*slice < KE_CFS_MINIMUM_TIMESLICE)
+            *slice = KE_CFS_MINIMUM_TIMESLICE;
 
-    KeCfs.totalWeight -= d->weight;
-    
+        KeCfs.totalWeight -= d->weight;
+    }
+    else if(nullptr != KeCfs.idleLeftmost)
+    {
+        tcb = KeCfs.idleLeftmost;
+        struct KeCfsData *d = (struct KeCfsData*)tcb->scheduling.shadow;
+        KeCfs.idleTree = TreeRemoveEx(KeCfs.idleTree, tcb, KeCfsCompareNodes);
+        KeCfsSetNewLeftmost(KeCfs.idleTree);
+
+        *slice = KeCfs.baseSlice / KeCfs.idleCount;
+        if(*slice < KE_CFS_MINIMUM_TIMESLICE)
+            *slice = KE_CFS_MINIMUM_TIMESLICE;
+
+        --KeCfs.idleCount;
+    }
+
     KeReleaseSpinlock(&KeCfs.lock, prio);
 
     return tcb;

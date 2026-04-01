@@ -15,6 +15,7 @@
 #include "hal/hal.h"
 #include "fcfs.h"
 #include "rr.h"
+#include "cfs.h"
 
 #ifndef SMP
 struct
@@ -101,6 +102,7 @@ static void KeSchedule(uint32_t cpu)
                 break;
             case KE_SCHED_CFS:
             case KE_SCHED_IDLE:
+                KeCfsQueueTask(current);
                 break;
         }
     }
