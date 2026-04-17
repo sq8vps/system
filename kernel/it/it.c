@@ -31,7 +31,7 @@ static KeSpinlock ItHandlerTableMutex = KeSpinlockInitializer;
 
 uint8_t ItReserveVector(uint8_t vector)
 {
-	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireDpcLevelSpinlock(&ItHandlerTableMutex);
 	if(0 == vector)
 	{
 		for(uint16_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
@@ -64,7 +64,7 @@ void ItFreeVector(uint8_t vector)
 	
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 
-	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireDpcLevelSpinlock(&ItHandlerTableMutex);
 	if(true == ItHandlerDescriptorTable[vector].reserved)
 	{
 		ItHandlerDescriptorTable[vector].reserved = false;
@@ -79,7 +79,7 @@ STATUS ItInstallInterruptHandler(uint8_t vector, ItHandler isr, void *context)
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 
-	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireDpcLevelSpinlock(&ItHandlerTableMutex);
 
 	if(ItHandlerDescriptorTable[vector].count == IT_MAX_SHARED_IRQ_CONSUMERS)
 	{
@@ -103,7 +103,7 @@ STATUS ItUninstallInterruptHandler(uint8_t vector, ItHandler isr)
 
 	vector -= IT_FIRST_INTERRUPT_VECTOR;
 	
-	PRIO prio = KeAcquireSpinlock(&ItHandlerTableMutex);
+	PRIO prio = KeAcquireDpcLevelSpinlock(&ItHandlerTableMutex);
 	for(uint8_t i = 0; i < ItHandlerDescriptorTable[vector].count; i++)
 	{
 		if(ItHandlerDescriptorTable[vector].consumer[i].callback == isr)

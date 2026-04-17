@@ -80,7 +80,7 @@ INTERNAL void HalInitializeScheduler(void);
 
 /**
  * @brief Perform task switch immediately if a new task is available
- * @attention Do not use this function. The only legal function to force task switch is \a KeTaskYield()
+ * @attention Do not use this function. The only legal function to force task switch is \ref KeTaskYield()
 */
 INTERNAL void HalPerformTaskSwitch(void);
 

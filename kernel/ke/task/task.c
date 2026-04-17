@@ -38,7 +38,7 @@ struct KeTaskControlBlock* KePrepareTCB(uint32_t flags)
     tcb->flags = flags;
     tcb->affinity = HAL_CPU_ALL;
     tcb->scheduling.state = TASK_UNINITIALIZED;
-    tcb->scheduling.policy = KE_SCHED_DEFAULT;
+    tcb->scheduling.policy = (flags & KE_TASK_FLAG_IDLE) ? KE_SCHED_IDLE : KE_SCHED_DEFAULT;
     tcb->scheduling.priority = 0;
 
     tcb->tid = KeAssignTid();
@@ -53,7 +53,7 @@ struct KeTaskControlBlock* KePrepareTCB(uint32_t flags)
 
 STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlock *tcb)
 {
-    PRIO prio = KeAcquireSpinlock(&(pcb->tasks.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(pcb->tasks.lock));
     if(0 == pcb->tasks.count)
     {
         pcb->tasks.list = tcb;
@@ -65,6 +65,7 @@ STATUS KeAssociateTCB(struct KeProcessControlBlock *pcb, struct KeTaskControlBlo
         while(NULL != t->sibling)
             t = t->sibling;
         t->sibling = tcb;
+        ++pcb->tasks.count;
     }
     else
     {
@@ -85,7 +86,7 @@ void KeDissociateTCB(struct KeTaskControlBlock *tcb)
     if(NULL == tcb->parent)
         return;
 
-    PRIO prio = KeAcquireSpinlock(&(tcb->parent->tasks.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(tcb->parent->tasks.lock));
     
     struct KeTaskControlBlock *t = tcb->parent->tasks.list;
     if(tcb == t)

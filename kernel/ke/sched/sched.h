@@ -69,17 +69,17 @@ struct KeProcessControlBlock* KeGetCurrentTaskParent(void);
 END_DRIVER_API
 
 /**
- * @brief Block task (remove from ready-to-run queue)
- * @param *tcb Task Control Block
+ * @brief Block current task
  * @param reason Reason for task block
+ * @attention The task continues to execute until preemption or explicit yield
  * @kinternal
  */
-INTERNAL void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason);
+INTERNAL void KeBlockTask(enum KeTaskBlockReason reason);
 
 /**
  * @brief Unblock task (insert to ready-to-run queue)
  * @param *tcb Task Control Block
- * @note Task must not be in \a TASK_BLOCK_TIMED_SLEEP block state
+ * @note Calling this function on a task in \a TASK_BLOCK_TIMED_SLEEP state has no effect
  * @kinternal
 */
 INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);

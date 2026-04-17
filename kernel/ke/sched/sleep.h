@@ -21,16 +21,6 @@ struct KeTaskControlBlock;
 
 
 /**
- * @brief Put arbitrary task to sleep for a given time
- * @param *tcb Task Control Block
- * @param time Time in nanoseconds
- * @return Status code
- * @warning The sleep is guaranteed to be not shorter than \a time, but the actual sleep time depends on how tasks are scheduled
-*/
-STATUS KePutTaskToSleep(struct KeTaskControlBlock *tcb, uint64_t time);
-
-
-/**
  * @brief Put current task to sleep for a given time
  * @param time Time in nanoseconds
  * @return Status code

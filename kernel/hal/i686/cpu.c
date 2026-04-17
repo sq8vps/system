@@ -141,7 +141,7 @@ STATUS I686StartProcessors(void)
         ApicSendIpi(APIC_IPI_DESTINATION_NORMAL, cpu->extensions.lapicId, APIC_IPI_START_UP, 0x01, true);
         if(OK == ApicWaitForIpiDelivery(US_TO_NS(200)))
         {
-            KeDelay(MS_TO_NS(2)); 
+            KeDelay(MS_TO_NS(20)); 
             //counter changed, continue with next AP
             if(lastCpuCount != ATOMIC_LOAD(&I686StartedCpuCount, ATOMIC_SEQ_CST))
                 continue;

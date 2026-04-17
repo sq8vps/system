@@ -102,7 +102,7 @@ static void KeDpcProcess(uint16_t cpu)
         ATOMIC_STORE(&(KeDpcState[cpu].isPending), false, ATOMIC_SEQ_CST);
         for(uint8_t i = 0; i < KE_DPC_PRIORITY_COUNT; i++)
         {
-            PRIO prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[i].lock));
+            PRIO prio = KeAcquireDpcLevelSpinlock(&(KeDpcState[cpu].queue[i].lock));
             struct KeDpcObject *t = KeDpcState[cpu].queue[i].head;
             while(NULL != KeDpcState[cpu].queue[i].head)
             {
@@ -112,7 +112,7 @@ static void KeDpcProcess(uint16_t cpu)
                 t->time = HalGetTimestamp() - t->time;
                 t->callback(t->context);
                 MmSlabFree(KeDpcState[cpu].slabHandle, t);
-                prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[i].lock));
+                prio = KeAcquireDpcLevelSpinlock(&(KeDpcState[cpu].queue[i].lock));
             }
             KeReleaseSpinlock(&(KeDpcState[cpu].queue[i].lock), prio);
         }

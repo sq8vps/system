@@ -246,7 +246,7 @@ STATUS ApicConfigureSystemTimer(uint8_t vector)
     if(vector < IT_FIRST_INTERRUPT_VECTOR)  
         return BAD_PARAMETER;
     
-    //if the bootstrap CPU can use TSC, but the current CPU cannot, there system is incompatible
+    //if the bootstrap CPU can use TSC, but the current CPU cannot, the system is incompatible
     //if the bootstrap CPU cannot use TSC, then stick to the LAPIC timer regardless of the current CPU capabilities
     if(ApicState.useTsc && !CHECK_TSC_USABLE())
         return NOT_SUPPORTED;
@@ -258,7 +258,7 @@ STATUS ApicConfigureSystemTimer(uint8_t vector)
         if(ApicState.useTsc)
             LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_TSC_DEADLINE_FLAG;
         else
-            LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_ONE_SHOT_FLAG;
+            LAPIC(LAPIC_LVT_TIMER_OFFSET) |= LAPIC_TIMER_PERIODIC_FLAG;
         
         return OK;
     }
@@ -266,11 +266,40 @@ STATUS ApicConfigureSystemTimer(uint8_t vector)
     return DEVICE_NOT_AVAILABLE;   
 }
 
+void ApicUpdateSystemTimerOnInterrupt(void)
+{
+    uint32_t current = LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET);
+    uint32_t initial = LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET);
+
+    //interrupt is when current count crosses zero, so we must add at least the "initial count"
+    ATOMIC_ADD_FETCH(
+#ifndef SMP
+        &ApicCounter,
+#else
+        &ApicCounter[HalGetCurrentCpu()], 
+#endif
+        (uint64_t)initial, ATOMIC_ACQ_REL
+    );
+
+    if(initial != current)
+    {
+        //if CPU is not that fast, the "current count" wrapped around zero and there is some remainder
+        ATOMIC_ADD_FETCH(
+#ifndef SMP
+            &ApicCounter,
+#else
+            &ApicCounter[HalGetCurrentCpu()], 
+#endif
+            (uint64_t)initial - (uint64_t)current, ATOMIC_ACQ_REL
+        );
+    }
+}
+
 void ApicStartSystemTimer(uint64_t time)
 {
     if(ApicState.useTsc)
     {
-        MsrSet(MSR_IA32_TSC_DEADLINE, TscCalculateRaw(time * (uint64_t)1000) + TscGetRaw(NULL));
+        MsrSet(MSR_IA32_TSC_DEADLINE, TscCalculateRaw(time) + TscGetRaw(NULL));
     }
     else
     {
@@ -280,8 +309,9 @@ void ApicStartSystemTimer(uint64_t time)
 #else
             &ApicCounter[HalGetCurrentCpu()], 
 #endif
-            (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET), ATOMIC_ACQ_REL);
-        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = (time * ApicClockSource.frequency) / (uint64_t)1000000;
+            (uint64_t)LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) - (uint64_t)LAPIC(LAPIC_TIMER_CURRENT_COUNT_OFFSET), ATOMIC_ACQ_REL
+        );
+        LAPIC(LAPIC_TIMER_INITIAL_COUNT_OFFSET) = (time * ApicClockSource.frequency) / (uint64_t)1'000'000'000;
     }
     LAPIC(LAPIC_LVT_TIMER_OFFSET) &= ~LAPIC_LOCAL_MASK;
 
@@ -330,6 +360,11 @@ void ApicSynchronizeTimers(void)
 STATUS HalConfigureSystemTimer(uint8_t vector)
 {   
     return ApicConfigureSystemTimer(vector);
+}
+
+void HalUpdateSystemTimerOnInterrupt(void)
+{
+    ApicUpdateSystemTimerOnInterrupt();
 }
 
 STATUS HalStartSystemTimer(uint64_t time)

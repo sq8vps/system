@@ -84,8 +84,14 @@ END_DRIVER_API
 INTERNAL STATUS HalConfigureSystemTimer(uint8_t vector);
 
 /**
- * @brief Start one-shot system timer
- * @param time Time in microseconds
+ * @brief Update system timer on interrupt
+ * @kinternal
+ */
+INTERNAL void HalUpdateSystemTimerOnInterrupt(void);
+
+/**
+ * @brief Start system timer
+ * @param time Time in nanoseconds
  * @kinternal
  * @return Status code
 */

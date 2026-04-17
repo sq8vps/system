@@ -41,7 +41,6 @@ static STATUS IoCloseFileRaw(struct IoFileHandle *handle);
  * @brief Read/write file pseudo-synchronously
  * 
  * Perform read/write from/to file using internal callback, so that the task remains blocked until the operation is completed.
- * @param *tcb Target Task Control Block
  * @param handle File handle in given task
  * @param *buffer Source/target buffer
  * @param size Data size in bytes
@@ -50,7 +49,7 @@ static STATUS IoCloseFileRaw(struct IoFileHandle *handle);
  * @param write True to write, false to read
  * @return Status code
  */
-static STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize, bool write);
+static STATUS IoReadWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize, bool write);
 
 /**
  * @brief Callback on read/write completion
@@ -429,9 +428,11 @@ STATUS IoWriteFile(int handle, void *buffer, size_t size, uint64_t offset,
     return status;
 }
 
-static STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize, bool write)
+static STATUS IoReadWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize, bool write)
 {
-    ASSERT(tcb && buffer);
+    ASSERT(buffer);
+
+    struct KeTaskControlBlock *tcb = KeGetCurrentTask();
 
     if(handle < 0)
         return NOT_FOUND;
@@ -489,7 +490,7 @@ static STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, vo
     if(!h->operation.completed)
     {
         //operation waiting to be completed
-        KeBlockTask(tcb, TASK_BLOCK_IO);
+        KeBlockTask(TASK_BLOCK_IO);
         barrier();
         KeReleaseSpinlock(&(h->operation.lock), prio);
         
@@ -511,12 +512,12 @@ static STATUS IoReadWriteFileSync(struct KeTaskControlBlock *tcb, int handle, vo
 
 STATUS IoReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
 {
-    return IoReadWriteFileSync(KeGetCurrentTask(), handle, buffer, size, offset, actualSize, false);
+    return IoReadWriteFileSync(handle, buffer, size, offset, actualSize, false);
 }
 
 STATUS IoWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, size_t *actualSize)
 {
-    return IoReadWriteFileSync(KeGetCurrentTask(), handle, buffer, size, offset, actualSize, true);
+    return IoReadWriteFileSync(handle, buffer, size, offset, actualSize, true);
 }
 
 DEFINE_SYSCALL(STATUS, ApiOpenFile, const char*, IoFileOpenMode, IoFileFlags, int*);

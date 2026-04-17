@@ -116,7 +116,7 @@ STATUS ApicIoInit(void)
 
     for(uint16_t i = 0; i < IoApicEntryCount; i++)
     {
-        PRIO prio = KeAcquireSpinlock(&IoApicDevice[IoApicDeviceCount].Lock);
+        PRIO prio = KeAcquireDpcLevelSpinlock(&IoApicDevice[IoApicDeviceCount].Lock);
         IoApicDevice[IoApicDeviceCount].mmio = (uint32_t*)(((uintptr_t)mmio) + (IoApicEntryTable[i].address - lowestAddress));
         IoApicDevice[IoApicDeviceCount].inputs = (read(&IoApicDevice[IoApicDeviceCount], IOAPIC_REG_IOAPICVER) >> 16) & 0x7F;
         IoApicDevice[IoApicDeviceCount].id = IoApicEntryTable[i].id;
@@ -190,7 +190,7 @@ STATUS ApicIoRegisterIrq(uint32_t input, uint8_t vector, enum HalInterruptMode m
     }
     params |= vector;
     params &= ~IOAPIC_IOREDTBL_MASK;
-    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireDpcLevelSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), params);
     KeReleaseSpinlock(&ioApic->Lock, prio);
 
@@ -203,7 +203,7 @@ STATUS ApicIoUnregisterIrq(uint32_t input)
     if(NULL == ioApic)
         return DEVICE_NOT_AVAILABLE;
     
-    PRIO prio = KeAcquireSpinlock(&ioApic->Lock);
+    PRIO prio = KeAcquireDpcLevelSpinlock(&ioApic->Lock);
     write64(ioApic, IOAPIC_REG_IOREDTBL(input - ioApic->irqBase), IT_FIRST_INTERRUPT_VECTOR | IOAPIC_IOREDTBL_MASK);
     KeReleaseSpinlock(&ioApic->Lock, prio);
 
@@ -242,7 +242,7 @@ uint32_t ApicIoReserveInput(uint32_t input)
 {
     for(uint8_t i = 0; i < IoApicDeviceCount; i++)
     {
-        PRIO prio = KeAcquireSpinlock(&IoApicDevice[i].Lock);
+        PRIO prio = KeAcquireDpcLevelSpinlock(&IoApicDevice[i].Lock);
         if(HAL_INTERRUPT_INPUT_ANY == input)
         {
             for(uint16_t k = 0; k < IoApicDevice[i].inputs; k++)
@@ -278,7 +278,7 @@ void ApicIoFreeInput(uint32_t input)
 {
     for(uint8_t i = 0; i < IoApicDeviceCount; i++)
     {
-        PRIO prio = KeAcquireSpinlock(&IoApicDevice[i].Lock);
+        PRIO prio = KeAcquireDpcLevelSpinlock(&IoApicDevice[i].Lock);
         if((input >= IoApicDevice[i].irqBase) && (input < (IoApicDevice[i].irqBase + IoApicDevice[i].inputs)))
         {
             input -= IoApicDevice[i].irqBase;

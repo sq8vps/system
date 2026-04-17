@@ -6,7 +6,7 @@
 
 #define KE_RR_DEFAULT_SLICE (10 * 1000 * 1000) //10 ms
 
-struct
+static struct
 {
     struct
     {
@@ -17,14 +17,13 @@ struct
 
     uint64_t slice;
 }
-static KeRr = {.queue.head = {nullptr}, .queue.tail = {nullptr}, .queue.lock = KeSpinlockInitializer,
+KeRr = {.queue.head = {nullptr}, .queue.tail = {nullptr}, .queue.lock = KeSpinlockInitializer,
     .slice = KE_RR_DEFAULT_SLICE};
 
 
 void KeRrQueueTask(struct KeTaskControlBlock *tcb)
 {
-    PRIO queuePrio = KeAcquireDpcLevelSpinlock(&KeRr.queue.lock);
-    PRIO tcbPrio = KeAcquireDpcLevelSpinlock(&tcb->scheduling.lock);
+    PRIO prio = KeAcquireSpinlock(&KeRr.queue.lock);
     int32_t priority = tcb->scheduling.priority;
     if(priority < 0)
         priority = 0;
@@ -47,24 +46,29 @@ void KeRrQueueTask(struct KeTaskControlBlock *tcb)
     }
     
     tcb->scheduling.state = TASK_READY_TO_RUN;
-    KeReleaseSpinlock(&tcb->scheduling.lock, tcbPrio);
-    KeReleaseSpinlock(&KeRr.queue.lock, queuePrio);
+    KeReleaseSpinlock(&KeRr.queue.lock, prio);
 }
 
-struct KeTaskControlBlock* KeRrGetNextTask(uint32_t cpu, uint64_t *slice)
+struct KeTaskControlBlock* KeRrGetNextTask(uint32_t cpu, struct KeTaskControlBlock *current, uint64_t *slice)
 {
-    struct KeTaskControlBlock *tcb = nullptr;
-    PRIO prio = KeAcquireDpcLevelSpinlock(&KeRr.queue.lock);
+    struct KeTaskControlBlock *next = nullptr;
+    PRIO prio = KeAcquireSpinlock(&KeRr.queue.lock);
 
     for(size_t i = KE_RR_PRIORITIES; i > 0; --i)
     {
+        if(likely(nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (current->scheduling.priority > (int32_t)i))
+        {
+            next = current;
+            break;
+        }
+
         if(nullptr != KeRr.queue.head[i - 1])
         {
-            tcb = KeRr.queue.head[i - 1];
+            next = KeRr.queue.head[i - 1];
 
-            KeRr.queue.head[i - 1] = tcb->scheduling.next;
-            tcb->scheduling.previous = nullptr;
-            tcb->scheduling.next = nullptr;
+            KeRr.queue.head[i - 1] = next->scheduling.next;
+            next->scheduling.previous = nullptr;
+            next->scheduling.next = nullptr;
             *slice = KeRr.slice;
             if(nullptr != KeRr.queue.head[i - 1])
                 KeRr.queue.head[i - 1]->scheduling.previous = nullptr;
@@ -74,5 +78,5 @@ struct KeTaskControlBlock* KeRrGetNextTask(uint32_t cpu, uint64_t *slice)
 
     KeReleaseSpinlock(&KeRr.queue.lock, prio);
 
-    return tcb;
+    return next;
 }

@@ -38,27 +38,26 @@ int BstInsertEx(struct BstNode **root, struct BstNode *node, BstCompareFunction 
     node->left = NULL;
     node->right = NULL;
     
-    if(NULL == root)
+    if(NULL == *root)
     {
         *root = node;
         return -1;
     }
     
-    struct BstNode *top = *root;
-    
     struct BstNode *next = NULL;
-    while(NULL != *root)
+    struct BstNode *r = *root;
+    while(NULL != r)
     {
-        next = *root;
-        if(cmp(node, *root) <= 0)
+        next = r;
+        if(cmp(node, r) <= 0)
         {
             right = false;
-            *root = (*root)->left;
+            r = r->left;
         }
         else
         {
             left = false;
-            *root = (*root)->right;
+            r = r->right;
         }
     }
     
@@ -74,8 +73,6 @@ int BstInsertEx(struct BstNode **root, struct BstNode *node, BstCompareFunction 
     }
     
     node->parent = next;
-    
-    *root = top;
 
     if(!right && !left)
         return 0;

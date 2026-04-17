@@ -82,15 +82,22 @@ def make_target(target):
         print("Starting target " + target)
     cwd = os.getcwd()
 
-    if clean and target in clean_allowed:
-        os.chdir(cwd + "/" + build_path[target])
-        execute(["cmake", "--build", ".", "--target=clean"])
-        os.chdir(cwd)
-        return
-    elif purge and target in purge_allowed:
-        if(os.path.isdir(cwd + "/" + build_path[target])):
-            shutil.rmtree(cwd + "/" + build_path[target])
-        return
+    if target != "all":
+        if clean:
+            if target in clean_allowed:
+                os.chdir(cwd + "/" + build_path[target])
+                execute(["cmake", "--build", ".", "--target=clean"])
+                os.chdir(cwd)
+            else:
+                print("Cleaning target " + target + " is not allowed")
+            return
+        elif purge:
+            if target in purge_allowed:
+                if(os.path.isdir(cwd + "/" + build_path[target])):
+                    shutil.rmtree(cwd + "/" + build_path[target])
+            else:
+                print("Purging target " + target + " is not allowed")
+            return
 
     if target == "configure":
         generate("tools", is_cross = False)

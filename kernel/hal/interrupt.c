@@ -60,7 +60,7 @@ STATUS HalRegisterIrq(
     uint8_t vector = 0;
 
     struct HalInterruptEntry *matching = NULL;
-    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireDpcLevelSpinlock(&HalInterruptListLock);
     if(NULL != HalInterruptList)
     {
         matching = HalInterruptList;
@@ -150,7 +150,7 @@ STATUS HalUnregisterIrq(uint32_t input, ItHandler isr)
 
     struct HalInterruptEntry *matching = NULL;
     struct HalInterruptEntry *previous = NULL;
-    PRIO prio = KeAcquireSpinlock(&HalInterruptListLock);
+    PRIO prio = KeAcquireDpcLevelSpinlock(&HalInterruptListLock);
     if(NULL != HalInterruptList)
     {
         matching = HalInterruptList;

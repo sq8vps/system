@@ -12,7 +12,7 @@ static KeSpinlock ExKernelWorkerLock = KeSpinlockInitializer;
 STATUS ExCreateKernelWorker(void(*entry)(void *), void *entryContext, struct KeTaskControlBlock **tcb)
 {
     STATUS status;
-    PRIO prio = KeAcquireSpinlock(&ExKernelWorkerLock);
+    PRIO prio = KeAcquireDpcLevelSpinlock(&ExKernelWorkerLock);
     if(NULL == ExKernelWorkerPCB)
     {
         status = KeCreateKernelProcess(0, entry, entryContext, NULL, tcb);

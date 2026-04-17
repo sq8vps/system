@@ -51,7 +51,7 @@ STATUS PicSendEoi(uint32_t input)
 
 void PicRemap(uint8_t masterIrqOffset, uint8_t slaveIrqOffset)
 {
-    PRIO prio = KeAcquireSpinlock(&(Pic[0].mutex));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(Pic[0].mutex));
     uint8_t mMask = IoPortReadByte(PIC_MASTER_DATA_PORT);
     IoPortWriteByte(PIC_MASTER_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
     IoPortWriteByte(PIC_MASTER_DATA_PORT, masterIrqOffset);
@@ -61,7 +61,7 @@ void PicRemap(uint8_t masterIrqOffset, uint8_t slaveIrqOffset)
     Pic[0].offset = masterIrqOffset;
     KeReleaseSpinlock(&(Pic[0].mutex), prio);
 
-    prio = KeAcquireSpinlock(&(Pic[1].mutex));
+    prio = KeAcquireDpcLevelSpinlock(&(Pic[1].mutex));
     uint8_t sMask = IoPortReadByte(PIC_SLAVE_DATA_PORT);
     IoPortWriteByte(PIC_SLAVE_CMD_PORT, PIC_ICW1_FLAG_IC4 | PIC_ICW1_FLAG_INIT);
     IoPortWriteByte(PIC_SLAVE_DATA_PORT, slaveIrqOffset);
@@ -184,7 +184,7 @@ uint32_t PicReserveInput(uint32_t input)
     {
         for(uint8_t k = 0; k < 2; k++)
         {
-            PRIO prio = KeAcquireSpinlock(&(Pic[k].mutex));
+            PRIO prio = KeAcquireDpcLevelSpinlock(&(Pic[k].mutex));
             for(uint8_t i = 0; i < PIC_INPUT_COUNT / 2; i++)
             {
                 if(0 == (Pic[k].usage & (1 << i)))
@@ -211,7 +211,7 @@ uint32_t PicReserveInput(uint32_t input)
         else
             return UINT32_MAX;
         
-        PRIO prio = KeAcquireSpinlock(&(Pic[k].mutex));
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(Pic[k].mutex));
         if(0 == (Pic[k].usage & (1 << input)))
         {
             Pic[k].usage |= (1 << input);
@@ -236,7 +236,7 @@ void PicFreeInput(uint32_t input)
     else
         return;
     
-    PRIO prio = KeAcquireSpinlock(&(Pic[k].mutex));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(Pic[k].mutex));
     Pic[k].usage &= ~(1 << input);
     KeReleaseSpinlock(&(Pic[k].mutex), prio);
 }

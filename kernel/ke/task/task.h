@@ -32,11 +32,12 @@ struct IoFileHandle;
 */
 enum KeTaskState
 {
-    TASK_UNINITIALIZED, //task is not initialized and won't be scheduled
-    TASK_READY_TO_RUN, //task is ready to run and waiting in a queue
-    TASK_RUNNING, //task is currently running
-    TASK_BLOCKED, //task is waiting for some event
-    TASK_FINISHED, //task finished and should be removed
+    TASK_UNINITIALIZED = 0, /**< Task is freshly created and won't be scheduled */
+    TASK_READY_TO_RUN = 1, /**< Task is waiting in a queue to be executed */
+    TASK_RUNNING = 2, /**< Task is currently running */
+    TASK_RUNNING_BLOCK = 3, /**< Task is currently running, but is going to be blocked on the next task switch */
+    TASK_BLOCKED = 4, /**< Task is blocked and won't be scheduled until unblocked */
+    TASK_FINISHED = 5, /**< Task finished execution and won't be scheduled */
 };
 
 /**
@@ -49,6 +50,11 @@ enum KeSchedulingPolicy
     KE_SCHED_FCFS = 2, /** First come - first served */
     KE_SCHED_IDLE = 3, /**< Idle task scheduling */
 };
+
+/**
+ * @brief Default scheduling policy
+ */
+#define KE_SCHED_DEFAULT KE_SCHED_CFS
 
 /**
  * @brief Reason for task block (task state = TASK_BLOCKED)

@@ -4,18 +4,17 @@
 
 #define KE_FCFS_PRIORITIES 8
 
-struct
+static struct
 {
     struct KeTaskControlBlock *head[KE_FCFS_PRIORITIES];
     struct KeTaskControlBlock *tail[KE_FCFS_PRIORITIES];
     KeSpinlock lock;
 }
-static KeFcfs = {.head = {nullptr}, .tail = {nullptr}, .lock = KeSpinlockInitializer};
+KeFcfs = {.head = {nullptr}, .tail = {nullptr}, .lock = KeSpinlockInitializer};
 
 void KeFcfsQueueTask(struct KeTaskControlBlock *tcb)
 {
-    PRIO queuePrio = KeAcquireDpcLevelSpinlock(&KeFcfs.lock);
-    PRIO tcbPrio = KeAcquireDpcLevelSpinlock(&tcb->scheduling.lock);
+    PRIO prio = KeAcquireSpinlock(&KeFcfs.lock);
     int32_t priority = tcb->scheduling.priority;
     if(priority < 0)
         priority = 0;
@@ -38,24 +37,29 @@ void KeFcfsQueueTask(struct KeTaskControlBlock *tcb)
     }
     
     tcb->scheduling.state = TASK_READY_TO_RUN;
-    KeReleaseSpinlock(&tcb->scheduling.lock, tcbPrio);
-    KeReleaseSpinlock(&KeFcfs.lock, queuePrio);
+    KeReleaseSpinlock(&KeFcfs.lock, prio);
 }
 
-struct KeTaskControlBlock* KeFcfsGetNextTask(uint32_t cpu, uint64_t *slice)
+struct KeTaskControlBlock* KeFcfsGetNextTask(uint32_t cpu, struct KeTaskControlBlock *current, uint64_t *slice)
 {
-    struct KeTaskControlBlock *tcb = nullptr;
-    PRIO prio = KeAcquireDpcLevelSpinlock(&KeFcfs.lock);
+    struct KeTaskControlBlock *next = nullptr;
+    PRIO prio = KeAcquireSpinlock(&KeFcfs.lock);
 
     for(size_t i = KE_FCFS_PRIORITIES; i > 0; --i)
     {
+        if(likely(nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (current->scheduling.priority > (int32_t)i))
+        {
+            next = current;
+            break;
+        }
+
         if(nullptr != KeFcfs.head[i - 1])
         {
-            tcb = KeFcfs.head[i - 1];
+            next = KeFcfs.head[i - 1];
 
-            KeFcfs.head[i - 1] = tcb->scheduling.next;
-            tcb->scheduling.previous = nullptr;
-            tcb->scheduling.next = nullptr;
+            KeFcfs.head[i - 1] = next->scheduling.next;
+            next->scheduling.previous = nullptr;
+            next->scheduling.next = nullptr;
             *slice = 0;
             if(nullptr != KeFcfs.head[i - 1])
                 KeFcfs.head[i - 1]->scheduling.previous = nullptr;
@@ -65,5 +69,5 @@ struct KeTaskControlBlock* KeFcfsGetNextTask(uint32_t cpu, uint64_t *slice)
 
     KeReleaseSpinlock(&KeFcfs.lock, prio);
 
-    return tcb;
+    return next;
 }

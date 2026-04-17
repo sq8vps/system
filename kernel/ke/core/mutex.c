@@ -21,7 +21,7 @@ static struct
 static void KeInsertToLockList(struct KeTaskControlBlock *tcb, uint64_t timeout)
 {
     timeout += HalGetTimestamp();
-    PRIO prio = KeAcquireSpinlock(&(KeLockingQueue.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(KeLockingQueue.lock));
     ASSERT(!tcb->scheduling.block.timeout.next && !tcb->scheduling.block.timeout.previous);
     tcb->scheduling.block.timeout.next  = NULL;
     tcb->scheduling.block.timeout.previous  = NULL;
@@ -145,7 +145,7 @@ bool KeAcquireMutexEx(KeMutex *mutex, uint64_t timeout)
 {
     HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-    PRIO prio = KeAcquireSpinlock(&(mutex->lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(mutex->lock));
     if((tcb != mutex->owner) && (NULL != mutex->owner))
     {
         if(KE_MUTEX_NO_WAIT == timeout)
@@ -155,12 +155,12 @@ bool KeAcquireMutexEx(KeMutex *mutex, uint64_t timeout)
         }
         else
         {
-            KeBlockTask(tcb, TASK_BLOCK_MUTEX);
-            PRIO tcbPrio = KeAcquireSpinlock(&(tcb->scheduling.lock));
+            KeBlockTask(TASK_BLOCK_MUTEX);
+            PRIO tcbPrio = KeAcquireDpcLevelSpinlock(&(tcb->scheduling.lock));
             tcb->scheduling.block.next = NULL;
             if(NULL != mutex->tail)
             {
-                PRIO prio = KeAcquireSpinlock(&(mutex->tail->scheduling.lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(mutex->tail->scheduling.lock));
                 mutex->tail->scheduling.block.next = tcb;
                 KeReleaseSpinlock(&(mutex->tail->scheduling.lock), prio);
                 tcb->scheduling.block.previous = mutex->tail;
@@ -199,8 +199,8 @@ void KeReleaseMutex(KeMutex *mutex)
 {
     if(NULL == mutex)
         return;
-    PRIO queuePrio = KeAcquireSpinlock(&(KeLockingQueue.lock));
-    PRIO prio = KeAcquireSpinlock(&(mutex->lock));
+    PRIO queuePrio = KeAcquireDpcLevelSpinlock(&(KeLockingQueue.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(mutex->lock));
     if(unlikely((NULL == mutex->owner) || (0 == mutex->current)))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 1, (uintptr_t)mutex, 0, 0);
     --mutex->current;
@@ -214,11 +214,11 @@ void KeReleaseMutex(KeMutex *mutex)
             return;
         }
         struct KeTaskControlBlock *next = mutex->head;
-        PRIO prio = KeAcquireSpinlock(&(next->scheduling.lock));
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(next->scheduling.lock));
         mutex->head = next->scheduling.block.next;
         if(NULL != mutex->head)
         {
-            PRIO prio = KeAcquireSpinlock(&(mutex->head->scheduling.lock));
+            PRIO prio = KeAcquireDpcLevelSpinlock(&(mutex->head->scheduling.lock));
             mutex->head->scheduling.block.previous = NULL;
             KeReleaseSpinlock(&(mutex->head->scheduling.lock), prio);
         }
@@ -245,7 +245,7 @@ bool KeAcquireSemaphoreEx(KeSemaphore *sem, uint32_t units, uint64_t timeout)
     if(units > sem->max)
         return false;
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-    PRIO prio = KeAcquireSpinlock(&(sem->lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(sem->lock));
     if(sem->current < units)
     {
         if(KE_MUTEX_NO_WAIT == timeout)
@@ -255,12 +255,12 @@ bool KeAcquireSemaphoreEx(KeSemaphore *sem, uint32_t units, uint64_t timeout)
         }
         else
         {
-            KeBlockTask(tcb, TASK_BLOCK_MUTEX);
-            PRIO tcbPrio = KeAcquireSpinlock(&(tcb->scheduling.lock));
+            KeBlockTask(TASK_BLOCK_MUTEX);
+            PRIO tcbPrio = KeAcquireDpcLevelSpinlock(&(tcb->scheduling.lock));
             tcb->scheduling.block.next = NULL;
             if(NULL != sem->tail)
             {
-                PRIO prio = KeAcquireSpinlock(&(sem->tail->scheduling.lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(sem->tail->scheduling.lock));
                 sem->tail->scheduling.block.next = tcb;
                 KeReleaseSpinlock(&(sem->tail->scheduling.lock), prio);
                 tcb->scheduling.block.previous = sem->tail;
@@ -306,14 +306,14 @@ static inline void KeSemaphoreProcessNextOnRelease(KeSemaphore *sem)
             return;
         }
         struct KeTaskControlBlock *next = sem->head;
-        PRIO prio = KeAcquireSpinlock(&(next->scheduling.lock));
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(next->scheduling.lock));
 
         if(sem->current >= next->scheduling.block.count)
         {
             sem->head = next->scheduling.block.next;
             if(NULL != sem->head)
             {
-                PRIO prio = KeAcquireSpinlock(&(sem->head->scheduling.lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(sem->head->scheduling.lock));
                 sem->head->scheduling.block.previous = NULL;
                 sem->needed = sem->head->scheduling.block.count;
                 KeReleaseSpinlock(&(sem->head->scheduling.lock), prio);
@@ -342,8 +342,8 @@ void KeReleaseSemaphore(KeSemaphore *sem, uint32_t units)
 {
     if(NULL == sem)
         return;
-    PRIO queuePrio = KeAcquireSpinlock(&(KeLockingQueue.lock));
-    PRIO prio = KeAcquireSpinlock(&(sem->lock));
+    PRIO queuePrio = KeAcquireDpcLevelSpinlock(&(KeLockingQueue.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(sem->lock));
     if(unlikely((sem->max - sem->current) < units))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 2, (uintptr_t)sem, sem->current, units);
     
@@ -357,7 +357,7 @@ bool KeAcquireRwLockEx(KeRwLock *rwLock, bool write, uint64_t timeout)
 {
     HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE, HAL_PRIORITY_LEVEL_PASSIVE);
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-    PRIO prio = KeAcquireSpinlock(&(rwLock->lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(rwLock->lock));
     if((0 != rwLock->writers) || (write && (0 != rwLock->readers)) || unlikely(!write && (UINT32_MAX == rwLock->readers)))
     {
         if(KE_MUTEX_NO_WAIT == timeout)
@@ -367,12 +367,12 @@ bool KeAcquireRwLockEx(KeRwLock *rwLock, bool write, uint64_t timeout)
         }
         else
         {
-            KeBlockTask(tcb, TASK_BLOCK_MUTEX);
-            PRIO tcbPrio = KeAcquireSpinlock(&(tcb->scheduling.lock));
+            KeBlockTask(TASK_BLOCK_MUTEX);
+            PRIO tcbPrio = KeAcquireDpcLevelSpinlock(&(tcb->scheduling.lock));
             tcb->scheduling.block.next = NULL;
             if(NULL != rwLock->tail)
             {
-                PRIO prio = KeAcquireSpinlock(&(rwLock->tail->scheduling.lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(rwLock->tail->scheduling.lock));
                 rwLock->tail->scheduling.block.next = tcb;
                 KeReleaseSpinlock(&(rwLock->tail->scheduling.lock), prio);
                 tcb->scheduling.block.previous = rwLock->tail;
@@ -418,7 +418,7 @@ static inline void KeRwLockProcessNextOnRelease(KeRwLock *rwLock)
         struct KeTaskControlBlock *next = rwLock->head;
         if(NULL == next)
             break;
-        PRIO prio = KeAcquireSpinlock(&(next->scheduling.lock));
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(next->scheduling.lock));
 
         if((next->scheduling.block.write && (0 == rwLock->readers))
             || (!next->scheduling.block.write && (0 == rwLock->writers)))
@@ -426,7 +426,7 @@ static inline void KeRwLockProcessNextOnRelease(KeRwLock *rwLock)
             rwLock->head = next->scheduling.block.next;
             if(NULL != rwLock->head)
             {
-                PRIO prio = KeAcquireSpinlock(&(rwLock->head->scheduling.lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(rwLock->head->scheduling.lock));
                 rwLock->head->scheduling.block.previous = NULL;
                 rwLock->write = rwLock->head->scheduling.block.write;
                 KeReleaseSpinlock(&(rwLock->head->scheduling.lock), prio);
@@ -462,8 +462,8 @@ void KeReleaseRwLock(KeRwLock *rwLock)
 {
     if(NULL == rwLock)
         return;
-    PRIO queuePrio = KeAcquireSpinlock(&(KeLockingQueue.lock));
-    PRIO prio = KeAcquireSpinlock(&(rwLock->lock));
+    PRIO queuePrio = KeAcquireDpcLevelSpinlock(&(KeLockingQueue.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(rwLock->lock));
     if(unlikely((0 == rwLock->readers) && (0 == rwLock->writers)))
         KePanicEx(UNACQUIRED_MUTEX_RELEASED, 3, (uintptr_t)rwLock, 0, 0);
     
@@ -488,11 +488,11 @@ void KeTimedExclusionRefresh(void)
     if(currentTimestamp < ATOMIC_LOAD(&(KeLockingQueue.earliest), ATOMIC_RELAXED))
         return;
 
-    PRIO prio = KeAcquireSpinlock(&(KeLockingQueue.lock));
+    PRIO prio = KeAcquireDpcLevelSpinlock(&(KeLockingQueue.lock));
     while(NULL != KeLockingQueue.head)
     {
         s = KeLockingQueue.head;
-        PRIO prio = KeAcquireSpinlock(&(s->scheduling.lock));
+        PRIO prio = KeAcquireDpcLevelSpinlock(&(s->scheduling.lock));
         if(currentTimestamp >= s->scheduling.block.timeout.until)
         {
             KeRemoveFromLockList(s);
@@ -500,7 +500,7 @@ void KeTimedExclusionRefresh(void)
             if(NULL != s->scheduling.block.mutex)
             {
                 KeMutex *mutex = s->scheduling.block.mutex;
-                PRIO prio = KeAcquireSpinlock(&(mutex->lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(mutex->lock));
                 if(NULL != s->scheduling.block.previous)
                     s->scheduling.block.previous->scheduling.next = s->scheduling.block.next;
                 else
@@ -517,7 +517,7 @@ void KeTimedExclusionRefresh(void)
             else if(NULL != s->scheduling.block.semaphore)
             {
                 KeSemaphore *semaphore = s->scheduling.block.semaphore;
-                PRIO prio = KeAcquireSpinlock(&(semaphore->lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(semaphore->lock));
 
                 if(NULL != s->scheduling.block.next)
                     s->scheduling.block.next->scheduling.block.previous = s->scheduling.block.previous;
@@ -542,7 +542,7 @@ void KeTimedExclusionRefresh(void)
             else
             {
                 KeRwLock *rwLock = s->scheduling.block.rwLock;
-                PRIO prio = KeAcquireSpinlock(&(rwLock->lock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(rwLock->lock));
 
                 if(NULL != s->scheduling.block.next)
                     s->scheduling.block.next->scheduling.block.previous = s->scheduling.block.previous;

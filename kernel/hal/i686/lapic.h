@@ -100,8 +100,13 @@ INTERNAL STATUS ApicInit(uintptr_t address);
 INTERNAL STATUS ApicConfigureSystemTimer(uint8_t vector);
 
 /**
- * @brief Start one-shot system timer
- * @param time Time to next IRQ in microseconds
+ * @brief Update the system timer on interrupt
+ */
+INTERNAL void ApicUpdateSystemTimerOnInterrupt(void);
+
+/**
+ * @brief Start system timer
+ * @param time Time to next IRQ in nanoseconds
 */
 INTERNAL void ApicStartSystemTimer(uint64_t time);
 

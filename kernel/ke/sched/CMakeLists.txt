@@ -1,4 +1,6 @@
 add_library(ke_sched OBJECT
+    cfs.c
+    fcfs.c
     idle.c
     rr.c
     sched.c

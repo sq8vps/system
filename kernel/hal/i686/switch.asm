@@ -1,12 +1,13 @@
-;struct KeTaskControlBlock *KeCurrentTask[]
+; struct
+; {
+;     struct KeTaskControlBlock *volatile task;
+;     void *volatile cpuState;
+;     uint32_t preemptible;
+;     uint64_t slice;
+;     uint32_t unused[3];
+; } KeCurrentTask[], KeNextTask[];
 extern KeCurrentTask
-;void *KeCurrentCpuState[]
-extern KeCurrentCpuState
-
-;struct KeTaskControlBlock *KeNextTask[]
 extern KeNextTask
-;void *KeNextCpuState[]
-extern KeNextCpuState
 
 ;__attribute__((fastcall))
 ;void GdtUpdateTss(uintptr_t esp0)
@@ -20,6 +21,14 @@ extern HalStoreMathState
 ;__attribute__((fastcall))
 ;void HalRestoreMathState(struct KeTaskControlBlock *tcb)
 extern HalRestoreMathState
+
+;FASTCALL
+;void KeUpdateTaskScheduleTime(struct KeTaskControlBlock *tcb)
+extern KeUpdateTaskScheduleTime
+
+;FASTCALL
+;void KeHandleLastTask(struct KeTaskControlBlock *tcb)
+extern KeHandleLastTask
 
 ;volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] - SMP systems
 ;volatile bool KeTaskSwitchPending - UP systems
@@ -48,27 +57,23 @@ KeStoreTaskContext:
 
     mov edx,[esp+28] ;get cpu number, which is on the stack
 
-    mov edi,[KeCurrentCpuState+4*edx]
-    ;check if KeCurrentCpuState is NULL
+    shl edx,5 ;get KeCurrentTask index from CPU number
+    mov edi,[KeCurrentTask + edx]
+    ;check if KeCurrentTask.task is NULL
     ;if so, we are probably just starting and the currently executed code is not a task
     ;just drop all data and switch to the next task, the scheduler is aware of it
     test edi,edi
     jz .skip
 
-    mov [edi + CPUState.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
-    add DWORD [edi + CPUState.esp],4 ;omit locally pushed EDI
-
-    mov edi,[KeCurrentTask+4*edx] ;store current task in last task
-    mov [KeLastTask+4*edx],edi
-
     push eax
-
     cld
     mov ecx,edi ;fastcall
     call HalStoreMathState
-
     pop eax
 
+    mov edi,[KeCurrentTask + edx + SchedState.cpuState]
+    mov [edi + CPUState.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
+    add DWORD [edi + CPUState.esp],4 ;omit locally pushed EDI
 
 .skip:
     pop edi ;restore original edi
@@ -82,46 +87,62 @@ KeStoreTaskContext:
 ;This function must be called using jmp!
 KeSwitchToTask:
 
-    mov edi,eax ;get CPU number
-    
-    mov esi,[KeNextTask+4*edi]
-    mov [KeCurrentTask+4*edi],esi
-    mov [KeNextTask+4*edi],DWORD 0
+    mov ebx,eax ;get CPU number
+
+    shl eax,5 ;make KeNextTask/KeCurrentTask index from CPU number
+    lea esi,[KeNextTask + eax] ;esi points to KeNextTask
+    lea edi,[KeCurrentTask + eax] ;edi points to KeCurrentTask
+    mov ebp,[esi + SchedState.cpuState] ;ebp is KeNextTask.cpuState
 
     cld
-    mov ecx,esi ;fastcall
+    mov ecx,[esi + SchedState.task] ;fastcall
     call HalRestoreMathState
 
-    mov esi,[KeNextCpuState+4*edi]
-    mov [KeCurrentCpuState+4*edi],esi
-    mov [KeNextCpuState+4*edi],DWORD 0
-    mov esp,[esi + CPUState.esp] ;update kernel stack ESP
+    cld
+    mov ecx,[esi + SchedState.task] ;fastcall
+    call KeUpdateTaskScheduleTime
+
+    mov esp,[ebp + CPUState.esp] ;update kernel stack ESP
+
+    cld
+    mov ecx,[edi + SchedState.task] ;fastcall
+    call KeHandleLastTask
 
     mov eax,cr3 ;get current CR3
-    mov edx,[esi + CPUState.cr3] ;get task CR3
-    cmp eax,edx ;compare current CR3 and task CR3
-    je .skipCR3switch ;skip if both CR3 are the same - avoid TLB flush
+    mov edx,[ebp + CPUState.cr3] ;get task CR3
+    xor eax,edx ;compare current CR3 and task CR3
+    jz .skipCR3switch ;skip if both CR3 are the same - avoid TLB flush
     mov cr3,edx
 
     .skipCR3switch:
 
     ;update ESP0 in TSS for privilege level switches
-    mov ecx,[esi + CPUState.esp0] 
+    mov ecx,[ebp + CPUState.esp0] 
     ;GdtUpdateTss uses fastcall
     call GdtUpdateTss
 
     ; restore segment registers
-    mov ax,[esi + CPUState.ds]
+    mov ax,[ebp + CPUState.ds]
     mov ds,ax
-    mov ax,[esi + CPUState.es]
+    mov ax,[ebp + CPUState.es]
     mov es,ax
-    mov ax,[esi + CPUState.fs]
+    mov ax,[ebp + CPUState.fs]
     mov fs,ax
-    mov ax,[esi + CPUState.gs]
+    mov ax,[ebp + CPUState.gs]
     mov gs,ax 
 
+    push es
+
+    push ds
+    pop es
+    cld
+    mov ecx,3
+    rep movsd ;copy 3 dwords from KeNextTask to KeCurrentTask
+
+    pop es
+
     ;cli
-    mov byte [KeTaskSwitchInProgress+edi],0
+    mov byte [KeTaskSwitchInProgress + ebx],0
     ;sti
 
     pop ebp
@@ -152,13 +173,21 @@ HalPerformTaskSwitch:
     test dl,dl
     jz .returnFromSwitch
 
+    push esi
+    push edi
+
     cli
     mov byte [KeTaskSwitchPending+eax],0
 
-    mov edx,[KeNextTask+4*eax]
-    test edx,edx ;check if there is a next task
+    mov edx,eax ;get offset from CPU number
+    shl edx,5
+    lea esi,[KeNextTask + edx]
+    lea edi,[KeCurrentTask + edx]
+    mov ecx,[esi + SchedState.task]
+    mov edx,[edi + SchedState.task]
+    xor ecx,edx ;check if next task differs from the current one
     ;if not, then continue with the current one
-    jz .returnFromSwitch
+    jz .copyNextToCurrent
 
     mov byte [KeTaskSwitchInProgress+eax],1
     ;sti
@@ -189,7 +218,21 @@ HalPerformTaskSwitch:
     ;this point should be unreachable
     jmp $
 
+.copyNextToCurrent:
+    push es
+
+    push ds
+    pop es
+    cld
+    mov ecx,3
+    rep movsd ;copy 3 dwords from KeNextTask to KeCurrentTask
+
+    pop es
+
 .returnFromSwitch: ;but return here on task switch
+    pop edi
+    pop esi
+
     sti
     ret
 
@@ -229,4 +272,13 @@ struc CPUState
     .es resw 1
     .fs resw 1
     .gs resw 1
+endstruc
+
+;keep this in sync with the struct in sched.c
+struc SchedState
+    .task resd 1
+    .cpuState resd 1
+    .preemptible resd 1
+    .slice resq 1
+    .unused resd 3
 endstruc

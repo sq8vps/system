@@ -94,7 +94,7 @@ STATUS IoRegisterFrameBuffer(const struct IoDeviceObject *dev, const struct IoFr
     if(-1 != handle) //updating frame buffer config
     {
         void *oldPfb, *oldFb;
-        prio = KeAcquireSpinlock(&(IoVideoOutputs.list[handle].lock));
+        prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
         oldPfb = IoVideoOutputs.list[handle].fb.pfb;
         oldFb = IoVideoOutputs.list[handle].fb.fb;
         IoVideoOutputs.list[handle].fb.address = address;
@@ -153,7 +153,7 @@ STATUS IoRegisterFrameBuffer(const struct IoDeviceObject *dev, const struct IoFr
             union IoVideoOutput c;
             c.fb.config = *config;
             c.fb.fb = ufb;
-            prio = KeAcquireSpinlock(&(IoVideoOutputs.list[handle].lock));
+            prio = KeAcquireDpcLevelSpinlock(&(IoVideoOutputs.list[handle].lock));
             for(size_t i = 0; i < IO_MAX_VIDEO_EVENT_HANDLERS; i++)
             {
                 if(IoVideoOutputs.list[handle].changeHandler[i].used)

@@ -29,7 +29,7 @@ typedef size_t tree_key_t;
   union{type *right; type *next;}; \
   type *parent; \
   tree_key_t key; \
-  union {int8_t i8; uint8_t u8; int16_t i16; uint16_t u16; int32_t i32; uint32_t u32; int64_t i64; uint64_t u64; size_t sz; void *v} aux; 
+  union {int8_t i8; uint8_t u8; int16_t i16; uint16_t u16; int32_t i32; uint32_t u32; int64_t i64; uint64_t u64; size_t sz; void *v;} aux; 
 
 END_DRIVER_API
 

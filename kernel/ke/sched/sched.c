@@ -17,6 +17,11 @@
 #include "rr.h"
 #include "cfs.h"
 
+/**
+ * @brief System tick to be used when the time slice is indefinite (in nanoseconds)
+ */
+#define KE_DEFAULT_SYSTEM_TICK MS_TO_NS(1)
+
 #ifndef SMP
 struct
 {
@@ -34,7 +39,9 @@ struct
 {
     struct KeTaskControlBlock *volatile task;
     void *volatile cpuState;
+    uint32_t preemptible;
     uint64_t slice;
+    uint32_t unused[3];
 }
 KeCurrentTask[MAX_CPU_COUNT] = {0}, 
 KeNextTask[MAX_CPU_COUNT] = {0};
@@ -43,7 +50,14 @@ volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] = {0};
 volatile bool KeTaskSwitchInProgress[MAX_CPU_COUNT] = {0};
 #endif
 
-static struct KeTaskControlBlock *KeCleanupTask = NULL;
+static struct KeTaskControlBlock *KeCleanupTask = nullptr;
+static struct
+{
+    struct KeTaskControlBlock *head;
+    struct KeTaskControlBlock *tail;
+    KeSpinlock lock;
+} 
+KeFinishedTasks = {.head = nullptr, .tail = nullptr, .lock = KeSpinlockInitializer};
 
 static uint32_t KeJoinedCpus = 0; 
 
@@ -55,31 +69,67 @@ static void KeSchedulerWorker(void *context)
 {
 #ifndef SMP
     UNUSED(context);
-    if((false == KeTaskSwitchPending) && (false == KeTaskSwitchInProgress))
+    if((false == KeTaskSwitchPending) && (false == KeTaskSwitchInProgress) && KeCurrentTask[cpu].preemptible)
     {
         KeSchedule(0);
         KeTaskSwitchPending = true;
     }
 #else
     uint32_t cpu = (uint32_t)context;
-    if((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu]))
+    if((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu]) && KeCurrentTask[cpu].preemptible)
     {
         KeSchedule(cpu);
         KeTaskSwitchPending[cpu] = true;
     }
 #endif
+    HalStartSystemTimer(KeNextTask[cpu].preemptible ? KeNextTask[cpu].slice : KE_DEFAULT_SYSTEM_TICK);
 }
 
 STATUS KeSchedulerISR(void *context)
 {
     UNUSED(context);
+    HalUpdateSystemTimerOnInterrupt();
 #ifndef SMP
     KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, NULL);
 #else
     uint32_t cpu = HalGetCurrentCpu();
-    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, (void*)cpu);
+    KeRegisterDpc(KE_DPC_PRIORITY_LOW, KeSchedulerWorker, (void*)cpu);
 #endif
     return OK;
+}
+
+FASTCALL
+void KeUpdateTaskScheduleTime(struct KeTaskControlBlock *tcb)
+{
+    tcb->scheduling.lastScheduled = HalGetTimestamp();
+}
+
+static inline void KeQueueTask(struct KeTaskControlBlock *tcb)
+{
+    switch(tcb->scheduling.policy)
+    {
+        case KE_SCHED_FCFS:
+            KeFcfsQueueTask(tcb);
+            break;
+        case KE_SCHED_RR:
+            KeRrQueueTask(tcb);
+            break;
+        case KE_SCHED_CFS:
+        case KE_SCHED_IDLE:
+            KeCfsQueueTask(tcb);
+            break;
+    }
+}
+
+FASTCALL
+void KeHandleLastTask(struct KeTaskControlBlock *tcb)
+{
+    if(unlikely(nullptr == tcb))
+        return;
+    PRIO prio = KeAcquireSpinlock(&tcb->scheduling.lock);
+    if(TASK_RUNNING == tcb->scheduling.state)
+        KeQueueTask(tcb);
+    KeReleaseSpinlock(&tcb->scheduling.lock, prio);
 }
 
 static void KeSchedule(uint32_t cpu)
@@ -90,26 +140,64 @@ static void KeSchedule(uint32_t cpu)
     struct KeTaskControlBlock *current = KeCurrentTask[cpu].task;
     struct KeTaskControlBlock *next = nullptr;
 
-    if(TASK_RUNNING == current->scheduling.state)
+    if(likely(nullptr != current))
     {
-        switch(current->scheduling.policy)
+        PRIO prio = KeAcquireSpinlock(&current->scheduling.lock);
+        current->scheduling.lastRuntime = HalGetTimestamp() - current->scheduling.lastScheduled;
+        bool wakeCleanup = false;
+        
+        if(TASK_RUNNING_BLOCK == current->scheduling.state)
         {
-            case KE_SCHED_FCFS:
-                KeFcfsQueueTask(current);
-                break;
-            case KE_SCHED_RR:
-                KeRrQueueTask(current);
-                break;
-            case KE_SCHED_CFS:
-            case KE_SCHED_IDLE:
-                KeCfsQueueTask(current);
-                break;
+            current->scheduling.state = TASK_BLOCKED;
+        }
+        else if(TASK_FINISHED == current->scheduling.state)
+        {
+            PRIO prio = KeAcquireSpinlock(&KeFinishedTasks.lock);
+            if(nullptr != KeFinishedTasks.tail)
+            {
+                KeFinishedTasks.tail->scheduling.next = current;
+                KeFinishedTasks.tail = current;
+                current->scheduling.next = nullptr;
+            }
+            else
+            {
+                KeFinishedTasks.head = current;
+                KeFinishedTasks.tail = current;
+                current->scheduling.next = nullptr;
+            }
+            KeReleaseSpinlock(&KeFinishedTasks.lock, prio);
+            wakeCleanup = true;
+        }
+        KeReleaseSpinlock(&current->scheduling.lock, prio);
+
+        if(wakeCleanup)
+            KeWakeUpTask(KeCleanupTask);
+    }
+
+    next = KeFcfsGetNextTask(cpu, current, &KeNextTask[cpu].slice);
+    if(nullptr == next)
+    {
+        next = KeRrGetNextTask(cpu, current, &KeNextTask[cpu].slice);
+        if(nullptr == next)
+        {
+            next = KeCfsGetNextTask(cpu, current, &KeNextTask[cpu].slice);
+            if(unlikely(nullptr == next))
+                KePanicEx(NO_EXECUTABLE_TASK, cpu, 0, 0, 0);
         }
     }
 
-    //should never reach this point
-    KePanicEx(NO_EXECUTABLE_TASK, cpu, 0, 0, 0);
+    if(next == KeCurrentTask[cpu ? 0 : 1].task)
+        ASM("nop");
+
+    next->scheduling.state = TASK_RUNNING;
+    KeNextTask[cpu].task = next;
+    KeNextTask[cpu].cpuState = &next->data;
+    if(0 != KeNextTask[cpu].slice)
+        KeNextTask[cpu].preemptible = 1;
+    else
+        KeNextTask[cpu].preemptible = 0;
 }
+
 
 [[noreturn]] void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext)
 {   
@@ -117,9 +205,6 @@ static void KeSchedule(uint32_t cpu)
     //create idle task
     if(OK != (ret = KeCreateIdleTask()))
         KePanicEx(BOOT_FAILURE, 1, ret, 0, 0);
-    
-    // if(OK != (ret = KeCreateIdleTask()))
-    //     KePanicEx(BOOT_FAILURE, 1, ret, 0, 0);
     
     if(NULL != continuationTask)
     {
@@ -144,7 +229,7 @@ static void KeSchedule(uint32_t cpu)
     ATOMIC_ADD_FETCH(&KeJoinedCpus, 1, ATOMIC_SEQ_CST);
 
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
-    HalStartSystemTimer(10000);
+    HalStartSystemTimer(KE_DEFAULT_SYSTEM_TICK);
 
     KeTaskYield();
     
@@ -157,15 +242,8 @@ STATUS KeEnableTask(struct KeTaskControlBlock *tcb)
     if(NULL == tcb)
         return BAD_PARAMETER;
 
-    PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
-
     if(TASK_UNINITIALIZED == tcb->scheduling.state)
-    {
-        tcb->scheduling.requestedState = TASK_READY_TO_RUN;
-        KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->scheduling.majorPriority][tcb->scheduling.minorPriority], false);
-    }
-    
-    KeReleaseSpinlock(&(tcb->scheduling.lock), prio);
+        KeQueueTask(tcb);
 
     return OK;
 }
@@ -175,47 +253,38 @@ STATUS KeEnableTask(struct KeTaskControlBlock *tcb)
     UNUSED(result);
     //TODO: handle return code
     struct KeTaskControlBlock *tcb = KeGetCurrentTask();
-    tcb->scheduling.requestedState = TASK_FINISHED;
+    ATOMIC_STORE(&tcb->scheduling.state, TASK_FINISHED, ATOMIC_RELAXED);
     KeTaskYield();
 
     while(1)
         ;
 }
 
-void KeBlockTask(struct KeTaskControlBlock *tcb, enum KeTaskBlockReason reason)
+void KeBlockTask(enum KeTaskBlockReason reason)
 {
-    if(TASK_BLOCK_SLEEP == reason)
+    if(unlikely(TASK_BLOCK_SLEEP == reason))
         return;
 
+    struct KeTaskControlBlock *tcb = KeGetCurrentTask();
+    //A task can only block itself, so it must be running at that time. It's deattached from all queues then.
     PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
     if(unlikely(tcb->flags & KE_TASK_FLAG_IDLE))
         KePanic(UNEXPECTED_FAULT);
-    tcb->scheduling.requestedState = TASK_BLOCKED;
+    tcb->scheduling.state = TASK_RUNNING_BLOCK;
     tcb->scheduling.block.reason = reason;
-    KeDetachTaskFromQueue(tcb, false);
     KeReleaseSpinlock(&(tcb->scheduling.lock), prio);
 }
 
 void KeUnblockTask(struct KeTaskControlBlock *tcb)
 {
+    //there might be a scenario when the task requested a block but did not yield yet, and is still running
+    //this is the TASK_RUNNING_BLOCK case
+    //in such a case we can't queue the task, as it may result in multiple CPUs executing the same task
     PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
-
-    if(TASK_BLOCK_SLEEP != tcb->scheduling.block.reason)
-    {
-        tcb->scheduling.block.reason = TASK_BLOCK_NOT_BLOCKED;
-        //if the task is running on an CPU, it must stay detached from any queue
-        //this prevents other CPUs in a SMP system to execute the same task simultaneously
-        //in UP systems the problem is almost the same - the CPU might be currently executing the task,
-        //so it must stay detached
-        //just check if task is waiting
-        if(tcb->scheduling.state == TASK_BLOCKED)
-            KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->scheduling.majorPriority][tcb->scheduling.minorPriority], false);
-        
-        if(TASK_RUNNING == tcb->scheduling.state)
-            tcb->scheduling.requestedState = TASK_READY_TO_RUN;
-        else
-            tcb->scheduling.state = TASK_READY_TO_RUN;
-    }
+    if(TASK_RUNNING_BLOCK == tcb->scheduling.state)
+        tcb->scheduling.state = TASK_RUNNING;
+    else if(TASK_BLOCKED == tcb->scheduling.state)
+        KeQueueTask(tcb);
     KeReleaseSpinlock(&(tcb->scheduling.lock), prio);
 }
 
@@ -230,9 +299,8 @@ void KeWaitForWakeUp(void)
     }
     else
     {
-        tcb->scheduling.state = TASK_BLOCKED;
+        tcb->scheduling.state = TASK_RUNNING_BLOCK;
         tcb->scheduling.block.reason = TASK_BLOCK_SLEEP;
-        KeDetachTaskFromQueue(tcb, false);
         KeReleaseSpinlock(&(tcb->scheduling.lock), prio);
         KeTaskYield();
     }
@@ -247,10 +315,9 @@ void KeWakeUpTask(struct KeTaskControlBlock *tcb)
     //task might be reattached only when it is waiting for an event
     if((tcb->scheduling.state == TASK_BLOCKED) && (tcb->scheduling.block.reason == TASK_BLOCK_SLEEP))
     {
-        KeAttachTaskToQueue(tcb, &KeReadyToRun[tcb->scheduling.majorPriority][tcb->scheduling.minorPriority], false);
-        tcb->scheduling.state = TASK_READY_TO_RUN;
-        tcb->scheduling.requestedState = TASK_READY_TO_RUN;
         tcb->scheduling.block.reason = TASK_BLOCK_NOT_BLOCKED;
+        tcb->scheduling.state = TASK_READY_TO_RUN;
+        KeQueueTask(tcb);
     }
 
     KeReleaseSpinlock(&(tcb->scheduling.lock), prio);   
@@ -299,6 +366,7 @@ void KeTaskYield(void)
 #endif
     HalLowerPriorityLevel(prio);
     barrier();
+    HalStartSystemTimer(KeNextTask[cpu].preemptible ? KeNextTask[cpu].slice : KE_DEFAULT_SYSTEM_TICK);
     HalPerformTaskSwitch();
 }
 
@@ -311,13 +379,8 @@ void KeJoinScheduler(void)
         while(1)
             ;
     }
-    // if(OK != KeCreateIdleTask())
-    // {
-    //     while(1)
-    //         ;
-    // }
     HalConfigureSystemTimer(IT_SYSTEM_TIMER_VECTOR);
-    HalStartSystemTimer(10000);
+    HalStartSystemTimer(KE_DEFAULT_SYSTEM_TICK);
 
     ATOMIC_ADD_FETCH(&KeJoinedCpus, 1, ATOMIC_SEQ_CST);
 }
@@ -333,21 +396,23 @@ static void KeTaskCleanupWorker(void *context)
     UNUSED(context);
     while(1)
     {
-        // PRIO prio = KeAcquireSpinlock(&(KeFinished.lock));
-        // struct KeTaskControlBlock *t = KeFinished.head;
+        PRIO prio = KeAcquireSpinlock(&(KeFinishedTasks.lock));
+        struct KeTaskControlBlock *t = KeFinishedTasks.head;
 
-        // if(NULL != t)
-        // {
-        //     KeDetachTaskFromQueue(t, true);
-        //     barrier();
-        //     KeReleaseSpinlock(&(KeFinished.lock), prio);
+        if(NULL != t)
+        {
+            KeFinishedTasks.head = t->scheduling.next;
+            if(nullptr == KeFinishedTasks.head)
+                KeFinishedTasks.tail = nullptr;
+            barrier();
+            KeReleaseSpinlock(&(KeFinishedTasks.lock), prio);
 
-        //     KeDestroyTask(t);
-        // }
-        // else
-        // {
-        //     KeReleaseSpinlock(&(KeFinished.lock), prio);
-        // }
+            KeDestroyTask(t);
+        }
+        else
+        {
+            KeReleaseSpinlock(&(KeFinishedTasks.lock), prio);
+        }
         KeWaitForWakeUp();
     }
 }

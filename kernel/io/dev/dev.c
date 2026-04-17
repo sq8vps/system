@@ -298,7 +298,7 @@ STATUS IoSendRpSync(struct IoDeviceObject *dev, struct IoRp *rp)
         barrier();
         if(rp->pending)
         {
-            KeBlockTask(rp->task, TASK_BLOCK_IO);
+            KeBlockTask(TASK_BLOCK_IO);
             barrier();
             HalLowerPriorityLevel(lastPrio);
             KeTaskYield();
@@ -513,7 +513,7 @@ static bool IoBuildDeviceStackAndEnumerate(struct IoEnumerationQueue *t)
 
 void IoRetryBuildDeviceStackAndEnumerate(void)
 {
-    PRIO prio = KeAcquireSpinlock(&IoEnumerationRetryQueueLock);
+    PRIO prio = KeAcquireDpcLevelSpinlock(&IoEnumerationRetryQueueLock);
     while(NULL != IoEnumerationRetryQueueHead)
     {
         struct IoEnumerationQueue *t = IoEnumerationRetryQueueHead;
@@ -523,7 +523,7 @@ void IoRetryBuildDeviceStackAndEnumerate(void)
         IoBuildDeviceStackAndEnumerate(t);
         MmFreeKernelHeap(t);
         
-        prio = KeAcquireSpinlock(&IoEnumerationRetryQueueLock);
+        prio = KeAcquireDpcLevelSpinlock(&IoEnumerationRetryQueueLock);
     }
     KeReleaseSpinlock(&IoEnumerationRetryQueueLock, prio); 
 }
@@ -533,7 +533,7 @@ static void IoDeviceEnumeratorWorker(void *context)
     UNUSED(context);
     while(1)
     {
-        PRIO prio = KeAcquireSpinlock(&IoEnumerationQueueLock);
+        PRIO prio = KeAcquireDpcLevelSpinlock(&IoEnumerationQueueLock);
         while(NULL != IoEnumerationQueueHead)
         {
             struct IoEnumerationQueue *t = IoEnumerationQueueHead;
@@ -542,7 +542,7 @@ static void IoDeviceEnumeratorWorker(void *context)
             
             if(!IoBuildDeviceStackAndEnumerate(t))
             {
-                PRIO prio = KeAcquireSpinlock(&(IoEnumerationRetryQueueLock));
+                PRIO prio = KeAcquireDpcLevelSpinlock(&(IoEnumerationRetryQueueLock));
                 if(NULL != IoEnumerationRetryQueueHead)
                 {
                     struct IoEnumerationQueue *s = IoEnumerationRetryQueueHead;
