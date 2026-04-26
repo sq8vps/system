@@ -42,14 +42,20 @@ void KeFcfsQueueTask(struct KeTaskControlBlock *tcb)
 
 struct KeTaskControlBlock* KeFcfsGetNextTask(uint32_t cpu, struct KeTaskControlBlock *current, uint64_t *slice)
 {
+    if(likely(nullptr != current) && (KE_SCHED_FCFS != current->scheduling.policy))
+        current = nullptr;
+
     struct KeTaskControlBlock *next = nullptr;
     PRIO prio = KeAcquireSpinlock(&KeFcfs.lock);
 
     for(size_t i = KE_FCFS_PRIORITIES; i > 0; --i)
     {
-        if(likely(nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (current->scheduling.priority > (int32_t)i))
+        if((nullptr != current) 
+            && (TASK_RUNNING == current->scheduling.state) 
+            && (current->scheduling.priority > (int32_t)i))
         {
             next = current;
+            *slice = 0;
             break;
         }
 
@@ -65,6 +71,13 @@ struct KeTaskControlBlock* KeFcfsGetNextTask(uint32_t cpu, struct KeTaskControlB
                 KeFcfs.head[i - 1]->scheduling.previous = nullptr;
             break;
         }
+    }
+
+    if((nullptr == next) && (nullptr != current) && (TASK_RUNNING == current->scheduling.state))
+    {
+        //last resort, absolutely nothing else, but the currently running task can run further
+        next = current;
+        *slice = 0;
     }
 
     KeReleaseSpinlock(&KeFcfs.lock, prio);

@@ -191,6 +191,22 @@ typedef enum
 
 END_DRIVER_API
 
+#ifdef SMP
+
+/**
+ * @brief Do whathever's inside the argument list when SMP is enabled
+ * @param ... Things to do when SMP is enabled
+ */
+#define SMP_ONLY(...) __VA_ARGS__
+#else
+
+/**
+ * @brief Do whathever's inside the argument list when SMP is enabled
+ * @param ... Things to do when SMP is enabled
+ */
+#define SMP_ONLY(...)
+#endif
+
 #include "hal/arch.h"
 
 /**

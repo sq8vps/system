@@ -145,9 +145,12 @@ static void KeCfsSetNewLeftmost(struct TreeNode *tree, struct KeTaskControlBlock
 
 struct KeTaskControlBlock* KeCfsGetNextTask(uint32_t cpu, struct KeTaskControlBlock *current, uint64_t *slice)
 {
+    if(likely(nullptr != current) && (KE_SCHED_CFS != current->scheduling.policy) & (KE_SCHED_IDLE != current->scheduling.policy))
+        current = nullptr;
+
     struct KeTaskControlBlock *next = nullptr;
     struct KeCfsData *cd = nullptr;
-    if(likely(nullptr != current))
+    if((nullptr != current))
         cd = (struct KeCfsData*)current->scheduling.shadow;
 
     PRIO prio = KeAcquireSpinlock(&KeCfs.lock);
@@ -156,7 +159,7 @@ struct KeTaskControlBlock* KeCfsGetNextTask(uint32_t cpu, struct KeTaskControlBl
     {
         next = KeCfs.leftmost;
         struct KeCfsData *d = (struct KeCfsData*)next->scheduling.shadow;
-        if(likely(nullptr != current) && (KE_SCHED_IDLE != current->scheduling.policy) && (TASK_RUNNING == current->scheduling.state) && (cd->vruntime < d->vruntime))
+        if((nullptr != current) && (KE_SCHED_IDLE != current->scheduling.policy) && (TASK_RUNNING == current->scheduling.state) && (cd->vruntime < d->vruntime))
         {
             //current task is better than the one that would be selected
             next = current;
@@ -179,7 +182,7 @@ struct KeTaskControlBlock* KeCfsGetNextTask(uint32_t cpu, struct KeTaskControlBl
     {
         next = KeCfs.idleLeftmost;
         struct KeCfsData *d = (struct KeCfsData*)next->scheduling.shadow;
-        if(likely(nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (cd->vruntime < d->vruntime))
+        if((nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (cd->vruntime < d->vruntime))
         {
             //current task is better than the one that would be selected
             next = current;
@@ -199,17 +202,13 @@ struct KeTaskControlBlock* KeCfsGetNextTask(uint32_t cpu, struct KeTaskControlBl
             --KeCfs.idleCount;
         }
     }
-    else if(likely(nullptr != current) && (TASK_RUNNING == current->scheduling.state))
+    else if((nullptr != current) && (TASK_RUNNING == current->scheduling.state))
     {
         //last resort, absolutely nothing else, but the currently running task can run further
         next = current;
         *slice = KeCfs.baseSlice / (KeCfs.idleCount + 1);
         if(*slice < KE_CFS_MINIMUM_TIMESLICE)
             *slice = KE_CFS_MINIMUM_TIMESLICE;
-    }
-    else
-    {
-        ASM("nop");
     }
 
     KeReleaseSpinlock(&KeCfs.lock, prio);

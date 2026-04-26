@@ -298,7 +298,7 @@ STATUS IdeIsr(void *context)
                         PRIO prio = KeAcquireSpinlock(&(info->channel[i].lock));
                         //RP finalization
                         info->channel[i].rp->status = OK;
-                        KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
+                        KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp, false);
                         RtlMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
                         info->channel[i].operation.busy = 0;
                         KeReleaseSpinlock(&(info->channel[i].lock), prio);
@@ -315,7 +315,7 @@ STATUS IdeIsr(void *context)
                     //RP finalization
                     info->channel[i].rp->status = UNKNOWN_ERROR;
                     info->channel[i].rp->size = 0;
-                    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp);
+                    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, IdeFinalizeRequest, info->channel[i].rp, false);
                     RtlMemset(&(info->channel[i].operation), 0, sizeof(info->channel[i].operation));
                     info->channel[i].operation.busy = 0;
                     KeReleaseSpinlock(&(info->channel[i].lock), prio);

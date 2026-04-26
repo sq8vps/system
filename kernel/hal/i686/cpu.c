@@ -45,9 +45,7 @@ void I686CpuBootstrap(uint32_t cpuId);
 
 void HalHaltAllCpus(void)
 {
-#ifdef SMP
-    I686SendShutdownCpus();
-#endif
+    SMP_ONLY(I686SendShutdownCpus());
 }
 
 STATUS I686ConfigureBootstrapCpu(void)

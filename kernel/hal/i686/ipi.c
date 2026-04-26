@@ -26,7 +26,7 @@ static bool I686IpiInitialized = false;
 static STATUS I686HandleIpi(void *context)
 {
     UNUSED(context);
-    uint16_t cpu = HalGetCurrentCpu();
+    uint32_t cpu = HalGetCurrentCpu();
 
     uint32_t slots;
     while(0 != (slots = ATOMIC_LOAD(&(I686IpiState[cpu].slotsFilled), ATOMIC_SEQ_CST)))
@@ -117,9 +117,10 @@ void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t
 {
     if(!I686IpiInitialized)
         return;
-    uint16_t cpu = HalGetCurrentCpu();
-
+    
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+
+    uint32_t cpu = HalGetCurrentCpu();
 
     HAL_GET_CPU_BIT_COUNT(targets, I686IpiState[cpu].remainingAcks);
 
@@ -176,11 +177,13 @@ void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages)
 {
     if(!I686IpiInitialized)
         return;
-    uint16_t cpu = HalGetCurrentCpu();
+
+    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+
+    uint32_t cpu = HalGetCurrentCpu();
 
     I686IpiState[cpu].remainingAcks = HalGetCpuCount() - 1;
 
-    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
     for(uint16_t i = 0; i < HalGetCpuCount(); i++)
     {
         if(i == cpu)
@@ -212,11 +215,13 @@ void I686SendShutdownCpus(void)
 {
     if(!I686IpiInitialized)
         return;
-    uint16_t cpu = HalGetCurrentCpu();
+
+    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+
+    uint32_t cpu = HalGetCurrentCpu();
 
     I686IpiState[cpu].remainingAcks = HalGetCpuCount() - 1;
 
-    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
     for(uint16_t i = 0; i < HalGetCpuCount(); i++)
     {
         if(i == cpu)
@@ -245,9 +250,10 @@ void I686InvokeRemoteFunction(const HalCpuBitmap *targets, I686RemoteFunction fu
 {
     if(!I686IpiInitialized)
         return;
-    uint16_t cpu = HalGetCurrentCpu();
 
     PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_HIGHEST);
+
+    uint32_t cpu = HalGetCurrentCpu();
 
     HAL_GET_CPU_BIT_COUNT(targets, I686IpiState[cpu].remainingAcks);
 

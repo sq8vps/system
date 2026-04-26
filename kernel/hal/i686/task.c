@@ -184,6 +184,7 @@ void HalInitializeScheduler(void)
 
 [[noreturn]] static void I686ProcessBootstrap(void (*entry)(void*), void *context, void *userStack)
 {
+    KeReleaseInitialSchedulingLock();
     STATUS status = OK;
     //this is the very first starting point when the task is scheduled for the first time
     //if this is a kernel task, then there is nothing more needed and the user space is unused

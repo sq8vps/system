@@ -23,7 +23,7 @@ __ApiDoSyscall:
     push .retRegs ;store return address
     mov ebp,esp ;store stack pointer
     sysenter ;perform a syscall
-    ;we never return here, but to .ret
+    ;we never return here, but to .retRegs
 
     .doStack:
     ;store call code in eax

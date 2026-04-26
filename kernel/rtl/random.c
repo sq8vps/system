@@ -15,7 +15,7 @@ int32_t RtlRandom(int32_t min, int32_t max)
     RtlRandomNext = RtlRandomNext * 1103515245 + 12345;
     return ((RtlRandomNext / ((max - min + 1) * 2)) % (max - min + 1)) + min;
 #else
-    uint16_t cpu = HalGetCurrentCpu();
+    uint32_t cpu = HalGetCurrentCpu();
     RtlRandomNext[cpu] = RtlRandomNext[cpu] * 1103515245 + 12345;
     return ((RtlRandomNext[cpu] / ((max - min + 1) * 2)) % (max - min + 1)) + min;
 #endif

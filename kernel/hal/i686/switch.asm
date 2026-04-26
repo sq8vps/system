@@ -34,10 +34,6 @@ extern KeHandleLastTask
 ;volatile bool KeTaskSwitchPending - UP systems
 extern KeTaskSwitchPending
 
-;volatile bool KeTaskSwitchInProgress[MAX_CPU_COUNT] - SMP systems
-;volatile bool KeTaskSwitchInProgress - UP systems
-extern KeTaskSwitchInProgress
-
 section .text
 
 ;Store current task context on stack
@@ -141,9 +137,6 @@ KeSwitchToTask:
 
     pop es
 
-    ;cli
-    mov byte [KeTaskSwitchInProgress + ebx],0
-    ;sti
 
     pop ebp
     pop edi
@@ -169,15 +162,8 @@ HalPerformTaskSwitch:
     mov eax,0
 %endif
 
-    mov dl,[KeTaskSwitchPending+eax]
-    test dl,dl
-    jz .returnFromSwitch
-
     push esi
     push edi
-
-    cli
-    mov byte [KeTaskSwitchPending+eax],0
 
     mov edx,eax ;get offset from CPU number
     shl edx,5
@@ -189,8 +175,8 @@ HalPerformTaskSwitch:
     ;if not, then continue with the current one
     jz .copyNextToCurrent
 
-    mov byte [KeTaskSwitchInProgress+eax],1
-    ;sti
+    pop edi
+    pop esi
 
     sub esp,12 ;make room for EIP, CS and EFLAGS
 
@@ -229,10 +215,10 @@ HalPerformTaskSwitch:
 
     pop es
 
-.returnFromSwitch: ;but return here on task switch
     pop edi
     pop esi
 
+.returnFromSwitch: ;but return here on task switch
     sti
     ret
 

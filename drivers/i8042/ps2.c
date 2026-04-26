@@ -186,14 +186,14 @@ void Ps2HandleIrq(uint8_t port, uint8_t data)
         {
             Ps2State[port].command.count++;
             Ps2State[port].command.retries = 0;
-            if(OK == KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, Ps2ProcessDpc, &Ps2State[port]))
+            if(OK == KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, Ps2ProcessDpc, &Ps2State[port], false))
                 Ps2State[port].buffer.dpcPending = true;
             return;
         }
         else if(PS2_RESPONSE_RESEND == data)
         {
             Ps2State[port].command.retries++;
-            if(OK == KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, Ps2ProcessDpc, &Ps2State[port]))
+            if(OK == KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, Ps2ProcessDpc, &Ps2State[port], false))
                 Ps2State[port].buffer.dpcPending = true;
             return;
         }
@@ -220,7 +220,7 @@ void Ps2HandleIrq(uint8_t port, uint8_t data)
                     //a "normal" byte is found, which potentially might be processed
                     if((0xE0 != b) && (0xF0 != b) && (0xE1 != b))
                     {
-                        if(OK == KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, Ps2ProcessDpc, &Ps2State[port]))
+                        if(OK == KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, Ps2ProcessDpc, &Ps2State[port], false))
                             Ps2State[port].buffer.dpcPending = true;
                         break;    
                     }

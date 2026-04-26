@@ -99,6 +99,7 @@ uint32_t HalGetCpuCount(void);
 /**
  * @brief Get current CPU number
  * @return Current CPU number
+ * @warning Use this function *very* carefully - the returned value may be already invalid if a task switch occurs.
  */
 uint32_t HalGetCurrentCpu(void);
 

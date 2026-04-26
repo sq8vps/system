@@ -37,35 +37,36 @@ static struct
 }
 #ifndef SMP
 KeDpcState[1];
+#define KE_DPC_STATE_SHARED 0
 #else
-KeDpcState[MAX_CPU_COUNT];
+KeDpcState[MAX_CPU_COUNT + 1];
+#define KE_DPC_STATE_SHARED MAX_CPU_COUNT
 #endif
 
-STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context)
+STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context, bool cpuBound)
 {
     HalCheckPriorityLevel(HAL_PRIORITY_LEVEL_DPC, HAL_PRIORITY_LEVEL_EXCLUSIVE);
-    uint16_t cpu = 0;
-#ifdef SMP
-    cpu = HalGetCurrentCpu();
-#endif
-    uint8_t queueIndex = 0;
+    uint32_t cpu = 0;
+    SMP_ONLY(cpu = HalGetCurrentCpu());
+    const size_t cpuIndex = cpuBound ? cpu : KE_DPC_STATE_SHARED;
+    size_t prioIndex = 0;
     switch(priority)
     {
         case KE_DPC_PRIORITY_LOW:
-            queueIndex = 2;
+            prioIndex = 2;
             break;
         case KE_DPC_PRIORITY_NORMAL:
-            queueIndex = 1;
+            prioIndex = 1;
             break;
         case KE_DPC_PRIORITY_HIGH:
-            queueIndex = 0;
+            prioIndex = 0;
             break;
         default:
             return BAD_PARAMETER;
             break;
     }
 
-    struct KeDpcObject *dpc = MmSlabAllocate(KeDpcState[cpu].slabHandle);
+    struct KeDpcObject *dpc = MmSlabAllocate(KeDpcState[cpuIndex].slabHandle);
     if(NULL == dpc)
         return OUT_OF_RESOURCES;
 
@@ -74,32 +75,31 @@ STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *
     dpc->priority = priority;
     dpc->next = NULL;
     
-    PRIO prio = KeAcquireSpinlock(&(KeDpcState[cpu].queue[queueIndex].lock));
-    if(NULL == KeDpcState[cpu].queue[queueIndex].head)
-        KeDpcState[cpu].queue[queueIndex].head = dpc;
+    PRIO prio = KeAcquireSpinlock(&(KeDpcState[cpuIndex].queue[prioIndex].lock));
+    if(NULL == KeDpcState[cpuIndex].queue[prioIndex].head)
+        KeDpcState[cpuIndex].queue[prioIndex].head = dpc;
     else
     {
-        struct KeDpcObject *t = KeDpcState[cpu].queue[queueIndex].head;
+        struct KeDpcObject *t = KeDpcState[cpuIndex].queue[prioIndex].head;
         while(NULL != t->next)
         {
             t = t->next;
         }
         t->next = dpc;
     }
-    KeReleaseSpinlock(&(KeDpcState[cpu].queue[queueIndex].lock), prio);
+    KeReleaseSpinlock(&(KeDpcState[cpuIndex].queue[prioIndex].lock), prio);
 
     dpc->time = HalGetTimestamp();
 
-    ATOMIC_STORE(&(KeDpcState[cpu].isPending), true, ATOMIC_SEQ_CST);
+    ATOMIC_STORE(&(KeDpcState[cpuIndex].isPending), true, ATOMIC_RELEASE);
 
     return OK;
 }
 
-static void KeDpcProcess(uint16_t cpu)
+static void KeDpcProcess(uint32_t cpu)
 {
-    while(ATOMIC_LOAD(&(KeDpcState[cpu].isPending), ATOMIC_SEQ_CST))
+    while(ATOMIC_EXCHANGE(&(KeDpcState[cpu].isPending), false, ATOMIC_SEQ_CST))
     {
-        ATOMIC_STORE(&(KeDpcState[cpu].isPending), false, ATOMIC_SEQ_CST);
         for(uint8_t i = 0; i < KE_DPC_PRIORITY_COUNT; i++)
         {
             PRIO prio = KeAcquireDpcLevelSpinlock(&(KeDpcState[cpu].queue[i].lock));
@@ -125,14 +125,14 @@ void KeProcessDpcQueue(void)
         return;
     PRIO dpcPrio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
     uint32_t cpu = 0;
-#ifdef SMP
-        cpu = HalGetCurrentCpu();
-#endif
-    if(ATOMIC_LOAD(&(KeDpcState[cpu].isPending), ATOMIC_SEQ_CST))
+    SMP_ONLY(cpu = HalGetCurrentCpu());
+    if(ATOMIC_LOAD(&(KeDpcState[cpu].isPending), ATOMIC_RELAXED) 
+        SMP_ONLY(|| ATOMIC_LOAD(&(KeDpcState[KE_DPC_STATE_SHARED].isPending), ATOMIC_RELAXED)))
     {
         KeDpcProcess(cpu);
+        SMP_ONLY(KeDpcProcess(KE_DPC_STATE_SHARED));
         HalLowerPriorityLevel(dpcPrio);
-        HalPerformTaskSwitch();
+        KePerformTaskSwitch();
         return;
     }
     HalLowerPriorityLevel(dpcPrio);
@@ -146,7 +146,7 @@ STATUS KeDpcInitialize(void)
     if(NULL == KeDpcState[0].slabHandle)
         return OUT_OF_RESOURCES;
 #else
-    for(uint16_t i = 0; i < MAX_CPU_COUNT; i++)
+    for(uint16_t i = 0; i < MAX_CPU_COUNT + 1; i++)
     {
         KeDpcState[i].slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
         if(NULL == KeDpcState[i].slabHandle)

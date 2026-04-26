@@ -32,6 +32,7 @@ struct
 KeCurrentTask[1] = {0}, 
 KeNextTask[1] = {0};
 
+static KeSpinlock KeSchedulingLock = KeSpinlockInitializer;
 volatile bool KeTaskSwitchPending = false;
 volatile bool KeTaskSwitchInProgress = false;
 #else
@@ -46,8 +47,11 @@ struct
 KeCurrentTask[MAX_CPU_COUNT] = {0}, 
 KeNextTask[MAX_CPU_COUNT] = {0};
 
-volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] = {0};
-volatile bool KeTaskSwitchInProgress[MAX_CPU_COUNT] = {0};
+//static KeSpinlock KeSchedulingLock[MAX_CPU_COUNT] = {KeSpinlockInitializer};
+static KeSpinlock KeSchedulingLock = KeSpinlockInitializer;
+volatile bool KeTaskSwitchPending[MAX_CPU_COUNT] = {false};
+volatile bool KeTaskSwitchInProgress[MAX_CPU_COUNT] = {false};
+
 #endif
 
 static struct KeTaskControlBlock *KeCleanupTask = nullptr;
@@ -61,6 +65,11 @@ KeFinishedTasks = {.head = nullptr, .tail = nullptr, .lock = KeSpinlockInitializ
 
 static uint32_t KeJoinedCpus = 0; 
 
+/**
+ * @brief Perform task switch immediately if a new task is available
+*/
+INTERNAL void HalPerformTaskSwitch(void);
+
 static void KeSchedule(uint32_t cpu);
 static void KeTaskCleanupWorker(void *context);
 
@@ -69,20 +78,17 @@ static void KeSchedulerWorker(void *context)
 {
 #ifndef SMP
     UNUSED(context);
-    if((false == KeTaskSwitchPending) && (false == KeTaskSwitchInProgress) && KeCurrentTask[cpu].preemptible)
+    if(KeCurrentTask[0].preemptible)
     {
-        KeSchedule(0);
         KeTaskSwitchPending = true;
     }
 #else
     uint32_t cpu = (uint32_t)context;
-    if((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu]) && KeCurrentTask[cpu].preemptible)
+    if(KeCurrentTask[cpu].preemptible)
     {
-        KeSchedule(cpu);
         KeTaskSwitchPending[cpu] = true;
     }
 #endif
-    HalStartSystemTimer(KeNextTask[cpu].preemptible ? KeNextTask[cpu].slice : KE_DEFAULT_SYSTEM_TICK);
 }
 
 STATUS KeSchedulerISR(void *context)
@@ -90,10 +96,10 @@ STATUS KeSchedulerISR(void *context)
     UNUSED(context);
     HalUpdateSystemTimerOnInterrupt();
 #ifndef SMP
-    KeRegisterDpc(KE_DPC_PRIORITY_NORMAL, KeSchedulerWorker, NULL);
+    KeRegisterDpc(KE_DPC_PRIORITY_LOW, KeSchedulerWorker, NULL, true);
 #else
     uint32_t cpu = HalGetCurrentCpu();
-    KeRegisterDpc(KE_DPC_PRIORITY_LOW, KeSchedulerWorker, (void*)cpu);
+    KeRegisterDpc(KE_DPC_PRIORITY_LOW, KeSchedulerWorker, (void*)cpu, true);
 #endif
     return OK;
 }
@@ -129,6 +135,8 @@ void KeHandleLastTask(struct KeTaskControlBlock *tcb)
     PRIO prio = KeAcquireSpinlock(&tcb->scheduling.lock);
     if(TASK_RUNNING == tcb->scheduling.state)
         KeQueueTask(tcb);
+    else if(TASK_RUNNING_BLOCK == tcb->scheduling.state)
+        tcb->scheduling.state = TASK_BLOCKED;
     KeReleaseSpinlock(&tcb->scheduling.lock, prio);
 }
 
@@ -146,11 +154,7 @@ static void KeSchedule(uint32_t cpu)
         current->scheduling.lastRuntime = HalGetTimestamp() - current->scheduling.lastScheduled;
         bool wakeCleanup = false;
         
-        if(TASK_RUNNING_BLOCK == current->scheduling.state)
-        {
-            current->scheduling.state = TASK_BLOCKED;
-        }
-        else if(TASK_FINISHED == current->scheduling.state)
+        if(TASK_FINISHED == current->scheduling.state)
         {
             PRIO prio = KeAcquireSpinlock(&KeFinishedTasks.lock);
             if(nullptr != KeFinishedTasks.tail)
@@ -185,9 +189,6 @@ static void KeSchedule(uint32_t cpu)
                 KePanicEx(NO_EXECUTABLE_TASK, cpu, 0, 0, 0);
         }
     }
-
-    if(next == KeCurrentTask[cpu ? 0 : 1].task)
-        ASM("nop");
 
     next->scheduling.state = TASK_RUNNING;
     KeNextTask[cpu].task = next;
@@ -281,6 +282,7 @@ void KeUnblockTask(struct KeTaskControlBlock *tcb)
     //this is the TASK_RUNNING_BLOCK case
     //in such a case we can't queue the task, as it may result in multiple CPUs executing the same task
     PRIO prio = KeAcquireSpinlock(&(tcb->scheduling.lock));
+    tcb->scheduling.block.reason = TASK_BLOCK_NOT_BLOCKED;
     if(TASK_RUNNING_BLOCK == tcb->scheduling.state)
         tcb->scheduling.state = TASK_RUNNING;
     else if(TASK_BLOCKED == tcb->scheduling.state)
@@ -328,7 +330,18 @@ struct KeTaskControlBlock* KeGetCurrentTask(void)
 #ifndef SMP
     return KeCurrentTask[0].task;
 #else
-    return KeCurrentTask[HalGetCurrentCpu()].task;
+    struct KeTaskControlBlock *task;
+    if(HalGetProcessorPriority() < HAL_PRIORITY_LEVEL_DPC)
+    {
+        HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
+        task = KeCurrentTask[HalGetCurrentCpu()].task;
+        HalLowerPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE);
+    }
+    else
+    {
+        task = KeCurrentTask[HalGetCurrentCpu()].task;
+    }
+    return task;
 #endif
 }
 
@@ -344,30 +357,72 @@ struct KeProcessControlBlock* KeGetCurrentTaskParent(void)
 void KeTaskYield(void)
 {
     if(unlikely(HalGetProcessorPriority() > HAL_PRIORITY_LEVEL_PASSIVE))
-        KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_PRIORITY_LEVEL_PASSIVE, 0, 0);
-    
-    PRIO prio = HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
-    //raise priority level to DPC to ensure that there will be no system timer IRQ
-    //this is required by the scheduler
+        KePanicEx(PRIORITY_LEVEL_TOO_HIGH, HalGetProcessorPriority(), HAL_PRIORITY_LEVEL_PASSIVE, HalGetCurrentCpu(), 0);
+
 #ifndef SMP
-    KeSchedule(0);
-    KeTaskSwitchPending = true;
+    ATOMIC_STORE(&KeTaskSwitchPending, true, ATOMIC_SEQ_CST);
 #else
-    uint32_t cpu = HalGetCurrentCpu();
-    if(likely((false == KeTaskSwitchPending[cpu]) && (false == KeTaskSwitchInProgress[cpu])))
-    {
-        KeSchedule(cpu);
-        KeTaskSwitchPending[cpu] = true;
-    }
-    else
-        KePanic(UNEXPECTED_FAULT);
-    
-    
+    HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
+    ATOMIC_STORE(&KeTaskSwitchPending[HalGetCurrentCpu()], true, ATOMIC_SEQ_CST);
+    HalLowerPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE);
 #endif
-    HalLowerPriorityLevel(prio);
+    KePerformTaskSwitch();
+}
+
+void KePerformTaskSwitch(void)
+{
+    HalRaisePriorityLevel(HAL_PRIORITY_LEVEL_DPC);
+    uint32_t cpu = HalGetCurrentCpu();
+#ifndef SMP
+    if(!KeTaskSwitchPending || KeTaskSwitchInProgress)
+#else
+    if(!KeTaskSwitchPending[cpu] || KeTaskSwitchInProgress[cpu])
+#endif
+    {
+        HalLowerPriorityLevel(HAL_PRIORITY_LEVEL_PASSIVE);
+        return;
+    }
+
+#ifndef SMP
+    KeAcquireDpcLevelSpinlock(&KeSchedulingLock);
     barrier();
+    KeTaskSwitchInProgress = true;
+    barrier();
+    KeTaskSwitchPending = false;
+#else
+    KeAcquireDpcLevelSpinlock(&KeSchedulingLock);
+    barrier();
+    KeTaskSwitchInProgress[cpu] = true;
+    barrier();
+    KeTaskSwitchPending[cpu] = false;
+#endif
+    KeSchedule(cpu);
     HalStartSystemTimer(KeNextTask[cpu].preemptible ? KeNextTask[cpu].slice : KE_DEFAULT_SYSTEM_TICK);
     HalPerformTaskSwitch();
+
+    barrier();
+    cpu = HalGetCurrentCpu();
+#ifndef SMP
+    barrier();
+    KeTaskSwitchInProgress = false;
+    KeReleaseSpinlock(&KeSchedulingLock, HAL_PRIORITY_LEVEL_PASSIVE);
+#else
+    barrier();
+    KeTaskSwitchInProgress[cpu] = false;
+    barrier();
+    KeReleaseSpinlock(&KeSchedulingLock, HAL_PRIORITY_LEVEL_PASSIVE);
+#endif
+    //no need to lower the priority again, it is done in the spinlock release above
+}
+
+void KeReleaseInitialSchedulingLock(void)
+{
+#ifndef SMP
+    KeTaskSwitchInProgress = false;
+#else
+    KeTaskSwitchInProgress[HalGetCurrentCpu()] = false;
+#endif
+    KeReleaseSpinlock(&KeSchedulingLock, HAL_PRIORITY_LEVEL_PASSIVE);
 }
 
 void KeJoinScheduler(void)

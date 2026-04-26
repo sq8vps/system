@@ -77,7 +77,7 @@ PRIO KeAcquireSpinlock(KeSpinlock *spinlock)
 #ifndef SMP
     if(unlikely(0 != spinlock->lock))
         KePanicEx(BUSY_MUTEX_ACQUIRED, 0, (uintptr_t)spinlock, 0, 0);
-    spinlock->lock = 1;
+    ATOMIC_STORE(&(spinlock->lock), 1, ATOMIC_ACQUIRE);
 #else
     while(1)
     {
@@ -105,7 +105,7 @@ PRIO KeAcquireDpcLevelSpinlock(KeSpinlock *spinlock)
 #ifndef SMP
     if(unlikely(0 != spinlock->lock))
         KePanicEx(BUSY_MUTEX_ACQUIRED, 0, (uintptr_t)spinlock, 0, 0);
-    spinlock->lock = 1;
+    ATOMIC_STORE(&(spinlock->lock), 1, ATOMIC_ACQUIRE);
 #else
     while(1)
     {

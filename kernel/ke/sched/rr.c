@@ -51,14 +51,18 @@ void KeRrQueueTask(struct KeTaskControlBlock *tcb)
 
 struct KeTaskControlBlock* KeRrGetNextTask(uint32_t cpu, struct KeTaskControlBlock *current, uint64_t *slice)
 {
+    if(likely(nullptr != current) && (KE_SCHED_RR != current->scheduling.policy))
+        current = nullptr;
+
     struct KeTaskControlBlock *next = nullptr;
     PRIO prio = KeAcquireSpinlock(&KeRr.queue.lock);
 
     for(size_t i = KE_RR_PRIORITIES; i > 0; --i)
     {
-        if(likely(nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (current->scheduling.priority > (int32_t)i))
+        if((nullptr != current) && (TASK_RUNNING == current->scheduling.state) && (current->scheduling.priority > (int32_t)i))
         {
             next = current;
+            *slice = KeRr.slice;
             break;
         }
 
@@ -74,6 +78,13 @@ struct KeTaskControlBlock* KeRrGetNextTask(uint32_t cpu, struct KeTaskControlBlo
                 KeRr.queue.head[i - 1]->scheduling.previous = nullptr;
             break;
         }
+    }
+
+    if((nullptr == next) && (nullptr != current) && (TASK_RUNNING == current->scheduling.state))
+    {
+        //last resort, absolutely nothing else, but the currently running task can run further
+        next = current;
+        *slice = KeRr.slice;
     }
 
     KeReleaseSpinlock(&KeRr.queue.lock, prio);

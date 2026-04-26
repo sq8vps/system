@@ -96,6 +96,19 @@ INTERNAL void KeUnblockTask(struct KeTaskControlBlock *tcb);
 INTERNAL void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext);
 
 /**
+ * @brief Perform scheduling and task switch if one is planned
+ * @warning Use \ref KeTaskYield() for switching tasks
+ * @kinternal
+ */
+INTERNAL void KePerformTaskSwitch(void);
+
+/**
+ * @brief Release initial scheduling lock when a new tasks starts running for the first time
+ * @kinternal
+ */
+INTERNAL void KeReleaseInitialSchedulingLock(void);
+
+/**
  * @brief Exit calling task
  * @param result Execution result (return code)
  * @note This function does not return to the caller

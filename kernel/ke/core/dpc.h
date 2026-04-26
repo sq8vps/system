@@ -49,10 +49,11 @@ enum KeDpcPriority
  * @param priority DPC priority
  * @param callback DPC function pointer
  * @param *context Context to be passed to the worker function
+ * @param cpuBound DPC is bound to the current CPU - it must be run by the current CPU
  * @return Status code
  * @attention Processor priority must be > HAL_PRIORITY_LEVEL_PASSIVE, otherwise the kernel panic occurs.
 */
-STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context);
+STATUS KeRegisterDpc(enum KeDpcPriority priority, KeDpcCallback callback, void *context, bool cpuBound);
 
 END_DRIVER_API
 
