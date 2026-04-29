@@ -59,6 +59,7 @@ enum I686EmulatorState
     EMU_UNDEFINED_OPCODE = 2, /**< Undefined opcode encountered, emulation aborted */
     EMU_MEMORY_VIOLATION = 3, /**< Memory violation occurred, emulation aborted */
     EMU_UNAVAILABLE = 4, /**< Emulator is unavailable, probably used by another task */
+    EMU_ILLEGAL_OPERATION = 5, /**< Operation is illegal, i.e., it doesn't make sense in the emulator */
 };
 
 /**

@@ -1641,7 +1641,7 @@ enum I686EmulatorState I686EmulatorRun(struct I686EmuState *state)
                 
                 //other
                 case 0xF4: //hlt
-                    break; //TODO: what to do with it?
+                    return EMU_ILLEGAL_OPERATION; //FIXME: the emulator does not support asynchronous interrupts, so it would halt indefinetely
                 
                 case 0x9F: //lahf
                     reg->ah = (reg->flags & (FLAG_CF | FLAG_PF | FLAG_AF | FLAG_ZF | FLAG_SF)) | 0b10;
