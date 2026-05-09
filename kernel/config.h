@@ -54,7 +54,7 @@ DRIVER_API
 /**
  * @brief Default init program path
  */
-#define DEFAULT_INIT_PATH (MAIN_MOUNT_POINT "/system/init")
+#define DEFAULT_INIT_PATH (MAIN_MOUNT_POINT "/system/base/init")
 
 /**
  * @brief Maximum number of user (init) arguments

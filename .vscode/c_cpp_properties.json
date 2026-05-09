@@ -11,7 +11,8 @@
                 "${default}",
                 "SMP",
                 "DEBUG",
-                "__i686__"
+                "__i686__",
+                "nullptr=NULL"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,

@@ -2,33 +2,6 @@
 #include "io/log/syslog.h"
 #include "rtl/string.h"
 
-// STATUS elf_loadProgramSegments(struct Elf32_Ehdr *h, uint8_t *name)
-// {
-// 	struct Elf32_Phdr *p;
-// 	for(uint16_t i = 0; i < h->e_phnum; i++)
-// 	{
-// 		p = (struct Elf32_Phdr *)(buf + i * h->e_phentsize); //get next program header entry
-
-// 		if(p->p_type != PT_LOAD) //only PT_LOAD type
-// 			continue;
-// 		if(p->p_memsz == 0) //skip empty segments
-// 			continue;
-// 		if(p->p_filesz > p->p_memsz) //file size must not be bigger than memory size
-// 			return CORRUPTED;
-
-// 		// ret = Mm_allocateEx(p->vAddr, p->memSize / PAGE_SIZE + ((p->memSize % PAGE_SIZE) ? 1 : 0), 0); //allocate page(s)
-// 		// if(ret != OK)
-// 		// 	return ret;
-
-// 		// ret = Fat_readFile(&fatDisk, name, p->offset, p->fileSize, (uint8_t*)(p->vAddr)); //read segment
-// 		// if(ret != OK)
-// 		// 	return ret;
-
-// 		// for(uint32_t i = p->fileSize; i < p->memSize; i++) //fill rest with zeros
-// 		// 	*((uint8_t*)(p->vAddr + i)) = 0;
-// 	}
-// }
-
 struct Elf32_Shdr* ExGetElf32SectionHeader(struct Elf32_Ehdr *h, uint16_t n)
 {
 	return &((struct Elf32_Shdr*)((uintptr_t)h + h->e_shoff))[n];

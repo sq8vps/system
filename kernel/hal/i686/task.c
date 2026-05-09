@@ -208,13 +208,17 @@ void HalInitializeScheduler(void)
             //since MM_TASK_MEMORY_FIXED is used, then the stack is allocated at *alignedBase* or the function fails
             if(OK == status)
             {
-                status = ExLoadProcessImage(tcb->parent->path, &entry);
+                struct ExProgramData *progData = nullptr;
+                status = ExLoadProcessImage(tcb->parent->path, &entry, &progData);
                 if(OK == status)
                 {
                     //in user mode, the main thread context (passed as an argument) should be a KeTaskArguments structure
+                    //and additional program data
                     struct KeTaskArguments *args = context;
                     void *argsBuffer = NULL;
-                    status = MmMapTaskMemory(NULL, args->size + (args->argc + 1 + args->envc) * sizeof(char*), 
+                    size_t argSize = args->size + (args->argc + 1 + args->envc) * sizeof(char*);
+                    size_t progDataSize = ExGetProgramDataEntryCount(progData) * sizeof(*progData);
+                    status = MmMapTaskMemory(NULL, argSize + progDataSize, 
                         MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, -1, 0, 0, 0, &argsBuffer);
                     if(OK == status)
                     {
@@ -241,11 +245,14 @@ void HalInitializeScheduler(void)
                         }
                         ((char**)argsBuffer)[args->envc + args->argc + 1] = NULL;
 
-                        stack[-1] = (uintptr_t)(&(((char**)argsBuffer)[args->argc + 1])); //store envp pointer
-                        stack[-2] = (uintptr_t)argsBuffer; //store argv pointer
-                        stack[-3] = args->argc;
-                        stack[-4] = 0; //push false return address
-                        stack -= 4;
+                        RtlMemcpy((char*)argsBuffer + argSize, progData, progDataSize);
+
+                        stack[-1] = (uintptr_t)((char*)argsBuffer + argSize); //store progdata pointer
+                        stack[-2] = (uintptr_t)((char*)argsBuffer + args->argc + 1); //store envp pointer
+                        stack[-3] = (uintptr_t)argsBuffer; //store argv pointer
+                        stack[-4] = args->argc;
+                        stack[-5] = 0; //push false return address
+                        stack -= 5;
 
                         MmFreeKernelHeap(args);
                     }

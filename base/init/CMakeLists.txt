@@ -10,6 +10,8 @@ target_link_libraries(init PRIVATE
     ${CONFIG_LIBRARIES}
 )
 
+target_link_options(init PRIVATE ${LINKER_FLAGS})
+
 add_custom_command(TARGET init POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:init> ${OS_IMAGE_DIR}/$<TARGET_FILE_NAME:init>
 )
