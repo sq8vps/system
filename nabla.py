@@ -46,23 +46,33 @@ target_requires_arch = {"tools": False, "kernel": True, "export": False, "driver
     "libs": True, "base": True, "initrd": False, "doc": False, "all": True, "configure": True}
 build_path = {"tools": "tools/build", "kernel": "kernel/build", "drivers": "drivers/build", 
     "libs": "libs/build", "base": "base/build", "initrd": "initrd"}
+source_path = {"tools": "..", "kernel": "..", "drivers": "..", 
+    "libs": "..", "base": ".."}
 cmake_generator = {"gcc": "Unix Makefiles"}
+
+class Colors:
+    INFO = '\033[96m'
+    SUCCESS = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    END = '\033[0m'
 
 def execute(cmd):
     print("Executing " + subprocess.list2cmdline(cmd))
     result = subprocess.run(cmd)
     if result.returncode != 0:
-        sys.exit("Command " + subprocess.list2cmdline(cmd) + " failed with status code " + str(result.returncode))
+        sys.exit(Colors.FAIL + "Command " + subprocess.list2cmdline(cmd) + " failed with status code " + str(result.returncode) + Colors.END)
 
 def generate(target, is_cross = True, param_table = None):
+    print(Colors.INFO + "Generating CMake files for target " + target + Colors.END)
     cwd = os.getcwd()
     path = cwd + "/" + build_path[target]
     Path(path).mkdir(parents = False, exist_ok = True)
     os.chdir(path)
     if is_cross == True:
-        cmd = ["cmake", "..", "-G", cmake_generator[toolchain], "--toolchain=../{0}-{1}.cmake".format(toolchain, arch)]
+        cmd = ["cmake", source_path[target], "-G", cmake_generator[toolchain], "--toolchain={0}/{1}-{2}.cmake".format(source_path[target], toolchain, arch)]
     else:
-        cmd = ["cmake", ".."]
+        cmd = ["cmake", source_path[target]]
     if profile == "debug":
         cmd.append("-DCMAKE_BUILD_TYPE=Debug")
     else:
@@ -72,14 +82,15 @@ def generate(target, is_cross = True, param_table = None):
             cmd.append(param_table[param])
     execute(cmd)
     os.chdir(cwd)
+    print(Colors.SUCCESS + "Target " + target + " successfully generated")
 
 def make_target(target):
     if purge:
-        print("Purging target " + target)
+        print(Colors.INFO + "Purging target " + target + Colors.END)
     elif clean:
-        print("Cleaning target " + target)
+        print(Colors.INFO + "Cleaning target " + target + Colors.END)
     else:
-        print("Starting target " + target)
+        print(Colors.INFO + "Starting target " + target + Colors.END)
     cwd = os.getcwd()
 
     if target != "all":
@@ -89,14 +100,14 @@ def make_target(target):
                 execute(["cmake", "--build", ".", "--target=clean"])
                 os.chdir(cwd)
             else:
-                print("Cleaning target " + target + " is not allowed")
+                print(Colors.WARNING + "Cleaning target " + target + " is not allowed" + Colors.END)
             return
         elif purge:
             if target in purge_allowed:
                 if(os.path.isdir(cwd + "/" + build_path[target])):
                     shutil.rmtree(cwd + "/" + build_path[target])
             else:
-                print("Purging target " + target + " is not allowed")
+                print(Colors.WARNING + "Purging target " + target + " is not allowed" + Colors.END)
             return
 
     if target == "configure":
@@ -107,7 +118,7 @@ def make_target(target):
         generate("base")
     elif target == "kernel" or target == "tools":
         os.chdir(cwd + "/" + build_path[target])
-        execute(["cmake", "--build", ".", "-j" + str(multiprocessing.cpu_count())])
+        execute(["cmake", "--build", ".", "--target=" + target, "-j" + str(multiprocessing.cpu_count())])
     elif target == "export":
         execute([sys.executable, "tools/export.py"])
     elif target == "initrd":
@@ -118,23 +129,24 @@ def make_target(target):
         execute(["cmake", "--build", ".", "--target=" + arch + "_drivers", "-j" + str(multiprocessing.cpu_count())])
     elif target == "libs":
         os.chdir(cwd + "/" + build_path["libs"])
-        execute(["cmake", "--build", ".", "-j" + str(multiprocessing.cpu_count())])
+        execute(["cmake", "--build", ".", "--target=" + target, "-j" + str(multiprocessing.cpu_count())])
     elif target == "base":
         os.chdir(cwd + "/" + build_path["base"])
-        execute(["cmake", "--build", ".", "-j" + str(multiprocessing.cpu_count())])
+        execute(["cmake", "--build", ".", "--target=" + target, "-j" + str(multiprocessing.cpu_count())])
     elif target == "doc":
         execute(["doxygen", "doc/Doxyfile"])
     elif target == "all":
         for t in all_targets:
             make_target(t)
     else:
-        sys.exit("Error: target " + target + " is unknown")
+        sys.exit(Colors.FAIL + "Error: target " + target + " is unknown" + Colors.END)
         
-    print("Target " + target + " finished")
+    print(Colors.SUCCESS + "Target " + target + " finished" + Colors.END)
     os.chdir(cwd)
 
+#main():
 if len(sys.argv) == 1:
-    print("Architecture name must be provided. "
+    print(Colors.WARNING + "Architecture name must be provided. " + Colors.END +
           "Target defaults to {0}, profile defaults to {1}.\n".format(DEFAULT_TARGET, DEFAULT_PROFILE))
 
     print("Available architectures:")
@@ -154,26 +166,26 @@ for arg in sys.argv[1:]:
         targets.append(arg)
     elif arg in arch_vals:
         if arch != None:
-            sys.exit("Error: architecture already set to " + arch)
+            sys.exit(Colors.FAIL + "Error: architecture already set to " + arch + Colors.END)
         else:
             arch = arg
     elif arg in profile_vals:
         if profile != None:
-            sys.exit("Error: profile already set to " + profile)
+            sys.exit(Colors.FAIL + "Error: profile already set to " + profile + Colors.END)
         else:
             profile = arg
     elif arg in toolchain_vals:
         if toolchain != None:
-            sys.exit("Error: toolchain already set to " + toolchain)
+            sys.exit(Colors.FAIL + "Error: toolchain already set to " + toolchain + Colors.END)
         else:
             toolchain = arg
     elif arg == "clean":
         if purge:
-            sys.exit("Error: cannot purge and clean")
+            sys.exit(Colors.FAIL + "Error: cannot purge and clean" + Colors.END)
         clean = True
     elif arg == "purge":
         if clean:
-            sys.exit("Error: cannot purge and clean")
+            sys.exit(Colors.FAIL + "Error: cannot purge and clean" + Colors.END)
         purge = True
     else:
         params.append(arg)
@@ -188,18 +200,19 @@ if toolchain == None:
 if arch == None:
     for t in targets:
         if target_requires_arch[t]:
-            sys.exit("Error: target {} requires architecture to be selected".format(t))
+            sys.exit(Colors.FAIL + "Error: target {} requires architecture to be selected".format(t) + Colors.END)
 for param in params:
     if param not in params_vals[arch]:
-        sys.exit("Error: parameter " + param + " unknown for " + arch)
+        sys.exit(Colors.FAIL + "Error: parameter " + param + " unknown for " + arch  + Colors.END)
 
-print("Proceeding with " + str(len(targets)) + " " + profile + " targets " + str(targets) 
-    + " for " + (arch, "n/a")[arch == None] + "-" + toolchain)
+print(Colors.INFO + "Proceeding with " + str(len(targets)) + " " + profile + " targets " + str(targets) 
+    + " for " + (arch, "n/a")[arch == None] + "-" + toolchain + Colors.END)
 if params:
-    print("Additional parameters: " + str(params))
+    print(Colors.INFO + "Additional parameters: " + str(params) + Colors.END)
 
 for target in targets:
     make_target(target)
+    print("------------")
 
 
 

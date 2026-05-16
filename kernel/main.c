@@ -31,8 +31,6 @@
 #include "hal/debug.h"
 #include "hal/arch.h"
 
-
-
 static void KeStartInit(void)
 {
 	STATUS status = OK;

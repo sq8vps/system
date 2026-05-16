@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include "defines.h"
 
+struct KeTaskControlBlock;
+
 /**
  * @addtogroup i686_gdt GDT and TSS support
  * @ingroup i686
@@ -107,6 +109,15 @@ INTERNAL void GdtLoadTss(uint16_t cpu);
  */
 FASTCALL
 INTERNAL void GdtUpdateTss(uintptr_t esp0);
+
+/**
+ * @brief Update GDT entry for TLS and load GS
+ * @param cpu CPU number
+ * @param *tcb Task Control Block
+ * @warning This function must be called by the target CPU
+ */
+FASTCALL
+void GdtRestoreTls(uint32_t cpu, const struct KeTaskControlBlock *tcb);
 
 /**
  * @}

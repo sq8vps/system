@@ -42,6 +42,7 @@ enum ExProgramDataType
     PROGDATA_END = 0, /**< Final empty entry - array terminator */
     PROGDATA_BASE = 1, /**< Executable base address */
     PROGDATA_PAGE_SIZE = 2, /**< System page size */
+    PROGDATA_LINKER_BASE = 3, /**< Linker base address */
 };
 
 END_NABLA_API

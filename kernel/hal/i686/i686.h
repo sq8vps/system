@@ -134,7 +134,7 @@ struct HalTaskData
     uint16_t ds; //task data segment register
     uint16_t es; //task extra segment register
     uint16_t fs; //task extra segment register
-    uint16_t gs; //task extra segment register
+    //GS is reserved for TLS
     void *fpu; /**< FPU buffer */
 } PACKED;
 

@@ -2,6 +2,7 @@
 #include "rtl/string.h"
 #include "config.h"
 #include "msr.h"
+#include "ke/task/task.h"
 
 #define GDT_MAX_ENTRIES (4 + 2 * MAX_CPU_COUNT)
 #define GDT_PRESENT_FLAG (1 << 7)
@@ -176,12 +177,19 @@ void HalUpdateTls(void *tls)
     register uint16_t t;
     //get GDT descriptor with TSS from task register
     ASM("str %0" : "=r" (t) :);
-    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].limit1 = 0xFFFF;
     I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base1 = (uintptr_t)tls & 0xFFFF;
     I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base2 = ((uintptr_t)tls >> 16) & 0xFF;
-    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].accessByte = GDT_PRESENT_FLAG | GDT_PRIVILEGE_LEVEL_3 | GDT_DATA_CODE_FLAG | GDT_RW_FLAG;
-    I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].flagsAndLimit2 = 0xF | GDT_GRANURALITY_FLAG | GDT_PROTECTED_MODE_FLAG;  
     I686Gdt[GDT_TLS(GDT_CPU(GDT_ENTRY(t)))].base3 = ((uintptr_t)tls >> 24) & 0xFF;
     t = USER_SELECTOR(GDT_TLS(GDT_CPU(GDT_ENTRY(t))));
+    ASM("mov gs,%0" : : "r" (t) );
+}
+
+FASTCALL
+void GdtRestoreTls(uint32_t cpu, const struct KeTaskControlBlock *tcb)
+{
+    I686Gdt[GDT_TLS(cpu)].base1 = (uintptr_t)tcb->tls & 0xFFFF;
+    I686Gdt[GDT_TLS(cpu)].base2 = ((uintptr_t)tcb->tls >> 16) & 0xFF;
+    I686Gdt[GDT_TLS(cpu)].base3 = ((uintptr_t)tcb->tls >> 24) & 0xFF;
+    register uint16_t t = USER_SELECTOR(GDT_TLS(cpu));
     ASM("mov gs,%0" : : "r" (t) );
 }

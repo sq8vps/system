@@ -21,12 +21,12 @@ __ApiDoSyscall:
     .1: ;now, we have the address of the instruction below on the stack
     add dword [esp],.retRegs - $ ;calculate absolute return address from the address of this instruction and the relative displacement
 
-    mov eax,[esp + 6 * 4] ;syscall number
-    mov ebx,[esp + 7 * 4] ;arg1
-    mov ecx,[esp + 8 * 4] ;arg2
-    mov edx,[esp + 9 * 4] ;arg3
-    mov esi,[esp + 10 * 4] ;arg4
-    mov edi,[esp + 11 * 4] ;arg5
+    mov eax,[esp + 7 * 4] ;syscall number
+    mov ebx,[esp + 8 * 4] ;arg1
+    mov ecx,[esp + 9 * 4] ;arg2
+    mov edx,[esp + 10 * 4] ;arg3
+    mov esi,[esp + 11 * 4] ;arg4
+    mov edi,[esp + 12 * 4] ;arg5
     mov ebp,esp ;store stack pointer
     sysenter ;perform a syscall
     ;we never return here, but to .retRegs
@@ -41,9 +41,9 @@ __ApiDoSyscall:
     ;we need to calculate the return address dynamically
     call .2
     .2: ;now, we have the address of the instruction below on the stack
-    pop eax ;move address of this instruction to eax - this instruction takes 2 bytes
-    add eax,.retStack - $ + 1 ;calculate absolute return address from the address of the instruction above and the relative displacement
-    mov [esp + 6 * 4],eax ;replace syscall code with the return address
+    pop edx ;move address of this instruction to edx - this instruction takes 2 bytes
+    add edx,.retStack - $ + 1 ;calculate absolute return address from the address of the instruction above and the relative displacement
+    mov [esp + 6 * 4],edx ;replace syscall code with the return address
     lea ebp,[esp + 6 * 4] ;store "fake" stack pointer
     sysenter ;perform a syscall
 

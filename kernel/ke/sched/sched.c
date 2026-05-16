@@ -199,7 +199,6 @@ static void KeSchedule(uint32_t cpu)
         KeNextTask[cpu].preemptible = 0;
 }
 
-
 [[noreturn]] void KeStartScheduler(void (*continuationTask)(void*), void *continuationContext)
 {   
     STATUS ret = OK;

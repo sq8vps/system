@@ -8,7 +8,7 @@ add_library(io OBJECT
     initrd.c
     )
 
-target_include_directories(io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
+target_include_directories(io PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${NABLA_KERNEL_TOP_DIR})
 target_link_libraries(io PUBLIC
     io_dev $<TARGET_OBJECTS:io_dev>
     io_fs $<TARGET_OBJECTS:io_fs>

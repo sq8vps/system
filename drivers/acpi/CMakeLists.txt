@@ -17,7 +17,7 @@ add_executable(${DRIVER} EXCLUDE_FROM_ALL
 target_include_directories(${DRIVER} PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR} 
     ${CMAKE_CURRENT_SOURCE_DIR}/acpica/include
-    ${DRIVER_API})
+    ${NABLA_DRIVER_API})
 target_link_libraries(${DRIVER} PRIVATE
     acpi_config
     acpica
@@ -25,7 +25,7 @@ target_link_libraries(${DRIVER} PRIVATE
 )
 
 
-include(${DRIVER_HELPERS})
+include(${NABLA_DRIVER_HELPERS})
 export_symbols()
 export_driver()
 export_initrd_driver()

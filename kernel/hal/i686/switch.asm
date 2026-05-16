@@ -23,6 +23,10 @@ extern HalStoreMathState
 extern HalRestoreMathState
 
 ;FASTCALL
+;void GdtRestoreTls(uint32_t cpu, const struct KeTaskControlBlock *tcb);
+extern GdtRestoreTls
+
+;FASTCALL
 ;void KeUpdateTaskScheduleTime(struct KeTaskControlBlock *tcb)
 extern KeUpdateTaskScheduleTime
 
@@ -71,6 +75,14 @@ KeStoreTaskContext:
     mov [edi + CPUState.esp],esp ;store kernel stack pointer. User mode stack pointer is on kernel stack
     add DWORD [edi + CPUState.esp],4 ;omit locally pushed EDI
 
+    ;store segment registers
+    mov bx,ds
+    mov [edi + CPUState.ds],bx
+    mov bx,es
+    mov [edi + CPUState.es],bx
+    mov bx,fs
+    mov [edi + CPUState.fs],bx
+
 .skip:
     pop edi ;restore original edi
     push eax ;push return address
@@ -117,15 +129,18 @@ KeSwitchToTask:
     ;GdtUpdateTss uses fastcall
     call GdtUpdateTss
 
-    ; restore segment registers
+    ;restore segment registers
     mov ax,[ebp + CPUState.ds]
     mov ds,ax
     mov ax,[ebp + CPUState.es]
     mov es,ax
     mov ax,[ebp + CPUState.fs]
     mov fs,ax
-    mov ax,[ebp + CPUState.gs]
-    mov gs,ax 
+    
+    ;restore TLS
+    mov ecx,ebx ;cpu number
+    mov edx,[esi + SchedState.task] ;TCB
+    call GdtRestoreTls ;fastcall
 
     push es
 

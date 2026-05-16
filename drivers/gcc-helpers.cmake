@@ -8,14 +8,14 @@ endfunction()
 
 function(export_driver)
     add_custom_command(TARGET ${DRIVER} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${DRIVER}> ${OS_IMAGE_DIR}/drivers/bin/$<TARGET_FILE_NAME:${DRIVER}>
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${DRIVER}.ndb ${OS_IMAGE_DIR}/drivers/db/${DRIVER}.ndb
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${DRIVER}> ${NABLA_IMAGE_DIR}/drivers/bin/$<TARGET_FILE_NAME:${DRIVER}>
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${DRIVER}.ndb ${NABLA_IMAGE_DIR}/drivers/db/${DRIVER}.ndb
     )
 endfunction()
 
 function(export_initrd_driver)
     add_custom_command(TARGET ${DRIVER} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${DRIVER}> ${INITRD_DIR}/drivers/bin/$<TARGET_FILE_NAME:${DRIVER}>
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${DRIVER}.ndb ${INITRD_DIR}/drivers/db/${DRIVER}.ndb
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${DRIVER}> ${NABLA_INITRD_DIR}/drivers/bin/$<TARGET_FILE_NAME:${DRIVER}>
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${DRIVER}.ndb ${NABLA_INITRD_DIR}/drivers/db/${DRIVER}.ndb
     )
 endfunction()

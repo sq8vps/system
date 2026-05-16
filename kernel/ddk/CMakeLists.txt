@@ -5,5 +5,5 @@ add_library(ddk OBJECT
     tty.c
 )
 
-target_include_directories(ddk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
+target_include_directories(ddk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${NABLA_KERNEL_TOP_DIR})
 target_link_libraries(ddk PRIVATE kernel_config)

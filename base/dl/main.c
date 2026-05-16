@@ -1,36 +1,52 @@
+#include <stddef.h>
+#include <stdint.h>
+#include <limits.h>
 #include <ex/load.h>
 #include <ke/task/task.h>
-#include <stddef.h>
-#include <limits.h>
 #include "elf.h"
+#include <errno.h>
 
-typedef void (*EntryType)(int, char**, char**, struct ExProgramData*);
+typedef int (*EntryType)(int, char**, char**, struct ExProgramData*);
 
-[[noreturn]] void _start(int argc, char **argv, char **envp, struct ExProgramData *progData)
+size_t DlPageSize = 4096;
+
+int main(int argc, char **argv, char **envp, struct ExProgramData *progData)
 {
-    EntryType entry = nullptr;
     struct ExProgramData *p = progData;
-    struct Elf32_Ehdr *h = nullptr;
+    uintptr_t base = 0; //program base
+    struct Elf32_Ehdr *h = nullptr; //ELF header
+    struct Elf32_Phdr *phdr = nullptr; //program data headers
+    struct Elf32_Dyn *dyn = nullptr; //dynamic entries
+    struct Elf32_Rel *rel = nullptr; //relocation entries
+    size_t relCount = 0; //number of relocation entries
+    bool addend = false; //are relocations with addends?
+    struct Elf32_Sym *sym = nullptr; //symbol table
+    EntryType entry = nullptr;
     while(PROGDATA_END != p->type)
     {
-        if(PROGDATA_BASE == p->type)
+        switch(p->type)
         {
-            h = p->value.p;
+            case PROGDATA_BASE:
+                base = (uintptr_t)p->value.p;
+                h = p->value.p;
+                break;
+            case PROGDATA_PAGE_SIZE:
+                DlPageSize = p->value.s;
+                break;
         }
         ++p;
     }
 
-    if(nullptr == h)
-        ApiExitTask(-1);
+    if((DlVerifyElf32Header(h) < 0) || (ET_DYN != h->e_type) || (0 == h->e_entry))
+    {
+        ApiExitTask(-ENOEXEC);
+    }
 
-    if((ExVerifyElf32Header(h) < 0) || (ET_DYN != h->e_type) || (0 == h->e_entry))
-        ApiExitTask(-1);
 
-    entry = (void*)((uintptr_t)h + h->e_entry);
-    entry(argc, argv, envp, progData);
 
-    ApiExitTask(INT_MIN);
-    
-    while(1)
-        ;
+    entry = (void*)(h->e_entry + base);
+
+    int result = entry(argc, argv, envp, progData);
+    //we expect the program to exit on it's own anyway
+    ApiExitTask(result);
 }

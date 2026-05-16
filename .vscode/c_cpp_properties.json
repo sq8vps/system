@@ -24,7 +24,7 @@
             "intelliSenseMode": "linux-gcc-x64",
             "cStandard": "${default}",
             "cppStandard": "${default}",
-            "compilerPath": "${default}"
+            "compilerPath": "/usr/bin/gcc"
         }
     ],
     "version": 4

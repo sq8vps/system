@@ -84,7 +84,7 @@ STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t inde
 		const char *name = (const char*)h + stringTabHdr->sh_offset + symbol->st_name; //get string for this symbol
 
 		//perform linking with external symbol
-		uint32_t value = resolver(name);
+		uint32_t value = (nullptr != resolver) ? resolver(name) : 0;
 
 		if(0 == value) //symbol not found
 		{

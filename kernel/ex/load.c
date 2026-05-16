@@ -17,10 +17,8 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 	size_t actualSize = 0;
 	bool interpreterFound = false;
 
-	*imageTop = 0;
-
 	//randomize image base by 9 bits = 512 position on a page granularity
-	uintptr_t location = RtlRandom(1, 1 << 9) * PAGE_SIZE;
+	uintptr_t location = RtlRandom(1, 1 << 9) * PAGE_SIZE + ALIGN_UP(*imageTop, PAGE_SIZE);
 
     if(!IoCheckIfFileExists(path))
 	{
@@ -74,6 +72,22 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 		goto ExProcessLoadWorkerFailed;
 	}
 
+	if(!isInterpreter)
+	{
+		*progData = MmAllocateKernelHeap(sizeof(struct ExProgramData) * 4);
+		if(nullptr == *progData)
+		{
+			status = OUT_OF_RESOURCES;
+			goto ExProcessLoadWorkerFailed;
+		}
+
+		(*progData)[0].type = PROGDATA_BASE;
+		(*progData)[0].value.p = (void*)location;
+		(*progData)[1].type = PROGDATA_PAGE_SIZE;
+		(*progData)[1].value.s = PAGE_SIZE;
+		(*progData)[2].type = PROGDATA_END;
+	}
+
 	for(uint16_t i = 0; i < ehdr->e_phnum; i++)
 	{
 		if(PT_INTERP == phdr[i].p_type)
@@ -95,7 +109,7 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 					goto ExProcessLoadWorkerFailed;
 				}
 
-				if('\0' != interpreter[phdr[i].p_filesz])
+				if('\0' != interpreter[phdr[i].p_filesz - 1])
 				{
 					status = CORRUPTED;
 					goto ExProcessLoadWorkerFailed;
@@ -123,20 +137,17 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 		goto ExProcessLoadWorkerFailed;
 	}
 
-	if(!isInterpreter)
+	if(isInterpreter)
 	{
-		*progData = MmAllocateKernelHeap(sizeof(struct ExProgramData) * 4);
-		if(nullptr == *progData)
+		size_t idx = 0;
+		while(PROGDATA_END != (*progData)[idx].type)
 		{
-			status = OUT_OF_RESOURCES;
-			goto ExProcessLoadWorkerFailed;
+			++idx;
 		}
 
-		progData[0]->type = PROGDATA_BASE;
-		progData[0]->value.p = (void*)location;
-		progData[1]->type = PROGDATA_PAGE_SIZE;
-		progData[1]->value.s = PAGE_SIZE;
-		progData[2]->type = PROGDATA_END;
+		(*progData)[idx].type = PROGDATA_LINKER_BASE;
+		(*progData)[idx++].value.p = (void*)location;
+		(*progData)[idx].type = PROGDATA_END;
 	}
 
 	for(uint16_t i = 0; i < ehdr->e_phnum; ++i)
@@ -187,7 +198,7 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 	}
 
 	if(isInterpreter || !interpreterFound)
-		*entry = (void(*)(void*))(ehdr->e_entry);
+		*entry = (void(*)(void*))(ehdr->e_entry + location);
 
 ExProcessLoadWorkerFailed:
 	if(f >= 0)
@@ -195,7 +206,11 @@ ExProcessLoadWorkerFailed:
 	MmFreeKernelHeap(ehdr);
 	MmFreeKernelHeap(phdr);
 	MmFreeKernelHeap(interpreter);
-	MmFreeKernelHeap(*progData);
+	if(OK != status)
+	{
+		MmFreeKernelHeap(*progData);
+		*progData = nullptr;
+	}
 
 	return status;
 }

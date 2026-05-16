@@ -1,23 +1,15 @@
-/**
- * @file elf.h
- * @brief Execultable Linkable Format files helpers
- * @ingroup exec
- */
-
-#ifndef LOADER_ELF_H
-#define LOADER_ELF_H
+#ifndef ELF_H
+#define ELF_H
 
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __GNUC__
 #define PACKED __attribute__((packed))
+#else
+#error Must define macros for some compiler-specific attributes
+#endif
 
-/**
- * @addtogroup elf ELF definitions and helpers
- * @ingroup exec
- * @kinternal
- * @{
-*/
 
 /**
  * @brief ELF image type
@@ -149,60 +141,6 @@ struct Elf32_Phdr
 } PACKED;
 
 /**
- * @brief ELF section header type
- */
-enum Elf32_sh_type
-{
-	SHT_NULL = 0,
-	SHT_PROGBITS = 1,
-	SHT_SYMTAB = 2,
-	SHT_STRTAB = 3,
-	SHT_RELA = 4,
-	SHT_HASH = 5,
-	SHT_DYNAMIC = 6,
-	SHT_NOTE = 7,
-	SHT_NOBITS = 8,
-	SHT_REL = 9,
-	SHT_SHLIB = 10,
-	SHT_DYNSYM = 11,
-	SHT_LOPROC = 0x70000000,
-	SHT_HIPROC = 0x7fffffff,
-	SHT_LOUSER = 0x80000000,
-	SHT_HIUSER = 0xffffffff,
-};
-
-/**
- * @brief ELF section header flags
- */
-enum Elf32_sh_flags
-{
-	SHF_WRITE = 0x1,
-	SHF_ALLOC = 0x2,
-	SHF_EXECINSTR = 0x4,
-	SHF_MASKPROC = 0xf0000000,
-};
-
-#define SHN_UNDEF (0)
-#define SHN_ABS (0xfff1)
-
-/**
- * @brief ELF section header
- */
-struct Elf32_Shdr
-{
-	uint32_t sh_name;
-	uint32_t sh_type;
-	uint32_t sh_flags;
-	uint32_t sh_addr;
-	uint32_t sh_offset;
-	uint32_t sh_size;
-	uint32_t sh_link;
-	uint32_t sh_info;
-	uint32_t sh_addralign;
-	uint32_t sh_entsize;
-} PACKED;
-
-/**
  * @brief ELF symbol entry
  */
 struct Elf32_Sym
@@ -250,7 +188,9 @@ struct Elf32_Rel
 	uint32_t r_info;
 } PACKED;
 
-//ELF relocation with addend entry
+/**
+ * @brief ELF relocation entry with addend
+ */
 struct Elf32_Rela
 {
 	uint32_t r_offset;
@@ -271,22 +211,48 @@ enum Elf32_Rel_types
 	R_386_NONE = 0, //no relocation
 	R_386_32 = 1, //symbol + addend
 	R_386_PC32 = 2,  //symbol + addend - section offset
+	R_386_GLOB_DAT = 6, //set target symbol in GOT
+	R_386_JMP_SLOT = 7, //set target symbol in PLT
 };
 
 /**
- * @brief Get ELF32 section header
- * @param h ELF32 file header
- * @param n Section index
- * @return Section header address
-*/
-struct Elf32_Shdr* ExGetElf32SectionHeader(struct Elf32_Ehdr *h, size_t n);
+ * @brief ELF dynamic section entry
+ */
+struct Elf32_Dyn
+{
+	int32_t d_tag;
+	union
+	{
+		uint32_t d_val;
+		uintptr_t d_ptr;
+	} d_un;
+} PACKED;
+
+enum Elf32_Dyn_type
+{
+	DT_NULL = 0, //null entry
+	DT_NEEDED = 1, //needed library name
+	DT_PLTRELSZ = 2, //size of PLT-associated relocation entries
+	DT_PLTGOT = 3, //PLT address
+	DT_HASH = 4, //symbol hash table address
+	DT_STRTAB = 5, //string table
+	DT_SYMTAB = 6, //symbol table
+	DT_RELA = 7, //address of the relocation table (relocation with addend)
+	DT_RELASZ = 8, //size of dynamic relocation entries (relocation with addend)
+	DT_STRSZ = 10, //string table size
+	DT_SYMENT = 11, //symbol table entry count
+	DT_REL = 17, //address of the relocation table (relocation without addend)
+	DT_RELSZ = 18, //size of dynamic relocation entries (relocation without addend)
+	DT_PLTREL = 20, //PLT relocation entry type
+	DT_JMPREL = 23, //PLT relocation entry table address
+};
 
 /**
  * @brief Verify ELF32 main header
  * @param h ELF32 file header
- * @return Error code (OK on successful verification)
+ * @return 0 on success, -1 otherwise
 */
-int ExVerifyElf32Header(struct Elf32_Ehdr *h);
+int DlVerifyElf32Header(struct Elf32_Ehdr *h);
 
 /**
  * @}

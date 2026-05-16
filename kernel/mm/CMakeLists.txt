@@ -8,5 +8,5 @@ add_library(mm OBJECT
     tmem.c
 )
 
-target_include_directories(mm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
+target_include_directories(mm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${NABLA_KERNEL_TOP_DIR})
 target_link_libraries(mm PRIVATE kernel_config)

@@ -4,5 +4,5 @@ add_library(i686_emu OBJECT
     op.c
 )
 
-target_include_directories(i686_emu PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
+target_include_directories(i686_emu PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${NABLA_KERNEL_TOP_DIR})
 target_link_libraries(i686_emu PRIVATE kernel_config)

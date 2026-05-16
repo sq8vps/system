@@ -27,5 +27,6 @@
         "ostream": "c",
         "streambuf": "c",
         "tuple": "c"
-    }
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }

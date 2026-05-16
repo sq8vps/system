@@ -4,6 +4,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXECUTABLE_SUFFIX "")
 
+include(../nabla.cmake)
+
+set(NABLA_KERNEL_TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_subdirectory(ddk)
 add_subdirectory(ex)
 add_subdirectory(hal)
@@ -48,7 +52,7 @@ target_link_libraries(kernel PRIVATE
 target_link_libraries(kernel PRIVATE kernel_config)
 
 add_custom_command(TARGET kernel POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kernel> ${OS_IMAGE_DIR}/$<TARGET_FILE_NAME:kernel>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kernel> ${NABLA_IMAGE_DIR}/$<TARGET_FILE_NAME:kernel>
 )
 
 include("target-helpers.cmake")

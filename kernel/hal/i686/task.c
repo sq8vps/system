@@ -81,7 +81,6 @@ STATUS HalCreateThread(struct KeProcessControlBlock *pcb, uint32_t flags,
     (*tcb)->data.ds = GDT_OFFSET(GDT_KERNEL_DS);
     (*tcb)->data.es = (*tcb)->data.ds;
     (*tcb)->data.fs = (*tcb)->data.ds;
-    (*tcb)->data.gs = (*tcb)->data.ds;
 
     //all processes start executing by calling a fundamental bootstrap routine
     //this routine sets up stack and then calls the provided entry point
@@ -289,7 +288,6 @@ void HalInitializeScheduler(void)
             tcb->data.ds = USER_SELECTOR(GDT_USER_DS);
             tcb->data.es = tcb->data.ds;
             tcb->data.fs = tcb->data.ds;
-            tcb->data.gs = tcb->data.ds;
 
             //the following function can never return
             //since we do a jump to the user stack using iret, we can't return to the kernel code (here)

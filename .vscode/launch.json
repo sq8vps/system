@@ -5,7 +5,7 @@
             "type": "gdb",
             "request": "attach",
             "executable": "kernel/build/kernel.sym",
-            "target": "172.22.14.154:1234",
+            "target": "192.168.1.115:1234",
             "remote": true,
             "cwd": "${workspaceRoot}", 
             "gdbpath": "gdb",

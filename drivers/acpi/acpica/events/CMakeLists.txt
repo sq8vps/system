@@ -16,4 +16,4 @@ add_library(events OBJECT
     evxfregn.c
     )
 
-target_include_directories(events PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../include ${DRIVER_API})
+target_include_directories(events PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../include ${NABLA_DRIVER_API})

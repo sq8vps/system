@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.31.6)
 project(Nabla_drivers LANGUAGES C CXX ASM_NASM)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 23)
-set(CMAKE_EXECUTABLE_SUFFIX .drv)
+set(CMAKE_EXECUTABLE_SUFFIX "")
+
+include(../nabla.cmake)
 
 add_subdirectory(acpi)
 add_subdirectory(disk)
