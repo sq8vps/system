@@ -1,0 +1,2 @@
+/home/ubuntu/opt/cross32/bin/i686-elf-ar cr liblibc_machine_i686.a CMakeFiles/libc_machine_i686.dir/memchr.S.obj CMakeFiles/libc_machine_i686.dir/memcmp.S.obj CMakeFiles/libc_machine_i686.dir/memcpy.S.obj CMakeFiles/libc_machine_i686.dir/memmove.S.obj CMakeFiles/libc_machine_i686.dir/memset.S.obj CMakeFiles/libc_machine_i686.dir/setjmp.S.obj CMakeFiles/libc_machine_i686.dir/strchr.S.obj CMakeFiles/libc_machine_i686.dir/strlen.S.obj
+/home/ubuntu/opt/cross32/bin/i686-elf-ranlib liblibc_machine_i686.a

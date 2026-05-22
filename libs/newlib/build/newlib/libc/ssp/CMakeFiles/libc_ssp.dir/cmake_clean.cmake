@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/libc_ssp.dir/chk_fail.c.obj"
+  "CMakeFiles/libc_ssp.dir/chk_fail.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/gets_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/gets_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/memcpy_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/memcpy_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/memmove_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/memmove_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/mempcpy_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/mempcpy_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/memset_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/memset_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/snprintf_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/snprintf_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/sprintf_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/sprintf_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/stack_protector.c.obj"
+  "CMakeFiles/libc_ssp.dir/stack_protector.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/stpcpy_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/stpcpy_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/stpncpy_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/stpncpy_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/strcat_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/strcat_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/strcpy_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/strcpy_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/strncat_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/strncat_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/strncpy_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/strncpy_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/vsnprintf_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/vsnprintf_chk.c.obj.d"
+  "CMakeFiles/libc_ssp.dir/vsprintf_chk.c.obj"
+  "CMakeFiles/libc_ssp.dir/vsprintf_chk.c.obj.d"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang C)
+  include(CMakeFiles/libc_ssp.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

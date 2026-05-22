@@ -1,0 +1,1 @@
+/home/ubuntu/opt/cross32/bin/i686-elf-gcc -fPIC -ffreestanding -nostdlib -z noexecstack -Wl,-shared -shared  -o libc.so @CMakeFiles/c.dir/objects1.rsp  iconv/liblibc_iconv.a -lgcc machine/i686/liblibc_machine_i686.a

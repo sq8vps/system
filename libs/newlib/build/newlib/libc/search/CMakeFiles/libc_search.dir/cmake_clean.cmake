@@ -1,0 +1,43 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/libc_search.dir/bsd_qsort_r.c.obj"
+  "CMakeFiles/libc_search.dir/bsd_qsort_r.c.obj.d"
+  "CMakeFiles/libc_search.dir/bsearch.c.obj"
+  "CMakeFiles/libc_search.dir/bsearch.c.obj.d"
+  "CMakeFiles/libc_search.dir/hash.c.obj"
+  "CMakeFiles/libc_search.dir/hash.c.obj.d"
+  "CMakeFiles/libc_search.dir/hash_bigkey.c.obj"
+  "CMakeFiles/libc_search.dir/hash_bigkey.c.obj.d"
+  "CMakeFiles/libc_search.dir/hash_buf.c.obj"
+  "CMakeFiles/libc_search.dir/hash_buf.c.obj.d"
+  "CMakeFiles/libc_search.dir/hash_func.c.obj"
+  "CMakeFiles/libc_search.dir/hash_func.c.obj.d"
+  "CMakeFiles/libc_search.dir/hash_log2.c.obj"
+  "CMakeFiles/libc_search.dir/hash_log2.c.obj.d"
+  "CMakeFiles/libc_search.dir/hash_page.c.obj"
+  "CMakeFiles/libc_search.dir/hash_page.c.obj.d"
+  "CMakeFiles/libc_search.dir/hcreate.c.obj"
+  "CMakeFiles/libc_search.dir/hcreate.c.obj.d"
+  "CMakeFiles/libc_search.dir/hcreate_r.c.obj"
+  "CMakeFiles/libc_search.dir/hcreate_r.c.obj.d"
+  "CMakeFiles/libc_search.dir/ndbm.c.obj"
+  "CMakeFiles/libc_search.dir/ndbm.c.obj.d"
+  "CMakeFiles/libc_search.dir/qsort.c.obj"
+  "CMakeFiles/libc_search.dir/qsort.c.obj.d"
+  "CMakeFiles/libc_search.dir/qsort_r.c.obj"
+  "CMakeFiles/libc_search.dir/qsort_r.c.obj.d"
+  "CMakeFiles/libc_search.dir/tdelete.c.obj"
+  "CMakeFiles/libc_search.dir/tdelete.c.obj.d"
+  "CMakeFiles/libc_search.dir/tdestroy.c.obj"
+  "CMakeFiles/libc_search.dir/tdestroy.c.obj.d"
+  "CMakeFiles/libc_search.dir/tfind.c.obj"
+  "CMakeFiles/libc_search.dir/tfind.c.obj.d"
+  "CMakeFiles/libc_search.dir/tsearch.c.obj"
+  "CMakeFiles/libc_search.dir/tsearch.c.obj.d"
+  "CMakeFiles/libc_search.dir/twalk.c.obj"
+  "CMakeFiles/libc_search.dir/twalk.c.obj.d"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang C)
+  include(CMakeFiles/libc_search.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
