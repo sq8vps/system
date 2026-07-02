@@ -18,7 +18,7 @@ STATUS FsGetNode(const struct IoVfsNode *parent, const char *name, struct IoVfsN
     if(NULL == rp)
         return OUT_OF_RESOURCES;
     
-    union FsGetRequest *req = MmAllocateKernelHeap(sizeof(union FsGetRequest));
+    union FsRequest *req = MmAllocateKernelHeap(sizeof(union FsRequest));
     if(NULL == req)
     {
         IoFreeRp(rp);
@@ -55,7 +55,7 @@ STATUS FsGetNodeChildren(const struct IoVfsNode *node, struct IoVfsNode **childr
     if(NULL == rp)
         return OUT_OF_RESOURCES;
     
-    union FsGetRequest *req = MmAllocateKernelHeap(sizeof(union FsGetRequest));
+    union FsRequest *req = MmAllocateKernelHeap(sizeof(union FsRequest));
     if(NULL == req)
     {
         IoFreeRp(rp);
@@ -71,6 +71,45 @@ STATUS FsGetNodeChildren(const struct IoVfsNode *node, struct IoVfsNode **childr
     status = IoSendRpSync(node->device, rp);
     if(OK == status)
         *children = req->getChildren.children;
+
+    IoFreeRp(rp);
+    MmFreeKernelHeap(req);
+    return status;
+}
+
+STATUS FsCreateFile(const struct IoVfsNode *parent, const char *name, enum IoVfsEntryType type, enum IoVfsFlags flags, struct IoVfsNode **node)
+{
+    STATUS status = OK;
+
+    if(!node || !name)
+        return BAD_PARAMETER;
+    
+    if(IO_DEVICE_TYPE_FS != parent->device->type)
+        return BAD_TYPE;
+    
+    struct IoRp *rp = IoCreateRp();
+    if(NULL == rp)
+        return OUT_OF_RESOURCES;
+    
+    union FsRequest *req = MmAllocateKernelHeap(sizeof(*req));
+    if(NULL == req)
+    {
+        IoFreeRp(rp);
+        return OUT_OF_RESOURCES;
+    }
+
+    rp->code = IO_RP_FILESYSTEM_CONTROL;
+    rp->payload.deviceControl.code = FS_CREATE;
+    rp->payload.deviceControl.data = req;
+
+    req->create.parent = parent;
+    req->create.name = name;
+    req->create.type = type;
+    req->create.flags = flags;
+    
+    status = IoSendRpSync(parent->device, rp);
+    if(OK == status)
+        *node = req->create.node;
 
     IoFreeRp(rp);
     MmFreeKernelHeap(req);

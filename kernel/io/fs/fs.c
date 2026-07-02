@@ -78,6 +78,7 @@ static void IoFileReadWriteCallback(STATUS status, size_t actualSize, void *cont
             }
         }
         
+        h->offset += actualSize;
         h->operation.completed = 1;
         barrier();
         KeUnblockTask(h->operation.task);
@@ -215,15 +216,25 @@ static STATUS IoOpenFileRaw(const char *file, struct IoVfsNode *fileNode, struct
             fileNode = IoVfsResolveLink(fileNode, taskfs);
     }
 
-    if(NULL == fileNode)
-        status = NOT_FOUND;
+    if(nullptr == fileNode)
+    {
+        if(mode & IO_FILE_CREATE)
+        {
+            status = IoVfsCreate(file, IO_VFS_FILE, 0, &fileNode);
+            if(OK == status)
+                goto open;
+        }
+        else
+            status = NOT_FOUND;
+    }
     else if((IO_VFS_FILE != fileNode->type) && (IO_VFS_DEVICE != fileNode->type) && (IO_VFS_LINK != fileNode->type))
         status = BAD_TYPE;
-    else if((mode & (IO_FILE_WRITE | IO_FILE_WRITE_ATTRIBUTES | IO_FILE_APPEND)) && (fileNode->flags & IO_VFS_FLAG_READ_ONLY))
+    else if((mode & (IO_FILE_WRITE | IO_FILE_APPEND)) && (fileNode->flags & IO_VFS_FLAG_READ_ONLY))
         status = READ_ONLY;
     else
     {
-        status = IoVfsOpen(fileNode, (mode & (IO_FILE_WRITE | IO_FILE_APPEND | IO_FILE_WRITE_ATTRIBUTES)) ? true : false,
+        open:
+        status = IoVfsOpen(fileNode, (mode & (IO_FILE_WRITE | IO_FILE_APPEND)) ? true : false,
                 flags);
         
         if(OK == status)
@@ -242,6 +253,8 @@ static STATUS IoOpenFileRaw(const char *file, struct IoVfsNode *fileNode, struct
                 (*handle)->references = 1;
                 (*handle)->operation.lock = (KeSpinlock)KeSpinlockInitializer;
                 (*handle)->taskfs = *taskfs;
+                if(mode & IO_FILE_APPEND)
+                    (*handle)->offset = fileNode->size;
             }
         }
     }
@@ -378,9 +391,15 @@ STATUS IoReadFile(int handle, void *buffer, size_t size, uint64_t offset,
     }
 
     h = pcb->files.table[handle].handle;
-    
-    h->operation.write = 0;
+
+    if(IO_OFFSET_CURRENT == offset)
+        offset = h->offset;
+    else
+        h->offset = offset;
+
     h->operation.offset = offset;
+    h->operation.write = 0;
+    
     status = IoVfsRead(h->node, h->flags, buffer, size, offset, callback, context);
     if(OK != status)
         KeReleaseMutex(&pcb->files.table[handle].mutex);
@@ -416,8 +435,10 @@ STATUS IoWriteFile(int handle, void *buffer, size_t size, uint64_t offset,
 
     struct IoFileHandle *h = pcb->files.table[handle].handle;
     
-    if(h->mode & IO_FILE_APPEND)
-        offset = h->node->size;
+    if(IO_OFFSET_CURRENT == offset)
+        offset = h->offset;
+    else
+        h->offset = offset;
 
     h->operation.write = 1;
     h->operation.offset = offset;
@@ -462,6 +483,11 @@ static STATUS IoReadWriteFileSync(int handle, void *buffer, size_t size, uint64_
     barrier();
     KeReleaseSpinlock(&(h->operation.lock), prio);
 
+    if(IO_OFFSET_CURRENT == offset)
+        offset = h->offset;
+    else
+        h->offset = offset;
+
     STATUS status = OK;
     if(!write)
     {
@@ -471,9 +497,6 @@ static STATUS IoReadWriteFileSync(int handle, void *buffer, size_t size, uint64_
     }
     else
     {
-        if(h->mode & IO_FILE_APPEND)
-            offset = h->node->size;
-
         h->operation.write = 1;
         h->operation.offset = offset;
         status = IoVfsWrite(h->node, h->flags, buffer, size, offset, IoFileReadWriteCallback, h);
@@ -559,6 +582,61 @@ STATUS ApiWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, 
     return IoWriteFileSync(handle, buffer, size, offset, actualSize);
 }
 
+DEFINE_SYSCALL(STATUS, ApiSetFileOffset, int, int64_t, IoSetFileOffsetMethod, uint64_t*)
+STATUS ApiSetFileOffset(int handle, int64_t offset, IoSetFileOffsetMethod method, uint64_t *current)
+{
+    STATUS status = OK;
+    struct IoFileHandle *h = NULL;
+
+    if((nullptr != current) && !MmProbeUserMemory(current, sizeof(*current), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+    
+    if(handle < 0)
+        return NOT_FOUND;
+
+    struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
+    ObLockObject(pcb);
+    if((uint32_t)handle >= pcb->files.tableSize)
+    {
+        ObUnlockObject(pcb);
+        return NOT_FOUND;
+    }
+    ObUnlockObject(pcb);
+
+    KeAcquireMutex(&pcb->files.table[handle].mutex);
+
+    if(NULL == pcb->files.table[handle].handle)
+    {
+        KeReleaseMutex(&pcb->files.table[handle].mutex);
+        return NOT_FOUND;
+    }
+
+    h = pcb->files.table[handle].handle;
+
+    switch(method)
+    {
+        case IO_SET_OFFSET:
+            h->offset = offset;
+            break;
+        case IO_SET_OFFSET_CUR:
+            h->offset += offset;
+            break;
+        case IO_SET_OFFSET_END:
+            h->offset = h->node->size + offset;
+            break;
+        default:
+            status = BAD_PARAMETER;
+            break;
+    }
+    
+    if(nullptr != current)
+        *current = h->offset;
+
+    KeReleaseMutex(&pcb->files.table[handle].mutex);
+    
+    return status;   
+}
+
 STATUS IoFsInit(void)
 {
     return OK;
@@ -638,5 +716,6 @@ STATUS ApiSymlink(const char *from, const char *to)
 {
     if(((size_t)(-1) == RtlStrlenUser(from)) || ((size_t)(-1) == RtlStrlenUser(to)))
         return BAD_PARAMETER;
-    return IoVfsCreateLink(from, to, 0);
+    return IoVfsCreateSymLink(from, to, 0);
 }
+

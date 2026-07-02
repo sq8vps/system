@@ -324,6 +324,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     size_t alignment = (dev->alignment > dev->blockSize) ? dev->alignment : dev->blockSize;
     size_t alignedSize = 0;
     uint64_t alignedOffset = 0;
+    bool useProvided = false;
     
     if(0 == (dev->flags & (IO_DEVICE_FLAG_DIRECT_IO | IO_DEVICE_FLAG_BUFFERED_IO)))
         return NOT_SUPPORTED;
@@ -336,7 +337,15 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     if(dev->blockSize >= 1)
         alignedSize = ALIGN_UP(size + (offset - alignedOffset), dev->blockSize);
 
-    uint8_t *alignedBuffer = MmAllocateKernelHeapAligned(alignedSize, alignment);
+    if(nullptr != *buffer)
+    {
+        if((size == alignedSize) && (offset == alignedOffset))
+            useProvided = true;
+        else
+            return BAD_ALIGNMENT;
+    }
+
+    uint8_t *alignedBuffer = useProvided ? *buffer : MmAllocateKernelHeapAligned(alignedSize, alignment);
     if(NULL == alignedBuffer)
         return OUT_OF_RESOURCES;
 
@@ -345,7 +354,8 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
         list = MmBuildMemoryDescriptorList(alignedBuffer, alignedSize);
         if(NULL == list)
         {
-            MmFreeKernelHeap(alignedBuffer);
+            if(!useProvided)
+                MmFreeKernelHeap(alignedBuffer);
             status = OUT_OF_RESOURCES;
             goto _IoDeviceReadSyncExit;
         }
@@ -354,7 +364,8 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     rp = IoCreateRp();
     if(NULL == rp)
     {
-        MmFreeKernelHeap(alignedBuffer);
+        if(!useProvided)
+            MmFreeKernelHeap(alignedBuffer);
         status = OUT_OF_RESOURCES;
         goto _IoDeviceReadSyncExit;
     }
@@ -373,7 +384,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
     rp->size = alignedSize;
     status = IoSendRpSync(dev, rp);
 
-    if(OK != status)
+    if((OK != status) && !useProvided)
         MmFreeKernelHeap(alignedBuffer);
     else
     {
@@ -382,7 +393,7 @@ STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size
         {
             *buffer = alignedBuffer;
         }
-        else
+        else //won't happen if useProvided = true
         {
             //unaligned offset, double buffering required
             *buffer = MmAllocateKernelHeap(size);

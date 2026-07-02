@@ -28,6 +28,8 @@ DRIVER_API
  * @{
  */
 
+NABLA_API
+
 /**
  * @brief VFS node flags
  */
@@ -37,8 +39,9 @@ enum IoVfsFlags
     IO_VFS_FLAG_HIDDEN = 0x2, /**< Node is hidden from user */
     IO_VFS_FLAG_PERSISTENT = 0x4, /**< Node is unremovable */
     IO_VFS_FLAG_NO_CACHE = 0x8, /**< Do not cache this file */
-    IO_VFS_FLAG_DIRTY = 0x10, /**< File has changed, must be written to disk */
-    IO_VFS_FLAG_ATTRIBUTES_DIRTY = 0x20, /**< File attributes has changed, must be written to disk */
+    IO_VFS_FLAG_NO_HARD_LINKS = 0x10, /**< Parent filesystem doesn't support hard links */
+    IO_VFS_FLAG_DIRTY = 0x10000000, /**< File has changed, must be written to disk */
+    IO_VFS_FLAG_ATTRIBUTES_DIRTY = 0x20000000, /**< File attributes has changed, must be written to disk */
 };
 
 /**
@@ -46,12 +49,12 @@ enum IoVfsFlags
 */
 enum IoVfsEntryType
 {
-    IO_VFS_UNKNOWN = 0, //unknown type, for entries not initialized properly that should be ommited
-    IO_VFS_MOUNT_POINT, //mount point
-    IO_VFS_DEVICE, //device other than disk that provides the IoDeviceObject structure
-    IO_VFS_DIRECTORY,
-    IO_VFS_FILE,
-    IO_VFS_LINK, //symbolic link, might exist physically or not
+    IO_VFS_UNKNOWN = 0, /**< Unknown type; for entries not initialized properly that should be ommited */
+    IO_VFS_MOUNT_POINT = 1, /**< Mount point */
+    IO_VFS_DEVICE = 2, /**< Device other than disk that provides the \ref IoDeviceObject structure */
+    IO_VFS_DIRECTORY = 3, /**< Directory */
+    IO_VFS_FILE = 4, /**< Regular file */
+    IO_VFS_LINK = 5, /**< Symbolic link; either virtual or on a physical device */
 };
 
 
@@ -60,14 +63,39 @@ enum IoVfsEntryType
 */
 enum IoVfsFsType
 {
-    IO_VFS_FS_UNKNOWN = 0, //unknown filesystem, entry should be ommited
-    IO_VFS_FS_PHYSICAL, //filesystem corresponding to a physical filesystem 
-    IO_VFS_FS_VIRTUAL,  //virtual FS that can be modified only by the kernel
-                        //and does not require any special/separate handling
-    IO_VFS_FS_TASKFS, //"/task" virtual filesystem
-    IO_VFS_FS_INITRD, //initial ramdisk filesystem
+    IO_VFS_FS_UNKNOWN = 0, /** Unknown filesystem, entry should be ommited */
+    IO_VFS_FS_PHYSICAL = 1, /**< Filesystem corresponding to a physical filesystem */
+    IO_VFS_FS_VIRTUAL = 2,  /**< Virtual FS that can be modified only by the kernel and does not require any special/separate handling */
+    IO_VFS_FS_TASKFS = 3, /**< "/task" virtual filesystem */
+    IO_VFS_FS_INITRD = 4, /**< Initial ramdisk filesystem */
 };
 
+/**
+ * @brief File attributes structure filled by \ref IoGetFileAttributes
+ */
+struct IoFileAttributes
+{
+    uint64_t size; /**< File size. For symbolic links, if it resides on a physical filesystem, this is the size of the link file and not the target file. 
+    If it resides on a virtual filesystem, it is equal to zero. */
+    enum IoVfsFlags flags; /**< File flags */
+    enum IoVfsEntryType type; /**< File entry type */
+    enum IoVfsFsType fsType; /**< Filesystem type */
+    uint32_t links; /**< Number of hard links associated with the file */
+    uint32_t uid; /**< User ID */
+    uint32_t gid; /**< Group ID */
+    uint16_t permissions; /**< File permissions */
+    struct TimeSpec accessTime; /**< Last access timestamp */
+    struct TimeSpec creationTime; /**< Creation timestamp */
+    struct TimeSpec changeTime; /**< Data modification timestamp */
+    struct TimeSpec statusChangeTime; /**< Status modification timestamp */
+    size_t blockSize; /**< Preferred I/O block size */
+    struct
+    {
+        uint32_t characterDevice : 1; /**< Underlying device is a character device */
+    } auxFlags;
+};
+
+END_NABLA_API
 
 /**
  * @brief VFS node reference value type
@@ -85,8 +113,6 @@ union IoVfsReference
     int8_t i8;
 };
 
-
-
 /**
  * @brief Main VFS node structure
 */
@@ -96,9 +122,13 @@ struct IoVfsNode
     enum IoVfsEntryType type; /**< Node type */
     uint64_t size; /**< Size of underlying data, applies to files only */
     enum IoVfsFlags flags; /**< Node flags */
-    time_t lastUse; /**< Last node use timestamp */
-    time_t creationTime; /**< File creation timestamp */
-    time_t lastModification; /**< File modification timestamp */
+    uint32_t gid; /**< Group ID */
+    uint32_t uid; /**< User ID */
+    uint16_t permissions; /**< File permissions */
+    struct TimeSpec lastAccessTime; /**< Last node use timestamp */
+    struct TimeSpec creationTime; /**< File creation timestamp */
+    struct TimeSpec lastChangeTime; /**< File modification timestamp */
+    struct TimeSpec lastStatusChangeTime; /**< File status modification timestamp */
     KeRwLock lock; /**< Readers-writers lock for the underlying data (file) and attributes */
     struct
     {
@@ -109,7 +139,7 @@ struct IoVfsNode
     {
         uint32_t readers; /**< Number of readers */
         uint32_t writers; /**< Number of writers */
-        uint32_t links; /**< Number of symbolic links to this node */
+        uint32_t links; /**< Number of hard links to the underlying data */
     } references;
 
     struct IoTaskFsContext taskfs; /**< Special data for /taskfs filesystem */
@@ -229,6 +259,16 @@ STATUS IoVfsOpen(struct IoVfsNode *node, bool write, IoFileFlags flags);
 STATUS IoVfsClose(struct IoVfsNode *node);
 
 /**
+ * @brief Create a new file
+ * @param *path Full path to the new file
+ * @param type Type of the file
+ * @param flags VFS flags
+ * @param **node Output VFS node
+ * @return Status code
+ */
+STATUS IoVfsCreate(const char *path, enum IoVfsEntryType type, enum IoVfsFlags flags, struct IoVfsNode **node);
+
+/**
  * @brief Resolve link
  * @param *node Link node
  * @param *taskfs Task file system context
@@ -245,7 +285,7 @@ struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node, struct IoTaskFsContex
  * @return Status code
  * @warning Link destination must exist
 */
-STATUS IoVfsCreateLink(const char *path, const char *destination, enum IoVfsFlags flags);
+STATUS IoVfsCreateSymLink(const char *path, const char *destination, enum IoVfsFlags flags);
 
 /**
  * @brief Remove symbolic link
@@ -312,6 +352,16 @@ void IoVfsDestroyNode(struct IoVfsNode *node);
 */
 STATUS IoVfsGetSize(const char *path, uint64_t *size);
 
+/**
+ * @brief Get file attributes/status
+ * @param fd File handle. If -1, then \a path is used.
+ * @param *path Path of the file. Used if \a fd is non-negative.
+ * @param dontResolveLink If true and the target file is a link, then it won't be resolved
+ * @param *attr Pointer to where store the attributes.
+ * @return Status code
+ */
+STATUS IoGetFileAttributes(int fd, const char *path, bool dontResolveLink, struct IoFileAttributes *attr);
+
 
 /**
  * @brief Lock VFS tree for reading, that is, any operations involving traversing the tree
@@ -329,6 +379,21 @@ void IoVfsLockTreeForWriting(void);
  * @brief Unlock VFS tree
  */
 void IoVfsUnlockTree(void);
+
+NABLA_API
+
+/**
+ * @brief Get file attributes/status
+ * @param fd File handle. If -1, then \a path is used.
+ * @param *path Path of the file. Used if \a fd is non-negative.
+ * @param dontResolveLink If true and the target file is a link, then it won't be resolved
+ * @param *attr Pointer to where store the attributes.
+ * @return Status code
+ */
+STATUS ApiGetFileAttributes(int fd, const char *path, bool dontResolveLink, struct IoFileAttributes *attr);
+
+END_NABLA_API
+
 
 END_DRIVER_API
 

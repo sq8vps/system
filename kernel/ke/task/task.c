@@ -264,3 +264,9 @@ DEFINE_SYSCALL(void, ApiExitTask, int);
 {
     KeFinishCurrentTask(result);
 }
+
+DEFINE_SYSCALL(int, ApiGetTid)
+int ApiGetTid(void)
+{
+    return KeGetCurrentTask()->tid;
+}

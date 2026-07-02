@@ -6,6 +6,7 @@
 #include "ke/sched/sched.h"
 #include "rtl/string.h"
 #include "rtl/stdlib.h"
+#include "config.h"
 
 static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(void*), uintptr_t *imageTop, struct ExProgramData **progData)
 {
@@ -16,9 +17,7 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 	char *interpreter = nullptr;
 	size_t actualSize = 0;
 	bool interpreterFound = false;
-
-	//randomize image base by 9 bits = 512 position on a page granularity
-	uintptr_t location = RtlRandom(1, 1 << 9) * PAGE_SIZE + ALIGN_UP(*imageTop, PAGE_SIZE);
+	uintptr_t location = ALIGN_UP(*imageTop, PAGE_SIZE);
 
     if(!IoCheckIfFileExists(path))
 	{
@@ -81,11 +80,9 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 			goto ExProcessLoadWorkerFailed;
 		}
 
-		(*progData)[0].type = PROGDATA_BASE;
-		(*progData)[0].value.p = (void*)location;
-		(*progData)[1].type = PROGDATA_PAGE_SIZE;
-		(*progData)[1].value.s = PAGE_SIZE;
-		(*progData)[2].type = PROGDATA_END;
+		(*progData)[0].type = PROGDATA_PAGE_SIZE;
+		(*progData)[0].value.s = PAGE_SIZE;
+		(*progData)[1].type = PROGDATA_END;
 	}
 
 	for(uint16_t i = 0; i < ehdr->e_phnum; i++)
@@ -119,6 +116,7 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 				if(OK != status)
 					goto ExProcessLoadWorkerFailed;
 
+				location = ALIGN_UP(*imageTop, PAGE_SIZE);
 				interpreterFound = true;
 			}
 			else
@@ -129,6 +127,17 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 			}
 			break;
 		}
+	}
+
+	if(!isInterpreter)
+	{
+		size_t idx = 0;
+		while(PROGDATA_END != (*progData)[idx].type)
+		{
+			++idx;
+		}
+		(*progData)[idx].type = PROGDATA_BASE;
+		(*progData)[idx].value.p = (void*)location;
 	}
 
 	if(!isInterpreter && !interpreterFound)
@@ -192,6 +201,11 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 				}
 			}
 
+			if(phdr[i].p_filesz != phdr[i].p_memsz)
+			{
+				RtlMemset((void*)(location + phdr[i].p_vaddr + phdr[i].p_filesz), 0, phdr[i].p_memsz - phdr[i].p_filesz);
+			}
+
 			if(top > *imageTop)
 				*imageTop = top;
 		}
@@ -218,17 +232,27 @@ ExProcessLoadWorkerFailed:
 STATUS ExLoadProcessImage(const char *path, void (**entry)(void*), struct ExProgramData **progData)
 {
 	STATUS status = OK;
-	uintptr_t imageTop = 0;
 	struct KeTaskControlBlock *tcb = KeGetCurrentTask();
+
+#ifndef STATIC_EXECUTABLE_BASE
+	//randomize image base by 9 bits = 512 position on a page granularity
+	uintptr_t imageTop = RtlRandom(1, 1 << 9) * PAGE_SIZE;
+#elif (0 != (STATIC_EXECUTABLE_BASE & (PAGE_SIZE - 1))) || (0 == STATIC_EXECUTABLE_BASE)
+	#error ASLR is disabled, but the provided executable base is not page aligned or is equal to zero
+#else
+	uintptr_t imageTop = STATIC_EXECUTABLE_BASE;
+	#warning ASLR is disabled. This is for debugging purposes only.
+#endif
 
 	status = ExLoadImage(path, false, entry, &imageTop, progData);
 	if(OK == status)
 	{
-		//randomize dynamic memory base (9 bits giving 512 positions)
-		int32_t location = RtlRandom(0, 1 << 9);
+		//randomize heap base (10 bits giving 1024 positions)
+		int32_t location = RtlRandom(0, 1 << 10);
 		KeAcquireMutex(&(tcb->parent->memory.mutex));
-		//calculate dynamic memory base with page granularity
-		tcb->parent->memory.base = (void*)(ALIGN_UP(imageTop, PAGE_SIZE) + location * PAGE_SIZE);
+		//calculate heap base with 16-byte granularity
+		tcb->parent->memory.heapBase = (void*)(ALIGN_UP(imageTop, PAGE_SIZE) + location * 16);
+		tcb->parent->memory.heap = tcb->parent->memory.heapBase;
 		KeReleaseMutex(&(tcb->parent->memory.mutex));
 	}
 

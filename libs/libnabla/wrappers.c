@@ -5,6 +5,7 @@
 #include "io/fs/fs.h"
 #include "mm/tmem.h"
 #include "ddk/tty.h"
+#include "io/fs/vfs.h"
 
 reg_t __ApiDoSyscall(reg_t argSize, reg_t code, ...);
 
@@ -23,13 +24,17 @@ SYSCALL_WRAPPER(STATUS, ApiOpenFile, const char*, IoFileOpenMode, IoFileFlags, i
 SYSCALL_WRAPPER(STATUS, ApiCloseFile, int);
 SYSCALL_WRAPPER(STATUS, ApiReadFileSync, int, void*, size_t, uint64_t, size_t*);
 SYSCALL_WRAPPER(STATUS, ApiWriteFileSync, int, void*, size_t, uint64_t, size_t*);
-
+SYSCALL_WRAPPER(STATUS, ApiSetFileOffset, int, int64_t, IoSetFileOffsetMethod, uint64_t*);
+SYSCALL_WRAPPER(STATUS, ApiGetFileAttributes, int, const char*, bool, struct IoFileAttributes*);
 
 SYSCALL_WRAPPER(STATUS, ApiSymlink, const char *, const char *);
 
 SYSCALL_WRAPPER(STATUS, ApiMapTaskMemory, void*, size_t, enum MmTaskMemoryFlags, int, size_t, uint64_t, size_t, void**);
 SYSCALL_WRAPPER(STATUS, ApiMapTaskMemoryA, void*, size_t, enum MmTaskMemoryFlags, void**);
 SYSCALL_WRAPPER(STATUS, ApiUnmapTaskMemory, const void *const, size_t);
+SYSCALL_WRAPPER(void*, ApiResizeHeap, intptr_t);
+
+SYSCALL_WRAPPER(int, ApiGetTid);
 
 SYSCALL_WRAPPER(STATUS, ApiGetSystemConfig, enum ApiSystemConfigParam, uint64_t*);
 

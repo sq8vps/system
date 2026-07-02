@@ -244,7 +244,8 @@ struct KeProcessControlBlock
         void *tree; /**< Memory region base-ordered tree root */
         struct MmTaskMemory *head; /**< Memory region base-order list head */
         struct MmTaskMemory *tail; /**< Memory region base-order list tail */
-        void *base; /**< Lower mapping boundary when address is not specified */
+        void *heapBase; /**< Heap base */
+        void *heap; /**< Current heap top */
         KeMutex mutex; /**< Memory mapping list mutex */
     } memory;
     
@@ -402,6 +403,12 @@ STATUS ApiSetThreadLocalStorage(void *tls);
  * @note This function does not return to the caller
  */
 [[noreturn]] void ApiExitTask(int result);
+
+/**
+ * @brief Get task ID (TID) of the calling task
+ * @return Task ID of the calling task
+ */
+int ApiGetTid(void);
 
 END_NABLA_API
 

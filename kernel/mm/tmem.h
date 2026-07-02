@@ -39,11 +39,26 @@ enum MmTaskMemoryFlags
     MM_TASK_MEMORY_GROWABLE = 0x20, /**< Region can grow beyond its original size - downwards if \a MM_TASK_MEMORY_REVERSED is set */
     MM_TASK_MEMORY_LOCKED = 0x40, /**< Region is a fundamental process memory which can't be removed */
     MM_TASK_MEMORY_FIXED = 0x80, /**< Map memory exactly to given address, fail if not possible. Fixed allocations do not have guard pages unless they are growable. */
-    
+
+    MM_TASK_MEMORY_OVERRIDE = 0x1000, /**< Override previous mapping at the overlapping address. This flag is not added to the mapping flags.
+        This has effect only if \a MM_TASK_MEMORY_FIXED is specified. */
+
+    MM_TASK_MEMORY_BASE_MARKER = 0x10000, /**< Entry is a dynamic memory mapping base indicator */
+
     MM_TASK_MEMORY_STACK = MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE | MM_TASK_MEMORY_REVERSED, /**< A set of flags for allocating stacks */
 };
 
 END_NABLA_API
+
+/**
+ * @brief Memory mapping resize method
+ */
+enum MmTaskMemoryResizeMethod
+{
+    MM_RESIZE_NORMAL = 0, /**< Normal resize - normal mappings at the top, reversed mappings at the bottom */
+    MM_RESIZE_TOP = 1, /**< Resize at the top regardless of the region type */
+    MM_RESIZE_BOTTOM = 2, /**< Resize at the bottom regardless of the region type */
+};
 
 /**
  * @brief General task memory region descriptor
@@ -57,6 +72,7 @@ struct MmTaskMemory
     enum MmTaskMemoryFlags flags; /**< Region flags */
     struct IoFileHandle *file; /**< Associated file */
     uint64_t offset; /**< Offset within the associated file */
+    bool allocated; /**< Does this entry have physical memory actually allocated? */
 
     void *treeData[8]; /**< Masked tree node data to avoid namespace pollution */
     struct MmTaskMemory *next, *previous; /**< Linked list of base-ordered memory entries associated with given process */
@@ -93,12 +109,23 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
 
 /**
  * @brief Unmap task memory
- * @param *ptr Pointer within the mapped region to be unmapped
- * @param length Length of the mapping to be unmapped. All mappings containing a part of the indicated range are unmapped. 
- * Might be set to zero to delete the mapping pointed by *ptr.
+ * @param *ptr Pointer to the start of the memory that should be unmapped
+ * @param length Length of the portion to be unmapped
+ * @note This function performs partial unmapping if the provided start address and size do not cover the entire mapping.
  * @return Status code. OK when at least one memory region was unmapped. NOT_FOUND if no memory region was unmapped.
  */
 STATUS MmUnmapTaskMemory(const void *const ptr, size_t length);
+
+/**
+ * @brief Resize task memory
+ * @param *ptr Pointer within the mapped region
+ * @param bytes Number of bytes to resize the mapping by
+ * @param method Resize method, see \ref MmTaskMemoryResizeMethod
+ * @return Status code
+ * @note File mappings are not resizable
+ * @note \a bytes is rounded *up* to page size
+ */
+STATUS MmResizeTaskMemory(const void *const ptr, intptr_t bytes, enum MmTaskMemoryResizeMethod method);
 
 /**
  * @brief Get task memory descriptor for given pointer
@@ -169,9 +196,24 @@ STATUS ApiMapTaskMemoryA(void *address, size_t size, enum MmTaskMemoryFlags flag
  */
 STATUS ApiUnmapTaskMemory(const void *const ptr, size_t size);
 
+/**
+ * @brief Resize task heap (sbrk)
+ * @param increment Number of bytes by which to extend or shrink the heap
+ * @return Previous heap pointer. If increment > 0, the returned value points to the newly allocated space. On failure, nullptr is returned.
+ */
+void *ApiResizeHeap(intptr_t increment);
+
 END_NABLA_API
 
 END_DRIVER_API
+
+/**
+ * @brief Set dynamic memory base for task
+ * @param *address Dynamic memory base address
+ * @return Status code
+ * @warning This function might be called only once. It's not allowed to change the base address afterwards.
+ */
+INTERNAL STATUS MmSetDynamicMemoryBase(void *address);
 
 /**
  * @brief Free all process memory, including flushing memory-mapped files

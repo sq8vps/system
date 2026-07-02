@@ -21,11 +21,7 @@ add_library(nabla SHARED ${LIBNABLA_SOURCES})
 target_include_directories(nabla PUBLIC ${LIBNABLA_INCLUDES})
 target_link_libraries(nabla PUBLIC ${LIBNABLA_LIBS})
 target_link_options(nabla PRIVATE ${NABLA_SO_LINKER_FLAGS} "-Wl,-soname,$<TARGET_FILE_NAME:nabla>")
-set_target_properties(nabla PROPERTIES
-    VERSION 1.0
-    SOVERSION 1
-)
 
-# add_custom_command(TARGET kernel POST_BUILD
-#     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kernel> ${NABLA_IMAGE_DIR}/$<TARGET_FILE_NAME:kernel>
-# )
+add_custom_command(TARGET nabla POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:nabla> ${NABLA_IMAGE_DIR}/lib/$<TARGET_FILE_NAME:nabla>
+)

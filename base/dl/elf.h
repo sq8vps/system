@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "defines.h"
 
 #ifdef __GNUC__
 #define PACKED __attribute__((packed))
@@ -159,6 +160,8 @@ struct Elf32_Sym
 #define ELF32_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 #define ELF32_ST_VISIBILITY(i) ((i) & 0x3)
 
+#define STN_UNDEF (0)
+
 //ELF symbol flags
 #define STB_LOCAL 0
 #define STB_GLOBAL 1
@@ -178,6 +181,9 @@ struct Elf32_Sym
 #define STV_INTERNAL 1
 #define STV_HIDDEN 2
 #define STV_PROTECTED 3
+
+#define SHN_UNDEF (0)
+#define SHN_ABS (0xfff1)
 
 /**
  * @brief ELF relocation entry
@@ -213,6 +219,7 @@ enum Elf32_Rel_types
 	R_386_PC32 = 2,  //symbol + addend - section offset
 	R_386_GLOB_DAT = 6, //set target symbol in GOT
 	R_386_JMP_SLOT = 7, //set target symbol in PLT
+	R_386_RELATIVE = 8, //base + relative offset
 };
 
 /**
@@ -245,14 +252,22 @@ enum Elf32_Dyn_type
 	DT_RELSZ = 18, //size of dynamic relocation entries (relocation without addend)
 	DT_PLTREL = 20, //PLT relocation entry type
 	DT_JMPREL = 23, //PLT relocation entry table address
+	DT_SYMTABSZ = 39, //symbol table size
 };
 
 /**
  * @brief Verify ELF32 main header
  * @param h ELF32 file header
- * @return 0 on success, -1 otherwise
+ * @return Status code
 */
-int DlVerifyElf32Header(struct Elf32_Ehdr *h);
+STATUS DlVerifyElf32Header(const struct Elf32_Ehdr *h);
+
+/**
+ * @brief Perform relocations on the loaded object
+ * @param *h ELF object header
+ * @return Status code
+ */
+STATUS DlPerformRelocations(struct Elf32_Ehdr *h);
 
 /**
  * @}

@@ -30,6 +30,8 @@ struct BstNode
 
 #define BSTNODE struct BstNode tree
 
+#define BST_KEY(node) (((struct BstNode*)(node))->key)
+
 #ifdef BST_PROVIDE_ABSTRACTION
 
 #define TreeInsert BstInsert
@@ -43,6 +45,7 @@ struct BstNode
 #define TreeRemoveEx BstRemoveEx
 #define TreeNode BstNode
 #define TREENODE BSTNODE
+#define TREE_KEY(node) BST_KEY(node)
 
 #endif
 

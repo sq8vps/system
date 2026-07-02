@@ -2,10 +2,12 @@ set(DRIVER fat)
 add_executable(${DRIVER} EXCLUDE_FROM_ALL
     main.c
     fat.c
+    file.c
     fsctrl.c
+    get.c
     logging.c
     mount.c
-    read.c
+    rw.c
     utils.c
     )
 target_include_directories(${DRIVER} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${NABLA_DRIVER_API})

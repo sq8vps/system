@@ -21,10 +21,10 @@
 
 DRIVER_API
 
-/**
- * @brief Max CPU number handled by the kernel
- */
-#define MAX_CPU_COUNT 64
+/*******************************************************************************
+    General configuration option that can be changed rather freely 
+    and don't really depend on the target platform
+********************************************************************************/
 
 /**
  * @brief Initial ramdisk mount point
@@ -56,10 +56,35 @@ DRIVER_API
  */
 #define DEFAULT_INIT_PATH (MAIN_MOUNT_POINT "/system/base/init")
 
+
+/*******************************************************************************
+    Configuration options setting some "assumptions" on what is the target platform
+********************************************************************************/
+
+/**
+ * @brief Max CPU number handled by the kernel
+ */
+#define MAX_CPU_COUNT 64
+
 /**
  * @brief Maximum number of user (init) arguments
  */
 #define MAX_INIT_ARGS (256 - 1)
+
+/*******************************************************************************
+    Additional, debug-only options, possibly platform dependent
+********************************************************************************/
+
+/**
+ * @brief Static executable base - uncomment and set to disable ASLR
+ * @note This must be non-zero and page-aligned
+ */
+#define STATIC_EXECUTABLE_BASE 0x10000
+
+/**
+ * @brief Stack and dynamic memory randomization - uncomment and set to disable stack and dynamic memory base randomization
+ */
+#define NO_STACK_AND_DYNAMIC_MEMORY_RANDOMIZATION 1
 
 /**
  * @brief Get kernel command line parameter by name

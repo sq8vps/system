@@ -58,7 +58,9 @@ STATUS IoReadWrite(bool write, struct IoDeviceObject *dev, struct IoVfsNode *nod
  * @param *dev Device object to perform the read on
  * @param offset Offset to start reading from
  * @param size Size of data to read
- * @param **buffer Output buffer pointer, allocated by this function
+ * @param **buffer Output buffer pointer. If \a *buffer is \a nullptr, then it is allocated internally. 
+ * Otherwise, the provided \a *buffer is used, but only if \a offset and \a size is aligned to block size.
+ * If not, this function fails with \ref BAD_ALIGNMENT.
  * @return Status code
 */
 STATUS IoReadDeviceSync(struct IoDeviceObject *dev, uint64_t offset, size_t size, void **buffer);

@@ -90,6 +90,7 @@ struct FatVolume
     struct IoDeviceObject *vol;
     enum FatType type;
     uint8_t sectorsPerCluster;
+    size_t bytesPerCluster;
     uint16_t reservedSectors;
     uint8_t fatCount;
     uint32_t fatSize;

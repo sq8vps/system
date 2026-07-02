@@ -39,8 +39,9 @@ struct KeSyscallDescriptor
     __SYSCALL_DESC(name, __ARGSIZE(0, type0), __ARGSIZE(1, type1), __ARGSIZE(2, type2), __ARGSIZE(3, type3), __ARGSIZE(4, type4), __ARGSIZE(5, type5), \
     __ARGSIZE(6, type6), __ARGSIZE(7, type7), __ARGSIZE(8, type8), __ARGSIZE(9, type9))
 
-#define __DEFINE_SYSCALL(returnType, name, argCount, ...) __DEFINE_SYSCALL##argCount(name __VA_OPT__(,) __VA_ARGS__) \
-    returnType name(__VA_ARGS__)
+#define __DEFINE_SYSCALL(returnType, name, argCount, ...) returnType name(__VA_ARGS__); \
+    __DEFINE_SYSCALL##argCount(name __VA_OPT__(,) __VA_ARGS__)
+    
 #define _DEFINE_SYSCALL(returnType, name, argCount, ...) __DEFINE_SYSCALL(returnType, name, argCount, __VA_ARGS__)
 
 /**

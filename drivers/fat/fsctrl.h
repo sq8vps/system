@@ -22,4 +22,20 @@ STATUS FatFsControl(struct IoRp *rp);
  */
 STATUS FatUpdateFileAttributes(struct FatVolume *vol, struct IoVfsNode *node);
 
+/**
+ * @brief Get node or node children from FAT volume asynchronously
+ * @param *rp Request Packet
+ * @param *vol FAT volume structure
+ * @return Status code
+ */
+STATUS FatGetNode(struct IoRp *rp, struct FatVolume *vol);
+
+/**
+ * @brief Create a new file
+ * @param *rp Request Packet
+ * @param *vol FAT volume structure
+ * @return Status code
+ */
+STATUS FatCreateFile(struct IoRp *rp, struct FatVolume *vol);
+
 #endif

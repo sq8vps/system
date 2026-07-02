@@ -141,7 +141,6 @@ STATUS ExRelocateElf32Symbol(struct Elf32_Ehdr *h, struct Elf32_Shdr *relSection
 			return ret; //return on failure
 	}
 	//if not, use default 0 value
-
 	switch(ELF32_R_TYPE(relEntry->r_info)) //apply appropriate relocation
 	{
 		case R_386_NONE: //no reallocation

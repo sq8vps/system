@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 constexpr char DefaultVtMaster[] = "/dev/ttyM0";
 constexpr int DefaultVtInput = 0;
@@ -15,13 +16,13 @@ constexpr int DefaultVtOutput = 0;
 static STATUS CreateFileDescriptors(void)
 {
     STATUS status = OK;
-    status = ApiSymlink("/dev/stdin", "/task/self/fd/" STRINGIFY(__STDIN_HANDLE));
+    status = ApiSymlink("/dev/stdin", "/task/self/fd/" STRINGIFY(STDIN_FILENO));
     if(OK != status)
         return status;
-    status = ApiSymlink("/dev/stdout", "/task/self/fd/" STRINGIFY(__STDOUT_HANDLE));
+    status = ApiSymlink("/dev/stdout", "/task/self/fd/" STRINGIFY(STDOUT_FILENO));
     if(OK != status)
         return status;
-    status = ApiSymlink("/dev/stderr", "/task/self/fd/" STRINGIFY(__STDERR_HANDLE));
+    status = ApiSymlink("/dev/stderr", "/task/self/fd/" STRINGIFY(STDERR_FILENO));
     if(OK != status)
         return status;
 
@@ -31,7 +32,7 @@ static STATUS CreateFileDescriptors(void)
 static STATUS PrepareStdHandles(const char *device)
 {
     STATUS status = OK;
-    int fd[3] = {__STDIN_HANDLE, __STDOUT_HANDLE, __STDERR_HANDLE};
+    int fd[3] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
     
     status = ApiOpenFile(device, IO_FILE_READ | IO_FILE_WRITE, IO_FILE_FLAG_SHARED | IO_FILE_FLAG_FORCE_HANDLE_NUMBER, &fd[0]);
     if(OK != status)
@@ -83,14 +84,14 @@ bool OpenVt(int argc, char **argv)
                 break;
             *next1 = '\0';
             ++next1;
-            errno = ENOERR;
-            output = strtoi(next1, &next2, 10);
-            if((ENOERR != errno) || (next1 == next2) || (',' != *next2))
+            errno = 0;
+            output = strtol(next1, &next2, 10);
+            if((0 != errno) || (next1 == next2) || (',' != *next2))
                 break;
             ++next2;
-            errno = ENOERR;
-            input = strtoi(next2, &next1, 10);
-            if((ENOERR != errno) || (next1 == next2))
+            errno = 0;
+            input = strtol(next2, &next1, 10);
+            if((0 != errno) || (next1 == next2))
                 break;
             useDefaults = false;
             break;

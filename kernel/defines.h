@@ -46,7 +46,7 @@ typedef enum STATUS
     NOT_FOUND = 13, /**< Resource not found */
     BAD_TYPE = 14, /**< Bad object/resource/file/... type */
     FILE_CLOSED = 15, /**< File is not open */
-    RESOURCE_BOUND = 16, /**< Resource is bound (to a peer, parent, or child) and can't be manipulated freely */
+    RESOURCE_BOUND_OR_LOCKED = 16, /**< Resource is bound (to a peer, parent, or child) or locked and can't be manipulated freely */
     READ_ONLY = 17, /**< Resource is read-only */
     OPERATION_INCOMPLETE = 18, /**< Operation finished but with incomplete data. This might or might not be an error */
     RESOURCE_PERSISTENT = 19, /**< Resource is persistent and cannot be removed */
@@ -100,6 +100,23 @@ typedef enum STATUS
  */
 #define CEIL_DIV(dividend, divisor) ((dividend) / (divisor) + (((dividend) % (divisor)) ? 1 : 0))
 
+/**
+ * @brief Find the minimum value of \a x and \a y
+ * @param x First operand
+ * @param y Second operand
+ * @return \a x or \a y, whichever is the minimum
+ * @warning Parameters are evaluated more than once
+ */
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
+/**
+ * @brief Find the maximum value of \a x and \a y
+ * @param x First operand
+ * @param y Second operand
+ * @return \a x or \a y, whichever is the maximum
+ * @warning Parameters are evaluated more than once
+ */
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
 
 /**
  * @brief Mark function parameter as unused
@@ -144,12 +161,22 @@ typedef enum STATUS
 */
 #define MS_TO_NS(ms) (((uint64_t)1000000) * (ms))
 
-END_NABLA_API
-
 /**
  * @brief A common timestamp type
 */
-typedef uint64_t time_t;
+typedef int64_t Time;
+
+/**
+ * @brief A general timestamp type with nanosecond precision
+ */
+struct TimeSpec
+{
+    Time seconds; /**< Whole seconds */
+    int32_t nanoseconds; /**< Nanoseconds */
+};
+
+END_NABLA_API
+
 
 /**
  * @brief No wait

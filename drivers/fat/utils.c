@@ -1,6 +1,7 @@
 #include "utils.h"
 #include <stdint.h>
 #include "rtl/ctype.h"
+#include "rtl/string.h"
 
 int FatUcs2ToUtf8(char *utf8, const char *ucs2, size_t limit)
 {
@@ -36,6 +37,57 @@ int FatUcs2ToUtf8(char *utf8, const char *ucs2, size_t limit)
     utf8[i] = '\0';
     return 0;
 }
+
+size_t FatUtf8ToUcs2(char *ucs2, const char *utf8)
+{
+    size_t length = 0;
+    while('\0' != *utf8)
+    {
+        uint16_t ucs = 0;
+        if(!(utf8[0] & 0x80))
+        {
+            //1 byte
+            ucs = utf8[0];
+            ++utf8;
+        }
+        else
+        {
+            if(0xC0 == (utf8[0] & 0xE0))
+            {
+                //2 byte
+                if(0x80 == (utf8[1] & 0xC0))
+                {
+                    ucs = (uint16_t)(utf8[1] & 0x3F) | ((uint16_t)(utf8[0] & 0x1F) << 6);
+                    utf8 += 2;
+                }
+                else
+                    return -1;
+                
+            }
+            else if(0xE0 == (utf8[0] & 0xF0))
+            {
+                //3 byte
+                if((0x80 == (utf8[1] & 0xC0)) && (0x80 == (utf8[2] & 0xC0)))
+                {
+                    ucs = (uint16_t)(utf8[2] & 0x3F) | ((uint16_t)(utf8[1] & 0x1F) << 6) | ((uint16_t)(utf8[0] & 0xF) << 12);
+                    utf8 += 3;
+                }
+                else
+                    return -1;
+            }
+            else
+                return -1; //bigger codepoints won't fit in UCS-2
+        }
+        *ucs2++ = ucs & 0xFF;
+        *ucs2++ = ucs >> 8;
+        ++length;
+        ucs += 2;
+    }
+    *ucs2++ = 0;
+    *ucs2++ = 0;
+    return length;
+}
+
 
 int FatCompareUcs2AndUtf8(const char *ucs2, const char *utf8)
 {
@@ -139,4 +191,34 @@ int FatDosNameToFileName(char *name, const char *dosName)
     name[k] = '\0';
 
     return (k > 0) ? 0 : -1;
+}
+
+uint8_t FatDosNameChecksum(char *shortName)
+{
+    uint8_t sum = 0;
+    for(size_t i = 11; i != 0; i--) 
+    {
+        sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + (unsigned char)*shortName++;
+    }
+    return sum;
+}
+
+void FatHashFileName(const char *name, char *dosName)
+{
+    //FNV-1a hashing
+    uint64_t hash = (uint64_t)14695981039346656037ull;
+    for(size_t i = 0; i < RtlStrlen(name); i++)
+    {
+        hash ^= (uint64_t)name[i];
+        hash *= (uint64_t)1099511628211ull;
+    };
+    hash &= (uint64_t)0x01FFFFFFFFFFFFFFull; //truncate to 57 bits - this is floor(log2(37^11))
+
+    //base-37 conversion
+    for(size_t i = 11; i > 0; i--)
+    {
+        uint8_t digit = hash % 37;
+        hash /= 37;
+        dosName[i - 1] = (digit < 10) ? ((char)digit + '0') : ((char)(digit - 10) + '@');
+    }
 }

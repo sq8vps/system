@@ -7,13 +7,7 @@
 struct IoRp;
 struct FatVolume;
 
-/**
- * @brief Get node or node children from FAT volume asynchronously
- * @param *rp Request Packet
- * @param *vol FAT volume structure
- * @return Status code
- */
-STATUS FatGetNode(struct IoRp *rp, struct FatVolume *vol);
+
 
 /**
  * @brief Get next cluster number
@@ -32,13 +26,21 @@ uint32_t FatGetNextCluster(struct FatVolume *vol, uint32_t currentCluster);
 uint32_t FatGetConsecutiveClusterCount(struct FatVolume *vol, uint32_t cluster);
 
 /**
- * @brief Reserve cluster
+ * @brief Get last cluster of the cluster chain
  * @param *vol FAT volume structure
  * @param cluster Starting cluster
- * @param count Number of clusters to reserve
- * @return 0 on success, otherwise a number of missing clusters
+ * @return Last cluster in the chain
  */
-int FatReserveClusters(struct FatVolume *vol, uint32_t cluster, uint32_t count);
+uint32_t FatGetLastCluster(struct FatVolume *vol, uint32_t cluster);
+
+/**
+ * @brief Reserve cluster
+ * @param *vol FAT volume structure
+ * @param cluster Starting cluster (0 to start a new chain)
+ * @param count Number of clusters to reserve
+ * @return First cluster, 0 on failure
+ */
+uint32_t FatReserveClusters(struct FatVolume *vol, uint32_t cluster, uint32_t count);
 
 /**
  * @brief Write next cluster (or free or EOF) value

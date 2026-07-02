@@ -25,7 +25,7 @@ var searchData=
   ['res_22',['res',['../struct_io_rp.html#ad3ef261810d5e3c8df777006fb71b0dd',1,'IoRp']]],
   ['res_2eh_23',['res.h',['../res_8h.html',1,'']]],
   ['resource_24',['resource',['../struct_io_rp.html#a0b60bf3f1cd0e6fbc830b5a6ca188709',1,'IoRp']]],
-  ['resource_5fbound_25',['RESOURCE_BOUND',['../group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4abf1c6a2fcdc577fa2efa5efe88070f38',1,'status.h']]],
+  ['resource_5fbound_25',['RESOURCE_BOUND_OR_LOCKED',['../group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4abf1c6a2fcdc577fa2efa5efe88070f38',1,'status.h']]],
   ['resource_5fpersistent_26',['RESOURCE_PERSISTENT',['../group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4a27aff27454c3655092c2b2339478b32b',1,'status.h']]],
   ['ring_20buffer_20library_27',['Ring buffer library',['../group__rtl__ring.html',1,'']]],
   ['ring_2eh_28',['ring.h',['../ring_8h.html',1,'']]],

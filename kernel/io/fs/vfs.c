@@ -9,6 +9,9 @@
 #include "mm/heap.h"
 #include "rtl/stdlib.h"
 #include "taskfs.h"
+#include "mm/tmem.h"
+#include "ke/sched/sched.h"
+#include "ke/sys/llsyscall.h"
 
 #define IO_VFS_MAX_SYMLINK_DEPTH 10
 #define IO_VFS_DEFAULT_MAX_FILE_NAME_LENGTH 127
@@ -254,6 +257,55 @@ STATUS IoVfsClose(struct IoVfsNode *node)
     return status;
 }
 
+STATUS IoVfsCreate(const char *path, enum IoVfsEntryType type, enum IoVfsFlags flags, struct IoVfsNode **node)
+{
+    ASSERT(node);
+    STATUS status = OK;
+
+
+    struct IoTaskFsContext taskFs = IO_TASK_FS_CONTEXT_INITIALIZER; 
+    if(nullptr != IoVfsGetNode(path, &taskFs))
+        return ALREADY_EXISTS;
+    taskFs = (struct IoTaskFsContext)IO_TASK_FS_CONTEXT_INITIALIZER;
+    struct IoVfsNode *parent = IoVfsGetNodeEx(path, true, &taskFs);
+    const char *name = RtlGetFileName(path);
+
+    if(!((IO_VFS_FILE == type) || (IO_VFS_DIRECTORY == type) || (IO_VFS_LINK == type)))
+        return BAD_PARAMETER;
+
+    if(nullptr == parent)
+        return NOT_FOUND;
+
+    switch(parent->fsType)
+    {
+        case IO_VFS_FS_PHYSICAL:
+        case IO_VFS_FS_VIRTUAL:
+            status = FsCreateFile(parent, name, type, flags, node);
+            break;
+        case IO_VFS_FS_TASKFS:
+            *node = IoVfsCreateNode(name);
+            if(nullptr == node)
+                status = BAD_PARAMETER;
+            else
+            {
+                (*node)->type = type;
+                (*node)->flags = flags;
+                (*node)->fsType = parent->fsType;
+                //TODO: update timestamps, permissions and all that stuff
+                IoVfsInsertNode(*node, parent);
+            }
+            break;
+        case IO_VFS_FS_INITRD:
+            status = READ_ONLY;
+            break;
+        default:
+            status = BAD_TYPE;
+            break;
+    }
+
+    return status;
+}
+
 struct IoVfsNode *IoVfsResolveLink(struct IoVfsNode *node, struct IoTaskFsContext *taskfs)
 {
     if(NULL == node)
@@ -411,7 +463,7 @@ struct IoVfsNode *IoVfsGetNodeEx(const char *path, bool excludeLastElement, stru
         ++p;
 
         //now check if given node is a symbolic link
-        //if so, then resolve
+        //if so, then resolve if not p
         if(IO_VFS_LINK == node->type)
         {
             node = IoVfsResolveLink(node, taskfs);
@@ -506,7 +558,7 @@ STATUS IoVfsRemoveNode(struct IoVfsNode *node)
     if(node->flags & IO_VFS_FLAG_PERSISTENT)
         status = RESOURCE_PERSISTENT;
     else if(node->child)
-        status = RESOURCE_BOUND;
+        status = RESOURCE_BOUND_OR_LOCKED;
     else if(node->references.readers || node->references.writers)
         status = BUSY;
     else
@@ -617,7 +669,7 @@ STATUS IoVfsWrite(struct IoVfsNode *node, IoFileFlags flags, void *buffer, size_
     return status;
 }
 
-STATUS IoVfsCreateLink(const char *path, const char *destination, enum IoVfsFlags flags)
+STATUS IoVfsCreateSymLink(const char *path, const char *destination, enum IoVfsFlags flags)
 {
     ASSERT(path && destination);
     struct IoTaskFsContext taskfs[2] = {IO_TASK_FS_CONTEXT_INITIALIZER, IO_TASK_FS_CONTEXT_INITIALIZER};
@@ -650,6 +702,12 @@ STATUS IoVfsCreateLink(const char *path, const char *destination, enum IoVfsFlag
         return BAD_TYPE;
     }
 
+    if((nullptr != parent->device) && (parent->device->flags & IO_DEVICE_FLAG_FS_NO_SYMLINKS))
+    {
+        IoVfsUnlockTree();
+        return NOT_SUPPORTED;
+    }
+
     struct IoVfsNode *d = IoVfsGetNode(destination, &taskfs[1]);
     if(NULL == d)
     {   
@@ -668,9 +726,8 @@ STATUS IoVfsCreateLink(const char *path, const char *destination, enum IoVfsFlag
     link->type = IO_VFS_LINK;
     link->linkDestination = d;
     link->taskfs = taskfs[1];
-    if(IO_VFS_FS_TASKFS != d->fsType)
-        d->references.links++;
 
+    //TODO: implement writing symbolic links to disk
     IoVfsInsertNode(link, parent);
 
     IoVfsUnlockTree();
@@ -731,4 +788,66 @@ void IoVfsLockTreeForWriting(void)
 void IoVfsUnlockTree(void)
 {
     KeReleaseRwLock(&(IoVfsState.lock));
+}
+
+STATUS IoGetFileAttributes(int fd, const char *path, bool dontResolveLink, struct IoFileAttributes *attr)
+{
+    if((nullptr == attr) || ((fd < 0) && (nullptr == path)))
+        return BAD_PARAMETER;
+    
+    struct IoVfsNode *node = nullptr;
+    if(fd >= 0)
+    {
+        node = IoGetVfsNodeForFile(KeGetCurrentTaskParent(), fd);
+        if(nullptr == node)
+            return NOT_FOUND;
+    }
+    else
+    {
+        struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
+        IoVfsLockTreeForWriting();
+        node = IoVfsGetNode(path, &taskfs);
+        if(nullptr == nullptr)
+        {
+            IoVfsUnlockTree();
+            return NOT_FOUND;
+        }
+        IoVfsUnlockTree();
+    }
+
+    if((IO_VFS_LINK == node->type) && !dontResolveLink)
+    {
+        struct IoTaskFsContext taskfs = IO_TASK_FS_CONTEXT_INITIALIZER;
+        node = IoVfsResolveLink(node, &taskfs);
+        if(nullptr == node)
+            return NOT_FOUND;
+    }
+
+    attr->size = node->size;
+    attr->flags = node->flags;
+    attr->type = node->type;
+    attr->fsType = node->fsType;
+    attr->links = node->references.links;
+    attr->uid = node->uid;
+    attr->gid = node->gid;
+    attr->permissions = node->permissions;
+    attr->accessTime = node->lastAccessTime;
+    attr->creationTime = node->creationTime;
+    attr->changeTime = node->lastChangeTime;
+    attr->statusChangeTime = node->lastStatusChangeTime;
+    if(nullptr != node->device)
+        attr->blockSize = node->device->blockSize;
+    else
+        attr->blockSize = 0;
+    attr->auxFlags.characterDevice = IoIsCharacterDevice(node->device);
+
+    return OK;
+}
+
+DEFINE_SYSCALL(STATUS, ApiGetFileAttributes, int, const char*, bool, struct IoFileAttributes*);
+STATUS ApiGetFileAttributes(int fd, const char *path, bool dontResolveLink, struct IoFileAttributes *attr)
+{
+    if((nullptr == attr) || !MmProbeUserMemory(attr, sizeof(*attr), MM_TASK_MEMORY_WRITABLE))
+        return BAD_PARAMETER;
+    return IoGetFileAttributes(fd, path, dontResolveLink, attr);
 }

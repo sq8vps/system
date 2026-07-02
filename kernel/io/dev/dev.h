@@ -73,6 +73,7 @@ enum IoDeviceFlags
     IO_DEVICE_FLAG_NO_AUTOMOUNT = 0x20, /**< Filesystem device must not be automatically mounted */
     IO_DEVICE_FLAG_STANDALONE = 0x40, /**< Device is standalone and has no parent or enumerator */
     IO_DEVICE_FLAG_HIDDEN = 0x80, /**< Device is hidden */
+    IO_DEVICE_FLAG_FS_NO_SYMLINKS = 0x100, /**< Filesystem does not support symbolic links */
 };
 
 /**
@@ -341,6 +342,13 @@ struct IoDeviceObject* IoGetDeviceStackTop(struct IoDeviceObject *dev);
  * @return Status code
  */
 STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev);
+
+/**
+ * @brief Check whether the device is (seems to be?) a character device
+ * @param *dev Device to be checked
+ * @return True if \a dev appears to be a character device; false otherwise or if \a dev is \a nullptr
+ */
+bool IoIsCharacterDevice(const struct IoDeviceObject *dev);
 
 END_DRIVER_API
 

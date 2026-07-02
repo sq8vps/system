@@ -20,7 +20,7 @@ var status_8h =
       [ "NOT_FOUND", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4acdaa2919bac56fe1090eb3dbb9526472", null ],
       [ "BAD_TYPE", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4a01c83d957b1f64dbdab5d465d9912cd4", null ],
       [ "FILE_CLOSED", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4a33707a9a319bc78243ab8da09242e280", null ],
-      [ "RESOURCE_BOUND", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4abf1c6a2fcdc577fa2efa5efe88070f38", null ],
+      [ "RESOURCE_BOUND_OR_LOCKED", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4abf1c6a2fcdc577fa2efa5efe88070f38", null ],
       [ "READ_ONLY", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4aec889f8b3140e20b857e18ccd267e049", null ],
       [ "OPERATION_INCOMPLETE", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4ab58c2ceb08d72b8af85d49a1ca42b5d7", null ],
       [ "RESOURCE_PERSISTENT", "group__defines.html#gga32c27cc471df37f4fc818d65de0a56c4a27aff27454c3655092c2b2339478b32b", null ],

@@ -17,7 +17,27 @@ STATUS FatFsControl(struct IoRp *rp)
     if(NULL == vol)
         return NOT_SUPPORTED;
 
-    return FatGetNode(rp, vol);
+    switch(rp->payload.deviceControl.code)
+    {
+        case FS_GET_NODE:
+        case FS_GET_NODE_CHILDREN:
+            return FatGetNode(rp, vol);
+        case FS_CREATE:
+            return FatCreateFile(rp, vol);
+        case FS_UNLINK:
+            return NOT_IMPLEMENTED; //TODO: implement FS_UNLINK
+            break;
+        case FS_RENAME:
+            break; //TODO: implement FS_RENAME
+        case FS_LINK:
+            return NOT_SUPPORTED;
+        case FS_NONE:
+            return OK;
+        default:
+            return NOT_IMPLEMENTED;
+    }
+
+    return NOT_IMPLEMENTED;
 }
 
 struct FatUpdateFileAttributesCallbackContext

@@ -13,15 +13,16 @@
 #include "rtl/bst.h"
 #endif
 
-#define REGION(node) ((struct MmTaskMemory*)(node)->aux.v)
+#define MM_TASK_MEMORY_HEAP_FLAGS (MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE)
+
+#define REGION(entry) ((struct MmTaskMemory*)(entry)->aux.v)
+#define HAS_GUARD(entry) (entry->flags & MM_TASK_MEMORY_GROWABLE)
 
 static uintptr_t MmGetRegionTop(const struct MmTaskMemory *m)
 {
     uintptr_t top;
     top = (uintptr_t)m->end;
-    //if this memory has no explicitly defined base/top address or it is growable
-    //and additionally it is not a stack, then the guard page must be included
-    if((!(m->flags & MM_TASK_MEMORY_FIXED) || (m->flags & MM_TASK_MEMORY_GROWABLE)) && (!(m->flags & MM_TASK_MEMORY_REVERSED)))
+    if((m->flags & MM_TASK_MEMORY_GROWABLE) && (!(m->flags & MM_TASK_MEMORY_REVERSED)))
         top += PAGE_SIZE; //...include guard page
     return top;
 }
@@ -32,9 +33,36 @@ static uintptr_t MmGetRegionBase(const struct MmTaskMemory *m)
     base = (uintptr_t)m->base;
     //if this memory has no explicitly defined base/top address or it is growable
     //and additionally it is a stack, then the guard page must be included
-    if((!(m->flags & MM_TASK_MEMORY_FIXED) || (m->flags & MM_TASK_MEMORY_GROWABLE)) && (m->flags & MM_TASK_MEMORY_REVERSED))
+    if((m->flags & MM_TASK_MEMORY_GROWABLE) && (m->flags & MM_TASK_MEMORY_REVERSED))
         base -= PAGE_SIZE; //...include guard page
     return base;
+}
+
+static struct MmTaskMemory* MmFindDynamicMemoryBaseMarker(struct KeProcessControlBlock *pcb)
+{
+    struct MmTaskMemory *t = pcb->memory.tail;
+    while(nullptr != t)
+    {
+        if(t->flags & MM_TASK_MEMORY_BASE_MARKER)
+            break;
+        t = t->previous;
+    }
+    return t;
+}
+
+static MmMemoryFlags MmTaskMemoryFlagsToMemoryFlags(enum MmTaskMemoryFlags flags)
+{
+    MmMemoryFlags mmFlags = 0;
+    if(flags & MM_TASK_MEMORY_WRITABLE)
+        mmFlags |= MM_FLAG_WRITABLE;
+    else
+        mmFlags |= MM_FLAG_READ_ONLY;
+    if(flags & MM_TASK_MEMORY_EXECUTABLE)
+        mmFlags |= MM_FLAG_EXECUTABLE; 
+    else
+        mmFlags |= MM_FLAG_NON_EXECUTABLE;
+    mmFlags |= MM_FLAG_USER_MODE;
+    return mmFlags;
 }
 
 STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags, int fd, size_t alignment, uint64_t offset, size_t limit, void **mapped)
@@ -44,9 +72,9 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
     struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
     size_t alignedSize = ALIGN_UP(size, PAGE_SIZE);
     struct MmTaskMemory *entry = NULL;
-    bool found = false;
     struct IoFileHandle *file = NULL;
     bool guard = false;
+    bool allocate = !!(flags & (MM_TASK_MEMORY_WRITABLE | MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_EXECUTABLE));
 
     if(NULL != mapped)
         *mapped = NULL;
@@ -57,7 +85,10 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
     if((fd >= 0) && (flags & MM_TASK_MEMORY_REVERSED))
         return BAD_PARAMETER;
 
-    if(!(flags & MM_TASK_MEMORY_FIXED) || (flags & MM_TASK_MEMORY_GROWABLE)) //include guard page
+    if(unlikely(flags & MM_TASK_MEMORY_BASE_MARKER))
+        return BAD_PARAMETER;
+
+    if(flags & MM_TASK_MEMORY_GROWABLE) //include guard page
     {
         alignedSize += PAGE_SIZE;
         guard = true;
@@ -90,7 +121,7 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
     if(!IS_USER_MEMORY(address, alignedSize))
         return BAD_PARAMETER;
 
-    if((NULL != address) && ((uintptr_t)address < (uintptr_t)pcb->memory.base))
+    if((UINTPTR_MAX - (uintptr_t)address) < alignedSize)
         return BAD_PARAMETER;
 
     if(fd >= 0)
@@ -112,8 +143,7 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
             
             //check if file is open in any correct mode (read, write, append)
             //and, when write through flag is specified, if it's open in write mode
-            if(((flags & MM_TASK_MEMORY_WRITE_THROUGH) && !(file->mode & IO_FILE_WRITE))
-                || (file->mode & IO_FILE_WRITE_ATTRIBUTES) || (file->mode & IO_FILE_READ_ATTRIBUTES))
+            if((flags & MM_TASK_MEMORY_WRITE_THROUGH) && !(file->mode & IO_FILE_WRITE))
             {
                 KeReleaseMutex(&(pcb->files.table[fd].mutex));
                 return BUSY;
@@ -127,28 +157,29 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
     }
 
 
-    struct MmTaskMemory *previous = NULL;
-    uintptr_t nextBase = HAL_KERNEL_SPACE_BASE, 
-              previousTop = (uintptr_t)pcb->memory.base;
+    struct MmTaskMemory *previous = nullptr;
 
     KeAcquireMutex(&(pcb->memory.mutex));
     if(unlikely((NULL == pcb->memory.head) && !(flags & MM_TASK_MEMORY_FIXED)))
     {
         status = NOT_SUPPORTED;
-        goto MmMapTaskMemoryLeave;
+        goto leave;
     }
     else
     {
+        uintptr_t nextBase = 0;
+
         if(flags & MM_TASK_MEMORY_FIXED)
         {
-            struct TreeNode *t = TreeFindGreaterOrEqual(pcb->memory.tree, (uintptr_t)address);
-            if(NULL == t) //no succeeding node?
+            uintptr_t previousTop = 0;
+            struct TreeNode *succeeding = TreeFindGreaterOrEqual(pcb->memory.tree, (uintptr_t)address);
+            if(nullptr == succeeding) //no succeeding node?
             {
-                nextBase = HAL_KERNEL_SPACE_BASE;
+                nextBase = (uintptr_t)HAL_KERNEL_SPACE_BASE;
 
-                t = TreeFindLess(pcb->memory.tree, (uintptr_t)address);
-                if(NULL == t) //no preceding node?
-                    previousTop = (uintptr_t)pcb->memory.base;
+                struct TreeNode *t = TreeFindLess(pcb->memory.tree, (uintptr_t)address);
+                if(nullptr == t) //no preceding node?
+                    previousTop = (uintptr_t)pcb->memory.heapBase;
                 else
                 {
                     previous = REGION(t);
@@ -157,101 +188,129 @@ STATUS MmMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags,
             }
             else //there is a succeeding node
             {
-                nextBase = MmGetRegionBase(REGION(t));
+                nextBase = MmGetRegionBase(REGION(succeeding));
 
-                if(NULL != REGION(t)->previous) //there is a neighboring node with lower address
+                if(nullptr != REGION(succeeding)->previous) //there is a neighboring node with lower address
                 {
-                    previousTop = MmGetRegionTop(REGION(t)->previous);
-                    previous = REGION(t)->previous;
+                    previousTop = MmGetRegionTop(REGION(succeeding)->previous);
+                    previous = REGION(succeeding)->previous;
                 }
                 else
-                    previousTop = (uintptr_t)pcb->memory.base;
+                    previousTop = (uintptr_t)pcb->memory.heapBase;
             }
 
-            if(((uintptr_t)address < previousTop) || (((uintptr_t)address + alignedSize) >= nextBase))
+            uintptr_t end = (uintptr_t)address + alignedSize + (guard ? PAGE_SIZE : 0);
+            if(((uintptr_t)address < previousTop) || (end > nextBase))
             {
-                //won't fit
-                status = OUT_OF_RESOURCES;
-                goto MmMapTaskMemoryLeave;
+                if(flags & MM_TASK_MEMORY_OVERRIDE)
+                {
+                    status = MmUnmapTaskMemory(address, end - (uintptr_t)address);
+                    if(OK != status)
+                        goto leave;
+                    //unmapping alters the structure, "previous" is not valid anymore
+                    struct TreeNode *t = TreeFindLess(pcb->memory.tree, (uintptr_t)address);
+                    if(nullptr != t)
+                        previous = REGION(t);
+                }
+                else
+                {
+                    //won't fit
+                    status = OUT_OF_RESOURCES;
+                    goto leave;
+                }
             }
         }
         else //not MM_TASK_MEMORY_FIXED
         {
-            bool takeHint = !!(NULL != address);
-MmMapTaskMemoryRetryWithoutHint:
-            previousTop = (uintptr_t)(takeHint ? address : pcb->memory.base);
-            if(0 != alignment)
-                previousTop = ALIGN_UP(previousTop, alignment);
-            struct MmTaskMemory *t = pcb->memory.head;
-            
-            while(NULL != t)
+            uintptr_t potentialBase = 0;
+            struct MmTaskMemory *marker = MmFindDynamicMemoryBaseMarker(pcb);
+            struct MmTaskMemory *t = marker;
+            if(nullptr == marker)
             {
-                nextBase = MmGetRegionBase(t);
-                if(0 != alignment)
-                    previousTop = ALIGN_UP(previousTop, alignment);
-
-                if((nextBase - previousTop) >= alignedSize)
-                {
-                    address = (void*)previousTop;
-                    found = true;
-                    break;
-                }
-
-                previousTop = MmGetRegionTop(t);
-                previous = t;
-                t = t->next;
+                status = NOT_SUPPORTED;
+                goto leave;
             }
 
-            //we end up here either because the gap is found (found = true) or because the end of the list was reached (found = false)
-            if(!found)
+            bool takeHint = 
+                (nullptr != address) 
+                && ((uintptr_t)address >= (uintptr_t)pcb->memory.heapBase) 
+                && (((uintptr_t)address + alignedSize) < MmGetRegionBase(marker));
+            
+            if(takeHint)
             {
-                if((previousTop < HAL_KERNEL_SPACE_BASE) && ((HAL_KERNEL_SPACE_BASE - previousTop) >= alignedSize))
+                struct TreeNode *n = TreeFindGreaterOrEqual(pcb->memory.tree, (uintptr_t)address + alignedSize);
+                if(nullptr != n)
+                    t = REGION(n);
+                else
+                    t = marker;
+            }
+            
+retryWithoutHint:
+
+            while(nullptr != t)
+            {
+                //'t' is the region following our potential new allocation
+                previous = t->previous;
+                nextBase = MmGetRegionBase(t);
+
+                if(!takeHint)
                 {
-                    address = (void*)previousTop;
-                    found = true;
+                    potentialBase = nextBase - alignedSize - (guard ? PAGE_SIZE : 0);
+                    if(0 != alignment)
+                        potentialBase = ALIGN_DOWN(potentialBase, alignment);
+
+                    if(potentialBase >= ((nullptr != previous) ? MmGetRegionTop(previous) : (uintptr_t)pcb->memory.heapBase))
+                    {
+                        address = (void*)potentialBase;
+                        break;
+                    }
                 }
                 else
                 {
-                    if(takeHint)
+                    potentialBase = (uintptr_t)address;
+                    if((potentialBase >= ((nullptr != previous) ? MmGetRegionTop(previous) : (uintptr_t)pcb->memory.heapBase))
+                        && ((potentialBase + alignedSize + (guard ? PAGE_SIZE : 0)) <= nextBase))
+                    {
+                        break;
+                    }
+                    else
                     {
                         takeHint = false;
-                        goto MmMapTaskMemoryRetryWithoutHint;
+                        goto retryWithoutHint;
                     }
-                    status = OUT_OF_RESOURCES;
-                    goto MmMapTaskMemoryLeave;
                 }
+                t = previous;
+            }
+                
+            if(nullptr == t)
+            {
+                status = OUT_OF_RESOURCES;
+                goto leave;
             }
         }
     }
 
     entry = MmAllocateKernelHeapZeroed(sizeof(*entry));
     if(NULL == entry)
-        goto MmMapTaskMemoryLeave;
+        goto leave;
 
-    MmMemoryFlags mmFlags = 0;
-    if(flags & MM_TASK_MEMORY_WRITABLE)
-        mmFlags |= MM_FLAG_WRITABLE;
-    else
-        mmFlags |= MM_FLAG_READ_ONLY;
-    if(flags & MM_TASK_MEMORY_EXECUTABLE)
-        mmFlags |= MM_FLAG_EXECUTABLE; 
-    else
-        mmFlags |= MM_FLAG_NON_EXECUTABLE;
-    mmFlags |= MM_FLAG_USER_MODE;
 
-    if(flags & MM_TASK_MEMORY_REVERSED)
-        status = MmAllocateMemoryZeroed((uintptr_t)(address + (guard ? PAGE_SIZE : 0)), alignedSize - (guard ? PAGE_SIZE : 0), mmFlags);
-    else
-        status = MmAllocateMemoryZeroed((uintptr_t)address, alignedSize - (guard ? PAGE_SIZE : 0), mmFlags);
-    
+    if(allocate)
+    {
+        if(flags & MM_TASK_MEMORY_REVERSED)
+            status = MmAllocateMemoryZeroed((uintptr_t)(address + (guard ? PAGE_SIZE : 0)), alignedSize - (guard ? PAGE_SIZE : 0), MmTaskMemoryFlagsToMemoryFlags(flags));
+        else
+            status = MmAllocateMemoryZeroed((uintptr_t)address, alignedSize - (guard ? PAGE_SIZE : 0), MmTaskMemoryFlagsToMemoryFlags(flags));
+    }
+
     if(OK != status)
-        goto MmMapTaskMemoryLeave;
+        goto leave;
 
     if(NULL != file)
     {
         status = IoReadFileSync(fd, address, size, offset, NULL);
         if(OK != status)
-            goto MmMapTaskMemoryLeave;
+            goto leave;
 
         if(flags & MM_TASK_MEMORY_WRITE_THROUGH)
             ATOMIC_ADD_FETCH(&(file->references), 1, ATOMIC_RELAXED);
@@ -259,10 +318,11 @@ MmMapTaskMemoryRetryWithoutHint:
 
     entry->base = address;
     entry->end = (void*)((uintptr_t)address + alignedSize);
-    entry->flags = flags;
+    entry->flags = flags & ~MM_TASK_MEMORY_OVERRIDE;
     entry->file = file;
     entry->offset = offset;
     entry->limit = limit;
+    entry->allocated = allocate;
     ((struct TreeNode*)entry->treeData)->key = (uintptr_t)address;
     ((struct TreeNode*)entry->treeData)->aux.v = entry;
     if(NULL != previous)
@@ -295,7 +355,7 @@ MmMapTaskMemoryRetryWithoutHint:
             *mapped = entry->base;
     }
 
-MmMapTaskMemoryLeave:
+leave:
     if(NULL != file)
         KeReleaseMutex(&(pcb->files.table[fd].mutex));
     KeReleaseMutex(&(pcb->memory.mutex));
@@ -304,69 +364,216 @@ MmMapTaskMemoryLeave:
     return status;
 }
 
+static STATUS MmResizeTaskMemoryRegion(struct MmTaskMemory *entry, intptr_t bytes, enum MmTaskMemoryResizeMethod method)
+{
+    STATUS status = OK;
+
+    bytes = ALIGN_UP(bytes, PAGE_SIZE);
+
+    if(0 == bytes)
+        return OK;
+
+    if((nullptr == entry) || (entry->flags & MM_TASK_MEMORY_LOCKED) || (nullptr != entry->file))
+    {
+        status = BAD_PARAMETER;
+        goto leave;
+    }
+
+    if((bytes < 0) && (((uintptr_t)entry->end - (uintptr_t)entry->base) < (uintptr_t)(-bytes)))
+    {
+        status = BAD_PARAMETER;
+        goto leave;
+    }
+
+    if(((entry->flags & MM_TASK_MEMORY_REVERSED) && (MM_RESIZE_NORMAL == method)) || (MM_RESIZE_BOTTOM == method))
+    {
+        uintptr_t newBase = (uintptr_t)entry->base - bytes;
+        if(bytes > 0)
+        {
+            if(unlikely((newBase > (uintptr_t)entry->base)))
+            {
+                status = BAD_PARAMETER;
+                goto leave;
+            }
+
+            if((nullptr != entry->previous) && (MmGetRegionTop(entry->previous) > (newBase - (HAS_GUARD(entry) ? PAGE_SIZE : 0))))
+            {
+                status = OUT_OF_RESOURCES;
+                goto leave;
+            }
+
+            if(entry->allocated)
+            {
+                status = MmAllocateMemory(newBase, bytes, MmTaskMemoryFlagsToMemoryFlags(entry->flags));
+                if(OK != status)
+                    goto leave;
+            }
+        }
+        else
+        {
+            if(entry->allocated)
+            {
+                status = MmFreeMemory((uintptr_t)entry->base, -bytes);
+                if(OK != status)
+                    goto leave;
+            }
+        }
+        entry->base = (void*)newBase;
+        TREE_KEY(entry->treeData) = newBase;
+    }
+    else
+    {
+        uintptr_t newEnd = (uintptr_t)entry->end + bytes;
+        if(bytes > 0)
+        {
+            if((newEnd > HAL_KERNEL_SPACE_BASE) || unlikely((newEnd < (uintptr_t)entry->end)))
+            {
+                status = BAD_PARAMETER;
+                goto leave;
+            }
+
+            if((nullptr != entry->next) && (MmGetRegionBase(entry->next) < (newEnd + (HAS_GUARD(entry) ? PAGE_SIZE : 0))))
+            {
+                status = OUT_OF_RESOURCES;
+                goto leave;
+            }
+
+            if(entry->allocated)
+            {
+                status = MmAllocateMemory((uintptr_t)entry->end, bytes, MmTaskMemoryFlagsToMemoryFlags(entry->flags));
+                if(OK != status)
+                    goto leave;
+            }
+        }
+        else
+        {
+            if(entry->allocated)
+            {
+                status = MmFreeMemory(newEnd, -bytes);
+                if(OK != status)
+                    goto leave;
+            }
+        }
+        entry->end = (void*)newEnd;
+    }
+leave:
+    return status;    
+}
+
+STATUS MmResizeTaskMemory(const void *const ptr, intptr_t bytes, enum MmTaskMemoryResizeMethod method)
+{
+    STATUS status = OK;
+    struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
+    struct MmTaskMemory *entry = nullptr;
+    KeAcquireMutex(&(pcb->memory.mutex));
+
+    entry = MmGetTaskMemoryDescriptor(ptr);
+
+    if(nullptr != entry)
+    {
+        status = MmResizeTaskMemoryRegion(entry, bytes, method);
+    }
+    else
+    {
+        status = NOT_FOUND;
+    }
+
+    KeReleaseMutex(&(pcb->memory.mutex));
+    return status;
+}
+
 STATUS MmUnmapTaskMemory(const void *const ptr, size_t length)
 {
     STATUS status = NOT_FOUND;
-    uintptr_t base = (uintptr_t)ptr;
-    uintptr_t end = (uintptr_t)ptr + length;
+    uintptr_t base = ALIGN_DOWN((uintptr_t)ptr, PAGE_SIZE);
+    uintptr_t end = ALIGN_UP((uintptr_t)ptr + length, PAGE_SIZE);
+
+    if(0 == length)
+        return OK;
 
     struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
     KeAcquireMutex(&(pcb->memory.mutex));
-    do
+
+    if(nullptr == pcb->memory.tree)
     {
-        bool found = false;
-        if(NULL != pcb->memory.tree)
-        {
-            struct TreeNode *t = TreeFindGreaterOrEqual(pcb->memory.tree, base);
-            if(NULL != t)
-            {
-                if((base >= (uintptr_t)REGION(t)->base) && (base < (uintptr_t)REGION(t)->end))
-                {
-                    struct MmTaskMemory *region = REGION(t);
-                    if(region->flags & MM_TASK_MEMORY_LOCKED)
-                    {
-                        base = (uintptr_t)region->end;
-                        continue;
-                    }
-                    //remove from tree
-                    pcb->memory.tree = TreeRemove(pcb->memory.tree, (struct TreeNode*)region->treeData);
-                    //remove from list
-                    if(NULL != region->previous)
-                        region->previous->next = region->next;
-                    else
-                        pcb->memory.head = region->next;
-                    
-                    if(NULL != region->next)
-                        region->next->previous = region->previous;
-                    else
-                        pcb->memory.tail = region->previous;
-                    
-                    //free memory
-                    MmFreeMemory((uintptr_t)region->base, (size_t)((uintptr_t)region->end - (uintptr_t)region->base));
-                    
-                    if(NULL != region->file)
-                    {
-                        if(region->flags & MM_TASK_MEMORY_WRITE_THROUGH)
-                            ATOMIC_SUB_FETCH(&(region->file->references), 1, ATOMIC_RELAXED);
-                    }
-
-                    base = (uintptr_t)region->end;
-                    found = true;
-
-                    //free descriptor
-                    MmFreeKernelHeap(region);
-                    status = OK;
-                }
-            }
-        }
-        if(!found)
-        {
-            if((base + PAGE_SIZE) < base)
-                break;
-            base += PAGE_SIZE;
-        }
+        KeReleaseMutex(&(pcb->memory.mutex));
+        return NOT_FOUND;
     }
-    while(base < end);
+
+    struct TreeNode *t = TreeFindGreaterOrEqual(pcb->memory.tree, base);
+    if(nullptr == t)
+    {
+        KeReleaseMutex(&(pcb->memory.mutex));
+        return NOT_FOUND;
+    }
+
+    struct MmTaskMemory *region = REGION(t); 
+    while(nullptr != region)
+    {
+        if((base < MmGetRegionTop(region)) && (end > MmGetRegionBase(region)))
+        {
+            bool partial = false;
+            if(region->flags & MM_TASK_MEMORY_LOCKED)
+            {
+                region = region->next;
+                continue;
+            }
+            //partial unmapping
+            //everything is page aligned, so if some address is not equal, there is at least one page spacing
+            if(end < MmGetRegionTop(region))
+            {
+                status = MmResizeTaskMemoryRegion(region, -(end - MmGetRegionBase(region)), MM_RESIZE_BOTTOM);
+                if(OK != status)
+                    break;
+                partial = true;
+            }
+            if(base > MmGetRegionBase(region))
+            {
+                status = MmResizeTaskMemoryRegion(region, -(MmGetRegionTop(region) - base), MM_RESIZE_TOP);
+                if(OK != status)
+                    break;
+                partial = true;
+            }
+
+            if(partial)
+            {
+                region = region->next;
+                continue;
+            }
+
+            struct MmTaskMemory *next = region->next;
+
+            //remove from tree
+            pcb->memory.tree = TreeRemove(pcb->memory.tree, (struct TreeNode*)region->treeData);
+            //remove from list
+            if(NULL != region->previous)
+                region->previous->next = region->next;
+            else
+                pcb->memory.head = region->next;
+            
+            if(NULL != region->next)
+                region->next->previous = region->previous;
+            else
+                pcb->memory.tail = region->previous;
+            
+            //free memory
+            if(region->allocated)
+                MmFreeMemory((uintptr_t)region->base, (size_t)((uintptr_t)region->end - (uintptr_t)region->base));
+            
+            if(NULL != region->file)
+            {
+                if(region->flags & MM_TASK_MEMORY_WRITE_THROUGH)
+                    ATOMIC_SUB_FETCH(&(region->file->references), 1, ATOMIC_RELAXED);
+            }
+
+            //free descriptor
+            MmFreeKernelHeap(region);
+            region = next;
+            status = OK;
+        }
+        else
+            break;
+    }
     KeReleaseMutex(&(pcb->memory.mutex));
     return status;
 }
@@ -382,8 +589,10 @@ STATUS MmFreeAllProcessMemoryOnExit(struct KeProcessControlBlock *pcb)
         {
             //TODO: implement proper file flushing
         }
-        HalFreeMemoryP(pcb, (uintptr_t)m->base, (uintptr_t)m->end - (uintptr_t)m->base);
+        if(m->allocated)
+            HalFreeMemoryP(pcb, (uintptr_t)m->base, (uintptr_t)m->end - (uintptr_t)m->base);
         m = m->next;
+        //TODO: entry freeing?
     }
 
     return status;
@@ -430,6 +639,69 @@ bool MmProbeUserMemory(const void *ptr, size_t size, enum MmTaskMemoryFlags flag
 
 }
 
+STATUS MmSetDynamicMemoryBase(void *address)
+{
+    struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
+    struct MmTaskMemory *entry = MmAllocateKernelHeapZeroed(sizeof(*entry));
+    if(NULL == entry)
+        return OUT_OF_RESOURCES;
+
+    entry->base = address;
+    entry->end = address;
+    entry->flags = MM_TASK_MEMORY_BASE_MARKER | MM_TASK_MEMORY_LOCKED;
+    ((struct TreeNode*)entry->treeData)->key = (uintptr_t)address;
+    ((struct TreeNode*)entry->treeData)->aux.v = entry;
+    
+    struct MmTaskMemory *t = pcb->memory.head;
+    uintptr_t a = (uintptr_t)address;
+    if(nullptr == t)
+    {
+        pcb->memory.head = entry;
+        pcb->memory.tail = entry;
+        entry->previous = nullptr;
+        entry->next = nullptr;
+    }
+    else
+    {
+        while(nullptr != t)
+        {
+            if(a <= MmGetRegionBase(t))
+            {
+                entry->next = t;
+                if((nullptr != t->previous) && (a >= MmGetRegionTop(t->previous)))
+                {
+                    entry->previous = t->previous;
+                    t->previous->next = entry;
+                    t->previous = entry;
+                }
+                else if(nullptr != t->previous)
+                {
+                    t->previous = entry;
+                    entry->previous = nullptr;
+                    pcb->memory.head = entry;
+                }
+            }
+            if(nullptr == t->next)
+            {
+                if(unlikely(MmGetRegionTop(t) < a))
+                {
+                    MmFreeKernelHeap(entry);
+                    return BAD_PARAMETER;
+                }
+                t->next = entry;
+                entry->previous = t;
+                entry->next = nullptr;
+                pcb->memory.tail = entry;
+                break;
+            }
+            t = t->next;
+        }
+    }
+
+    pcb->memory.tree = TreeInsert(pcb->memory.tree, (struct TreeNode*)entry->treeData);
+    return OK;
+}
+
 DEFINE_SYSCALL(STATUS, ApiMapTaskMemory, void*, size_t, enum MmTaskMemoryFlags, int, size_t, uint64_t, size_t, void**)
 STATUS ApiMapTaskMemory(void *address, size_t size, enum MmTaskMemoryFlags flags, int fd, size_t alignment, uint64_t offset, size_t limit, void **mapped)
 {
@@ -454,4 +726,45 @@ DEFINE_SYSCALL(STATUS, ApiUnmapTaskMemory, const void *const, size_t)
 STATUS ApiUnmapTaskMemory(const void *const ptr, size_t size)
 {
     return MmUnmapTaskMemory(ptr, size);
+}
+
+DEFINE_SYSCALL(void*, ApiResizeHeap, intptr_t)
+void *ApiResizeHeap(intptr_t increment)
+{
+    STATUS status = OK;
+    struct KeProcessControlBlock *pcb = KeGetCurrentTaskParent();
+    
+    KeAcquireMutex(&(pcb->memory.mutex));
+
+    void *current = pcb->memory.heap;
+    if(0 != increment)
+    {
+        if((increment < 0) && (((uintptr_t)current - (uintptr_t)pcb->memory.heapBase) < (uintptr_t)(-increment)))
+        {
+            KeReleaseMutex(&(pcb->memory.mutex));
+            return nullptr;
+        }
+
+        if(current != pcb->memory.heapBase)
+            status = MmResizeTaskMemory(current, increment, MM_RESIZE_NORMAL);
+        else
+        {
+            uintptr_t alignedBase = ALIGN_DOWN((uintptr_t)current, PAGE_SIZE);
+            uintptr_t totalSize = (uintptr_t)pcb->memory.heapBase - alignedBase + increment;
+            status = MmMapTaskMemory((void*)alignedBase, totalSize, MM_TASK_MEMORY_HEAP_FLAGS, -1, 0, 0, 0, nullptr);
+        }
+
+        if(OK == status)
+        {
+            pcb->memory.heap = ((void*)((uintptr_t)current + increment));
+        }
+        else
+        {
+            current = nullptr;
+        }
+    }
+
+    KeReleaseMutex(&(pcb->memory.mutex));
+
+    return current;
 }

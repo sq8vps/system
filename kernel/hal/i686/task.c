@@ -195,74 +195,91 @@ void HalInitializeScheduler(void)
         uint32_t *stack = NULL;
         if(tcb->main)
         {
-            //randomize stack base (20 bits giving 1048576 positions)
-            int32_t location = RtlRandom(0, 1 << 20);
+            int32_t location = 0;
+#ifndef NO_STACK_AND_DYNAMIC_MEMORY_RANDOMIZATION    
+            //randomize stack base (20 bits giving 1048576 positions)       
+            location = RtlRandom(0, 1 << 20);
+#else
+#warning Stack and dynamic memory base randomization is disabled. This is for debugging purposes only.
+#endif
             //calculate stack base with 16 byte granularity, so that the stack starts somewhere within the 16 MiB region
             stack = (void*)(I686_USER_STACK_DEFAULT_BASE - (location * 16));
             uintptr_t alignedBase = ALIGN_UP((uintptr_t)stack, PAGE_SIZE);
             uintptr_t alignedSize = alignedBase - ALIGN_DOWN((uintptr_t)stack - I686_USER_STACK_DEFAULT_SIZE, PAGE_SIZE);
 
-            status = MmMapTaskMemory((void*)alignedBase, alignedSize, 
-                MM_TASK_MEMORY_STACK | MM_TASK_MEMORY_LOCKED | MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_GROWABLE, -1, 0, 0, I686_USER_STACK_MAX_SIZE, NULL);
-            //since MM_TASK_MEMORY_FIXED is used, then the stack is allocated at *alignedBase* or the function fails
+#ifndef NO_STACK_AND_DYNAMIC_MEMORY_RANDOMIZATION  
+            //randomize dynamic memory base (9 bits giving 512 positions)
+            location = RtlRandom(0, 1 << 9);
+#endif
+            //calculate dynamic base with page granularity
+            status = MmSetDynamicMemoryBase((void*)(alignedBase - I686_USER_STACK_MAX_SIZE - (2 * PAGE_SIZE) - (location * PAGE_SIZE)));
+
             if(OK == status)
             {
-                struct ExProgramData *progData = nullptr;
-                status = ExLoadProcessImage(tcb->parent->path, &entry, &progData);
+                status = MmMapTaskMemory((void*)alignedBase, alignedSize, 
+                    MM_TASK_MEMORY_STACK | MM_TASK_MEMORY_LOCKED | MM_TASK_MEMORY_FIXED | MM_TASK_MEMORY_GROWABLE, -1, 0, 0, I686_USER_STACK_MAX_SIZE, NULL);
+                //since MM_TASK_MEMORY_FIXED is used, then the stack is allocated at *alignedBase* or the function fails
                 if(OK == status)
                 {
-                    //in user mode, the main thread context (passed as an argument) should be a KeTaskArguments structure
-                    //and additional program data
-                    struct KeTaskArguments *args = context;
-                    void *argsBuffer = NULL;
-                    size_t argSize = args->size + (args->argc + 1 + args->envc) * sizeof(char*);
-                    size_t progDataSize = ExGetProgramDataEntryCount(progData) * sizeof(*progData);
-                    status = MmMapTaskMemory(NULL, argSize + progDataSize, 
-                        MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, -1, 0, 0, 0, &argsBuffer);
+                    struct ExProgramData *progData = nullptr;
+                    status = ExLoadProcessImage(tcb->parent->path, &entry, &progData);
                     if(OK == status)
                     {
-                        RtlMemcpy(&((char**)argsBuffer)[args->argc + 1 + args->envc + 1], args->data, args->size);
-
-                        char *start = (char*)&((char**)argsBuffer)[args->argc + 1 + args->envc + 1];
-                        char *end = start;
-                        for(int i = 0; i < args->argc; i++)
+                        //in user mode, the main thread context (passed as an argument) should be a KeTaskArguments structure
+                        //and additional program data
+                        struct KeTaskArguments *args = context;
+                        void *argsBuffer = NULL;
+                        size_t argSize = ALIGN_UP(args->size + (args->argc + 1 + args->envc + 1) * sizeof(char*), 16);
+                        size_t progDataSize = ExGetProgramDataEntryCount(progData) * sizeof(*progData);
+                        status = MmMapTaskMemory(NULL, argSize + progDataSize, 
+                            MM_TASK_MEMORY_READABLE | MM_TASK_MEMORY_WRITABLE, -1, 0, 0, 0, &argsBuffer);
+                        if(OK == status)
                         {
-                            while('\0' != *end)
-                                ++end;
+                            RtlMemcpy(&((char**)argsBuffer)[args->argc + 1 + args->envc + 1], args->data, args->size);
 
-                            ((char**)argsBuffer)[i] = start;
-                            start = ++end;
+                            char *start = (char*)&((char**)argsBuffer)[args->argc + 1 + args->envc + 1];
+                            char *end = start;
+                            for(int i = 0; i < args->argc; i++)
+                            {
+                                while('\0' != *end)
+                                    ++end;
+
+                                ((char**)argsBuffer)[i] = start;
+                                start = ++end;
+                            }
+                            ((char**)argsBuffer)[args->argc] = NULL;
+                            for(int i = 0; i < args->envc; i++)
+                            {
+                                while('\0' != *end)
+                                    ++end;
+
+                                ((char**)argsBuffer)[i + args->argc + 1] = start;
+                                start = ++end;
+                            }
+                            ((char**)argsBuffer)[args->envc + args->argc + 1] = NULL;
+
+                            RtlMemcpy((char*)argsBuffer + argSize, progData, progDataSize);
+
+                            stack[-1] = (uintptr_t)argsBuffer + argSize; //store progdata pointer
+                            stack[-2] = (uintptr_t)argsBuffer + (args->argc + 1) * sizeof(char*); //store envp pointer
+                            stack[-3] = (uintptr_t)argsBuffer; //store argv pointer
+                            stack[-4] = args->argc;
+                            stack[-5] = 0; //push false return address
+                            stack -= 5;
+
+                            MmFreeKernelHeap(args);
                         }
-                        ((char**)argsBuffer)[args->argc] = NULL;
-                        for(int i = 0; i < args->envc; i++)
-                        {
-                            while('\0' != *end)
-                                ++end;
-
-                            ((char**)argsBuffer)[i + args->argc + 1] = start;
-                            start = ++end;
-                        }
-                        ((char**)argsBuffer)[args->envc + args->argc + 1] = NULL;
-
-                        RtlMemcpy((char*)argsBuffer + argSize, progData, progDataSize);
-
-                        stack[-1] = (uintptr_t)((char*)argsBuffer + argSize); //store progdata pointer
-                        stack[-2] = (uintptr_t)((char*)argsBuffer + args->argc + 1); //store envp pointer
-                        stack[-3] = (uintptr_t)argsBuffer; //store argv pointer
-                        stack[-4] = args->argc;
-                        stack[-5] = 0; //push false return address
-                        stack -= 5;
-
-                        MmFreeKernelHeap(args);
+                        else
+                            LOG(SYSLOG_ERROR, "Failed to allocate memory for entry arguments: error 0x%X", (unsigned int)status);
                     }
                     else
-                        LOG(SYSLOG_ERROR, "Failed to allocate memory for entry arguments: error 0x%X", (unsigned int)status);
+                        LOG(SYSLOG_ERROR, "Failed to load process image: error 0x%X", (unsigned int)status);
                 }
                 else
-                    LOG(SYSLOG_ERROR, "Failed to load process image: error 0x%X", (unsigned int)status);
+                    LOG(SYSLOG_ERROR, "Failed to allocate user stack at 0x%p of size 0x%p: error 0x%X", (void*)alignedBase, (void*)alignedSize, (unsigned int)status);
             }
             else
-                LOG(SYSLOG_ERROR, "Failed to allocate user stack at 0x%p of size 0x%p: error 0x%X", (void*)alignedBase, (void*)alignedSize, (unsigned int)status);
+                LOG(SYSLOG_ERROR, "Failed to set dynamic memory base address: error 0x%X", (unsigned int)status);
         }
         else //a child thread
         {

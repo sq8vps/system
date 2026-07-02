@@ -6,6 +6,9 @@ SYSCALL(ApiOpenFile, 0x2)
 SYSCALL(ApiCloseFile, 0x3)
 SYSCALL(ApiReadFileSync, 0x4)
 SYSCALL(ApiWriteFileSync, 0x5)
+SYSCALL(ApiSetFileOffset, 0x6)
+SYSCALL(ApiGetFileAttributes, 0x7)
+
 SYSCALL(ApiSetThreadLocalStorage, 0x8)
 SYSCALL(ApiMapTaskMemory, 0x9)
 SYSCALL(ApiMapTaskMemoryA, 0xA)
@@ -13,5 +16,7 @@ SYSCALL(ApiUnmapTaskMemory, 0xB)
 SYSCALL(ApiGetSystemConfig, 0xC)
 SYSCALL(ApiCreateVt, 0xD)
 SYSCALL(ApiSymlink, 0xE)
+SYSCALL(ApiResizeHeap, 0x10)
+SYSCALL(ApiGetTid, 0x11)
 
 END_NABLA_API

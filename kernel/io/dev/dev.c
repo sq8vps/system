@@ -52,7 +52,7 @@ STATUS IoCreateDevice(
 STATUS IoDestroyDevice(struct IoDeviceObject *device)
 {
     if(device->attachedTo || device->attachedDevice || device->node.deviceNode || device->node.volumeNode || (device->flags & IO_DEVICE_FLAG_PERSISTENT))
-        return RESOURCE_BOUND;
+        return RESOURCE_BOUND_OR_LOCKED;
     
     ObDestroyObject(device);
     return OK;
@@ -481,6 +481,21 @@ STATUS IoGetDeviceForFile(struct IoVfsNode *node, struct IoDeviceObject **dev)
         *dev = node->device;
     
     return OK;
+}
+
+bool IoIsCharacterDevice(const struct IoDeviceObject *dev)
+{
+    if(nullptr == dev)
+        return false;
+
+    switch(dev->type)
+    {
+        case IO_DEVICE_TYPE_KEYBOARD:
+        case IO_DEVICE_TYPE_TERMINAL:
+            return true;
+        default:
+            return false;
+    }
 }
 
 static bool IoBuildDeviceStackAndEnumerate(struct IoEnumerationQueue *t)

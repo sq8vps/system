@@ -41,6 +41,8 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
         return status;
     }
 
+    disk->flags |= IO_DEVICE_FLAG_FS_NO_SYMLINKS;
+
     if(disk->flags & IO_DEVICE_FLAG_DIRECT_IO)
         dev->flags |= IO_DEVICE_FLAG_DIRECT_IO;
     if(disk->flags & IO_DEVICE_FLAG_BUFFERED_IO)
@@ -83,6 +85,7 @@ STATUS FatMount(struct ExDriverObject *drv, struct IoDeviceObject *disk)
     info->fatCount = bpb->fatCount;
     info->fatSize = fatSize;
     info->sectorsPerCluster = bpb->sectorsPerCluster;
+    info->bytesPerCluster = bpb->sectorsPerCluster * bpb->bytesPerSector;
     info->reservedSectors = bpb->reservedSectors;
     info->rootSize = rootDirSectors * bpb->bytesPerSector;
 

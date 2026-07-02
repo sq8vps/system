@@ -36,6 +36,22 @@ struct IoVfsNode;
 NABLA_API
 
 /**
+ * @brief Use current file offset instead of setting it up
+ */
+#define IO_OFFSET_CURRENT (uint64_t)(-1)
+
+/**
+ * @brief File offset setting methods
+ * @warning Offsets exceeding the size of the file are not supported properly.
+ */
+typedef enum
+{
+    IO_SET_OFFSET = 0, /**< Set offset directly, i.e., from the beginning of the file */
+    IO_SET_OFFSET_CUR = 1, /**< Update current offset */
+    IO_SET_OFFSET_END = 2, /**< Set offset with regard to the end of the file */
+} IoSetFileOffsetMethod;
+
+/**
  * @brief File handle/object flags
 */
 typedef enum
@@ -53,10 +69,8 @@ typedef enum
  * 
  * File content is available for reading in \a IO_FILE_READ, \a IO_FILE_WRITE and \a IO_FILE_APPEND modes.
  * \a IO_FILE_WRITE allows to write to any offset without destroying current file content (except the content being explicitly overwritten).
- * \a IO_FILE_APPEND allows to append content to the end and ignores provided offset.
+ * \a IO_FILE_APPEND allows to append content to the end of the file.
  * \a IO_FILE_REPLACE flag can be ORed with open mode to destroy current file content.
- * \a IO_FILE_READ_ATTRIBUTES allows to read file attributes via \a IoFileAttributes structure.
- * \a IO_FILE_WRITE_ATTRIBUTES allows to write file attributes via \a IoFileAttributes structure.
  * By default, when the file does not exist, the function fails and nothing is read nor written.
  * \a IO_FILE_CREATE flag ORed with open mode allows to create the file if it does not exist.
  * Using \a IO_FILE_READ_ATTRIBUTES or \a IO_FILE_WRITE_ATTRIBUTES with \a IO_FILE_WRITE 
@@ -65,12 +79,10 @@ typedef enum
 typedef enum
 {
     IO_FILE_READ = 0x0, /**< Open file for reading */
-    IO_FILE_WRITE = 0x1, /**< Open file for writing (to any offset) */
-    IO_FILE_APPEND = 0x2, /**< Open file for appending (offset ignored) */
-    IO_FILE_READ_ATTRIBUTES = 0x4, /**< Open file for reading attributes */
-    IO_FILE_WRITE_ATTRIBUTES = 0x8, /**< Open file for writing attributes */
-    IO_FILE_CREATE = 0x10, /**< Create file if does not exist */
-    IO_FILE_REPLACE = 0x20, /**< Replace file content on writing (destroy old content) */
+    IO_FILE_WRITE = 0x1, /**< Open file for writing */
+    IO_FILE_APPEND = 0x2, /**< Open file for appending (set initial offset to the end of the file) */
+    IO_FILE_CREATE = 0x4, /**< Create file if does not exist */
+    IO_FILE_REPLACE = 0x8, /**< Replace file content on writing (destroy old content) */
 } IoFileOpenMode;
 
 END_NABLA_API
@@ -97,6 +109,7 @@ typedef struct IoFileHandle
     struct IoTaskFsContext taskfs; /**< Task file system context if this file references /taskfs */
     IoFileOpenMode mode; /**< Mode in which the file is open */
     IoFileFlags flags; /**< Additional file flags */
+    uint64_t offset; /**< Current offset */
     uint32_t references; /**< Number of references: open + memory mappings */
 } IoFileHandle;
 
@@ -122,7 +135,7 @@ STATUS IoCloseFile(int handleNumber);
  * @param handle File handle
  * @param *buffer Destination buffer
  * @param size Count of bytes to read (max size)
- * @param offset Offset into the file in bytes
+ * @param offset \ref IO_OFFSET_CURRENT to track offset or explicit value to change offset
  * @param callback Callback function on read completion
  * @param *context Context to be passed to the callback function
  * @return Status code
@@ -135,7 +148,7 @@ STATUS IoReadFile(int handle, void *buffer, size_t size, uint64_t offset,
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
+ * @param offset \ref IO_OFFSET_CURRENT to track offset or explicit value to change offset
  * @param callback Callback function on write completion
  * @param *context Context to be passed to the callback function
  * @return Status code
@@ -149,7 +162,7 @@ STATUS IoWriteFile(int handle, void *buffer, size_t size, uint64_t offset,
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
+ * @param offset \ref IO_OFFSET_CURRENT to track offset or explicit value to change offset
  * @param *actualSize Count of bytes actually read (set to nullptr if not needed)
  * @return Status code
 */
@@ -161,7 +174,7 @@ STATUS IoReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, si
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
+ * @param offset \ref IO_OFFSET_CURRENT to track offset or explicit value to change offset
  * @param *actualSize Count of bytes actually written (set to nullptr if not needed)
  * @return Status code
 */
@@ -191,7 +204,7 @@ STATUS ApiCloseFile(int handleNumber);
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
+ * @param offset \ref IO_OFFSET_CURRENT to track offset or explicit value to change offset
  * @param *actualSize Count of bytes actually read
  * @return Status code
 */
@@ -203,7 +216,7 @@ STATUS ApiReadFileSync(int handle, void *buffer, size_t size, uint64_t offset, s
  * @param handle File handle
  * @param *buffer Source buffer
  * @param size Count of bytes to write
- * @param offset Offset into the file in bytes
+ * @param offset \ref IO_OFFSET_CURRENT to track offset or explicit value to change offset
  * @param *actualSize Count of bytes actually written
  * @return Status code
 */
@@ -216,6 +229,16 @@ STATUS ApiWriteFileSync(int handle, void *buffer, size_t size, uint64_t offset, 
  * @return Status code
  */
 STATUS ApiSymlink(const char *from, const char *to);
+
+/**
+ * @brief Get/set file offset
+ * @param handle File handle
+ * @param offset Absolute/relative offset
+ * @param method Method of \a offset interpretation: \ref IO_SET_OFFSET, \ref IO_SET_OFFSET_CUR, or \ref IO_SET_OFFSET_END
+ * @param *current Resultant absolute file offset. Might be set to \a nullptr if not needed.
+ * @return Status code
+ */
+STATUS ApiSetFileOffset(int handle, int64_t offset, IoSetFileOffsetMethod method, uint64_t *current);
 
 END_NABLA_API
 
