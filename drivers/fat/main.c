@@ -38,20 +38,14 @@ static STATUS FatDispatch(struct IoRp *rp)
     return NOT_SUPPORTED;
 }
 
-static STATUS FatInit(struct ExDriverObject *driverObject)
-{
-    return OK;
-} 
-
-
 static STATUS FatAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
     return OK;
 }
 
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    driverObject->init = FatInit;
+    UNUSED(dbPath);
     driverObject->dispatch = FatDispatch;
     driverObject->addDevice = FatAddDevice;
     driverObject->verifyFs = FatVerify;

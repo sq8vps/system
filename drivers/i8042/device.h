@@ -71,6 +71,6 @@ bool I8042WriteToPeripheral(uint8_t port, uint8_t data);
  * @param count Number of bytes to read
  * @return True on success, false on timeout
  */
-bool I8042ReadFromPeripheral(uint8_t *data, uint16_t count);
+bool I8042ReadFromPeripheral(uint8_t *data, size_t count);
 
 #endif

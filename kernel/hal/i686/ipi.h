@@ -43,8 +43,8 @@ typedef int (*I686RemoteFunction)(void *context);
 struct I686IpiData
 {
     enum I686IpiType type; /**< IPI type, used to determine payload type */
-    uint16_t source; /**< Source CPU number */
-    volatile uint16_t * volatile remainingAcks; /**< Remaining acknowledges, must be atomically decremented by each recipient */
+    uint32_t source; /**< Source CPU number */
+    volatile uint32_t * volatile remainingAcks; /**< Remaining acknowledges, must be atomically decremented by each recipient */
     union
     {
         /**

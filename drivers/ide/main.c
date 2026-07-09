@@ -54,11 +54,6 @@ static STATUS IdeDispatch(struct IoRp *rp)
     return OK;
 }
 
-static STATUS IdeInit(struct ExDriverObject *driverObject)
-{
-    return OK;
-} 
-
 /**
  * @brief Add IDE controller device object (MDO)
  * 
@@ -94,9 +89,9 @@ static STATUS IdeAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
 /**
  * @brief Main driver entry routine, called only once when the driver is loaded to the memory
 */
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    driverObject->init = IdeInit;
+    UNUSED(dbPath);
     driverObject->dispatch = IdeDispatch;
     driverObject->addDevice = IdeAddDevice;
     IdeLoggingInit();

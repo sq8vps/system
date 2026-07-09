@@ -105,7 +105,7 @@ static STATUS DlLoadSharedLibrary(const char *name, char **envp, struct DlLibrar
 	uintptr_t lowestBase = UINTPTR_MAX;
 	uintptr_t highestTop = 0;
 
-	for(uint16_t i = 0; i < ehdr->e_phnum; ++i)
+	for(size_t i = 0; i < ehdr->e_phnum; ++i)
 	{
 		if(PT_LOAD == phdr[i].p_type)
 		{
@@ -129,7 +129,7 @@ static STATUS DlLoadSharedLibrary(const char *name, char **envp, struct DlLibrar
 	if(OK != status)
 		goto leave;
 
-	for(uint16_t i = 0; i < ehdr->e_phnum; ++i)
+	for(size_t i = 0; i < ehdr->e_phnum; ++i)
 	{
 		if(PT_LOAD == phdr[i].p_type)
 		{
@@ -179,7 +179,7 @@ static STATUS DlLoadSharedLibrary(const char *name, char **envp, struct DlLibrar
 		}
 	}
 
-	for(uint16_t k = 0; k < ehdr->e_phnum; ++k)
+	for(size_t k = 0; k < ehdr->e_phnum; ++k)
 	{
 		if(PT_DYNAMIC == phdr[k].p_type)
 		{
@@ -306,7 +306,7 @@ STATUS DlInsertLoaderToList(const struct Elf32_Ehdr *progHdr, struct Elf32_Ehdr 
 	const struct Elf32_Dyn *dyn = nullptr;
 	struct DlLibrary *lib = nullptr;
 
-	for(uint16_t i = 0; i < progHdr->e_phnum; ++i)
+	for(size_t i = 0; i < progHdr->e_phnum; ++i)
 	{
 		if(PT_INTERP == phdr[i].p_type)
 		{
@@ -330,7 +330,7 @@ STATUS DlInsertLoaderToList(const struct Elf32_Ehdr *progHdr, struct Elf32_Ehdr 
 	lib->next = nullptr;
 
 	phdr = (const struct Elf32_Phdr*)((uintptr_t)dlHdr + dlHdr->e_phoff);
-	for(uint16_t i = 0; i < dlHdr->e_phnum; ++i)
+	for(size_t i = 0; i < dlHdr->e_phnum; ++i)
 	{
 		if(PT_DYNAMIC == phdr->p_type)
 		{

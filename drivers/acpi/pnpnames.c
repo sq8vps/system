@@ -40,7 +40,7 @@ static const char *const AcpiPnpNames[] = {
 static uint32_t AcpiExtractHex(const char *const hex)
 {
     uint32_t value = 0;
-    for(uint16_t i = 0; i < RtlStrlen(hex); i++)
+    for(size_t i = 0; i < RtlStrlen(hex); i++)
     {
         uint8_t v;
         if((hex[i] >= '0') && (hex[i] <= '9'))
@@ -59,7 +59,7 @@ char *AcpiGetPnpName(const char *const id)
 {
     if(!RtlStrncmp(id, "PNP", 3))
     {
-        uint16_t index = AcpiExtractHex(&(id[3]));
+        size_t index = AcpiExtractHex(&(id[3]));
         if(index >= (sizeof(AcpiPnpNames) / sizeof(*AcpiPnpNames)))
             return NULL;
         return (char*)AcpiPnpNames[index];

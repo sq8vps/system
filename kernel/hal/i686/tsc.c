@@ -30,7 +30,7 @@ static int TscGetOffset(void *context)
 {
     const int64_t offset = *((uint64_t*)context) - TscGetRaw(NULL);
     barrier();
-    const uint16_t cpu = HalGetCurrentCpu();
+    const uint32_t cpu = HalGetCurrentCpu();
 
     TscState[cpu].present = true;
     TscState[cpu].invariant = CpuidCheckIfTscInvariant();
@@ -48,7 +48,7 @@ STATUS TscInitForSmp(void)
     uint64_t current = TscGetRaw(NULL);
     I686InvokeRemoteFunction(&cpus, TscGetOffset, &current, results);
 
-    for(uint16_t i = 0; i < MAX_CPU_COUNT; i++)
+    for(uint32_t i = 0; i < MAX_CPU_COUNT; i++)
     {
         if(results[i] && (!TscState[i].present || !TscState[i].invariant))
         {
@@ -64,7 +64,7 @@ STATUS TscInit(void)
 {
     RtlMemsetV(TscState, 0, sizeof(TscState));
 
-    uint16_t cpu = HalGetCurrentCpu();
+    uint32_t cpu = HalGetCurrentCpu();
 
     TscState[cpu].present = true;
 

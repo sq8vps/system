@@ -529,7 +529,7 @@ static int RtlVprintf(struct RtlVPrintfConfig config, const char *format, va_lis
             else if ('c' == format[k])
             {
                 char x = va_arg(args, int);
-                if(config.useMax && (written < config.max))
+                if(!config.useMax || (config.useMax && (written < config.max)))
                 {
                     if(!config.dry)
                     {

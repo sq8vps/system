@@ -106,15 +106,9 @@ STATUS I8042AddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject
     return OK;
 }
 
-static STATUS I8042Init(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    return OK;
-} 
-
-
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
-{
-    driverObject->init = I8042Init;
+    UNUSED(dbPath);
     driverObject->dispatch = I8042Dispatch;
     driverObject->addDevice = I8042AddDevice;
     I8042LoggingInit();

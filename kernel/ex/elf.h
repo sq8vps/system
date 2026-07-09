@@ -282,7 +282,7 @@ typedef uintptr_t (*ExElfResolver_t)(const char *name);
  * @param n Section index
  * @return Section header address
 */
-struct Elf32_Shdr* ExGetElf32SectionHeader(struct Elf32_Ehdr *h, uint16_t n);
+struct Elf32_Shdr* ExGetElf32SectionHeader(struct Elf32_Ehdr *h, size_t n);
 
 /**
  * @brief Verify ELF32 main header
@@ -310,7 +310,7 @@ STATUS ExGetElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *
  * @param resolver External symbol resolver function
  * @return Error code
 */
-STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, ExElfResolver_t resolver);
+STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, size_t table, size_t index, uintptr_t *symbolValue, ExElfResolver_t resolver);
 
 /**
  * @brief Relocate ELF32 symbol

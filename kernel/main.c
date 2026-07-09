@@ -76,7 +76,7 @@ static void KeInitProcess(void *context)
 		FAIL_BOOT("unable to initialize driver manager\n");
 
 	if(OK != IoInitDeviceManager(context, HAL_ROOT_DEVICE_ID))
-		FAIL_BOOT("unable to initialize ACPI subsystem\n");
+		FAIL_BOOT("unable to initialize the root subsystem\n");
 
 	LOG(SYSLOG_INFO, "Waiting for the main file system to be mounted...\n");
 	IoWaitForMainFileSystemMount(KE_MUTEX_NO_TIMEOUT);

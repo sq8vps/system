@@ -68,7 +68,7 @@ STATUS ExGetExecutableRequiredBssSize(const char *name, size_t *size)
     IoCloseFile(f);
 
     struct Elf32_Shdr *s = (struct Elf32_Shdr*)buf;
-	for(uint16_t i = 0; i < sectionHeaderEntryCount; i++)
+	for(size_t i = 0; i < sectionHeaderEntryCount; i++)
 	{
 		if(SHT_NOBITS != s[i].sh_type)
 			continue;
@@ -94,7 +94,7 @@ STATUS ExPrepareExecutableBss(void *fileStart, void *bss)
         return ret;
     
     struct Elf32_Shdr *s;
-	for(uint16_t i = 0; i < h->e_shnum; i++)
+	for(size_t i = 0; i < h->e_shnum; i++)
 	{
         s = ExGetElf32SectionHeader(h, i);
 		if(SHT_NOBITS != s->sh_type)

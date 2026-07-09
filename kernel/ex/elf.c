@@ -2,7 +2,7 @@
 #include "io/log/syslog.h"
 #include "rtl/string.h"
 
-struct Elf32_Shdr* ExGetElf32SectionHeader(struct Elf32_Ehdr *h, uint16_t n)
+struct Elf32_Shdr* ExGetElf32SectionHeader(struct Elf32_Ehdr *h, size_t n)
 {
 	return &((struct Elf32_Shdr*)((uintptr_t)h + h->e_shoff))[n];
 }
@@ -19,14 +19,14 @@ STATUS ExGetElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *
 
 	struct Elf32_Shdr *s;
 
-    for(uint16_t i = 0; i < h->e_shnum; i++) //loop for all sections
+    for(size_t i = 0; i < h->e_shnum; i++) //loop for all sections
 	{
 		s = ExGetElf32SectionHeader(h, i); //get section header
 
 		if(SHT_SYMTAB == s->sh_type) //symbol table header
 		{
 			struct Elf32_Sym *symbol = (struct Elf32_Sym*)((uintptr_t)h + s->sh_offset); //get symbol structure
-            for(uint32_t i = 0; i < (s->sh_size / s->sh_entsize); i++) //loop for symbol entries
+            for(size_t i = 0; i < (s->sh_size / s->sh_entsize); i++) //loop for symbol entries
             {
                 //check for symbol type
 		        if(ELF32_ST_TYPE(symbol[i].st_info) == STT_FUNC || ELF32_ST_TYPE(symbol[i].st_info) == STT_OBJECT)
@@ -60,7 +60,7 @@ STATUS ExGetElf32SymbolValueByName(struct Elf32_Ehdr *h, char *name, uintptr_t *
     return UNDEFINED_SYMBOL;
 }
 
-STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, uint16_t table, uint32_t index, uintptr_t *symbolValue, ExElfResolver_t resolver)
+STATUS ExGetElf32SymbolValue(struct Elf32_Ehdr *h, size_t table, uint32_t index, uintptr_t *symbolValue, ExElfResolver_t resolver)
 {
 	if((SHN_UNDEF == table) || (SHN_UNDEF == index))
 	{
@@ -164,7 +164,7 @@ STATUS ExPerformElf32Relocation(struct Elf32_Ehdr *h, ExElfResolver_t resolver)
 	
 	struct Elf32_Shdr *sectionHdr;
 
-	for(uint16_t i = 0; i < h->e_shnum; i++) //iterate thorugh all sections
+	for(size_t i = 0; i < h->e_shnum; i++) //iterate thorugh all sections
 	{
 		sectionHdr = ExGetElf32SectionHeader(h, i); //get header
 

@@ -12,6 +12,7 @@ add_executable(${DRIVER} EXCLUDE_FROM_ALL
     irq.c
     logging.c
     mmio.c
+    mp.c
     pnpnames.c
     )
 target_include_directories(${DRIVER} PRIVATE 

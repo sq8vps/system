@@ -118,7 +118,8 @@ static STATUS PciEnumerateDeviceByAddress(union IoBusId address, struct ExDriver
         }
 
 
-        LOG(SYSLOG_INFO, "Device %X/%X found at %u:%u:%u", vid, did, address.pci.bus, address.pci.device, address.pci.function);
+        LOG(SYSLOG_INFO, "Device %X/%X class %X subclass %X found at %u:%u:%u", vid, did, (unsigned int)class, (unsigned int)subclass, 
+            address.pci.bus, address.pci.device, address.pci.function);
     
         struct PciDeviceData *deviceInfo = dev->privateData;
         deviceInfo->address = address;
@@ -341,7 +342,7 @@ STATUS PciGetResources(struct IoRp *rp)
         rp->payload.resource.count = 0;
         if(NULL != info->irqMap)
         {
-            rp->payload.resource.res = MmAllocateKernelHeap(sizeof(rp->payload.resource));
+            rp->payload.resource.res = MmAllocateKernelHeap(sizeof(*rp->payload.resource.res));
             if(NULL != rp->payload.resource.res)
             {
                 rp->payload.resource.count = 1;
@@ -354,7 +355,7 @@ STATUS PciGetResources(struct IoRp *rp)
         }
         else if(info->irqAvailable)
         {
-            rp->payload.resource.res = MmAllocateKernelHeap(sizeof(rp->payload.resource));
+            rp->payload.resource.res = MmAllocateKernelHeap(sizeof(*rp->payload.resource.res));
             if(NULL != rp->payload.resource.res)
             {
                 rp->payload.resource.count = 1;

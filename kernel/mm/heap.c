@@ -15,7 +15,7 @@
  */
 struct MmHeapBlock
 {
-    bool free;      //is block free?
+    bool free; //is block free?
     size_t size; //block size, not including structure size
     //pointer to neighboring blocks, either free or not
     struct MmHeapBlock *previous;
@@ -190,6 +190,7 @@ static bool MmHeapExtendLastBlock(size_t n)
     return true;
 }
 
+
 void *MmAllocateKernelHeapAligned(size_t n, size_t align)
 {
     if(0 == n)
@@ -218,7 +219,7 @@ void *MmAllocateKernelHeapAligned(size_t n, size_t align)
                 {
                     ret = MmSplitBlock(block, n, align);
 
-                    if (NULL != ret)
+                    if(NULL != ret)
                     {
                         barrier();
                         KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
@@ -251,7 +252,7 @@ void *MmAllocateKernelHeapAligned(size_t n, size_t align)
 
     barrier();
     KeReleaseSpinlock(&(MmHeapAllocatorLock), prio);
-    if (NULL != ret)
+    if(NULL != ret)
     {
         return (void *)((uintptr_t)ret + META_SIZE);
     }
@@ -326,7 +327,8 @@ void *MmReallocateKernelHeap(void *ptr, size_t n)
     if(NULL == ptr)
         return p;
     
-    RtlMemcpy(p, ptr, n);
+    struct MmHeapBlock *h = (struct MmHeapBlock*)((uintptr_t)ptr - META_SIZE);
+    RtlMemcpy(p, ptr, MIN(h->size, n));
     MmFreeKernelHeap(ptr);
 
     return p;

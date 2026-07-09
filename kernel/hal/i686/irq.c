@@ -53,7 +53,7 @@ void I686SetDualPicPresence(bool state)
 
 void I686SetDefaultIsaRemap(void)
 {
-    for(uint16_t i = 0; i < ISA_INTERRUPT_COUNT; i++)
+    for(size_t i = 0; i < ISA_INTERRUPT_COUNT; i++)
         I686AddIsaRemapEntry(i, i, (struct HalInterruptParams){
             .mode = HAL_IT_MODE_FIXED,
             .polarity = HAL_IT_POLARITY_ACTIVE_HIGH,

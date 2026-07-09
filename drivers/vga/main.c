@@ -48,11 +48,6 @@ static STATUS VgaDispatch(struct IoRp *rp)
     return OK;
 }
 
-static STATUS VgaInit(struct ExDriverObject *driverObject)
-{
-    return OK;
-} 
-
 /**
  * @brief Add VGA adapter
 */
@@ -95,9 +90,9 @@ static STATUS VgaAddDevice(struct ExDriverObject *driverObject, struct IoDeviceO
 /**
  * @brief Main driver entry routine, called only once when the driver is loaded to the memory
 */
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    driverObject->init = VgaInit;
+    UNUSED(dbPath);
     driverObject->dispatch = VgaDispatch;
     driverObject->addDevice = VgaAddDevice;
     VgaLoggingInit();

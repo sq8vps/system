@@ -87,21 +87,21 @@ INTERNAL void GdtInit(void);
  * @param cpu CPU number
  * @attention GDT must be initialized first with \a GdtInit()
  */
-INTERNAL void GdtApply(uint16_t cpu);
+INTERNAL void GdtApply(uint32_t cpu);
 
 /**
  * @brief Create TSS for CPU and add to GDT
  * @param cpu CPU number
  * @return Status code
  */
-INTERNAL STATUS GdtAddCpu(uint16_t cpu);
+INTERNAL STATUS GdtAddCpu(uint32_t cpu);
 
 /**
  * @brief Load TSS to Task Register
  * @param cpu CPU number
  * @warning This function must be called by the target CPU
  */
-INTERNAL void GdtLoadTss(uint16_t cpu);
+INTERNAL void GdtLoadTss(uint32_t cpu);
 
 /**
  * @brief Update kernel stack pointer for current CPU

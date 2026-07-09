@@ -33,19 +33,16 @@ struct IoVolumeNode;
 /**
  * @brief Type definition for a kernel mode driver entry point routine
  */
-typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *);
+typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *driverObject, const char *dbPath);
 
 /**
- * @brief Driver was initialized successfully
- * @warning This flag is set and cleared by the kernel
+ * @brief Driver object flags
  */
-#define EX_DRIVER_OBJECT_FLAG_INITIALIZED 0x80000000
-
-/**
- * @brief Driver is a filesystem driver
- * @warning This flag must be set by the driver in #DRIVER_ENTRY routine
- */
-#define EX_DRIVER_OBJECT_FLAG_FILESYSTEM 0x00000001
+enum ExDriverObjectFlags
+{
+    EX_DRIVER_OBJECT_FLAG_FILESYSTEM  = 0x00000001, /**< Driver is a filesystem driver */
+    EX_DRIVER_OBJECT_FLAG_LOADED = 0x80000000, /**< Driver is already loaded and its entry was called */
+};
 
 /**
  * @brief Driver object structure
@@ -56,11 +53,12 @@ struct ExDriverObject
     bool free; /**< Descriptor is free */
     uint32_t id; /**< Unique driver ID */
     struct IoDeviceObject *deviceObject; /**< Linked list of devices created by the driver */
-    uint32_t flags; /**< Driver flags */
+    enum ExDriverObjectFlags flags; /**< Driver flags */
     uintptr_t address; /**< Driver image address */
     size_t size; /**< Driver image size */
     uint32_t referenceCount; /**< Count of driver references */
-    STATUS (*init)(struct ExDriverObject *driverObject); /**< Driver initialization routine pointer */
+    DRIVER_ENTRY_T* entry; /**< Driver entry routine */
+    STATUS (*init)(struct ExDriverObject *driverObject, struct ExDriverObject *caller, void *data); /**< Driver specific initialization function - not called by default */
     STATUS (*unload)(struct ExDriverObject *driverObject); /**< Driver unload routine pointer */
     STATUS (*dispatch)(struct IoRp *rp); /**< Resource Packet dispatch routine pointer */
     STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject); /**< Main Device Object creation routine pointer */
@@ -77,7 +75,7 @@ struct ExDriverObject
  */
 struct ExDriverObjectList
 {
-    struct ExDriverObject *this; /**< Associated driver object pointer */
+    struct ExDriverObject *thisDriver; /**< Associated driver object pointer */
     struct ExDriverObjectList *next; /**< Next driver object list entry */
     bool isMain; /**< Is this a main driver for this device? */
 };
@@ -93,7 +91,7 @@ struct ExDriverObjectList
  * @note Freeing the \a **drivers table must be done by the caller.
  * @note This function reuses already loaded drivers.
 */
-STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const *compatibleIds, struct ExDriverObjectList **drivers, uint16_t *driverCount);
+STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const *compatibleIds, struct ExDriverObjectList **drivers, size_t *driverCount);
 
 /**
  * @brief Load and initialize filesystem drivers for given volume
@@ -105,7 +103,7 @@ STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const *compatib
  * @note Freeing the \a **drivers table must be done by the caller.
  * @note This function reuses already loaded drivers.
 */
-STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, uint16_t *driverCount);
+STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, size_t *driverCount);
 
 /**
  * @brief Load and initialize drivers described by given database
@@ -117,7 +115,7 @@ STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDr
  * @note Freeing the \a **drivers table must be done by the caller.
  * @note This function reuses already loaded drivers.
 */
-STATUS ExLoadKernelDriversByName(const char *name, struct ExDriverObjectList **drivers, uint16_t *driverCount);
+STATUS ExLoadKernelDriversByName(const char *name, struct ExDriverObjectList **drivers, size_t *driverCount);
 
 /**
  * @brief Find driver by memory address (e.g. for debugging)

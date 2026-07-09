@@ -102,7 +102,7 @@ STATUS ApicIoInit(void)
     uintptr_t lowestAddress = 0xFFFFFFFF;
     uintptr_t highestAddress = 0;
     //find lowest and highest physical address first
-    for(uint16_t i = 0; i < IoApicEntryCount; i++)
+    for(size_t i = 0; i < IoApicEntryCount; i++)
     {
         if(IoApicEntryTable[i].address < lowestAddress)
             lowestAddress = IoApicEntryTable[i].address;
@@ -114,7 +114,7 @@ STATUS ApicIoInit(void)
     if(NULL == mmio)
         return OUT_OF_RESOURCES;
 
-    for(uint16_t i = 0; i < IoApicEntryCount; i++)
+    for(size_t i = 0; i < IoApicEntryCount; i++)
     {
         PRIO prio = KeAcquireDpcLevelSpinlock(&IoApicDevice[IoApicDeviceCount].Lock);
         IoApicDevice[IoApicDeviceCount].mmio = (uint32_t*)(((uintptr_t)mmio) + (IoApicEntryTable[i].address - lowestAddress));
@@ -245,7 +245,7 @@ uint32_t ApicIoReserveInput(uint32_t input)
         PRIO prio = KeAcquireDpcLevelSpinlock(&IoApicDevice[i].Lock);
         if(HAL_INTERRUPT_INPUT_ANY == input)
         {
-            for(uint16_t k = 0; k < IoApicDevice[i].inputs; k++)
+            for(size_t k = 0; k < IoApicDevice[i].inputs; k++)
             {
                 if(0 == (IoApicDevice[i].usage[k / 32] & ((uint32_t)1 << (k % 32))))
                 {

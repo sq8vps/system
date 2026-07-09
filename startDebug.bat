@@ -1,3 +1,6 @@
+cd initrd
+tar cf ..\image\initrd.tar *
+cd ..
 osfmount -a -t file -o rw -f os-image.img -m F:
 xcopy image\* F:\SYSTEM\ /E /Y
 copy /y grub.cfg F:\BOOT\GRUB\

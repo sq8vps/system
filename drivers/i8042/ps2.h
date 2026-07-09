@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 struct I8042Peripheral;
 struct IoRp;
@@ -29,7 +30,7 @@ bool Ps2ProbePort(struct I8042Peripheral *info);
  * @param count Size of data
  * @return True on success, false on failure
  */
-bool Ps2WriteMultiple(struct I8042Peripheral *info, uint8_t *data, uint16_t count);
+bool Ps2WriteMultiple(struct I8042Peripheral *info, uint8_t *data, size_t count);
 
 /**
  * @brief Send data to PS/2 device asynchronously

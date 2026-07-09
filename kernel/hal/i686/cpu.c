@@ -110,7 +110,7 @@ STATUS I686StartProcessors(void)
     RtlMemcpy((void*)I686_AP_BOOTSTRAP_ADDRESS, I686StartAp, (uintptr_t)I686StartApEnd - (uintptr_t)I686StartAp);
     RtlMemcpy((void*)I686_AP_BOOTSTRAP_DATA_ADDRESS, I686StartApData, sizeof(I686StartApData));
 
-    for(uint16_t i = 0; i < CpuCount; i++)
+    for(size_t i = 0; i < CpuCount; i++)
     {
         struct HalCpu *cpu = HalGetCpuEntry(i);
         if(NULL == cpu)
@@ -124,7 +124,7 @@ STATUS I686StartProcessors(void)
         ApicWaitForIpiDelivery(US_TO_NS(200));
     }
     KeDelay(MS_TO_NS(10));
-    for(uint16_t i = 0; i < CpuCount; i++)
+    for(size_t i = 0; i < CpuCount; i++)
     {
         struct HalCpu *cpu = HalGetCpuEntry(i);
         if(NULL == cpu)

@@ -62,8 +62,8 @@ static struct
 	uint8_t bgColor;
 	uint8_t fgColor;
 
-	uint16_t x;
-	uint16_t y;
+	uint32_t x;
+	uint32_t y;
 
 	uint8_t *vmem;
 
@@ -120,7 +120,7 @@ static const uint8_t HalVideoRegs320x200x256[] =
 
 static void HalVideoSetupVgaRegisters(const uint8_t *regs)
 {
-	uint16_t i = 0;
+	size_t i = 0;
 
     /* write MISCELLANEOUS reg */
 	IoPortWriteByte(HAL_VIDEO_MISC_WRITE, *regs);
@@ -173,7 +173,7 @@ static void HalVideoWriteColorPalette(void)
     
     uint8_t r = 0, g = 0, b = 0;
 #ifdef HAL_VIDEO_USE_640_480
-    for(uint16_t i = 0; i < 16; i++)
+    for(size_t i = 0; i < 16; i++)
     {
         IoPortWriteByte(HAL_VIDEO_DAC_DATA, r);
         IoPortWriteByte(HAL_VIDEO_DAC_DATA, g);
@@ -192,7 +192,7 @@ static void HalVideoWriteColorPalette(void)
 		}
 	}
 #else
-    for(uint16_t i = 0; i < 256; i++)
+    for(size_t i = 0; i < 256; i++)
     {
         IoPortWriteByte(HAL_VIDEO_DAC_DATA, r);
         IoPortWriteByte(HAL_VIDEO_DAC_DATA, g);
@@ -330,7 +330,7 @@ void HalVideoSetColor(RtlRGB fg, RtlRGB bg)
 }
 
 
-HOT static inline void HalVideoSetPixelNormalized(uint16_t x, uint16_t y, uint8_t color)
+HOT static inline void HalVideoSetPixelNormalized(size_t x, size_t y, uint8_t color)
 {	
 	if(unlikely((y >= HAL_VIDEO_HEIGHT) || (x >= HAL_VIDEO_WIDTH)))
 		return;
@@ -361,7 +361,7 @@ HOT static inline void HalVideoSetPixelNormalized(uint16_t x, uint16_t y, uint8_
 /**
  * @brief Set pixel only in given plane. The plane must be selected first with HalVideoSetPlane()
 */
-HOT static inline void HalVideoSetPixelInCurrentPlane(uint16_t x, uint16_t y, uint8_t plane, uint8_t color)
+HOT static inline void HalVideoSetPixelInCurrentPlane(size_t x, size_t y, uint8_t plane, uint8_t color)
 {
 	if(unlikely((y >= HAL_VIDEO_HEIGHT) || (x >= HAL_VIDEO_WIDTH)))
 		return;
@@ -380,7 +380,7 @@ HOT static inline void HalVideoSetPixelInCurrentPlane(uint16_t x, uint16_t y, ui
 #endif
 
 
-void HalVideoSetPixel(uint16_t x, uint16_t y, RtlRGB color)
+void HalVideoSetPixel(size_t x, size_t y, RtlRGB color)
 {
 	if(unlikely(!HalVideoState.initialized))
 		return;
@@ -397,18 +397,18 @@ void HalVideoFillScreen(RtlRGB color)
 	for(uint8_t p = 0; p < 3; p++)
 	{
 		HalVideoSetPlane(p);
-		for (uint16_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
+		for (size_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
 		{
-			for (uint16_t x = 0; x < HAL_VIDEO_WIDTH; x++)
+			for (size_t x = 0; x < HAL_VIDEO_WIDTH; x++)
 			{
 				HalVideoSetPixelInCurrentPlane(x, y, p, normalizedColor);
 			}
 		}
 	}
 #else
-	for (uint16_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
+	for (size_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
 	{
-		for (uint16_t x = 0; x < HAL_VIDEO_WIDTH; x++)
+		for (size_t x = 0; x < HAL_VIDEO_WIDTH; x++)
 		{
 			HalVideoSetPixelNormalized(x, y, normalizedColor);
 		}
@@ -426,18 +426,18 @@ void HalVideoClearScreen(void)
 	for(uint8_t p = 0; p < 3; p++)
 	{
 		HalVideoSetPlane(p);
-		for (uint16_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
+		for (size_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
 		{
-			for (uint16_t x = 0; x < HAL_VIDEO_WIDTH; x++)
+			for (size_t x = 0; x < HAL_VIDEO_WIDTH; x++)
 			{
 				HalVideoSetPixelInCurrentPlane(x, y, p, HalVideoState.bgColor);
 			}
 		}
 	}
 #else
-	for (uint16_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
+	for (size_t y = 0; y < HAL_VIDEO_HEIGHT; y++)
 	{
-		for (uint16_t x = 0; x < HAL_VIDEO_WIDTH; x++)
+		for (size_t x = 0; x < HAL_VIDEO_WIDTH; x++)
 		{
 			HalVideoSetPixelNormalized(x, y, HalVideoState.bgColor);
 		}
@@ -447,7 +447,7 @@ void HalVideoClearScreen(void)
 	HalVideoState.y = 0;
 }
 
-static inline void HalVideoHandleScroll(uint16_t objectHeight)
+static inline void HalVideoHandleScroll(size_t objectHeight)
 {
 	if((HalVideoState.y + objectHeight) <= HAL_VIDEO_HEIGHT)
 		return;
@@ -458,14 +458,14 @@ static inline void HalVideoHandleScroll(uint16_t objectHeight)
 	for(uint8_t plane = 0; plane < 3; plane++)
 	{
 		HalVideoSetPlane(plane);
-		for(uint16_t i = objectHeight; i < HAL_VIDEO_HEIGHT; i++)
+		for(size_t i = objectHeight; i < HAL_VIDEO_HEIGHT; i++)
 		{
 			RtlMemcpy(&HalVideoState.vmem[HAL_VIDEO_WIDTH * (i - objectHeight) / 8], &HalVideoState.vmem[HAL_VIDEO_WIDTH * i / 8], HAL_VIDEO_WIDTH / 8);
 		}
 		RtlMemset(&HalVideoState.vmem[HAL_VIDEO_WIDTH * (HAL_VIDEO_HEIGHT - objectHeight) / 8], 0, (objectHeight * HAL_VIDEO_WIDTH) / 8);
 	}
 #else
-	for(uint16_t i = objectHeight; i < HAL_VIDEO_HEIGHT; i++)
+	for(size_t i = objectHeight; i < HAL_VIDEO_HEIGHT; i++)
 	{
 		RtlMemcpy(&HalVideoState.vmem[HAL_VIDEO_WIDTH * (i - objectHeight)], &HalVideoState.vmem[HAL_VIDEO_WIDTH * i], HAL_VIDEO_WIDTH);
 	}
@@ -510,7 +510,7 @@ inline void HalVideoPrintChar(char c)
 	HalVideoState.x += HAL_VIDEO_FONT_WIDTH;
 }
 
-void HalVideoPrintXY(uint16_t x, uint16_t y, const char *s)
+void HalVideoPrintXY(size_t x, size_t y, const char *s)
 {
 	if(unlikely(!HalVideoState.initialized))
 		return;
@@ -526,7 +526,7 @@ void HalVideoPrint(const char *s)
     HalVideoPrintXY(HalVideoState.x, HalVideoState.y, s);
 }
 
-void HalVideoSetPosition(uint16_t x, uint16_t y)
+void HalVideoSetPosition(size_t x, size_t y)
 {
 	if(x > HAL_VIDEO_WIDTH)
 		x = 0;
@@ -536,13 +536,13 @@ void HalVideoSetPosition(uint16_t x, uint16_t y)
 	HalVideoState.y = y;
 }
 
-void HalVideoGetCurrentResolution(uint16_t *x, uint16_t *y)
+void HalVideoGetCurrentResolution(size_t *x, size_t *y)
 {
 	*x = HAL_VIDEO_WIDTH;
 	*y = HAL_VIDEO_HEIGHT;
 }
 
-void HalVideoDisplayBitmap(uint16_t x, uint16_t y, const RtlRGB *bitmap, uint16_t width, uint16_t height)
+void HalVideoDisplayBitmap(size_t x, size_t y, const RtlRGB *bitmap, size_t width, size_t height)
 {
 	if(unlikely(!HalVideoState.initialized))
 		return;
@@ -553,9 +553,9 @@ void HalVideoDisplayBitmap(uint16_t x, uint16_t y, const RtlRGB *bitmap, uint16_
 	{
 		index = 0;
 		HalVideoSetPlane(p);
-		for(uint16_t h = 0; h < height; h++)
+		for(size_t h = 0; h < height; h++)
 		{
-			for(uint16_t w = 0; w < width; w++)
+			for(size_t w = 0; w < width; w++)
 			{
 				HalVideoSetPixelInCurrentPlane(x + w, y + h, p, HalVideoNormalizeColor(bitmap[index]));
 				index++;

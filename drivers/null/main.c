@@ -28,10 +28,21 @@ static STATUS NullDispatch(struct IoRp *rp)
     return OK;
 }
 
-static STATUS NullInit(struct ExDriverObject *driverObject)
+static STATUS NullAddDevice(struct ExDriverObject *drv, struct IoDeviceObject *bdo)
 {
+    //MDO creation for null device makes no sense
+    return DEVICE_NOT_AVAILABLE;
+}
+
+
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
+{
+    UNUSED(dbPath);
     STATUS status = OK;
-    struct IoDeviceObject *dev;
+    struct IoDeviceObject *dev = nullptr;
+    driverObject->dispatch = NullDispatch;
+    driverObject->addDevice = NullAddDevice;
+
     status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_OTHER, 
         IO_DEVICE_FLAG_HIDDEN | IO_DEVICE_FLAG_DIRECT_IO | IO_DEVICE_FLAG_BUFFERED_IO | IO_DEVICE_FLAG_STANDALONE | IO_DEVICE_FLAG_PERSISTENT, &dev);
     if(OK != status)
@@ -39,14 +50,6 @@ static STATUS NullInit(struct ExDriverObject *driverObject)
     dev->blockSize = 1;
     dev->alignment = 1;
     return IoCreateDeviceFile(dev, IO_VFS_FLAG_PERSISTENT | IO_VFS_FLAG_NO_CACHE, "null");
-} 
-
-
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
-{
-    driverObject->init = NullInit;
-    driverObject->dispatch = NullDispatch;
-    driverObject->addDevice = NULL;
     return OK;
 }
 

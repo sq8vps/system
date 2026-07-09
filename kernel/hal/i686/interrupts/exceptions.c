@@ -196,7 +196,7 @@ enum ItExceptionVector
     IT_EXCEPTION_CONTROL_PROTECTION = 21,
 };
 
-void I686InstallAllExceptionHandlers(uint16_t cpu)
+void I686InstallAllExceptionHandlers(uint32_t cpu)
 {
     I686InstallExceptionHandler(cpu, IT_EXCEPTION_DIVIDE, ItDivisionByZeroHandler);
 	I686InstallExceptionHandler(cpu, IT_EXCEPTION_DEBUG, ItDebugHandler);

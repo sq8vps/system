@@ -25,7 +25,7 @@ STATUS ExLoadKernelSymbols(const void *bootArgs)
     if(NULL != tag)
     {
         const struct Multiboot2ElfSymbolsTag *elf = (const struct Multiboot2ElfSymbolsTag*)tag;
-        uint16_t count = elf->num; //get section header count
+        size_t count = elf->num; //get section header count
         const struct Elf32_Shdr *s = (const struct Elf32_Shdr*)(elf + 1);
         while(0 != count)
         {

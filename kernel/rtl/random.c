@@ -26,7 +26,7 @@ void RtlInitializeRandom(void)
 #ifndef SMP
     RtlRandomNext = HalGetTimestamp();
 #else
-    for(uint16_t i = 0; i < HalGetCpuCount(); ++i)
+    for(size_t i = 0; i < HalGetCpuCount(); ++i)
         RtlRandomNext[i] = HalGetTimestamp();
 #endif
 }

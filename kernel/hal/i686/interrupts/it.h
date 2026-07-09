@@ -27,7 +27,7 @@ INTERNAL STATUS I686InitIdt(void);
  * @brief Install IDT for current processor
  * @param cpu Current processor number
  */
-INTERNAL void I686InstallIdt(uint16_t cpu);
+INTERNAL void I686InstallIdt(uint32_t cpu);
 
 /**
  * @brief Install exception handler
@@ -36,7 +36,7 @@ INTERNAL void I686InstallIdt(uint16_t cpu);
  * @param *isr Interrupt Service Routine
  * @return Status code
  */
-INTERNAL STATUS I686InstallExceptionHandler(uint16_t cpu, uint8_t vector, void *isr);
+INTERNAL STATUS I686InstallExceptionHandler(uint32_t cpu, uint8_t vector, void *isr);
 
 /**
  * @}

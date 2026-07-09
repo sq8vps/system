@@ -18,7 +18,7 @@ static struct
     struct I686IpiData data[I686_IPI_SLOT_COUNT];
     volatile uint32_t slotsReserved;
     volatile uint32_t slotsFilled;
-    volatile uint16_t remainingAcks;
+    volatile uint32_t remainingAcks;
 } I686IpiState[MAX_CPU_COUNT] = {[0 ... MAX_CPU_COUNT - 1] = {.slotsReserved = 0, .slotsFilled = 0}};
 
 static bool I686IpiInitialized = false;
@@ -91,10 +91,10 @@ STATUS I686InitializeIpi(void)
     return status;
 }
 
-static inline uint16_t I686ReserveIpiSlot(uint16_t cpu)
+static inline uint32_t I686ReserveIpiSlot(uint32_t cpu)
 {
-    uint16_t slot = 0;
-    uint16_t mask = 1;
+    uint32_t slot = 0;
+    uint32_t mask = 1;
     //loop until a free slot is found, that is, the previous
     //bit state was 0 and we set the bit to 1
     while(ATOMIC_FETCH_OR(&(I686IpiState[cpu].slotsReserved), mask, ATOMIC_SEQ_CST) & mask)
@@ -142,13 +142,13 @@ void I686SendInvalidateTlb(const HalCpuBitmap *targets, uintptr_t cr3, uintptr_t
         return;
     }
 
-    for(uint16_t i = 0; i < HalGetCpuCount(); i++)
+    for(uint32_t i = 0; i < HalGetCpuCount(); i++)
     {
         if(i == cpu)
             continue;
         if(HAL_GET_CPU_BIT(targets, i))
         {
-            uint16_t slot = I686ReserveIpiSlot(i);
+            uint32_t slot = I686ReserveIpiSlot(i);
             I686IpiState[i].data[slot].type = I686_IPI_TLB_SHOOTDOWN;
             I686IpiState[i].data[slot].source = cpu;
             I686IpiState[i].data[slot].payload.tlb.address = address;
@@ -184,11 +184,11 @@ void I686SendInvalidateKernelTlb(uintptr_t address, uintptr_t pages)
 
     I686IpiState[cpu].remainingAcks = HalGetCpuCount() - 1;
 
-    for(uint16_t i = 0; i < HalGetCpuCount(); i++)
+    for(uint32_t i = 0; i < HalGetCpuCount(); i++)
     {
         if(i == cpu)
             continue;
-        uint16_t slot = I686ReserveIpiSlot(i);
+        uint32_t slot = I686ReserveIpiSlot(i);
 
         I686IpiState[i].data[slot].type = I686_IPI_TLB_SHOOTDOWN;
         I686IpiState[i].data[slot].source = cpu;
@@ -222,11 +222,11 @@ void I686SendShutdownCpus(void)
 
     I686IpiState[cpu].remainingAcks = HalGetCpuCount() - 1;
 
-    for(uint16_t i = 0; i < HalGetCpuCount(); i++)
+    for(uint32_t i = 0; i < HalGetCpuCount(); i++)
     {
         if(i == cpu)
             continue;
-        uint16_t slot = I686ReserveIpiSlot(i);
+        uint32_t slot = I686ReserveIpiSlot(i);
 
         I686IpiState[i].data[slot].type = I686_IPI_CPU_SHUTDOWN;
         I686IpiState[i].data[slot].source = cpu;
@@ -268,13 +268,13 @@ void I686InvokeRemoteFunction(const HalCpuBitmap *targets, I686RemoteFunction fu
         return;
     }
 
-    for(uint16_t i = 0; i < HalGetCpuCount(); i++)
+    for(uint32_t i = 0; i < HalGetCpuCount(); i++)
     {
         if(i == cpu)
             continue;
         if(HAL_GET_CPU_BIT(targets, i))
         {
-            uint16_t slot = I686ReserveIpiSlot(i);
+            uint32_t slot = I686ReserveIpiSlot(i);
             I686IpiState[i].data[slot].type = I686_IPI_FUNCTION_CALL;
             I686IpiState[i].data[slot].source = cpu;
             I686IpiState[i].data[slot].payload.call.function = function;

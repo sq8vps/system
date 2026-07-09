@@ -205,11 +205,11 @@ bool I8042WriteToPeripheral(uint8_t port, uint8_t data)
     return status;
 }
 
-bool I8042ReadFromPeripheral(uint8_t *data, uint16_t count)
+bool I8042ReadFromPeripheral(uint8_t *data, size_t count)
 {
     bool status = false;
 
-    for(uint16_t i = 0; i < count; i++)
+    for(size_t i = 0; i < count; i++)
     {
         if(I8042_WAIT_FOR_READY_READ(I8042_TIMEOUT))
         {

@@ -34,7 +34,7 @@ uint8_t ItReserveVector(uint8_t vector)
 	PRIO prio = KeAcquireDpcLevelSpinlock(&ItHandlerTableMutex);
 	if(0 == vector)
 	{
-		for(uint16_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
+		for(size_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
 		{
 			if((0 == ItHandlerDescriptorTable[i].count) && (false == ItHandlerDescriptorTable[i].reserved))
 			{
@@ -149,7 +149,7 @@ STATUS ItSetInterruptHandlerEnable(uint8_t vector, ItHandler isr, bool enable)
 
 STATUS ItInit(void)
 {
-	for(uint16_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
+	for(size_t i = 0; i < sizeof(ItHandlerDescriptorTable) / sizeof(*ItHandlerDescriptorTable); i++)
 	{
 		ItHandlerDescriptorTable[i].count = 0;
 		RtlMemset(ItHandlerDescriptorTable[i].consumer, 0, sizeof(ItHandlerDescriptorTable[i].consumer[0]));

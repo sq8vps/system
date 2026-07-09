@@ -100,7 +100,6 @@ static ACPI_STATUS SetPicMode(bool enableIoApic)
     ACPI_STATUS             Status;
     ACPI_OBJECT_LIST        ArgList;
     ACPI_OBJECT             Arg[1];
-    ACPI_BUFFER             ReturnValue;
 
     ArgList.Count = 1;
     ArgList.Pointer = Arg;
@@ -108,12 +107,8 @@ static ACPI_STATUS SetPicMode(bool enableIoApic)
     Arg[0].Type = ACPI_TYPE_INTEGER;
     Arg[0].Integer.Value = enableIoApic ? 1 : 0;
 
-    ReturnValue.Pointer = NULL;
-    ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
-
-    Status = AcpiEvaluateObject (NULL, "\\_PIC", &ArgList, &ReturnValue);
-	ACPI_FREE(ReturnValue.Pointer);
-	if (Status == AE_NOT_FOUND)
+    Status = AcpiEvaluateObject(nullptr, "\\_PIC", &ArgList, nullptr);
+	if(Status == AE_NOT_FOUND)
 	{
 		return AE_OK;
 	}

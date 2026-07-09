@@ -51,8 +51,14 @@ static STATUS TtyDispatch(struct IoRp *rp)
     return OK;
 }
 
-static STATUS TtyInit(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
+    UNUSED(dbPath);
+    driverObject->dispatch = TtyDispatch;
+    driverObject->addDevice = NULL;
+    TtyLoggingInit();
+    TtyInitializeDefaultKeymap();
+
     struct TtyDeviceData *info = MmAllocateKernelHeapZeroed(sizeof(*info));
     if(NULL == info)
         return OUT_OF_RESOURCES;
@@ -60,15 +66,5 @@ static STATUS TtyInit(struct ExDriverObject *driverObject)
     info->type = TTY_TYPE_DUMMY;
     //this should result in creation of dummy /dev/ttyM0
     return TtyCreateDevice(driverObject, TTY_TYPE_DUMMY, info);
-}
-
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
-{
-    driverObject->init = TtyInit;
-    driverObject->dispatch = TtyDispatch;
-    driverObject->addDevice = NULL;
-    TtyLoggingInit();
-    TtyInitializeDefaultKeymap();
-    return OK;
 }
 

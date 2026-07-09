@@ -182,7 +182,7 @@ enum I686PanicCode
 /**
  * @brief Install all exception handlers for given CPU
  */
-INTERNAL void I686InstallAllExceptionHandlers(uint16_t cpu);
+INTERNAL void I686InstallAllExceptionHandlers(uint32_t cpu);
 
 /**
  * @}

@@ -12,7 +12,8 @@
                 "SMP",
                 "DEBUG",
                 "__i686__",
-                "nullptr=NULL"
+                "nullptr=NULL",
+                "_BitInt(x)=int"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,

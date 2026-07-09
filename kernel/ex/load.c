@@ -85,7 +85,7 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 		(*progData)[1].type = PROGDATA_END;
 	}
 
-	for(uint16_t i = 0; i < ehdr->e_phnum; i++)
+	for(size_t i = 0; i < ehdr->e_phnum; i++)
 	{
 		if(PT_INTERP == phdr[i].p_type)
 		{
@@ -159,7 +159,7 @@ static STATUS ExLoadImage(const char *path, bool isInterpreter, void (**entry)(v
 		(*progData)[idx].type = PROGDATA_END;
 	}
 
-	for(uint16_t i = 0; i < ehdr->e_phnum; ++i)
+	for(size_t i = 0; i < ehdr->e_phnum; ++i)
 	{
 		if(PT_LOAD == phdr[i].p_type)
 		{

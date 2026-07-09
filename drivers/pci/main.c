@@ -64,15 +64,9 @@ static STATUS PciDispatch(struct IoRp *rp)
     return OK;
 }
 
-static STATUS PciInit(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    return OK;
-} 
-
-
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
-{
-    driverObject->init = PciInit;
+    UNUSED(dbPath);
     driverObject->dispatch = PciDispatch;
     driverObject->addDevice = PciAddDevice;
     PciLoggingInit();

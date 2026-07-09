@@ -63,7 +63,7 @@ STATUS IdeInitializePrdTables(struct IdeControllerData *info)
     if(NULL == info)
         return BAD_PARAMETER;
 
-    for(uint16_t t = 0; t < 2; t++)
+    for(size_t t = 0; t < 2; t++)
     {
         PADDRESS pAddress = 0;
         size_t size = MmAllocateContiguousPhysicalMemoryFromPool(
@@ -239,7 +239,7 @@ STATUS IdeConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject 
         }
     }
 
-    hdr->command |= PCI_HEADER_COMMAND_IO_SPACE;
+    hdr->command |= PCI_HEADER_COMMAND_IO_SPACE | PCI_HEADER_COMMAND_BUS_MASTER;
 
     status = IoWriteConfigSpace(bdo, offsetof(struct IoPciDeviceHeader, command), 1, &(hdr->command));
 

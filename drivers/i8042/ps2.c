@@ -49,7 +49,7 @@ Ps2State[2] = {{.port = PORT_FIRST, .buffer.head = 0, .buffer.tail = 0, .buffer.
     {.port = PORT_SECOND, .buffer.head = 0, .buffer.tail = 0, .buffer.full = false, .buffer.dpcPending = false,
      .buffer.lock = KeSpinlockInitializer, .command.inProgress = false}};
 
-static bool Ps2WriteAndRead(struct I8042Peripheral *info, uint8_t command, uint8_t *output, uint16_t count)
+static bool Ps2WriteAndRead(struct I8042Peripheral *info, uint8_t command, uint8_t *output, size_t count)
 {
     bool status = false;
     for(uint8_t i = 0; i < PS2_RETRIES; i++)
@@ -69,11 +69,11 @@ static bool Ps2WriteAndRead(struct I8042Peripheral *info, uint8_t command, uint8
     return status;   
 }
 
-bool Ps2WriteMultiple(struct I8042Peripheral *info, uint8_t *data, uint16_t count)
+bool Ps2WriteMultiple(struct I8042Peripheral *info, uint8_t *data, size_t count)
 {
     uint8_t buffer;
     bool status = false;
-    for(uint16_t i = 0; i < count; i++)
+    for(size_t i = 0; i < count; i++)
     {
         for(uint8_t r = 0; r < PS2_RETRIES; r++)
         {

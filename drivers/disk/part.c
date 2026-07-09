@@ -209,10 +209,6 @@ STATUS DiskInitializeVolume(struct IoDeviceObject *bdo, struct IoDeviceObject *d
                 if(OK != status)
                     LOG(SYSLOG_ERROR, "Failed to register volume %lu on disk %lu with status 0x%X", partitionInfo->index, info->index, status);
             }
-#ifdef DEBUG
-            else
-                LOG(SYSLOG_INFO, "Partition %lu at disk %lu is not usable", i, info->index);
-#endif
         }
     }
     return OK;

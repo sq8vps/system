@@ -11,20 +11,10 @@ static ACPI_STATUS AcpiExtractIrqResource(ACPI_RESOURCE *res, struct IoIrqEntry 
     
     if(ACPI_RESOURCE_TYPE_IRQ == res->Type)
     {
-        if(res->Length == 2)
-        {
-            irq->params.polarity = HAL_IT_POLARITY_ACTIVE_HIGH;
-            irq->params.trigger = HAL_IT_TRIGGER_EDGE;
-            irq->params.wake = HAL_IT_WAKE_INCAPABLE;
-            irq->params.shared = HAL_IT_NOT_SHAREABLE;
-        }
-        else
-        {
-            irq->params.polarity = res->Data.Irq.Polarity ? HAL_IT_POLARITY_ACTIVE_LOW : HAL_IT_POLARITY_ACTIVE_HIGH;
-            irq->params.trigger = res->Data.Irq.Triggering ? HAL_IT_TRIGGER_EDGE : HAL_IT_TRIGGER_LEVEL;
-            irq->params.wake = res->Data.Irq.WakeCapable ? HAL_IT_WAKE_CAPABLE : HAL_IT_WAKE_INCAPABLE;
-            irq->params.shared = res->Data.Irq.Shareable ? HAL_IT_SHAREABLE : HAL_IT_NOT_SHAREABLE;
-        }
+        irq->params.polarity = res->Data.Irq.Polarity ? HAL_IT_POLARITY_ACTIVE_LOW : HAL_IT_POLARITY_ACTIVE_HIGH;
+        irq->params.trigger = res->Data.Irq.Triggering ? HAL_IT_TRIGGER_EDGE : HAL_IT_TRIGGER_LEVEL;
+        irq->params.wake = res->Data.Irq.WakeCapable ? HAL_IT_WAKE_CAPABLE : HAL_IT_WAKE_INCAPABLE;
+        irq->params.shared = res->Data.Irq.Shareable ? HAL_IT_SHAREABLE : HAL_IT_NOT_SHAREABLE;
         //ACPICA spec says absolutely nothing about how to handle these structures
         //ACPI says it should be a 16-bit PIC IRQ bit map, but this structure has no 16-bit field
         //below is how its done in Minix
@@ -59,7 +49,10 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap *map)
     if(ACPI_FAILURE(status))
     {
         if(NULL != prtBuf.Pointer)
+        {
             AcpiOsFree(prtBuf.Pointer);
+            prtBuf.Pointer = nullptr;
+        }
         map->irqCount = 0;
         map->child = NULL;
         return AE_OK;
@@ -80,17 +73,29 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap *map)
 
     if(0 == (info->Valid & ACPI_VALID_ADR))
     {
-        //treat missing address field as the end of the tree
-        ACPI_FREE(info);
-        map->irqCount = 0;
-        map->child = NULL;
-        return AE_OK;
+        if(info->Flags & ACPI_PCI_ROOT_BRIDGE)
+        {
+            //store PCI device location
+            map->id.pci.bus = 0; //bus number is unknown at this point and is determined by the upstream bridge
+            map->id.pci.device = 0;
+            map->id.pci.function = 0;
+        }
+        else
+        {
+            //treat missing address field as the end of the tree
+            ACPI_FREE(info);
+            map->irqCount = 0;
+            map->child = NULL;
+            return AE_OK;
+        }
     }
-
-    //store PCI device location
-    map->id.pci.bus = 0; //bus number is unknown at this point and is determined by the upstream bridge
-    map->id.pci.device = PCI_ADR_EXTRACT_DEVICE(info->Address);
-    map->id.pci.function = PCI_ADR_EXTRACT_FUNCTION(info->Address);
+    else
+    {
+        //store PCI device location
+        map->id.pci.bus = 0; //bus number is unknown at this point and is determined by the upstream bridge
+        map->id.pci.device = PCI_ADR_EXTRACT_DEVICE(info->Address);
+        map->id.pci.function = PCI_ADR_EXTRACT_FUNCTION(info->Address);
+    }
 
     ACPI_FREE(info);
 
@@ -108,6 +113,7 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap *map)
     if(NULL == map->irq)
     {
         AcpiOsFree(prtBuf.Pointer);
+        prtBuf.Pointer = nullptr;
         map->irqCount = 0;
         map->child = NULL;
         return AE_NO_MEMORY;
@@ -135,7 +141,7 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap *map)
         else //irq routing via PCI Interrupt Link Device
         {
             ACPI_HANDLE linkDev;
-            if(ACPI_SUCCESS(AcpiGetHandle(device, prt->Source, &linkDev))) //get link device
+            if(ACPI_SUCCESS(AcpiGetHandle(nullptr, prt->Source, &linkDev))) //get link device
             {
                 ACPI_BUFFER resBuf;
                 resBuf.Length = ACPI_ALLOCATE_BUFFER;
@@ -159,12 +165,17 @@ ACPI_STATUS AcpiGetPciIrqTree(ACPI_HANDLE device, struct IoIrqMap *map)
                     }
                 }
                 if(NULL != resBuf.Pointer)
+                {
                     AcpiOsFree(resBuf.Pointer);
+                    resBuf.Pointer = nullptr;
+                }
             }
         }
+        //LOG(SYSLOG_INFO, "Device %u INT%u is mapped to IRQ %u", (unsigned int)(map->irq[i - 1].id.pci.device), (unsigned int)(map->irq[i - 1].pin), (unsigned int)(map->irq[i - 1].gsi));
         prt = (ACPI_PCI_ROUTING_TABLE*)((uintptr_t)prt + prt->Length);
     }
     AcpiOsFree(prtBuf.Pointer);
+    prtBuf.Pointer = nullptr;
 
     map->irqCount = i;
 
@@ -231,6 +242,7 @@ ACPI_STATUS AcpiGetIrq(ACPI_HANDLE device, struct IoDeviceResource *devRes)
         res = (ACPI_RESOURCE*)(((char*)res) + res->Length);
     }
     AcpiOsFree(buf.Pointer);
+    buf.Pointer = nullptr;
     
     return AE_OK;
 }
@@ -271,7 +283,10 @@ uint32_t AcpiGetResourceCount(ACPI_HANDLE device)
 ACPI_STATUS AcpiFillResourceList(ACPI_HANDLE device, struct AcpiDeviceInfo *info)
 {
     if(0 != info->resourceCount)
+    {
         MmFreeKernelHeap(info->resource);
+        info->resource = nullptr;
+    }
     
     info->resourceCount = 0;
     

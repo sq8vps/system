@@ -158,7 +158,7 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
     }
 
     struct ExDriverObjectList *drivers = NULL;
-    uint16_t driverCount = 0;
+    size_t driverCount = 0;
 
     //find and load required drivers
     if(OK != (ret = ExLoadKernelDriversForDevice(deviceId, compatibleIds, &drivers, &driverCount)))
@@ -173,9 +173,9 @@ STATUS IoBuildDeviceStack(struct IoDeviceNode *node)
 
     //invoke AddDevice routine for all drivers to form a device stack
     struct ExDriverObjectList *d = drivers;
-    for(uint16_t i = 0; i < driverCount; i++)
+    for(size_t i = 0; i < driverCount; i++)
     {
-        if(OK != (ret = d->this->addDevice(d->this, node->bdo)))
+        if(OK != (ret = d->thisDriver->addDevice(d->thisDriver, node->bdo)))
         {
             node->status = IO_DEVICE_STATUS_INITIALIZATION_FAILED;
             MmFreeKernelHeap(drivers);
@@ -202,7 +202,7 @@ STATUS IoInitDeviceManager(void *bootArgs, const char *rootDeviceId)
     STATUS ret = OK;
 
     struct ExDriverObjectList *drivers = NULL;
-    uint16_t driverCount = 0;
+    size_t driverCount = 0;
     
     ret = ExCreateKernelWorker(IoDeviceEnumeratorWorker, NULL, &IoEnumerationThread);
     if(OK != ret)
@@ -221,7 +221,7 @@ STATUS IoInitDeviceManager(void *bootArgs, const char *rootDeviceId)
         return NOT_SUPPORTED;
     }
     struct IoDeviceObject *rootBaseDevice = NULL;
-    if(OK != (ret = IoCreateDevice(drivers->this, IO_DEVICE_TYPE_ROOT, 0, &rootBaseDevice)))
+    if(OK != (ret = IoCreateDevice(drivers->thisDriver, IO_DEVICE_TYPE_ROOT, 0, &rootBaseDevice)))
     {
         MmFreeKernelHeap(drivers);
         return ret;

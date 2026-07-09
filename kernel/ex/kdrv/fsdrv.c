@@ -10,7 +10,7 @@ STATUS ExMountVolume(struct IoVolumeNode *volume)
 {
     STATUS status = OK;
     struct ExDriverObjectList *drivers = NULL;
-    uint16_t driverCount = 0;
+    size_t driverCount = 0;
 
     status = ExLoadKernelDriversForFilesystem(volume, &drivers, &driverCount);
     if(OK != status)
@@ -20,21 +20,21 @@ STATUS ExMountVolume(struct IoVolumeNode *volume)
 
     struct ExDriverObjectList *d = drivers;
     //first driver is assumed to be the main driver
-    if(NULL == d->this->mount)
+    if(NULL == d->thisDriver->mount)
     {
         status = NOT_SUPPORTED;
         goto ExMountVolumeFailed;
     }
 
-    status = d->this->mount(d->this, volume->pdo);
+    status = d->thisDriver->mount(d->thisDriver, volume->pdo);
     if(OK != status)
         goto ExMountVolumeFailed;
 
-    for(uint16_t i = 1; i < driverCount; i++)
+    for(size_t i = 1; i < driverCount; i++)
     {
         if(NULL == d)
             goto ExMountVolumeFailed;
-        status = d->this->addDevice(d->this, volume->fsdo);
+        status = d->thisDriver->addDevice(d->thisDriver, volume->fsdo);
         if(OK != status)
             goto ExMountVolumeFailed;
         d = d->next;

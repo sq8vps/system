@@ -60,11 +60,6 @@ static STATUS DiskDispatch(struct IoRp *rp)
     return BAD_PARAMETER;
 }
 
-static STATUS DiskInit(struct ExDriverObject *driverObject)
-{
-    return OK;
-} 
-
 /**
  * @brief Add disk device object
  * 
@@ -142,9 +137,9 @@ static STATUS DiskAddDevice(struct ExDriverObject *driverObject, struct IoDevice
     return OK;
 }
 
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    driverObject->init = DiskInit;
+    UNUSED(dbPath);
     driverObject->dispatch = DiskDispatch;
     driverObject->addDevice = DiskAddDevice;
     DiskLoggingInit();

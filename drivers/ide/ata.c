@@ -86,29 +86,29 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
     drive->controller = ide;
     //0-9
     //skip
-    for(uint16_t i = 0; i < 10; i++)
+    for(size_t i = 0; i < 10; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);
     //10-19
     //serial number
     //20 characters, but in 16-bit words
-    for(uint16_t i = 0; i < 10; i++)
+    for(size_t i = 0; i < 10; i++)
         ((uint16_t*)(drive->serial))[i] = 
             __builtin_bswap16(IoPortReadWord(cmdPort + ATA_REG_DATA));
     drive->serial[20] = '\0';
     //20-26
     //skip
-    for(uint16_t i = 0; i < 7; i++)
+    for(size_t i = 0; i < 7; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);
     //27-46
     //model number
     //40 characters, but in 16-bit words
-    for(uint16_t i = 0; i < 20; i++)
+    for(size_t i = 0; i < 20; i++)
         ((uint16_t*)(drive->model))[i] = 
             __builtin_bswap16(IoPortReadWord(cmdPort + ATA_REG_DATA));
     drive->model[40] = '\0';
     //47-59
     //skip
-    for(uint16_t i = 0; i < 13; i++)
+    for(size_t i = 0; i < 13; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);      
     //60, 61
     //LBA28 number of sectors
@@ -123,7 +123,7 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
         drive->usable = 0;
     //64-82
     //skip
-    for(uint16_t i = 0; i < 19; i++)
+    for(size_t i = 0; i < 19; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);
     //83
     //LBA48 support
@@ -131,7 +131,7 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
         drive->lba48 = 1;
     //84-99
     //skip
-    for(uint16_t i = 0; i < 16; i++)
+    for(size_t i = 0; i < 16; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);
     //100-103
     //LBA48 number of sectors
@@ -151,7 +151,7 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
     uint16_t logicalSectorStatus = IoPortReadWord(cmdPort + ATA_REG_DATA);
     //107-116
     //skip
-    for(uint16_t i = 0; i < 10; i++)
+    for(size_t i = 0; i < 10; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);
     //117, 118
     //logical sector size
@@ -173,7 +173,7 @@ STATUS IdeDetectDrive(struct IdeControllerData *ide, uint8_t channel, uint8_t sl
     }
     //119-255
     //skip
-    for(uint16_t i = 0; i < 137; i++)
+    for(size_t i = 0; i < 137; i++)
         IoPortReadWord(cmdPort + ATA_REG_DATA);
 
     if(drive->usable)

@@ -78,7 +78,7 @@ void HalInitPhase2(void)
 
 void HalInitPhase3(void)
 {
-    for(uint16_t i = (HAL_PRIORITY_LEVEL_IPI << 4); i <= IT_LAST_INTERRUPT_VECTOR; i++)
+    for(size_t i = (HAL_PRIORITY_LEVEL_IPI << 4); i <= IT_LAST_INTERRUPT_VECTOR; i++)
     {
         if(i != ItReserveVector(i))
             FAIL_BOOT("internal x86 vector reservation failed");

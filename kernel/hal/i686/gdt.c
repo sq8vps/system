@@ -125,7 +125,7 @@ void GdtInit(void)
     GdtApply(0);
 }
 
-void GdtApply(uint16_t cpu)
+void GdtApply(uint32_t cpu)
 {
     ASM("lgdt %0" : : "m" (I686GdtRegister) : "memory"); //load new GDT register
     ASM("jmp %0:.1%=\n.1%=:" : : "X" (GDT_OFFSET(GDT_KERNEL_CS)) : "memory"); //perform far jump with code selector, CS can't be set directly
@@ -136,7 +136,7 @@ void GdtApply(uint16_t cpu)
     ASM("mov gs,%0" : : "a" (USER_SELECTOR(GDT_TLS(cpu))) : "memory");
 }
 
-STATUS GdtAddCpu(uint16_t cpu)
+STATUS GdtAddCpu(uint32_t cpu)
 {
     if(cpu >= MAX_CPU_COUNT)
         return OUT_OF_RESOURCES;
@@ -155,7 +155,7 @@ STATUS GdtAddCpu(uint16_t cpu)
     return OK;
 }
 
-void GdtLoadTss(uint16_t cpu)
+void GdtLoadTss(uint32_t cpu)
 {
     //load GDT descriptor with TSS to task register
     ASM("ltr %0" : : "r" GDT_OFFSET(GDT_TSS(cpu)));

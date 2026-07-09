@@ -41,33 +41,31 @@ static STATUS AcpiDispatch(struct IoRp *rp)
     return IoStartRp(rpQueue, rp, NULL);
 }
 
-static STATUS AcpiInit(struct ExDriverObject *driverObject)
-{
-    UNUSED(driverObject);
-    STATUS ret = OK;
-    if(OK != (ret = IoCreateRpQueue(AcpiProcessRp, &rpQueue)))
-        return ret;
-
-    if(AE_OK != AcInitialize())
-        return DEVICE_NOT_AVAILABLE;
-    
-    return OK;
-} 
+STATUS AcpiMpAnalyze(void);
 
 static STATUS AcpiAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
     UNUSED(driverObject);
     UNUSED(baseDeviceObject);
     //should never be called, there are no MDOs for ACPI
-    return OK;
+    return DEVICE_NOT_AVAILABLE;
 }
 
-STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject)
+STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
-    driverObject->init = AcpiInit;
+    UNUSED(dbPath);
+    STATUS status = OK;
     driverObject->dispatch = AcpiDispatch;
     driverObject->addDevice = AcpiAddDevice;
     AcpiLoggingInit();
+    if(OK != (ret = IoCreateRpQueue(AcpiProcessRp, &rpQueue)))
+        return ret;
+
+    AcpiMpAnalyze();
+
+    if(AE_OK != AcInitialize())
+        return DEVICE_NOT_AVAILABLE;
+    
     return OK;
 }
 

@@ -47,7 +47,7 @@ typedef struct
  */
 #define HAL_GET_CPU_BIT_COUNT(bitmap, count) do { \
     (count) = 0; \
-    for(uint16_t HAL_GET_CPU_BIT_COUNT_i = 0; HAL_GET_CPU_BIT_COUNT_i < CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8); HAL_GET_CPU_BIT_COUNT_i++) \
+    for(size_t HAL_GET_CPU_BIT_COUNT_i = 0; HAL_GET_CPU_BIT_COUNT_i < CEIL_DIV(MAX_CPU_COUNT, sizeof(uint32_t) * 8); HAL_GET_CPU_BIT_COUNT_i++) \
         (count) += stdc_count_ones(bitmap->u32[HAL_GET_CPU_BIT_COUNT_i]); \
     } while(0);
 

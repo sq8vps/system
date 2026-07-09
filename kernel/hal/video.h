@@ -56,7 +56,7 @@ INTERNAL void HalVideoClearScreen(void);
  * @param y Vertical position
  * @param *s Null-terminated string
  */
-INTERNAL void HalVideoPrintXY(uint16_t x, uint16_t y, const char *s);
+INTERNAL void HalVideoPrintXY(size_t x, size_t y, const char *s);
 
 /**
  * @brief Put null-termninated string
@@ -76,7 +76,7 @@ INTERNAL void HalVideoSetColor(RtlRGB fg, RtlRGB bg);
  * @param x X position in pixels
  * @param y Y position in pixels
 */
-INTERNAL void HalVideoSetPosition(uint16_t x, uint16_t y);
+INTERNAL void HalVideoSetPosition(size_t x, size_t y);
 
 /**
  * @brief Print character
@@ -90,7 +90,7 @@ INTERNAL void HalVideoPrintChar(char c);
  * @param y Y position in pixels
  * @param color Pixel RGB color
 */
-INTERNAL void HalVideoSetPixel(uint16_t x, uint16_t y, RtlRGB color);
+INTERNAL void HalVideoSetPixel(size_t x, size_t y, RtlRGB color);
 
 /**
  * @brief Display a bitmap
@@ -100,7 +100,7 @@ INTERNAL void HalVideoSetPixel(uint16_t x, uint16_t y, RtlRGB color);
  * @param width Bitmap width in pixels
  * @param height Bitmap height in pixels
 */
-INTERNAL void HalVideoDisplayBitmap(uint16_t x, uint16_t y, const RtlRGB *bitmap, uint16_t width, uint16_t height);
+INTERNAL void HalVideoDisplayBitmap(size_t x, size_t y, const RtlRGB *bitmap, size_t width, size_t height);
 
 /**
  * @brief Check whether boot-time video driver is available

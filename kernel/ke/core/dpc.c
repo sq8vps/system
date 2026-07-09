@@ -146,7 +146,7 @@ STATUS KeDpcInitialize(void)
     if(NULL == KeDpcState[0].slabHandle)
         return OUT_OF_RESOURCES;
 #else
-    for(uint16_t i = 0; i < MAX_CPU_COUNT + 1; i++)
+    for(size_t i = 0; i < MAX_CPU_COUNT + 1; i++)
     {
         KeDpcState[i].slabHandle = MmSlabCreate(sizeof(struct KeDpcObject), KE_DPC_CHUNK_PER_SLAB);
         if(NULL == KeDpcState[i].slabHandle)

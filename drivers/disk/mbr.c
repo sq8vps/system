@@ -42,10 +42,6 @@ bool DiskMbrParse(const void *data, struct Mbr *mbr)
     const struct RawMbr *rmbr = data;
     if(RtlLeU16(rmbr->bootSignature) != MBR_BOOT_SIGNATURE)
     {
-        for(size_t i = 0; i < 100000000; i++)
-            ASM("nop");
-
-        LOG(SYSLOG_ERROR, "MBR signature is 0x%hX", rmbr->bootSignature);
         return false;
     }
     mbr->signature = RtlLeU32(rmbr->signature);

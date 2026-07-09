@@ -269,8 +269,7 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
 		goto LoadKernelDriverFailure;
     }
 
-    uintptr_t entry;
-    status = ExGetElf32SymbolValueByName(elfHeader, STRINGIFY(DRIVER_ENTRY), &entry);
+    status = ExGetElf32SymbolValueByName(elfHeader, STRINGIFY(DRIVER_ENTRY), (uintptr_t*)&(object->entry));
     if(OK != status)
     {
 		goto LoadKernelDriverFailure;
@@ -285,12 +284,6 @@ static STATUS ExLoadKernelDriverImage(const char *path, struct ExDriverObject **
     }
 
     RtlStrcpy(object->imageName, c);
-
-    status = ((DRIVER_ENTRY_T*)entry)(object);
-    if(OK != status)
-    {
-		goto LoadKernelDriverFailure;
-    }
 
     *driverObject = object;
     
@@ -317,7 +310,7 @@ LoadKernelDriverFailure:
 }
 
 static STATUS ExLoadKernelDrivers(const char *name, bool fs, const char *deviceId, char * const * compatibleIds, struct IoDeviceObject *disk,
-    struct ExDriverObjectList **drivers, uint16_t *driverCount)
+    struct ExDriverObjectList **drivers, size_t *driverCount)
 {
     STATUS status;
     struct ExDbHandle *configDb = NULL, *deviceIdDb = NULL, *fsDriverDb = NULL, *driverDb = NULL;
@@ -529,14 +522,10 @@ ExLoadKernelDriversFsLoop:
             goto ExLoadKernelDriversForExit;
         }
     }
-    
-    if(!(drv->flags & EX_DRIVER_OBJECT_FLAG_INITIALIZED))
-    {
-        if(NULL != drv->init)
-            status = drv->init(drv);
-        else
-            status = OK;
 
+    if(!(drv->flags & EX_DRIVER_OBJECT_FLAG_LOADED))
+    {
+        status = drv->entry(drv, name);
         if(OK != status)
         {
             if(fs)
@@ -550,9 +539,10 @@ ExLoadKernelDriversFsLoop:
                 goto ExLoadKernelDriversForExit;
             }
         }
-        drv->flags |= EX_DRIVER_OBJECT_FLAG_INITIALIZED;
+        else
+            drv->flags |= EX_DRIVER_OBJECT_FLAG_LOADED;
     }
-
+    
     if(fs && (NULL == name))
     {
         if((NULL == drv->verifyFs) 
@@ -576,7 +566,7 @@ ExLoadKernelDriversFsLoop:
         }
 
         d->next = NULL;
-        d->this = drv;
+        d->thisDriver = drv;
         d->isMain = true;
 
         *drivers = d;
@@ -610,17 +600,17 @@ ExLoadKernelDriversForExit:
     return status;
 }
 
-STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const * compatibleIds, struct ExDriverObjectList **drivers, uint16_t *driverCount)
+STATUS ExLoadKernelDriversForDevice(const char *deviceId, char * const * compatibleIds, struct ExDriverObjectList **drivers, size_t *driverCount)
 {
     return ExLoadKernelDrivers(NULL, false, deviceId, compatibleIds, NULL, drivers, driverCount);
 }
 
-STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, uint16_t *driverCount)
+STATUS ExLoadKernelDriversForFilesystem(struct IoVolumeNode *volume, struct ExDriverObjectList **drivers, size_t *driverCount)
 {
     return ExLoadKernelDrivers(NULL, true, NULL, NULL, volume->pdo, drivers, driverCount);
 }
 
-STATUS ExLoadKernelDriversByName(const char *name, struct ExDriverObjectList **drivers, uint16_t *driverCount)
+STATUS ExLoadKernelDriversByName(const char *name, struct ExDriverObjectList **drivers, size_t *driverCount)
 {
     return ExLoadKernelDrivers(name, false, NULL, NULL, NULL, drivers, driverCount);
 }

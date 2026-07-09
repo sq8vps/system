@@ -80,6 +80,13 @@ void *MmReallocateKernelHeap(void *ptr, size_t n);
 */
 #define malloc(n) MmAllocateKernelHeap(n)
 
+/**
+ * @brief Allocate memory for the address pointer by \a ptr
+ * 
+ * This function takes \a sizeof(*ptr), allocates memory, and assigns the address to \a ptr
+ * @param ptr Pointer to allocate the memory for
+ */
+#define xmalloc(ptr) ptr = MmAllocateKernelHeap(sizeof(*ptr))
 
 /**
  * @brief Allocate memory on kernel heap and clear it

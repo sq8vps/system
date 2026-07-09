@@ -133,7 +133,7 @@ static bool AcpiVerifyChecksum(const void *data, uint32_t size)
 
 static void *AcpiFindRsdp(void *in)
 {
-    for(uint16_t i = 0; i < PAGE_SIZE; i += 16) 
+    for(size_t i = 0; i < PAGE_SIZE; i += 16) 
     {
         if(0 == RtlStrncmp(((const char*)in) + i, "RSD PTR ", 8))
         {
@@ -157,7 +157,7 @@ static uintptr_t AcpiGetRxsdtAddress(void)
     if((0 == ebdaOffset) || (NULL == (rsdp = AcpiFindRsdp((void*)((uintptr_t)t + ebdaOffset)))))
     {
         //find in BIOS memory (64 kiB)
-        for(uint16_t i = 0; i < (ACPI_BIOS_AREA_SPACE_SIZE / PAGE_SIZE); i++)
+        for(size_t i = 0; i < (ACPI_BIOS_AREA_SPACE_SIZE / PAGE_SIZE); i++)
         {
             if(NULL != (rsdp = AcpiFindRsdp((void*)((uintptr_t)t + ACPI_BIOS_AREA_SPACE_LOCATION + (i * PAGE_SIZE)))))
                 break;
