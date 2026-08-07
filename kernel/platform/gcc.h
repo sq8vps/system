@@ -281,6 +281,14 @@ DRIVER_API
 #define stdc_has_single_bit(x) __builtin_stdc_has_single_bit(x)
 
 /**
+ * @brief Find the largest integral power of 2 not greater than the given value
+ * @param x Input number
+ * @return Largest intergral power of 2 not greater than \a x
+ * @note This should be removed and replaced by \c stdbit.h, but it seems to be not available in freestanding environment
+ */
+#define stdc_bit_floor(x) __builtin_stdc_bit_floor(x)
+
+/**
  * @}
  */
 

@@ -203,9 +203,12 @@ void HalUnmapMemoryDescriptorList(void *memory)
     MmUnmapDynamicMemory(memory);
 }
 
-STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags)
+STATUS MmAllocateMemoryFromPool(uintptr_t address, size_t size, MmMemoryFlags flags, size_t pool)
 {
     STATUS ret = OK;
+
+    if(pool >= HAL_PHYSICAL_MEMORY_POOLS)
+        return BAD_PARAMETER;
 
     uintptr_t initialAddress = address;
     while(size)
@@ -214,18 +217,18 @@ STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags)
             return BAD_ALIGNMENT;
         
         PADDRESS pAddress = 0;
-        size_t allocated = MmAllocatePhysicalMemory(size, &pAddress);
+        size_t allocated = MmAllocatePhysicalMemoryFromPool(size, &pAddress, pool);
         if(0 == allocated) //no memory was allocated - this is an error condition
         {
             ret = OUT_OF_RESOURCES;
-            goto mmAllocateKernelMemoryFailed;
+            goto fail;
         }
 
         if(OK != (ret = HalMapMemoryEx(address, pAddress, allocated, flags)))
         {
             //mapping failed
             MmFreePhysicalMemory(pAddress, PAGE_SIZE); //free physical page that wasn't mapped
-            goto mmAllocateKernelMemoryFailed;
+            goto fail;
         }
         address += allocated;
         size -= allocated;
@@ -233,7 +236,7 @@ STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags)
 
     return OK;
 
-    mmAllocateKernelMemoryFailed:
+fail:
     address -= PAGE_SIZE;
     PADDRESS pAddress = 0;
     //unmap and free previously mapped and allocated pages
@@ -247,9 +250,22 @@ STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags)
     return ret;
 }
 
+STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags)
+{
+    return MmAllocateMemoryFromPool(address, size, flags, MM_PHYSICAL_POOL_STANDARD);
+}
+
 STATUS MmAllocateMemoryZeroed(uintptr_t address, size_t size, MmMemoryFlags flags)
 {
     STATUS status = MmAllocateMemory(address, size, flags);
+    if(OK == status)
+        RtlMemset((void*)address, 0, size);
+    return status;
+}
+
+STATUS MmAllocateMemoryFromPoolZeroed(uintptr_t address, size_t size, MmMemoryFlags flags, size_t pool)
+{
+    STATUS status = MmAllocateMemoryFromPool(address, size, flags, pool);
     if(OK == status)
         RtlMemset((void*)address, 0, size);
     return status;

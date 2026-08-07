@@ -7,3 +7,4 @@ Change names of the symbols starting from underscore
 Optimize built-in VGA driver
 Add main partition mount point as a kernel parameter
 NULL to nullptr, #define to constexpr
+Handle >32-bit physical addresses in the IDE driver

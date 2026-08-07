@@ -58,8 +58,9 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
     driverObject->dispatch = AcpiDispatch;
     driverObject->addDevice = AcpiAddDevice;
     AcpiLoggingInit();
-    if(OK != (ret = IoCreateRpQueue(AcpiProcessRp, &rpQueue)))
-        return ret;
+    status = IoCreateRpQueue(AcpiProcessRp, &rpQueue);
+    if(OK != status)
+        return status;
 
     AcpiMpAnalyze();
 

@@ -11,6 +11,7 @@
 #include "xfer.h"
 #include "ke/sched/sched.h"
 #include "if.h"
+#include "mm/palloc.h"
 
 #define PCI_UHCI_CLASS_CODE 0xC
 #define PCI_UHCI_SUBCLASS_CODE 0x3
@@ -67,7 +68,7 @@ static STATUS UhciIsr(void *context)
     return OK;
 }
 
-static STATUS UhciInitializeHostController(struct UsbHcd *hcd)
+static STATUS UhciInitializeRegisters(struct UsbHcd *hcd)
 {
     STATUS status = OK;
     struct UhciControllerInfo *info = hcd->hcdData;
@@ -114,7 +115,7 @@ static STATUS UhciDetectPortCount(struct UhciControllerInfo *info)
     while(1)
     {
         uint16_t t = IoPortReadWord(info->ioPort + PORTSC(info->portCount));
-        if(!(t & 0x80) || (0xFFFF == t))
+        if(!(t & 0x80) || (0xFFFF == t) || (127 == info->portCount))
             break;
         ++info->portCount;
     } 
@@ -241,7 +242,7 @@ STATUS UhciStartHostController(struct UsbHcd *hcd)
         return status;
     }
 
-    status = UhciInitializeHostController(hcd);
+    status = UhciInitializeRegisters(hcd);
     if(OK != status)
     {
         LOG(SYSLOG_ERROR, "Failed to initialize host controller, error 0x%X", (unsigned int)status);
@@ -287,7 +288,7 @@ STATUS UhciStopHostController(struct UsbHcd *hcd)
     return OK;
 }
 
-STATUS UhciConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct UhciControllerInfo *info)
+STATUS UhciInitializeHostController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct UsbHcd *hcd)
 {
     STATUS status = OK;
     struct IoPciDeviceHeader *hdr = nullptr;
@@ -295,9 +296,22 @@ STATUS UhciConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject
     uint32_t resourceCount = 0;
     struct IoIrqEntry *irq = nullptr;
     uint32_t irqInput = 0;
+    struct UhciControllerInfo *info = nullptr;
+
+    hcd->hcdData = MmAllocateKernelHeapZeroed(sizeof(*info));
+    if(nullptr == hcd->hcdData)
+    {
+        LOG(SYSLOG_ERROR, "Unable to allocate memory");
+        return OUT_OF_RESOURCES;
+    }
+
+    info = hcd->hcdData;
 
     info->dev = mdo;
     info->bdo = bdo;
+
+    if(0 != (MmGetHighestUsablePhysicalMemory() & ~((PADDRESS)UINT32_MAX)))
+        info->widePhysicalAddress = true;
     
     status = IoReadConfigSpace(info->bdo, 0, sizeof(*hdr), (void**)(&hdr));
     if(OK != status)
@@ -342,7 +356,7 @@ STATUS UhciConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject
         goto leave;
     }    
 
-    status = UhciInitializeHostController(info);
+    status = UhciInitializeRegisters(hcd);
     if(OK != status)
         goto leave;
 

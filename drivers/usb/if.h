@@ -77,6 +77,58 @@ struct UsbRhPortStatus
 };
 
 /**
+ * @brief USB endpoint type
+ */
+enum UsbEndpointType
+{
+    USB_EP_CONTROL = 0, /**< Control endpoint */
+    USB_EP_ISOCHRONOUS = 1, /**< Isochronous endpoint */
+    USB_EP_BULK = 2, /**< Bulk endpoint */
+    USB_EP_INTERRUPT = 3, /**< Interrupt endpoint */
+};
+
+/**
+ * @brief USB transfer direction
+ */
+enum UsbDirection
+{
+    USB_XFER_OUT = 0, /**< Host-to-device transfer */
+    USB_XFER_IN = 1, /**< Device-to-host transfer */
+};
+
+/**
+ * @brief USB endpoint configuration
+ */
+struct UsbEndpoint
+{
+    uint8_t deviceAddress; /**< Device address */
+    enum UsbHcPortSpeed speed; /**< Device speed */
+    uint8_t endpointAddress; /**< Endpoint number/address */
+    enum UsbEndpointType type; /**< Endpoint type */
+    size_t maxPacketSize; /**< Maximum packet size; this must be set accordingly to the USB specification */
+    enum UsbDirection direction; /**< Endpoint direction */
+    uint32_t period; /**< Polling period in ms, meaningful only when \a type is \ref USB_EP_INTERRUPT; must be set accordingly to the USB spec */
+    /**
+     * @brief Maximum anticipated total data size of a single request
+     * 
+     * This value must be set carefully. Too small values may result in unnecessary fragmentation,
+     * while too big values may result in excessive memory usage.
+     * When this value is incorrect (as per HC driver standards), it might be changed.
+     * For isochronous pipes, this must be equal to \a maxPacketSize, as only 1 iso packet should be transmitted per pipe per frame.
+     */
+    size_t maxDataSize; 
+};
+
+/**
+ * @brief USB transfer configuration
+ */
+struct UsbTransfer
+{
+    struct MmMemoryDescriptor *data; /**< Data buffer descriptors */
+    enum UsbDirection direction; /**< Data direction for control transfers; ignored for other types */
+};
+
+/**
  * @brief USB HC interface
  */
 struct UsbHcInterface
@@ -84,8 +136,9 @@ struct UsbHcInterface
     char magic[sizeof(USB_HC_IF_MAGIC)]; /**< Identifier - magic number = \ref USB_HC_IF_MAGIC */
     enum UsbHcFlags flags; /**< Flags */
     enum UsbHcVersion version; /**< USB version */
+    size_t transferContextSize; /**< Size of transfer context structure */
 
-    struct UsbHcd *hcd; /**< Device specific data */
+    STATUS (*InitializeHostController)(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct UsbHcd *hcd); /**< Initialize newly enumerated host controller */
 
     STATUS (*ResetHostController)(struct UsbHcd *hcd); /**< Reset host controller */
     STATUS (*StartHostController)(struct UsbHcd *hcd); /**< Start host controller */
@@ -96,7 +149,7 @@ struct UsbHcInterface
     STATUS (*ClearRhPortEnableChange)(struct UsbHcd *hcd, size_t port); /**< Clear "enable state changed" bit */
     STATUS (*ClearRhPortConnectChange)(struct UsbHcd *hcd, size_t port); /**< Clear "connect state changed" bit */
     STATUS (*GetRootHubData)(struct UsbHcd *hcd, struct UsbHcRootHubData *data); /**< Get root hub characteristics */
-    STATUS (*GetRhPortStatus)(struct UsbHcd *hcd, size_t port, struct UsbHcPortStatus *status); /**< Get root hub port status */
+    STATUS (*GetRhPortStatus)(struct UsbHcd *hcd, size_t port, struct UsbRhPortStatus *status); /**< Get root hub port status */
 };
 
 #endif

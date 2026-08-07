@@ -525,7 +525,7 @@ ExLoadKernelDriversFsLoop:
 
     if(!(drv->flags & EX_DRIVER_OBJECT_FLAG_LOADED))
     {
-        status = drv->entry(drv, name);
+        status = drv->entry(drv, dbPath);
         if(OK != status)
         {
             if(fs)

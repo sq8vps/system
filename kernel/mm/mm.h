@@ -48,11 +48,19 @@ typedef uint16_t MmMemoryFlags;
 */
 struct MmMemoryDescriptor
 {
-    PADDRESS physical;
+    PADDRESS physical; /**< Physical base address */
+    /**
+     * @brief Virtual (mapping) address of this region
+     * 
+     * This value is based on what was provided to \ref MmBuildMemoryDescriptorList.
+     * If both producer and consumer are in the same address space, it should be valid, as long as it's not unmapped beforehand.
+     * There is no guarantee that this address is correct or even accessible by the consumer.
+     * The consumer may use \ref HalMapMemoryDescriptorList to make sure the regions are mapped correctly.
+     */
     void *mapped;
-    size_t size;
+    size_t size; /**< Region size */
 
-    struct MmMemoryDescriptor *next;
+    struct MmMemoryDescriptor *next; /**< Next region descriptor in a list */
 };
 
 /**
@@ -128,6 +136,16 @@ struct MmMemoryDescriptor *MmCloneMemoryDescriptorList(struct MmMemoryDescriptor
 STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags);
 
 /**
+ * @brief Allocate memory from the given pool and map it
+ * @param address Address to map the memory to
+ * @param size Memory size in bytes
+ * @param flags Page flags
+ * @param pool Memory pool
+ * @return Error code
+*/
+STATUS MmAllocateMemoryFromPool(uintptr_t address, size_t size, MmMemoryFlags flags, size_t pool);
+
+/**
  * @brief Allocate, map and zero-initialize memory
  * @param address Address to map the memory to
  * @param size Memory size in bytes
@@ -135,6 +153,16 @@ STATUS MmAllocateMemory(uintptr_t address, size_t size, MmMemoryFlags flags);
  * @return Error code
 */
 STATUS MmAllocateMemoryZeroed(uintptr_t address, size_t size, MmMemoryFlags flags);
+
+/**
+ * @brief Allocate memory from the given memory pool, then map and zero-initialize it
+ * @param address Address to map the memory to
+ * @param size Memory size in bytes
+ * @param flags Page flags
+ * @param pool Memory pool
+ * @return Error code
+*/
+STATUS MmAllocateMemoryFromPoolZeroed(uintptr_t address, size_t size, MmMemoryFlags flags, size_t pool);
 
 /**
  * @brief Unmap and free  memory

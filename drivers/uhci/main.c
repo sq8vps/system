@@ -7,8 +7,7 @@
 #include "hc.h"
 #include "ex/db/db.h"
 #include "if.h"
-
-static struct ExDriverObject *UhciHighLevelDriver = nullptr;
+#include "xfer.h"
 
 /**
  * @brief Request dispatch routine
@@ -39,64 +38,11 @@ static STATUS UhciDispatch(struct IoRp *rp)
 }
 
 /**
- * @brief Add UHCI device object (MDO)
- * 
- * This function is called on the UHCI object to create a main device, i.e., the host controller.
- * It is not called for enumerated devices.
+ * @brief Dummy, this should be handled by the high level driver
 */
 static STATUS UhciAddDevice(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject)
 {
-    struct IoDeviceObject *device = nullptr;
-    STATUS status = OK;
-    struct UsbHcInterface interface;
-
-    if(nullptr == UhciHighLevelDriver)
-    {
-        LOG(SYSLOG_ERROR, "High level driver unknown!");
-        return NOT_FOUND;
-    }
-
-    status = IoCreateDevice(driverObject, IO_DEVICE_TYPE_BUS, 0, &device);
-    if(OK != status)
-        return status;
-
-    struct UhciControllerInfo *info = MmAllocateKernelHeapZeroed(sizeof(*info));
-    if(nullptr == info)
-    {
-        IoDestroyDevice(device);
-        return OUT_OF_RESOURCES;
-    }
-
-    IoAttachDevice(device, baseDeviceObject);
-
-    info->hcd.hcdData = info;
-
-    status = UhciConfigureController(baseDeviceObject, device, info);
-    if(OK != status)
-    {
-        LOG(SYSLOG_ERROR, "Failed to configure UHCI controller, error 0x%X", (unsigned int)status);
-        return status;
-    }
-
-    memset(&interface, 0, sizeof(interface));
-    strcpy(interface.magic, USB_HC_IF_MAGIC);
-    interface.version = USB_VERSION_1;
-    interface.hcd = &info->hcd;
-    interface.StartHostController = UhciStartHostController;
-    interface.StopHostController = UhciStopHostController;
-    interface.ResetHostController = UhciResetHostController;
-    interface.GetRootHubData = UhciGetRootHubData;
-    interface.GetRhPortStatus = UhciGetPortStatus;
-    interface.SetEnableRhPort = UhciEnablePort;
-    interface.ClearRhPortConnectChange = UhciClearPortConnectChange;
-    interface.ClearRhPortEnableChange = UhciClearPortEnableChange;
-
-    status = UhciHighLevelDriver->init(UhciHighLevelDriver, driverObject, &interface);
-    if(OK != status)
-    {
-        LOG(SYSLOG_ERROR, "Failed to initialize high level driver, error 0x%X", (unsigned int)status);
-    }
-    return status;
+    return NOT_SUPPORTED;
 }
 
 /**
@@ -106,9 +52,10 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
 {
     STATUS status = OK;
     struct ExDbHandle *db = nullptr;
-    const char *usbDriver = nullptr;
+    char *usbDriver = nullptr;
     struct ExDriverObjectList *drv = nullptr;
     size_t drvCount = 0;
+    struct UsbHcInterface interface;
 
     driverObject->dispatch = UhciDispatch;
     driverObject->addDevice = UhciAddDevice;
@@ -139,10 +86,37 @@ STATUS DRIVER_ENTRY(struct ExDriverObject *driverObject, const char *dbPath)
         status = NOT_SUPPORTED;
         goto leave;
     }
-    else
+
+    memset(&interface, 0, sizeof(interface));
+    strcpy(interface.magic, USB_HC_IF_MAGIC);
+    interface.version = USB_VERSION_1;
+    interface.transferContextSize = sizeof(struct UhciTransfer);
+    interface.InitializeHostController = UhciInitializeHostController;
+    interface.StartHostController = UhciStartHostController;
+    interface.StopHostController = UhciStopHostController;
+    interface.ResetHostController = UhciResetHostController;
+    interface.GetRootHubData = UhciGetRootHubData;
+    interface.GetRhPortStatus = UhciGetPortStatus;
+    interface.SetEnableRhPort = UhciEnablePort;
+    interface.ClearRhPortConnectChange = UhciClearPortConnectChange;
+    interface.ClearRhPortEnableChange = UhciClearPortEnableChange;
+
+    status = drv->thisDriver->init(drv->thisDriver, driverObject, &interface);
+    if(OK != status)
     {
-        UhciHighLevelDriver = drv->thisDriver;
+        LOG(SYSLOG_ERROR, "Failed to initialize high level driver, error 0x%X", (unsigned int)status);
+        goto leave;
     }
+
+    if((nullptr == drv->thisDriver->dispatch) || (nullptr == drv->thisDriver->addDevice))
+    {
+        LOG(SYSLOG_ERROR, "High level driver does not have a dispatch or add device routine");
+        status = NOT_SUPPORTED;
+        goto leave;
+    }
+
+    driverObject->dispatch = drv->thisDriver->dispatch;
+    driverObject->addDevice = drv->thisDriver->addDevice;
 
 leave:
     if(nullptr != db)

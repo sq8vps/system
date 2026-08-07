@@ -204,6 +204,9 @@ static STATUS IoOpenFileRaw(const char *file, struct IoVfsNode *fileNode, struct
     *handle = NULL;
     struct IoTaskFsContext taskfsBuffer = IO_TASK_FS_CONTEXT_INITIALIZER;
 
+    if((nullptr == file) && (nullptr == fileNode))
+        return BAD_PARAMETER;
+
     IoVfsLockTreeForWriting();
     if(NULL == taskfs)
         taskfs = &taskfsBuffer;

@@ -31,11 +31,6 @@ struct IoVolumeNode;
 #define DRIVER_ENTRY DriverEntry
 
 /**
- * @brief Type definition for a kernel mode driver entry point routine
- */
-typedef STATUS DRIVER_ENTRY_T(struct ExDriverObject *driverObject, const char *dbPath);
-
-/**
  * @brief Driver object flags
  */
 enum ExDriverObjectFlags
@@ -43,6 +38,49 @@ enum ExDriverObjectFlags
     EX_DRIVER_OBJECT_FLAG_FILESYSTEM  = 0x00000001, /**< Driver is a filesystem driver */
     EX_DRIVER_OBJECT_FLAG_LOADED = 0x80000000, /**< Driver is already loaded and its entry was called */
 };
+
+/**
+ * @brief Driver entry point type
+ * @param *driverObject Target driver object
+ * @param *dbPath Path of the database that was used to load this driver
+ * @return Status code
+ * @attention This function is called only once and only by the kernel
+ */
+typedef STATUS (*ExDriverEntry)(struct ExDriverObject *driverObject, const char *dbPath);
+
+/**
+ * @brief High-level driver initialization routine type
+ * 
+ * This routine is implemented by high-level drivers for intialization when a low-level driver requests
+ * support from a high-level driver. This routine may (and probably will) read the low-level driver (caller) routine pointers
+ * to pass some requests later, so the low-level driver may modify them (for example to direct all requests to the high-level driver first)
+ * only after calling this function.
+ * @param *driverObject Target driver object
+ * @param *caller Caller driver object
+ * @param *data Driver-specific data
+ * @return Status code
+ */
+typedef STATUS (*ExDriverInit)(struct ExDriverObject *driverObject, struct ExDriverObject *caller, void *data);
+
+/**
+ * @brief Driver RP dispatch routine type
+ * 
+ * This function is used to pass an RP to a driver.
+ * @param *rp RP to be dispatched by the driver
+ * @return Status code
+ */
+typedef STATUS (*ExDriverDispatch)(struct IoRp *rp);
+
+/**
+ * @brief Add device driver dispatch routine
+ * 
+ * This function is called by the kernel when a new device was enumerated, and the device ID matches at least one
+ * of the device IDs supported by the driver.
+ * @param *driverObject Target driver object
+ * @param *baseDeviceObject Base device object, to which the newly created device should be attached
+ * @return Status code
+ */
+typedef STATUS (*ExDriverAddDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject);
 
 /**
  * @brief Driver object structure
@@ -57,11 +95,11 @@ struct ExDriverObject
     uintptr_t address; /**< Driver image address */
     size_t size; /**< Driver image size */
     uint32_t referenceCount; /**< Count of driver references */
-    DRIVER_ENTRY_T* entry; /**< Driver entry routine */
-    STATUS (*init)(struct ExDriverObject *driverObject, struct ExDriverObject *caller, void *data); /**< Driver specific initialization function - not called by default */
+    ExDriverEntry entry; /**< Driver entry routine */
+    ExDriverInit init; /**< Driver specific initialization function - not called by default */
     STATUS (*unload)(struct ExDriverObject *driverObject); /**< Driver unload routine pointer */
-    STATUS (*dispatch)(struct IoRp *rp); /**< Resource Packet dispatch routine pointer */
-    STATUS (*addDevice)(struct ExDriverObject *driverObject, struct IoDeviceObject *baseDeviceObject); /**< Main Device Object creation routine pointer */
+    ExDriverDispatch dispatch; /**< Resource Packet dispatch routine pointer */
+    ExDriverAddDevice addDevice; /**< Main Device Object creation routine pointer */
     STATUS (*verifyFs)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk); /**< Routine to check if driver is able to mount a given file system */
     STATUS (*mount)(struct ExDriverObject *driverObject, struct IoDeviceObject *disk); /**< Mount filesystem routine pointer */
 

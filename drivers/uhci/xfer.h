@@ -5,11 +5,16 @@
 
 struct UhciControllerInfo;
 
+struct UhciTransfer
+{
+
+};
+
 /**
- * @brief Allocate empty frame list for HC
+ * @brief Allocate structures for HC
  * @param *info HC info structure
  * @return Status code
  */
-STATUS UhciAllocateFrameList(struct UhciControllerInfo *info);
+STATUS UhciAllocateStructures(struct UhciControllerInfo *info);
 
 #endif

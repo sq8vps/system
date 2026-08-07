@@ -123,6 +123,12 @@ bool MmCheckIfPhysicalMemoryUsable(PADDRESS address, PSIZE size);
 */
 bool MmCheckIfPhysicalMemoryInPool(PADDRESS address, PSIZE size, uint32_t pool);
 
+/**
+ * @brief Obtain highest physical memory address that can be allocated
+ * @return Highest usable physical memory
+ */
+PADDRESS MmGetHighestUsablePhysicalMemory(void);
+
 END_DRIVER_API
 
 struct Multiboot2InfoHeader;

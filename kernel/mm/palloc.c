@@ -67,6 +67,11 @@ static struct MmMemoryPool MmUsableRegion[MM_MAX_USABLE_REGION_COUNT];
 static uint32_t MmUsableRegionCount = 0;
 
 /**
+ * @brief Highest address of the usable physical memory
+ */
+static PADDRESS MmPhysicalMemoryTop = 0;
+
+/**
  * @brief Architecture-specific-code-defined physical pools
  */
 extern struct MmMemoryPool HalPhysicalPool[HAL_PHYSICAL_MEMORY_POOLS];
@@ -397,7 +402,12 @@ void MmInitPhysicalAllocator(const void *bootArgs)
                         MmUsableRegion[MmUsableRegionCount].size = ALIGN_DOWN(MmUsableRegion[MmUsableRegionCount].size, PAGE_SIZE);
                         //check if the region is at least one page size
                         if(MmUsableRegion[MmUsableRegionCount].size >= PAGE_SIZE)
+                        {
+                            size_t top = MmUsableRegion[MmUsableRegionCount].base + MmUsableRegion[MmUsableRegionCount].size - 1;
+                            if(top > MmPhysicalMemoryTop)
+                                MmPhysicalMemoryTop = top;
                             ++MmUsableRegionCount;
+                        }
                     }                
                 }
                 e = (const struct Multiboot2MemoryMapEntry*)((uintptr_t)e + mm->entry_size);
@@ -437,6 +447,11 @@ void MmInitPhysicalAllocator(const void *bootArgs)
 #else
 #error Unknown bootloader - provide bootloader data parser or bootloader-independent memory map parsing
 #endif
+}
+
+PADDRESS MmGetHighestUsablePhysicalMemory(void)
+{
+    return MmPhysicalMemoryTop;
 }
 
 #if HAL_PHYSICAL_MEMORY_POOLS < 1

@@ -5,6 +5,7 @@
 #include "if.h"
 
 struct IoDeviceObject;
+struct UhciFrame;
 
 struct UhciControllerInfo
 {
@@ -16,16 +17,20 @@ struct UhciControllerInfo
     size_t portCount; /**< Number of ports */
     bool controllerStarted; /**< Is controller running? */
     struct UsbHcd hcd; /**< USB HC data */
+    void *qhSlab; /**< QH slab allocator */
+    void *tdSlab; /**< TD slab allocator */
+    bool widePhysicalAddress; /**< Are physical addresses on this system exceeding 32 bits? */
+    struct UhciFrame *frames; /**< Table of frame data structures */
 };
 
 /**
- * @brief Configure newly detected UHCI controller
+ * @brief Initialize newly detected UHCI controller
  * @param *bdo Base (enumerator) device object
  * @param *mdo Object for this device
- * @param *info Preallocated UHCI info structure
+ * @param *hcd Preallocated HC driver structure
  * @return Status code
  */
-STATUS UhciConfigureController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct UhciControllerInfo *info);
+STATUS UhciInitializeHostController(struct IoDeviceObject *bdo, struct IoDeviceObject *mdo, struct UsbHcd *hcd);
 
 /**
  * @brief Reset UHCI host controller
